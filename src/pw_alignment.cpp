@@ -53,9 +53,17 @@ void pw_alignment::alignment_col(size_t c, char & s1, char & s2) const {
 	s2 = base_translate_back(bit1, bit2, bit3);
 }
 
+void pw_alignment::split(bool sample, size_t position, pw_alignment & first_part, pw_alignment & second_part ) const{
+if (sample = true) {
+       first_part = sample1.erase(sample1.at(position),sample1.end());
+       second_part= sample1.erase(sample1.begin(),sample1.at(position));
+}
+else{
+        first_part = sample2.erase(sample2.at(position),sample2.end());
+       second_part= sample2.erasen(sample2.begin(),sample2.at(position));}
 
-
-
+}   
+} 
 void pw_alignment::base_translate(char base, bool  & bit1, bool & bit2, bool & bit3) {
 	switch(base) {
 			case 'A':

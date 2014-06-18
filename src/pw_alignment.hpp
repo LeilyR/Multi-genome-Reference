@@ -18,6 +18,7 @@ class pw_alignment {
 	size_t alignment_length() const;
 	void alignment_col(size_t c, char & s1, char & s2) const;
 
+	void split(size_t position, pw_alignment & first_part_s1, pw_alignment & second_part_s1, pw_alignment & first_part_s2, pw_alignment & second_part_s2 ) const;
 
 
 	private:
