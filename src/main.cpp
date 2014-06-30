@@ -101,6 +101,7 @@ int do_fasta_prepare(int argc, char * argv[]) {
 
 			string str;
 			while(getline((*(inputs.at(i))), str)) {
+				if(str.length()>0) { // ignore empty lines
 				if(str.at(0)=='>') {
 					string nname = str.substr(1);
 					stringstream nhead;
@@ -108,6 +109,7 @@ int do_fasta_prepare(int argc, char * argv[]) {
 					outf << nhead.str() << endl;
 				} else {
 					outf << str << endl;
+				}
 				}
 			}
 			inputs.at(i)->close();

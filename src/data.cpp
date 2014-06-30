@@ -15,7 +15,7 @@ bool dnastring::found_iupac_ambiguity = false;
 
 dnastring::dnastring(string str):bits(str.length()*3) {
 	for(size_t i=0; i<str.length(); ++i) {
-		char c = str.at(c);
+		char c = str.at(i);
 		bool bit1 = false;
 		bool bit2 = false;
 		bool bit3 = false;
@@ -173,9 +173,7 @@ all_data::all_data(string fasta_all_sequences, string maf_all_alignments) {
 
 				// read next header
 				string fhead = str.substr(1);
-				name_split(fhead, curname, curacc);
-			
-
+				name_split(fhead, curacc, curname);
 			} else {
 				curseq << str;
 			}
@@ -191,6 +189,7 @@ all_data::all_data(string fasta_all_sequences, string maf_all_alignments) {
 		exit(1);
 	}
 
+	cout << "loaded " << sequences.size() << " sequences" << endl;
 
 	// a new multimap for each ref sequence
 	als_on_reference.resize(sequences.size());
@@ -199,6 +198,7 @@ all_data::all_data(string fasta_all_sequences, string maf_all_alignments) {
 	}
 
 	ifstream mafin(maf_all_alignments.c_str());
+	size_t skip_self = 0;
 	if(mafin) {
 		string str;
 		while(getline(mafin, str)) {
@@ -263,6 +263,9 @@ all_data::all_data(string fasta_all_sequences, string maf_all_alignments) {
 						start2 = incl_end2;
 						incl_end2 = tmp;
 					}
+	
+					if(idx1 != idx2 || !(start1==start2 && incl_end1 == incl_end2    )) {
+
 
 
 					pw_alignment al(al1, al2, start1, start2, incl_end1, incl_end2, idx1, idx2);
@@ -274,7 +277,11 @@ all_data::all_data(string fasta_all_sequences, string maf_all_alignments) {
 					als_on_reference.at(idx2).insert(make_pair(start1, alidx));
 					als_on_reference.at(idx2).insert(make_pair(incl_end2, alidx));
 
-
+					} else {
+						skip_self++;
+						// cerr << "Warning: Skip self alignment in seq " << idx1 << " from " << start1 << " to " << incl_end1 << endl;
+					
+					}
 
 
 				
@@ -291,6 +298,7 @@ all_data::all_data(string fasta_all_sequences, string maf_all_alignments) {
 		}
 
 		cout << "Loaded: " << sequences.size() << " sequences and " << alignments.size() << " pairwise alignments " << endl;
+		cout << skip_self << " self alignments were skipped" << endl;
 	
 	} else {
 		cerr << "Error: cannot read: " << maf_all_alignments << endl;
@@ -340,14 +348,17 @@ void all_data::insert_sequence(const string & acc, const string & seq_name, cons
 
 /**
 	Transform 
-	"Col0:scaffold_0"
+	"Col0:scaffold_0 comment"
 	to 
 	"Col0", "scaffold_0"
 	
 **/		
 void all_data::name_split(const string & longname, string & acc, string & name) {
+	vector<string> wparts; // remove all after first space
+	strsep(longname, " ", wparts);
+	string wname = wparts.at(0);
 	vector<string> fparts;
-	strsep(longname, ":", fparts);
+	strsep(wname, ":", fparts);
 	if(fparts.size()< 2) {
 		cerr << "Error: sequence " << longname << " does not contain an Accession name separated by a colon" << endl;
 		exit(1);
