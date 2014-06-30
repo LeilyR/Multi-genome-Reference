@@ -94,6 +94,26 @@ void pw_alignment::base_translate(char base, bool  & bit1, bool & bit2, bool & b
 				bit3 = false;
 
 			break;
+			case 'R':
+			case 'r':
+			case 'Y':
+			case 'y':
+			case 'M':
+			case 'm':
+			case 'K':
+			case 'k':
+			case 'W':
+			case 'w':
+			case 'S':
+			case 's':
+			case 'B':
+			case 'b':
+			case 'D':
+			case 'd':
+			case 'H':
+			case 'h':
+			case 'V':
+			case 'v':
 			case 'N':
 			case 'n':
 				bit1 = false;
@@ -109,7 +129,7 @@ void pw_alignment::base_translate(char base, bool  & bit1, bool & bit2, bool & b
 
 			break;
 			default:
-			cerr << "Error: unknown character: " << base << endl;
+			cerr << "Error: Illegal character in DNA sequence: " << base << endl;
 			exit(1);
 			break;
 		}
