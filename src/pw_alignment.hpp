@@ -25,6 +25,8 @@ class pw_alignment {
 	size_t getbegin2() const;
 	size_t getend1()const;
 	size_t getend2()const;
+	size_t getreference1() const;
+	size_t getreference2() const;
 	void split(bool sample, size_t position, pw_alignment & first_part, pw_alignment & second_part) const;
 	void set_alignment_bits(vector<bool> s1, vector<bool> s2);
 	private:
@@ -36,8 +38,6 @@ class pw_alignment {
 	size_t sample2_end;
 	size_t sample1reference;
 	size_t sample2reference;
-
-
 	static inline void base_translate(char base, bool & bit1, bool & bit2, bool & bit3);
 	static inline char base_translate_back(bool bit1, bool bit2, bool bit3);
 };

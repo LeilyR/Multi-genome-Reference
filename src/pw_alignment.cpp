@@ -281,6 +281,12 @@ char pw_alignment::base_translate_back(bool bit1, bool bit2, bool bit3) {
 	size_t pw_alignment::getend2()const{
 	return sample2_end;
 }
+	size_t pw_alignment::getreference1() const{
+	return sample1reference;
+}
+	size_t pw_alignment::getreference2() const{
+	return sample2reference;
+}
 
 
 	overlap::overlap(){
@@ -295,47 +301,172 @@ char pw_alignment::base_translate_back(bool bit1, bool bit2, bool bit3) {
 	pw_alignment p4;
 	map alignments_on_reference1; 
 	map alignments_on_reference2;
-	//if( allalignit->second.getreference1()){
 
-	size_t leftinsert = new_alignment.getbegin1();
-	size_t rightinsert = new_alignment.getend1();
-	if(new_alignment.getend1() < leftinsert) {
-		leftinsert = new_alignment.getend1();
-		rightinsert = new_alignment.getbegin1();
+
+	size_t leftinsert1 = new_alignment.getbegin1();
+	size_t rightinsert1 = new_alignment.getend1();
+	if(new_alignment.getend1() < leftinsert1) {
+		leftinsert1 = new_alignment.getend1();
+		rightinsert1 = new_alignment.getbegin1();
 }
-	map::const_iterator allalignit = alignments_on_reference1.lower_bound(leftinsert);
+	map::const_iterator allalignit1 = alignments_on_reference1.lower_bound(leftinsert1);
 
 
-	if(allalignit == alignments_on_reference1.end()) allalignit = alignments_on_reference1.begin();
+	if(allalignit1 == alignments_on_reference1.end()) allalignit1 = alignments_on_reference1.begin();
 
-	for(; allalignit != alignments_on_reference1.end(); ++allalignit) {
-		const pw_alignment & al = allalignit->second;
-		size_t alleft;
-		size_t alright = 0;
-		alleft = al.getbegin1();
-		
-		if(alleft > al.getend1()) alleft = al.getend1();
+	for(; allalignit1 != alignments_on_reference1.end(); ++allalignit1) {
+		const pw_alignment & al1 = allalignit1->second;
+		size_t alleft1;
+		size_t alright1;
+		alleft1 = al1.getbegin1();
+		alright1 = al1.getend1();
+		if(alleft1 > al1.getend1()) {
+		alleft1 = al1.getend1();
+		alright1 = al1.getbegin1();
+		}
 			
-		
-		if(leftinsert <= alleft && rightinsert >= alright) {
+		if( allalignit1->second.getreference1() == new_alignment.getreference1()){
 
-		al.split (true,rightinsert,p1,p2);
-		p2.split(true,rightinsert,p3,p4);
+		if(leftinsert1 <= alright1 && rightinsert1 >= alleft1) {
+			if (leftinsert1 >= alleft1 && rightinsert1 >= alright1){
+			al1.split (true,leftinsert1,p1,p2);
+			p2.split(true,alright1,p3,p4);
+		}
+			if (leftinsert1 <= alleft1 && rightinsert1 <= alright1){
+			al1.split (true,alleft1,p1,p2);
+			p1.split(true,rightinsert1,p3,p4);
+		}
 
+			if (leftinsert1 >= alleft1 && rightinsert1 <= alright1){
+			al1.split (true,leftinsert1,p1,p2);
+			p2.split(true,rightinsert1,p3,p4);
+		}
+			if (leftinsert1 <= alleft1 && rightinsert1 >= alright1){
+			new_alignment.split (true,alleft1,p1,p2);
+			p2.split(true,alright1,p3,p4);
+		}
+
+	
 			}
 
-			
+		else break;	
+}
+		else {
 
+		if(leftinsert1 <= alright1 && rightinsert1 >= alleft1) {
+			if (leftinsert1 >= alleft1 && rightinsert1 >= alright1){
+			al1.split (true,leftinsert1,p1,p2);
+			p2.split(false,alright1,p3,p4);
+		}
+			if (leftinsert1 <= alleft1 && rightinsert1 <= alright1){
+			al1.split (true,alleft1,p1,p2);
+			p1.split(false,rightinsert1,p3,p4);
+		}
+
+			if (leftinsert1 >= alleft1 && rightinsert1 <= alright1){
+			al1.split (true,leftinsert1,p1,p2);
+			p2.split(false,rightinsert1,p3,p4);
+		}
+			if (leftinsert1 <= alleft1 && rightinsert1 >= alright1){
+			new_alignment.split (true,alleft1,p1,p2);
+			p2.split(false,alright1,p3,p4);
+		}
+
+	
+			}
+
+
+
+		
+}
 		}
 
 
-		// break loop if too far to the  right (??)
+	
+	size_t leftinsert2 = new_alignment.getbegin2();
+	size_t rightinsert2 = new_alignment.getend2();
+	if(new_alignment.getend2() < leftinsert2) {
+		leftinsert2 = new_alignment.getend2();
+		rightinsert2 = new_alignment.getbegin2();
+}
+	map::const_iterator allalignit2 = alignments_on_reference2.lower_bound(leftinsert2);
+
+
+	if(allalignit2 == alignments_on_reference2.end()) allalignit2 = alignments_on_reference2.begin();
+
+	for(; allalignit2 != alignments_on_reference2.end(); ++allalignit2) {
+		const pw_alignment & al2 = allalignit2->second;
+		size_t alleft2;
+		size_t alright2;
+		alleft2 = al2.getbegin2();
+		alright2 = al2.getend2();
+		if(alleft2 > al2.getend2()) {
+		alleft2 = al2.getend2();
+		alright2 = al2.getbegin2();
+		}
+			
+		if( allalignit2->second.getreference2() == new_alignment.getreference2()){
+
+		if(leftinsert2 <= alright2 && rightinsert2 >= alleft2) {
+			if (leftinsert2 >= alleft2 && rightinsert2 >= alright2){
+			al2.split (true,leftinsert2,p1,p2);
+			p2.split(true,alright2,p3,p4);
+			}
+			if (leftinsert2 <= alleft2 && rightinsert2 <= alright2){
+			al2.split (true,alleft2,p1,p2);
+			p1.split(true,rightinsert2,p3,p4);
+			}
+
+			if (leftinsert2 >= alleft2 && rightinsert2 <= alright2){
+			al2.split (true,leftinsert2,p1,p2);
+			p2.split(true,rightinsert2,p3,p4);
+			}
+			if (leftinsert2 <= alleft2 && rightinsert2 >= alright2){
+			new_alignment.split (true,alleft2,p1,p2);
+			p2.split(true,alright2,p3,p4);
+			}
+
+	
+		}
+
+		else break;	
+}
+		else {
+
+		if(leftinsert2 <= alright2 && rightinsert2 >= alleft2) {
+			if (leftinsert2 >= alleft2 && rightinsert2 >= alright2){
+			al2.split (true,leftinsert2,p1,p2);
+			p2.split(false,alright2,p3,p4);
+		}
+			if (leftinsert2 <= alleft2 && rightinsert2 <= alright2){
+			al2.split (true,alleft2,p1,p2);
+			p1.split(false,rightinsert2,p3,p4);
+		}
+
+			if (leftinsert2 >= alleft2 && rightinsert2 <= alright2){
+			al2.split (true,leftinsert2,p1,p2);
+			p2.split(false,rightinsert2,p3,p4);
+		}
+			if (leftinsert2 <= alleft2 && rightinsert2 >= alright2){
+			new_alignment.split (true,alleft2,p1,p2);
+			p2.split(false,alright2,p3,p4);
+		}
+
+	
+			}
+
+
+
+		
+}
+		}
+
 	
 }
 
 
 
-//}
+
 	overlap::~overlap(){
 	
 }
