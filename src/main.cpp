@@ -3,15 +3,12 @@
 #include <fstream>
 #include <sstream>
 #include <map>
-#include <boost/iostreams/stream.hpp>
-#include <boost/tokenizer.hpp>
-
 #include "pw_alignment.hpp"
 #include "data.hpp"
 
 using namespace std;
 
-#define TEST 1
+#define TEST 0
 
 
 #if TEST
@@ -64,16 +61,6 @@ int main(int argc, char * argv[]) {
 
 
 #endif
-typedef boost::tokenizer<boost::char_separator<char> > btokenizer;
-void strsep(string str, const char * sep, vector<string> & parts) {
-        boost::char_separator<char> tsep(sep);
-        btokenizer tok(str, tsep);
-        for(btokenizer::iterator tit=tok.begin(); tit!=tok.end(); ++tit) {
-                parts.push_back(*tit);
-        }
-        
-}
-
 void usage() {
 	cerr << "Graph program" << endl;
 	cerr << "Usage:" << endl;
@@ -132,6 +119,7 @@ int do_fasta_prepare(int argc, char * argv[]) {
 
 			string str;
 			while(getline((*(inputs.at(i))), str)) {
+				if(str.length()>0) { // ignore empty lines
 				if(str.at(0)=='>') {
 					string nname = str.substr(1);
 					stringstream nhead;
@@ -139,6 +127,7 @@ int do_fasta_prepare(int argc, char * argv[]) {
 					outf << nhead.str() << endl;
 				} else {
 					outf << str << endl;
+				}
 				}
 			}
 			inputs.at(i)->close();
@@ -157,7 +146,25 @@ int do_fasta_prepare(int argc, char * argv[]) {
  
 
 
+int do_model(int argc, char * argv[]) {
 
+	if(argc < 4) {
+		usage();
+		cerr << "Program: model" << endl;
+		cerr << "Parameters:" << endl;
+		cerr << "* fasta file from fasta_prepare" << endl;
+		cerr << "* maf file containing alignments of sequences contained in the fasta file" << endl;
+	}
+
+	string fastafile(argv[2]);
+	string maffile(argv[3]);
+
+	all_data data(fastafile, maffile);
+
+
+
+	return 0;
+}
 
 
 #if !TEST
@@ -173,7 +180,7 @@ int main(int argc, char * argv[]) {
 	if(0==program.compare("fasta_prepare")) {
 		return do_fasta_prepare(argc, argv);
 	} else if(0==program.compare("model")) {
-	
+		return do_model(argc, argv);
 	}
 
 	else {
