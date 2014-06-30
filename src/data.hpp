@@ -51,6 +51,9 @@ class all_data {
 		const pw_alignment & getAlignment(size_t index) const;
 		const multimap<size_t, size_t> & getAlOnRefMap(size_t seq_idx) const;
 
+		size_t numSequences() const;
+		size_t numAlignments() const;
+
 	private:
 		// data
 		vector<dnastring> sequences;

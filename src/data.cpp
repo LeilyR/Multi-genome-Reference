@@ -326,6 +326,13 @@ const multimap<size_t, size_t> & all_data::getAlOnRefMap(size_t seq_idx) const {
 	return als_on_reference.at(seq_idx);
 }
 
+size_t all_data::numSequences() const {
+	return sequences.size();
+}
+
+size_t all_data::numAlignments() const {
+	return alignments.size();
+}
 
 
 
