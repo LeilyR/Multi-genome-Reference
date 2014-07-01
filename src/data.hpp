@@ -6,6 +6,7 @@
 #include <sstream>
 #include <fstream>
 #include <cstdlib>
+#include <cassert>
 
 
 #include "pw_alignment.hpp"
@@ -62,7 +63,7 @@ class all_data {
 		// fast access indices
 		map< string, vector< size_t> > acc_sequences; // acc name -> sequences of that acc
 		map< string, size_t> longname2seqidx; // long sequence name ("Accession:sequence name") -> sequence index
-		vector< multimap< size_t, size_t> > als_on_reference; // sequence index -> pos on that sequence -> alignment index
+	//	vector< multimap< size_t, size_t> > als_on_reference; // sequence index -> pos on that sequence -> alignment index
 
 
 		void insert_sequence(const string & acc, const string & seq_name, const string & dna);

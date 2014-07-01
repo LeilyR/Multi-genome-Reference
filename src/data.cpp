@@ -197,8 +197,12 @@ all_data::all_data(string fasta_all_sequences, string maf_all_alignments) {
 		als_on_reference.at(i) = multimap<size_t, size_t>();
 	}
 
+	vector< multimap< size_t, size_t> > als_on_reference; // sequence index -> begin pos on that sequence -> alignment index
+
+
 	ifstream mafin(maf_all_alignments.c_str());
 	size_t skip_self = 0;
+	size_t skip_alt = 0;
 	if(mafin) {
 		string str;
 		while(getline(mafin, str)) {
@@ -263,19 +267,51 @@ all_data::all_data(string fasta_all_sequences, string maf_all_alignments) {
 						start2 = incl_end2;
 						incl_end2 = tmp;
 					}
-	
+					
+					// both al parts not identical	
 					if(idx1 != idx2 || !(start1==start2 && incl_end1 == incl_end2    )) {
 
 
 
-					pw_alignment al(al1, al2, start1, start2, incl_end1, incl_end2, idx1, idx2);
-					size_t alidx = alignments.size();
-					alignments.push_back(al);
+						bool skip = false;
 
-					als_on_reference.at(idx1).insert(make_pair(start1, alidx));
-					als_on_reference.at(idx1).insert(make_pair(incl_end1, alidx));
-					als_on_reference.at(idx2).insert(make_pair(start1, alidx));
-					als_on_reference.at(idx2).insert(make_pair(incl_end2, alidx));
+						// check if we already have an alignment with same coordinates
+						// because we are looking for identical alignment it suffices to go over only one multimap
+						pair<multimap<size_t, size_t>::iterator, multimap<size_t, size_t::iterator> eqr =
+						als_on_reference.at(idx1).equal_range(start1);
+						for(multimap<size_t, size_t>::iterator it = eqr.first; it!=eqr.second; ++it) {
+							pw_alignment & al = it->second;
+							size_t same_ref = 2;
+							if(al.getreference(0)==idx1) {
+								same_ref = 0;
+							} else if(al.getreference(1)==idx1) {
+								same_ref = 1;
+							}
+							assert(same_ref < 2);
+							size_t other_ref = 1 - same_ref;
+							if(al.getreference(other_ref) == idx2) { // al and new alignment on same sequences
+								if(start1 == al.getbegin(same_ref) && start2 == al.getbin(other_ref) && 
+										incl_end1 == al.getend(same_ref) && incl_end2 == al.getend(other_ref)) {
+									skip =true;
+									break;
+								}
+							}
+						 }
+					
+						if(skip) {
+							skip_alt++;
+						} else {
+
+
+
+							pw_alignment al(al1, al2, start1, start2, incl_end1, incl_end2, idx1, idx2);
+							size_t alidx = alignments.size();
+							alignments.push_back(al);
+
+							als_on_reference.at(idx1).insert(make_pair(start1, alidx));
+							als_on_reference.at(idx2).insert(make_pair(start1, alidx));
+
+						}
 
 					} else {
 						skip_self++;
@@ -283,7 +319,7 @@ all_data::all_data(string fasta_all_sequences, string maf_all_alignments) {
 					
 					}
 
-
+					
 				
 				}
 			
@@ -299,6 +335,7 @@ all_data::all_data(string fasta_all_sequences, string maf_all_alignments) {
 
 		cout << "Loaded: " << sequences.size() << " sequences and " << alignments.size() << " pairwise alignments " << endl;
 		cout << skip_self << " self alignments were skipped" << endl;
+		cout << skip_alt << " alternative alignments of identical regions were skipped" << endl;
 	
 	} else {
 		cerr << "Error: cannot read: " << maf_all_alignments << endl;
