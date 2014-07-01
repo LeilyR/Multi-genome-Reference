@@ -6,6 +6,8 @@
 #include <string>
 #include <map>
 
+#include <cassert>
+#include <cstdlib>
 using namespace std;
 
 class pw_alignment {
@@ -29,33 +31,26 @@ class pw_alignment {
 	size_t getreference2() const;
 	void split(bool sample, size_t position, pw_alignment & first_part, pw_alignment & second_part) const;
 	void set_alignment_bits(vector<bool> s1, vector<bool> s2);
+	vector<bool> getsample(size_t id)const;
+	size_t getbegin(size_t id)const;
+	size_t getend(size_t id)const;
+	size_t getreference(size_t id)const;
+
 	private:
-	vector<bool> sample1;
-	vector<bool> sample2;
-	size_t sample1_begin;
-	size_t sample2_begin;
-	size_t sample1_end;
-	size_t sample2_end;
-	size_t sample1reference;
-	size_t sample2reference;
+	vector<vector<bool> > samples;
+	vector<size_t> begins;
+	vector<size_t> ends;
+	vector<size_t> references;
+	
 	static inline void base_translate(char base, bool & bit1, bool & bit2, bool & bit3);
 	static inline char base_translate_back(bool bit1, bool bit2, bool bit3);
 };
 
-class overlap{
-public:
-	overlap();
-	~overlap();
-	void add_alignment(pw_alignment & new_alignment);
 
-
-	typedef multimap <size_t, pw_alignment> map;
-
-
-	pw_alignment new_alignment;
-	
+class compare_pw_alignment {
+	public:
+	bool operator()(const pw_alignment &a, const pw_alignment & b);
 };
-
 		
 #endif 
 

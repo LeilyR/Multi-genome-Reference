@@ -160,6 +160,7 @@ int do_model(int argc, char * argv[]) {
 	string maffile(argv[3]);
 
 	all_data data(fastafile, maffile);
+	overlap o(data);
 
 
 

@@ -1,12 +1,10 @@
 #include "pw_alignment.hpp"
-#include <cassert>
-#include <cstdlib>
 
-pw_alignment::pw_alignment(string sample1str, string sample2str, size_t sample1_begin, size_t sample2_begin, size_t sample1_end, size_t sample2_end, size_t sample1reference, size_t sample2reference ) {
+pw_alignment::pw_alignment(string sample1str, string sample2str, size_t sample1_begin, size_t sample2_begin, size_t sample1_end, size_t sample2_end, size_t sample1reference, size_t sample2reference ): samples(2), begins(2), ends(2), references(2) {
 	assert(sample1str.length() == sample2str.length());
 	size_t bitlength = 3*sample1str.size();
-	sample1.resize(bitlength);
-	sample2.resize(bitlength);
+	samples.at(0).resize(bitlength);
+	samples.at(1).resize(bitlength);
 
 	for(size_t i=0; i<sample1str.length(); ++i) {
 		char base1 = sample1str.at(i);
@@ -15,14 +13,24 @@ pw_alignment::pw_alignment(string sample1str, string sample2str, size_t sample1_
 		bool bit2;
 		bool bit3;
 		base_translate(base1, bit1, bit2, bit3);
-		sample1.at(3*i) = bit1;
-		sample1.at(3*i+1) = bit2;
-		sample1.at(3*i+2) = bit3;
+		samples.at(0).at(3*i) = bit1;
+		samples.at(0).at(3*i+1) = bit2;
+		samples.at(0).at(3*i+2) = bit3;
 		base_translate(base2, bit1, bit2, bit3);
-		sample2.at(3*i) = bit1;
-		sample2.at(3*i+1) = bit2;
-		sample2.at(3*i+2) = bit3;
+		samples.at(1).at(3*i) = bit1;
+		samples.at(1).at(3*i+1) = bit2;
+		samples.at(1).at(3*i+2) = bit3;
 	}
+	vector<bool> sample1;
+	vector<bool> sample2;
+	begins.at(0) = sample1_begin;
+	begins.at(1) = sample2_begin;
+	ends.at(0) = sample1_end;
+	ends.at(1) = sample2_end;
+	samples.at(0) = sample1;
+	samples.at(1) = sample2;
+	references.at(0) = sample1reference;
+	references.at(1) = sample2reference;
 }
 
 pw_alignment::pw_alignment() {}
@@ -37,7 +45,7 @@ pw_alignment::pw_alignment(const pw_alignment & p) {
 }
 
 size_t pw_alignment::alignment_length() const {
-	return sample1.size() / 3;
+	return samples.at(0).size() / 3;
 }
 
 
@@ -45,43 +53,43 @@ void pw_alignment::alignment_col(size_t c, char & s1, char & s2) const {
 	bool bit1;
 	bool bit2;
 	bool bit3;
-	bit1 = sample1.at(3*c);
-	bit2 = sample1.at(3*c+1);
-	bit3 = sample1.at(3*c+2);
+	bit1 = samples.at(0).at(3*c);
+	bit2 = samples.at(0).at(3*c+1);
+	bit3 = samples.at(0).at(3*c+2);
 	s1 = base_translate_back(bit1, bit2, bit3);
-	bit1 = sample2.at(3*c);
-	bit2 = sample2.at(3*c+1);
-	bit3 = sample2.at(3*c+2);
+	bit1 = samples.at(1).at(3*c);
+	bit2 = samples.at(1).at(3*c+1);
+	bit3 = samples.at(1).at(3*c+2);
 	s2 = base_translate_back(bit1, bit2, bit3);
 }
 void  pw_alignment::set_alignment_bits(vector<bool> s1, vector<bool> s2){
-	sample1 = s1;
-	sample2 = s2;
+	samples.at(0) = s1;
+	samples.at(1) = s2;
 }
 
 void pw_alignment::split(bool sample, size_t position, pw_alignment & first_part, pw_alignment & second_part ) const{
-	vector<bool> fps1(sample1.size());
-	vector<bool> fps2(sample1.size());
-	vector<bool> sps1(sample1.size());
-	vector<bool> sps2(sample1.size());
+	vector<bool> fps1(samples.at(0).size());
+	vector<bool> fps2(samples.at(0).size());
+	vector<bool> sps1(samples.at(0).size());
+	vector<bool> sps2(samples.at(0).size());
 
-cout << "size " << sample1.size() << endl;
+cout << "size " << samples.at(0).size() << endl;
 
 
 	size_t s = 0;
 	if (sample == true) {
-	for (size_t i=0; i<sample1.size()/3; ++i){
-cout << "bits " << sample1.at(i*3) << sample1.at(i*3+1) << sample1.at(i*3+2)<< endl;
- 		if (sample1.at(0+i*3)== true && sample1.at(1+i*3)==false && sample1.at(2+i*3)==true) {
+	for (size_t i=0; i<samples.at(0).size()/3; ++i){
+cout << "bits " << samples.at(0).at(i*3) << samples.at(0).at(i*3+1) << samples.at(0).at(i*3+2)<< endl;
+ 		if (samples.at(0).at(0+i*3)== true && samples.at(0).at(1+i*3)==false && samples.at(0).at(2+i*3)==true) {
 cout << "gap at " << i << endl;
 			s=s+1;
 		}
-	fps1.at(3*i) = sample1.at(3*i);
-	fps2.at(3*i) = sample2.at(3*i);
-	fps1.at(3*i+1) = sample1.at(3*i+1);
-	fps2.at(3*i+1) = sample2.at(3*i+1);
-	fps1.at(3*i+2) = sample1.at(3*i+2);
-	fps2.at(3*i+2) = sample2.at(3*i+2);
+	fps1.at(3*i) = samples.at(0).at(3*i);
+	fps2.at(3*i) = samples.at(1).at(3*i);
+	fps1.at(3*i+1) = samples.at(0).at(3*i+1);
+	fps2.at(3*i+1) = samples.at(1).at(3*i+1);
+	fps1.at(3*i+2) = samples.at(0).at(3*i+2);
+	fps2.at(3*i+2) = samples.at(1).at(3*i+2);
 	if (i == position-1+s)
 		break;
 	
@@ -91,18 +99,18 @@ cout << "gap at " << i << endl;
 	fps2.resize(3*(position+s));
 	first_part.set_alignment_bits(fps1,fps2); 
 
-for (size_t i=position+s;i<sample1.size()/3;++i){
-      	sps1.at(3*(i-position-s)) = sample1.at(3*i);
-	sps2.at(3*(i-position-s)) = sample2.at(3*i);
-	sps1.at(3*(i-position-s)+1) = sample1.at(3*i+1);
-	sps2.at(3*(i-position-s)+1) = sample2.at(3*i+1);
-	sps1.at(3*(i-position-s)+2) = sample1.at(3*i+2);
-	sps2.at(3*(i-position-s)+2) = sample2.at(3*i+2);
+for (size_t i=position+s;i<samples.at(0).size()/3;++i){
+      	sps1.at(3*(i-position-s)) = samples.at(0).at(3*i);
+	sps2.at(3*(i-position-s)) = samples.at(1).at(3*i);
+	sps1.at(3*(i-position-s)+1) = samples.at(0).at(3*i+1);
+	sps2.at(3*(i-position-s)+1) = samples.at(1).at(3*i+1);
+	sps1.at(3*(i-position-s)+2) = samples.at(0).at(3*i+2);
+	sps2.at(3*(i-position-s)+2) = samples.at(1).at(3*i+2);
 
 }
 
-	sps1.resize(sample1.size()-3*(position+s));
-	sps2.resize(sample1.size()-3*(position+s));
+	sps1.resize(samples.at(0).size()-3*(position+s));
+	sps2.resize(samples.at(0).size()-3*(position+s));
 	cout << "size " << sps1.size() << endl;
 
 	second_part.set_alignment_bits(sps1,sps2);
@@ -111,18 +119,18 @@ for (size_t i=position+s;i<sample1.size()/3;++i){
 }
 
 	else{
-    for (size_t i=0; i<sample2.size()/3; ++i){
-cout << "bits " << sample2.at(i*3) << sample2.at(i*3+1) << sample2.at(i*3+2)<< endl;
- 		if (sample2.at(0+i*3)== true && sample2.at(1+i*3)==false && sample2.at(2+i*3)==true) {
+    for (size_t i=0; i<samples.at(1).size()/3; ++i){
+cout << "bits " << samples.at(1).at(i*3) << samples.at(1).at(i*3+1) << samples.at(1).at(i*3+2)<< endl;
+ 		if (samples.at(1).at(0+i*3)== true && samples.at(1).at(1+i*3)==false && samples.at(1).at(2+i*3)==true) {
 cout << "gap at " << i << endl;
 			s=s+1;
 		}
-	fps1.at(3*i) = sample1.at(3*i);
-	fps2.at(3*i) = sample2.at(3*i);
-	fps1.at(3*i+1) = sample1.at(3*i+1);
-	fps2.at(3*i+1) = sample2.at(3*i+1);
-	fps1.at(3*i+2) = sample1.at(3*i+2);
-	fps2.at(3*i+2) = sample2.at(3*i+2);
+	fps1.at(3*i) = samples.at(0).at(3*i);
+	fps2.at(3*i) = samples.at(1).at(3*i);
+	fps1.at(3*i+1) = samples.at(0).at(3*i+1);
+	fps2.at(3*i+1) = samples.at(1).at(3*i+1);
+	fps1.at(3*i+2) = samples.at(0).at(3*i+2);
+	fps2.at(3*i+2) = samples.at(1).at(3*i+2);
 	if (i == position-1+s)
 		break;
 	
@@ -132,18 +140,18 @@ cout << "gap at " << i << endl;
 	fps2.resize(3*(position+s));
 	first_part.set_alignment_bits(fps1,fps2); 
 
-for (size_t i=position+s;i<sample2.size()/3;++i){
-      	sps1.at(3*(i-position-s)) = sample1.at(3*i);
-	sps2.at(3*(i-position-s)) = sample2.at(3*i);
-	sps1.at(3*(i-position-s)+1) = sample1.at(3*i+1);
-	sps2.at(3*(i-position-s)+1) = sample2.at(3*i+1);
-	sps1.at(3*(i-position-s)+2) = sample1.at(3*i+2);
-	sps2.at(3*(i-position-s)+2) = sample2.at(3*i+2);
+for (size_t i=position+s;i<samples.at(1).size()/3;++i){
+      	sps1.at(3*(i-position-s)) = samples.at(0).at(3*i);
+	sps2.at(3*(i-position-s)) = samples.at(1).at(3*i);
+	sps1.at(3*(i-position-s)+1) = samples.at(0).at(3*i+1);
+	sps2.at(3*(i-position-s)+1) = samples.at(1).at(3*i+1);
+	sps1.at(3*(i-position-s)+2) = samples.at(0).at(3*i+2);
+	sps2.at(3*(i-position-s)+2) = samples.at(1).at(3*i+2);
 
 }
 
-	sps1.resize(sample2.size()-3*(position+s));
-	sps2.resize(sample2.size()-3*(position+s));
+	sps1.resize(samples.at(1).size()-3*(position+s));
+	sps2.resize(samples.at(1).size()-3*(position+s));
 	cout << "size " << sps1.size() << endl;
 
 	second_part.set_alignment_bits(sps1,sps2);
@@ -264,210 +272,80 @@ char pw_alignment::base_translate_back(bool bit1, bool bit2, bool bit3) {
 	}
 }
 	vector<bool> pw_alignment::getsample1()const{
-	return sample1;
+	return samples.at(0);
 }
 	vector<bool> pw_alignment::getsample2()const{
-	return sample2;
+	return samples.at(1);
 }
 	size_t pw_alignment::getbegin1()const{
-	return sample1_begin;
+	return begins.at(0);
 }
 	size_t pw_alignment::getbegin2()const{
-	return sample2_begin;
+	return begins.at(1);
 }
 	size_t pw_alignment::getend1()const{
-	return sample1_end;
+	return ends.at(0);
 }
 	size_t pw_alignment::getend2()const{
-	return sample2_end;
+	return ends.at(1);
 }
 	size_t pw_alignment::getreference1() const{
-	return sample1reference;
+	return references.at(0);
 }
 	size_t pw_alignment::getreference2() const{
-	return sample2reference;
+	return references.at(1);
+}
+	vector<bool> pw_alignment::getsample(size_t id)const{
+	return samples.at(id);
+}
+	size_t pw_alignment::getbegin(size_t id)const{
+	return begins.at(id);
+}
+	size_t pw_alignment::getend(size_t id)const{
+	return ends.at(id);
+}
+	size_t pw_alignment::getreference(size_t id)const{
+	return references.at(id);
 }
 
 
-	overlap::overlap(){
-
+	bool compare_pw_alignment::operator()(const pw_alignment &a, const pw_alignment & b){
+	size_t asmaller = 0;
+	size_t abigger = 1;
+	if(a.getreference(0) > a.getreference(1)) {
+		asmaller = 1;
+		abigger = 0;
+	} else if(a.getreference(0) == a.getreference(1)) {
+		if(a.getbegin(0) > a.getbegin(1)) {
+			asmaller =1;
+			abigger = 0;
+		} else if(a.getend(0) > a.getend(1)) {
+			asmaller =1;
+			abigger = 0;
+		}
 	}
-
-	void overlap::add_alignment(pw_alignment & new_alignment){
-
-	pw_alignment p1;
-	pw_alignment p2;
-	pw_alignment p3;
-	pw_alignment p4;
-	map alignments_on_reference1; 
-	map alignments_on_reference2;
-
-
-	size_t leftinsert1 = new_alignment.getbegin1();
-	size_t rightinsert1 = new_alignment.getend1();
-	if(new_alignment.getend1() < leftinsert1) {
-		leftinsert1 = new_alignment.getend1();
-		rightinsert1 = new_alignment.getbegin1();
-}
-	map::const_iterator allalignit1 = alignments_on_reference1.lower_bound(leftinsert1);
-
-
-	if(allalignit1 == alignments_on_reference1.end()) allalignit1 = alignments_on_reference1.begin();
-
-	for(; allalignit1 != alignments_on_reference1.end(); ++allalignit1) {
-		const pw_alignment & al1 = allalignit1->second;
-		size_t alleft1;
-		size_t alright1;
-		alleft1 = al1.getbegin1();
-		alright1 = al1.getend1();
-		if(alleft1 > al1.getend1()) {
-		alleft1 = al1.getend1();
-		alright1 = al1.getbegin1();
+	size_t bsmaller = 0;
+	size_t bbigger = 1;
+	if (b.getreference(0) > b.getreference(1)){
+		bsmaller = 1;
+		bbigger = 0;
+} 
+	else if (b.getreference(0) == b.getreference(1)){
+		if(b.getbegin(0) > b.getbegin(1)) {
+			bsmaller =1;
+			bbigger = 0;
+		} else if(b.getend(0) > b.getend(1)) {
+			bsmaller =1;
+			bbigger = 0;
 		}
-			
-		if( allalignit1->second.getreference1() == new_alignment.getreference1()){
-
-		if(leftinsert1 <= alright1 && rightinsert1 >= alleft1) {
-			if (leftinsert1 >= alleft1 && rightinsert1 >= alright1){
-			al1.split (true,leftinsert1,p1,p2);
-			p2.split(true,alright1,p3,p4);
-		}
-			if (leftinsert1 <= alleft1 && rightinsert1 <= alright1){
-			al1.split (true,alleft1,p1,p2);
-			p1.split(true,rightinsert1,p3,p4);
-		}
-
-			if (leftinsert1 >= alleft1 && rightinsert1 <= alright1){
-			al1.split (true,leftinsert1,p1,p2);
-			p2.split(true,rightinsert1,p3,p4);
-		}
-			if (leftinsert1 <= alleft1 && rightinsert1 >= alright1){
-			new_alignment.split (true,alleft1,p1,p2);
-			p2.split(true,alright1,p3,p4);
-		}
-
-	
-			}
-
-		else break;	
-}
-		else {
-
-		if(leftinsert1 <= alright1 && rightinsert1 >= alleft1) {
-			if (leftinsert1 >= alleft1 && rightinsert1 >= alright1){
-			al1.split (true,leftinsert1,p1,p2);
-			p2.split(false,alright1,p3,p4);
-		}
-			if (leftinsert1 <= alleft1 && rightinsert1 <= alright1){
-			al1.split (true,alleft1,p1,p2);
-			p1.split(false,rightinsert1,p3,p4);
-		}
-
-			if (leftinsert1 >= alleft1 && rightinsert1 <= alright1){
-			al1.split (true,leftinsert1,p1,p2);
-			p2.split(false,rightinsert1,p3,p4);
-		}
-			if (leftinsert1 <= alleft1 && rightinsert1 >= alright1){
-			new_alignment.split (true,alleft1,p1,p2);
-			p2.split(false,alright1,p3,p4);
-		}
-
-	
-			}
-
-
-
-		
-}
-		}
-
-
-	
-	size_t leftinsert2 = new_alignment.getbegin2();
-	size_t rightinsert2 = new_alignment.getend2();
-	if(new_alignment.getend2() < leftinsert2) {
-		leftinsert2 = new_alignment.getend2();
-		rightinsert2 = new_alignment.getbegin2();
-}
-	map::const_iterator allalignit2 = alignments_on_reference2.lower_bound(leftinsert2);
-
-
-	if(allalignit2 == alignments_on_reference2.end()) allalignit2 = alignments_on_reference2.begin();
-
-	for(; allalignit2 != alignments_on_reference2.end(); ++allalignit2) {
-		const pw_alignment & al2 = allalignit2->second;
-		size_t alleft2;
-		size_t alright2;
-		alleft2 = al2.getbegin2();
-		alright2 = al2.getend2();
-		if(alleft2 > al2.getend2()) {
-		alleft2 = al2.getend2();
-		alright2 = al2.getbegin2();
-		}
-			
-		if( allalignit2->second.getreference2() == new_alignment.getreference2()){
-
-		if(leftinsert2 <= alright2 && rightinsert2 >= alleft2) {
-			if (leftinsert2 >= alleft2 && rightinsert2 >= alright2){
-			al2.split (true,leftinsert2,p1,p2);
-			p2.split(true,alright2,p3,p4);
-			}
-			if (leftinsert2 <= alleft2 && rightinsert2 <= alright2){
-			al2.split (true,alleft2,p1,p2);
-			p1.split(true,rightinsert2,p3,p4);
-			}
-
-			if (leftinsert2 >= alleft2 && rightinsert2 <= alright2){
-			al2.split (true,leftinsert2,p1,p2);
-			p2.split(true,rightinsert2,p3,p4);
-			}
-			if (leftinsert2 <= alleft2 && rightinsert2 >= alright2){
-			new_alignment.split (true,alleft2,p1,p2);
-			p2.split(true,alright2,p3,p4);
-			}
-
-	
-		}
-
-		else break;	
-}
-		else {
-
-		if(leftinsert2 <= alright2 && rightinsert2 >= alleft2) {
-			if (leftinsert2 >= alleft2 && rightinsert2 >= alright2){
-			al2.split (true,leftinsert2,p1,p2);
-			p2.split(false,alright2,p3,p4);
-		}
-			if (leftinsert2 <= alleft2 && rightinsert2 <= alright2){
-			al2.split (true,alleft2,p1,p2);
-			p1.split(false,rightinsert2,p3,p4);
-		}
-
-			if (leftinsert2 >= alleft2 && rightinsert2 <= alright2){
-			al2.split (true,leftinsert2,p1,p2);
-			p2.split(false,rightinsert2,p3,p4);
-		}
-			if (leftinsert2 <= alleft2 && rightinsert2 >= alright2){
-			new_alignment.split (true,alleft2,p1,p2);
-			p2.split(false,alright2,p3,p4);
-		}
-
-	
-			}
-
-
-
-		
-}
-		}
-
 	
 }
-
-
-
-
-	overlap::~overlap(){
-	
+	if (a.getbegin(asmaller) < b.getbegin(bsmaller))return true;
+	else if (a.getend(asmaller) < b.getend(bsmaller))return true;
+	else if ( a.getbegin(abigger) < b.getbegin(bbigger)) return true;
+	else if ( a.getend(abigger) < b.getend(bbigger)) return true;
+	else return false;
 }
+
+
 	

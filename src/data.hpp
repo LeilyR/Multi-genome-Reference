@@ -6,6 +6,8 @@
 #include <sstream>
 #include <fstream>
 #include <cstdlib>
+#include <set>
+#include<map>
 
 
 #include "pw_alignment.hpp"
@@ -49,7 +51,7 @@ class all_data {
 
 		const dnastring & getSequence(size_t index) const;
 		const pw_alignment & getAlignment(size_t index) const;
-		const multimap<size_t, size_t> & getAlOnRefMap(size_t seq_idx) const;
+	//	const multimap<size_t, size_t> & getAlOnRefMap(size_t seq_idx) const;
 
 		size_t numSequences() const;
 		size_t numAlignments() const;
@@ -62,8 +64,9 @@ class all_data {
 		// fast access indices
 		map< string, vector< size_t> > acc_sequences; // acc name -> sequences of that acc
 		map< string, size_t> longname2seqidx; // long sequence name ("Accession:sequence name") -> sequence index
-		vector< multimap< size_t, size_t> > als_on_reference; // sequence index -> pos on that sequence -> alignment index
 
+		// TODO remove
+		
 
 		void insert_sequence(const string & acc, const string & seq_name, const string & dna);
 		static void name_split(const string & longname, string & acc, string & name);
@@ -73,6 +76,30 @@ class all_data {
 
 
 
+class overlap{
+public:
+	overlap(all_data&);
+	~overlap();
+	void split_partial_overlap(pw_alignment & new_alignment, set<pw_alignment, compare_pw_alignment> & remove_alignments, vector<pw_alignment> & insert_alignments) const;
+	void insert_without_partial_overlap(pw_alignment & new_alignment);
+	void remove_alignment(pw_alignment & remove);
+
+
+
+
+//	pw_alignment new_alignment;
+
+private:
+	all_data & data;
+
+	set<pw_alignment, compare_pw_alignment> alignments;
+	vector< multimap< size_t, pw_alignment &> > als_on_reference; // sequence index -> pos on that sequence -> alignment reference
+
+
+
+
+	
+};
 
 
 
