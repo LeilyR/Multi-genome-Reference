@@ -74,7 +74,7 @@ int do_fasta_prepare(int argc, char * argv[]) {
 		cerr << "Combine fasta files from different species/accessions into a common file" << endl;
 		cerr << "Parameters: " << endl;
 		cerr << "output file -- fasta file" << endl;
-		cerr << "<list of fasta files> -- input file, one file per species/accession, no colon in file name" << endl;
+		cerr << "<list of fasta files> -- input file, one file per species/accession, no colon in file name"<< endl;
 		return 1;
 	}
 
@@ -161,9 +161,14 @@ int do_model(int argc, char * argv[]) {
 
 	all_data data(fastafile, maffile);
 	overlap o(data);
-
-
-
+	
+	const pw_alignment & p = data.getAlignment(0);
+	const pw_alignment * s = &(data.getAlignment(3));
+	set<pw_alignment*, compare_pw_alignment> remove_alignments;
+	vector<pw_alignment> insert_alignments;
+	o.insert_without_partial_overlap(p);
+	o.split_partial_overlap(s, remove_alignments, insert_alignments);
+	
 	return 0;
 }
 
