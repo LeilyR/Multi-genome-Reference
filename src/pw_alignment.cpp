@@ -313,41 +313,41 @@ char pw_alignment::base_translate_back(bool bit1, bool bit2, bool bit3) {
 }
 
 
-	bool compare_pw_alignment::operator()(const pw_alignment &a, const pw_alignment & b){
+	bool compare_pw_alignment::operator()(const pw_alignment *const &a, const pw_alignment *const &b){
 	size_t asmaller = 0;
 	size_t abigger = 1;
-	if(a.getreference(0) > a.getreference(1)) {
+	if(a->getreference(0) > a->getreference(1)) {
 		asmaller = 1;
 		abigger = 0;
-	} else if(a.getreference(0) == a.getreference(1)) {
-		if(a.getbegin(0) > a.getbegin(1)) {
+	} else if(a->getreference(0) == a->getreference(1)) {
+		if(a->getbegin(0) > a->getbegin(1)) {
 			asmaller =1;
 			abigger = 0;
-		} else if(a.getend(0) > a.getend(1)) {
+		} else if(a->getend(0) > a->getend(1)) {
 			asmaller =1;
 			abigger = 0;
 		}
 	}
 	size_t bsmaller = 0;
 	size_t bbigger = 1;
-	if (b.getreference(0) > b.getreference(1)){
+	if (b->getreference(0) > b->getreference(1)){
 		bsmaller = 1;
 		bbigger = 0;
 } 
-	else if (b.getreference(0) == b.getreference(1)){
-		if(b.getbegin(0) > b.getbegin(1)) {
+	else if (b->getreference(0) == b->getreference(1)){
+		if(b->getbegin(0) > b->getbegin(1)) {
 			bsmaller =1;
 			bbigger = 0;
-		} else if(b.getend(0) > b.getend(1)) {
+		} else if(b->getend(0) > b->getend(1)) {
 			bsmaller =1;
 			bbigger = 0;
 		}
 	
 }
-	if (a.getbegin(asmaller) < b.getbegin(bsmaller))return true;
-	else if (a.getend(asmaller) < b.getend(bsmaller))return true;
-	else if ( a.getbegin(abigger) < b.getbegin(bbigger)) return true;
-	else if ( a.getend(abigger) < b.getend(bbigger)) return true;
+	if (a->getbegin(asmaller) < b->getbegin(bsmaller))return true;
+	else if (a->getend(asmaller) < b->getend(bsmaller))return true;
+	else if ( a->getbegin(abigger) < b->getbegin(bbigger)) return true;
+	else if ( a->getend(abigger) < b->getend(bbigger)) return true;
 	else return false;
 }
 

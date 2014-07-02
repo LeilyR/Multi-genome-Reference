@@ -49,7 +49,7 @@ class pw_alignment {
 
 class compare_pw_alignment {
 	public:
-	bool operator()(const pw_alignment &a, const pw_alignment & b);
+	bool operator()(const pw_alignment *const &a, const pw_alignment *const &b);
 };
 		
 #endif 

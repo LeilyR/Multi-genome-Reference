@@ -80,9 +80,9 @@ class overlap{
 public:
 	overlap(all_data&);
 	~overlap();
-	void split_partial_overlap(pw_alignment & new_alignment, set<pw_alignment, compare_pw_alignment> & remove_alignments, vector<pw_alignment> & insert_alignments) const;
-	void insert_without_partial_overlap(pw_alignment & new_alignment);
-	void remove_alignment(pw_alignment & remove);
+	void split_partial_overlap(const pw_alignment * new_alignment, set<pw_alignment*, compare_pw_alignment> & remove_alignments, vector<pw_alignment> & insert_alignments) const;
+	void insert_without_partial_overlap(const pw_alignment & p);
+	void remove_alignment(pw_alignment  *remove);
 
 
 
@@ -92,8 +92,8 @@ public:
 private:
 	all_data & data;
 
-	set<pw_alignment, compare_pw_alignment> alignments;
-	vector< multimap< size_t, pw_alignment &> > als_on_reference; // sequence index -> pos on that sequence -> alignment reference
+	set<pw_alignment*, compare_pw_alignment> alignments;
+	vector< multimap< size_t, pw_alignment *> > als_on_reference; // sequence index -> pos on that sequence -> alignment reference
 
 
 

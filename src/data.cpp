@@ -426,58 +426,58 @@ void all_data::name_split(const string & longname, string & acc, string & name) 
 
 	}
 
-	void overlap::split_partial_overlap(pw_alignment & new_alignment, set<pw_alignment, compare_pw_alignment> & remove_alignments, vector<pw_alignment> & insert_alignments) const {
+	void overlap::split_partial_overlap(const pw_alignment * new_alignment, set<pw_alignment*, compare_pw_alignment> & remove_alignments, vector<pw_alignment> & insert_alignments) const {
 
 	pw_alignment p1;
 	pw_alignment p2;
 	pw_alignment p3;
 	pw_alignment p4;
 
-	const multimap<size_t , pw_alignment &> & alignments_on_reference1 = als_on_reference.at(new_alignment.getreference1());
+	const multimap<size_t , pw_alignment *> & alignments_on_reference1 = als_on_reference.at(new_alignment->getreference1());
 
-	const multimap<size_t , pw_alignment &> & alignments_on_reference2 = als_on_reference.at(new_alignment.getreference2());
+	const multimap<size_t , pw_alignment *> & alignments_on_reference2 = als_on_reference.at(new_alignment->getreference2());
 
 
-	size_t leftinsert1 = new_alignment.getbegin1();
-	size_t rightinsert1 = new_alignment.getend1();
-	if(new_alignment.getend1() < leftinsert1) {
-		leftinsert1 = new_alignment.getend1();
-		rightinsert1 = new_alignment.getbegin1();
+	size_t leftinsert1 = new_alignment->getbegin1();
+	size_t rightinsert1 = new_alignment->getend1();
+	if(new_alignment->getend1() < leftinsert1) {
+		leftinsert1 = new_alignment->getend1();
+		rightinsert1 = new_alignment->getbegin1();
 }
-	multimap<size_t, pw_alignment&>::const_iterator allalignit1 = alignments_on_reference1.lower_bound(leftinsert1);
+	multimap<size_t, pw_alignment*>::const_iterator allalignit1 = alignments_on_reference1.lower_bound(leftinsert1);
 
 
 	if(allalignit1 == alignments_on_reference1.end()) allalignit1 = alignments_on_reference1.begin();
 
 	for(; allalignit1 != alignments_on_reference1.end(); ++allalignit1) {
-		const pw_alignment & al1 = allalignit1->second;
+		const pw_alignment * al1 = allalignit1->second;
 		size_t alleft1;
 		size_t alright1;
-		alleft1 = al1.getbegin1();
-		alright1 = al1.getend1();
-		if(alleft1 > al1.getend1()) {
-		alleft1 = al1.getend1();
-		alright1 = al1.getbegin1();
+		alleft1 = al1->getbegin1();
+		alright1 = al1->getend1();
+		if(alleft1 > al1->getend1()) {
+		alleft1 = al1->getend1();
+		alright1 = al1->getbegin1();
 		}
 			
-		if( allalignit1->second.getreference1() == new_alignment.getreference1()){
+		if( allalignit1->second->getreference1() == new_alignment->getreference1()){
 
 		if(leftinsert1 <= alright1 && rightinsert1 >= alleft1) {
 			if (leftinsert1 >= alleft1 && rightinsert1 >= alright1){
-			al1.split (true,leftinsert1,p1,p2);
+			al1->split (true,leftinsert1,p1,p2);
 			p2.split(true,alright1,p3,p4);
 		}
 			if (leftinsert1 <= alleft1 && rightinsert1 <= alright1){
-			al1.split (true,alleft1,p1,p2);
+			al1->split (true,alleft1,p1,p2);
 			p1.split(true,rightinsert1,p3,p4);
 		}
 
 			if (leftinsert1 >= alleft1 && rightinsert1 <= alright1){
-			al1.split (true,leftinsert1,p1,p2);
+			al1->split (true,leftinsert1,p1,p2);
 			p2.split(true,rightinsert1,p3,p4);
 		}
 			if (leftinsert1 <= alleft1 && rightinsert1 >= alright1){
-			new_alignment.split (true,alleft1,p1,p2);
+			new_alignment->split (true,alleft1,p1,p2);
 			p2.split(true,alright1,p3,p4);
 		}
 
@@ -490,20 +490,20 @@ void all_data::name_split(const string & longname, string & acc, string & name) 
 
 		if(leftinsert1 <= alright1 && rightinsert1 >= alleft1) {
 			if (leftinsert1 >= alleft1 && rightinsert1 >= alright1){
-			al1.split (true,leftinsert1,p1,p2);
+			al1->split (true,leftinsert1,p1,p2);
 			p2.split(false,alright1,p3,p4);
 		}
 			if (leftinsert1 <= alleft1 && rightinsert1 <= alright1){
-			al1.split (true,alleft1,p1,p2);
+			al1->split (true,alleft1,p1,p2);
 			p1.split(false,rightinsert1,p3,p4);
 		}
 
 			if (leftinsert1 >= alleft1 && rightinsert1 <= alright1){
-			al1.split (true,leftinsert1,p1,p2);
+			al1->split (true,leftinsert1,p1,p2);
 			p2.split(false,rightinsert1,p3,p4);
 		}
 			if (leftinsert1 <= alleft1 && rightinsert1 >= alright1){
-			new_alignment.split (true,alleft1,p1,p2);
+			new_alignment->split (true,alleft1,p1,p2);
 			p2.split(false,alright1,p3,p4);
 		}
 
@@ -518,46 +518,46 @@ void all_data::name_split(const string & longname, string & acc, string & name) 
 
 
 	
-	size_t leftinsert2 = new_alignment.getbegin2();
-	size_t rightinsert2 = new_alignment.getend2();
-	if(new_alignment.getend2() < leftinsert2) {
-		leftinsert2 = new_alignment.getend2();
-		rightinsert2 = new_alignment.getbegin2();
+	size_t leftinsert2 = new_alignment->getbegin2();
+	size_t rightinsert2 = new_alignment->getend2();
+	if(new_alignment->getend2() < leftinsert2) {
+		leftinsert2 = new_alignment->getend2();
+		rightinsert2 = new_alignment->getbegin2();
 }
-	multimap<size_t, pw_alignment&>::const_iterator allalignit2 = alignments_on_reference2.lower_bound(leftinsert2);
+	multimap<size_t, pw_alignment*>::const_iterator allalignit2 = alignments_on_reference2.lower_bound(leftinsert2);
 
 
 	if(allalignit2 == alignments_on_reference2.end()) allalignit2 = alignments_on_reference2.begin();
 
 	for(; allalignit2 != alignments_on_reference2.end(); ++allalignit2) {
-		const pw_alignment & al2 = allalignit2->second;
+		const pw_alignment * al2 = allalignit2->second;
 		size_t alleft2;
 		size_t alright2;
-		alleft2 = al2.getbegin2();
-		alright2 = al2.getend2();
-		if(alleft2 > al2.getend2()) {
-		alleft2 = al2.getend2();
-		alright2 = al2.getbegin2();
+		alleft2 = al2->getbegin2();
+		alright2 = al2->getend2();
+		if(alleft2 > al2->getend2()) {
+		alleft2 = al2->getend2();
+		alright2 = al2->getbegin2();
 		}
 			
-		if( allalignit2->second.getreference2() == new_alignment.getreference2()){
+		if( allalignit2->second->getreference2() == new_alignment->getreference2()){
 
 		if(leftinsert2 <= alright2 && rightinsert2 >= alleft2) {
 			if (leftinsert2 >= alleft2 && rightinsert2 >= alright2){
-			al2.split (true,leftinsert2,p1,p2);
+			al2->split (true,leftinsert2,p1,p2);
 			p2.split(true,alright2,p3,p4);
 			}
 			if (leftinsert2 <= alleft2 && rightinsert2 <= alright2){
-			al2.split (true,alleft2,p1,p2);
+			al2->split (true,alleft2,p1,p2);
 			p1.split(true,rightinsert2,p3,p4);
 			}
 
 			if (leftinsert2 >= alleft2 && rightinsert2 <= alright2){
-			al2.split (true,leftinsert2,p1,p2);
+			al2->split (true,leftinsert2,p1,p2);
 			p2.split(true,rightinsert2,p3,p4);
 			}
 			if (leftinsert2 <= alleft2 && rightinsert2 >= alright2){
-			new_alignment.split (true,alleft2,p1,p2);
+			new_alignment->split (true,alleft2,p1,p2);
 			p2.split(true,alright2,p3,p4);
 			}
 
@@ -570,20 +570,20 @@ void all_data::name_split(const string & longname, string & acc, string & name) 
 
 		if(leftinsert2 <= alright2 && rightinsert2 >= alleft2) {
 			if (leftinsert2 >= alleft2 && rightinsert2 >= alright2){
-			al2.split (true,leftinsert2,p1,p2);
+			al2->split (true,leftinsert2,p1,p2);
 			p2.split(false,alright2,p3,p4);
 		}
 			if (leftinsert2 <= alleft2 && rightinsert2 <= alright2){
-			al2.split (true,alleft2,p1,p2);
+			al2->split (true,alleft2,p1,p2);
 			p1.split(false,rightinsert2,p3,p4);
 		}
 
 			if (leftinsert2 >= alleft2 && rightinsert2 <= alright2){
-			al2.split (true,leftinsert2,p1,p2);
+			al2->split (true,leftinsert2,p1,p2);
 			p2.split(false,rightinsert2,p3,p4);
 		}
 			if (leftinsert2 <= alleft2 && rightinsert2 >= alright2){
-			new_alignment.split (true,alleft2,p1,p2);
+			new_alignment->split (true,alleft2,p1,p2);
 			p2.split(false,alright2,p3,p4);
 		}
 
@@ -600,46 +600,61 @@ void all_data::name_split(const string & longname, string & acc, string & name) 
 }
 
 
-
-
-	overlap::~overlap(){
+	overlap::~overlap(){}
 	
-}
-	
-	void overlap::remove_alignment(pw_alignment & remove){
+	void overlap::remove_alignment(pw_alignment *remove){
 
-	pair< multimap<size_t, pw_alignment&>::iterator, multimap<size_t, pw_alignment&>::iterator > eqrb1 =
-	als_on_reference.at(remove.getreference1()).equal_range(remove.getbegin1());
-	for(multimap<size_t, pw_alignment&>::iterator it = eqrb1.first; it!=eqrb1.second; ++it) {
+	pair< multimap<size_t, pw_alignment*>::iterator, multimap<size_t, pw_alignment*>::iterator > eqrb1 =
+	als_on_reference.at(remove->getreference1()).equal_range(remove->getbegin1());
+	for(multimap<size_t, pw_alignment*>::iterator it = eqrb1.first; it!=eqrb1.second; ++it) {
 		if ( &(it->second) == &remove ) {
-			als_on_reference.at(remove.getreference1()).erase(it);
+			als_on_reference.at(remove->getreference1()).erase(it);
 			break;
 		}		
 	}
-	pair< multimap<size_t, pw_alignment&>::iterator, multimap<size_t, pw_alignment&>::iterator > eqre1 =
-	als_on_reference.at(remove.getreference1()).equal_range(remove.getend1());
-	for(multimap<size_t, pw_alignment&>::iterator it = eqre1.first; it!=eqre1.second; ++it) {
+	pair< multimap<size_t, pw_alignment*>::iterator, multimap<size_t, pw_alignment*>::iterator > eqre1 =
+	als_on_reference.at(remove->getreference1()).equal_range(remove->getend1());
+	for(multimap<size_t, pw_alignment*>::iterator it = eqre1.first; it!=eqre1.second; ++it) {
 		if ( &(it->second) == &remove ) {
-			als_on_reference.at(remove.getreference1()).erase(it);
+			als_on_reference.at(remove->getreference1()).erase(it);
 			break;
 		}		
 	}
 
-	pair< multimap<size_t, pw_alignment&>::iterator, multimap<size_t, pw_alignment&>::iterator > eqrb2 =
-	als_on_reference.at(remove.getreference2()).equal_range(remove.getbegin2());
-	for(multimap<size_t, pw_alignment&>::iterator it = eqrb2.first; it!=eqrb2.second; ++it) {
+	pair< multimap<size_t, pw_alignment*>::iterator, multimap<size_t, pw_alignment*>::iterator > eqrb2 =
+	als_on_reference.at(remove->getreference2()).equal_range(remove->getbegin2());
+	for(multimap<size_t, pw_alignment*>::iterator it = eqrb2.first; it!=eqrb2.second; ++it) {
 		if ( &(it->second) == &remove ) {
-			als_on_reference.at(remove.getreference1()).erase(it);
+			als_on_reference.at(remove->getreference1()).erase(it);
 			break;
 		}		
 	}
-	pair< multimap<size_t, pw_alignment&>::iterator, multimap<size_t, pw_alignment&>::iterator > eqre2 =
-	als_on_reference.at(remove.getreference2()).equal_range(remove.getend2());
-	for(multimap<size_t, pw_alignment&>::iterator it = eqre2.first; it!=eqre2.second; ++it) {
+
+	pair< multimap<size_t, pw_alignment*>::iterator, multimap<size_t, pw_alignment*>::iterator > eqre2 =
+	als_on_reference.at(remove->getreference2()).equal_range(remove->getend2());
+	for(multimap<size_t, pw_alignment*>::iterator it = eqre2.first; it!=eqre2.second; ++it) {
 		if ( &(it->second) == &remove ) {
-			als_on_reference.at(remove.getreference2()).erase(it);
+			als_on_reference.at(remove->getreference2()).erase(it);
 			break;
 		}		
 	}
 	alignments.erase(remove);
+}
+	
+	void overlap::insert_without_partial_overlap(const pw_alignment & p){
+	pw_alignment * np = new pw_alignment(p);
+	alignments.insert(np);
+
+ 	
+	multimap<size_t , pw_alignment *> & alignment_on_reference1 = als_on_reference.at(np->getreference1());
+	multimap<size_t , pw_alignment *> & alignment_on_reference2 = als_on_reference.at(np->getreference2());
+
+	pair<size_t,  pw_alignment *> begin1(np->getbegin1(),np);
+		alignment_on_reference1.insert(begin1);
+	pair<size_t,  pw_alignment *> begin2(np->getbegin2(),np);
+		alignment_on_reference2.insert(begin2);
+	pair<size_t,  pw_alignment *> end1(np->getend1(),np);
+		alignment_on_reference1.insert(end1);
+	pair<size_t, pw_alignment *> end2(np->getend2(),np);
+		alignment_on_reference2.insert(end2);
 }
