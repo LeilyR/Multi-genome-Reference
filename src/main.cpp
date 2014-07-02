@@ -2,7 +2,7 @@
 #include <string>
 #include <fstream>
 #include <sstream>
-
+#include <map>
 #include "pw_alignment.hpp"
 #include "data.hpp"
 
@@ -17,7 +17,8 @@ int main(int argc, char * argv[]) {
 	cout << " hello " << endl;
 
 	pw_alignment p(string("ATT----TTCTT"), string("AGTGATAT----"), 12, 15, 23, 26,1,1);
-	//pw_alignment s(string("ATT----TTCTT"), string("ACTGATG---AC"),12, 18, 23, 29);
+	pw_alignment s(string("ATT----TTCTT"), string("ACTGATG---AC"),13, 18, 24, 29,2,1);
+
 	for(size_t i=0; i<p.alignment_length(); ++i) {
 		char s1;
 		char s2;
@@ -36,10 +37,27 @@ int main(int argc, char * argv[]) {
 		cout << "pos " << i << " s1 " << s1 << " s2 " << s2 << endl;
 	 
 	}
+	overlap o;
+	o.add_alignment(s);
+	typedef multimap <size_t, pw_alignment> mmap;
+	mmap alignment_map;
+	alignment_map.insert(make_pair(12,p));
+	alignment_map.insert(make_pair(23,p));
+	alignment_map  alignments_on_reference1;
+	mmap::const_iterator alignit = alignments_on_reference1.begin();
+	for(; alignit != alignments_on_reference1.end(); ++alignit) {
+		char s1;
+		char s2;
+		for(size_t i=0;i<p.alignment_length();++i){
+		s.alignment_col(i, s1, s2);
+		cout << "pos " << i<< " s1 " << s1 << " s2 " << s2 << endl;
+}
 
+}
 	return 0;
 
 }
+
 
 
 #endif
@@ -142,6 +160,7 @@ int do_model(int argc, char * argv[]) {
 	string maffile(argv[3]);
 
 	all_data data(fastafile, maffile);
+	overlap o(data);
 
 
 
