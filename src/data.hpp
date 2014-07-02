@@ -32,6 +32,7 @@ class dnastring {
 	size_t length() const;
 
 	static bool found_iupac_ambiguity;
+	static char complement(char c);
 
 	private:
 	vector<bool> bits;
@@ -56,6 +57,9 @@ class all_data {
 
 		size_t numSequences() const;
 		size_t numAlignments() const;
+
+
+		bool alignment_fits_ref(const pw_alignment * al) const;
 
 	private:
 		// data
@@ -85,6 +89,7 @@ public:
 	void remove_alignment(pw_alignment & remove);
 
 
+	void test_all() const;
 
 
 //	pw_alignment new_alignment;

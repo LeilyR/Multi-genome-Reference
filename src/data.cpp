@@ -13,6 +13,25 @@ void strsep(string str, const char * sep, vector<string> & parts) {
 
 bool dnastring::found_iupac_ambiguity = false;
 
+char dnastring::complement(char c) {
+	switch(c) {
+		case 'A':
+		return 'T';
+		break;
+		case 'T':
+		return 'A';
+		break;
+		case 'C':
+		return 'G';
+		break;
+		case 'G':
+		return 'C';
+		break;
+	}
+	return 'X';
+}
+
+
 dnastring::dnastring(string str):bits(str.length()*3) {
 	for(size_t i=0; i<str.length(); ++i) {
 		char c = str.at(i);
@@ -419,14 +438,68 @@ void all_data::name_split(const string & longname, string & acc, string & name) 
 }
 
 
+bool all_data::alignment_fits_ref(const pw_alignment * al) const {
+	const dnastring & ref1 = getSequence(al->getreference1());
+	const dnastring & ref2 = getSequence(al->getreference2());
 
-
-
-	overlap::overlap(all_data & d): data(d){
-
+	bool al1fw = true;
+	bool al2fw = true;
+	size_t al1at = al->getbegin1();
+	size_t al2at = al->getbegin1();
+	if(al->getbegin1() > al->getend1()) {
+		al1fw = false;
+		al1at = al->getend1();
 	}
 
-	void overlap::split_partial_overlap(pw_alignment & new_alignment, set<pw_alignment, compare_pw_alignment> & remove_alignments, vector<pw_alignment> & insert_alignments) const {
+	if(al->getbegin2() > al->getend2()) {
+		al2fw = false;
+		al2at = al->getend1();
+	}
+
+
+
+	for(size_t col=0; col < al->alignment_length(); ++col) {
+		char al1char='X';
+		char al2char='X';
+		al->alignment_col(col, al1char, al2char);	
+		
+		
+		if(al1char!='-') { 
+			char rchar = ref1.at(al1at);
+			if(al1fw) {
+				al1at++;
+			} else {
+				al1at--;
+				rchar = dnastring::complement(rchar);
+			}
+			if(rchar != al1char) {
+				cerr << "Warning: alignment test failed. Alignment has " << al1char << " where reference sequence has " << rchar << endl;
+			}
+		}
+		if(al2char!='-') {
+			char rchar = ref1.at(al2at);
+			if(al2fw) {
+				al2at++;
+			} else {
+				al2at--;
+				rchar = dnastring::complement(rchar);
+			}
+			if(rchar != al2char) {
+				cerr << "Warning: alignment test failed. Alignment has " << al2char << " where reference sequence has " << rchar << endl;
+			}
+		}
+	}
+
+
+}
+
+
+
+overlap::overlap(all_data & d): data(d){
+
+}
+
+void overlap::split_partial_overlap(pw_alignment & new_alignment, set<pw_alignment, compare_pw_alignment> & remove_alignments, vector<pw_alignment> & insert_alignments) const {
 
 	pw_alignment p1;
 	pw_alignment p2;
@@ -443,7 +516,7 @@ void all_data::name_split(const string & longname, string & acc, string & name) 
 	if(new_alignment.getend1() < leftinsert1) {
 		leftinsert1 = new_alignment.getend1();
 		rightinsert1 = new_alignment.getbegin1();
-}
+	}
 	multimap<size_t, pw_alignment&>::const_iterator allalignit1 = alignments_on_reference1.lower_bound(leftinsert1);
 
 
@@ -464,28 +537,28 @@ void all_data::name_split(const string & longname, string & acc, string & name) 
 
 		if(leftinsert1 <= alright1 && rightinsert1 >= alleft1) {
 			if (leftinsert1 >= alleft1 && rightinsert1 >= alright1){
-			al1.split (true,leftinsert1,p1,p2);
-			p2.split(true,alright1,p3,p4);
-		}
+				al1.split (true,leftinsert1,p1,p2);
+				p2.split(true,alright1,p3,p4);
+			}
 			if (leftinsert1 <= alleft1 && rightinsert1 <= alright1){
-			al1.split (true,alleft1,p1,p2);
-			p1.split(true,rightinsert1,p3,p4);
-		}
-
-			if (leftinsert1 >= alleft1 && rightinsert1 <= alright1){
-			al1.split (true,leftinsert1,p1,p2);
-			p2.split(true,rightinsert1,p3,p4);
-		}
-			if (leftinsert1 <= alleft1 && rightinsert1 >= alright1){
-			new_alignment.split (true,alleft1,p1,p2);
-			p2.split(true,alright1,p3,p4);
-		}
-
-	
+				al1.split (true,alleft1,p1,p2);
+				p1.split(true,rightinsert1,p3,p4);
 			}
 
+			if (leftinsert1 >= alleft1 && rightinsert1 <= alright1){
+				al1.split (true,leftinsert1,p1,p2);
+				p2.split(true,rightinsert1,p3,p4);
+			}
+			if (leftinsert1 <= alleft1 && rightinsert1 >= alright1){
+				new_alignment.split (true,alleft1,p1,p2);
+				p2.split(true,alright1,p3,p4);
+			}
+
+	
+		}
+
 		else break;	
-}
+		}
 		else {
 
 		if(leftinsert1 <= alright1 && rightinsert1 >= alleft1) {
@@ -513,7 +586,7 @@ void all_data::name_split(const string & longname, string & acc, string & name) 
 
 
 		
-}
+	}
 		}
 
 
@@ -523,7 +596,7 @@ void all_data::name_split(const string & longname, string & acc, string & name) 
 	if(new_alignment.getend2() < leftinsert2) {
 		leftinsert2 = new_alignment.getend2();
 		rightinsert2 = new_alignment.getbegin2();
-}
+	}	
 	multimap<size_t, pw_alignment&>::const_iterator allalignit2 = alignments_on_reference2.lower_bound(leftinsert2);
 
 
@@ -593,7 +666,7 @@ void all_data::name_split(const string & longname, string & acc, string & name) 
 
 
 		
-}
+	}
 		}
 
 	
@@ -602,11 +675,11 @@ void all_data::name_split(const string & longname, string & acc, string & name) 
 
 
 
-	overlap::~overlap(){
+overlap::~overlap(){
 	
 }
 	
-	void overlap::remove_alignment(pw_alignment & remove){
+void overlap::remove_alignment(pw_alignment & remove){
 
 	pair< multimap<size_t, pw_alignment&>::iterator, multimap<size_t, pw_alignment&>::iterator > eqrb1 =
 	als_on_reference.at(remove.getreference1()).equal_range(remove.getbegin1());
@@ -643,3 +716,28 @@ void all_data::name_split(const string & longname, string & acc, string & name) 
 	}
 	alignments.erase(remove);
 }
+
+
+void overlap::test_all() const {
+
+	for(set<pw_alignment*, compare_pw_alignment>::iterator it = alignments.begin(); it!=alignments.end(); ++it) {
+		pw_alignment * al = *it;
+		bool alok = data::alignment_fits_ref(al);
+		if(!alok) {
+			exit(1);
+		}
+		
+	
+	}
+
+
+}
+
+
+
+
+
+
+
+
+
