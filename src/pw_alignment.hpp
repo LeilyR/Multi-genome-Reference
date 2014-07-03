@@ -35,6 +35,12 @@ class pw_alignment {
 	size_t getbegin(size_t id)const;
 	size_t getend(size_t id)const;
 	size_t getreference(size_t id)const;
+	
+	void setbegin1(size_t begin1);
+	void setbegin2(size_t begin2);
+	
+	void setend1(size_t end1);
+	void setend2(size_t end2);
 
 	void print() const;
 
