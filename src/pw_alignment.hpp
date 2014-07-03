@@ -36,6 +36,8 @@ class pw_alignment {
 	size_t getend(size_t id)const;
 	size_t getreference(size_t id)const;
 
+	void print() const;
+
 	private:
 	vector<vector<bool> > samples;
 	vector<size_t> begins;
