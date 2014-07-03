@@ -474,6 +474,7 @@ bool all_data::alignment_fits_ref(const pw_alignment * al) const {
 			}
 			if(rchar != al1char) {
 				cerr << "Warning: alignment test failed. Alignment has " << al1char << " where reference sequence has " << rchar << endl;
+				return false;
 			}
 		}
 		if(al2char!='-') {
@@ -486,11 +487,41 @@ bool all_data::alignment_fits_ref(const pw_alignment * al) const {
 			}
 			if(rchar != al2char) {
 				cerr << "Warning: alignment test failed. Alignment has " << al2char << " where reference sequence has " << rchar << endl;
+				return false;
 			}
 		}
 	}
 
+	if(al1fw) {
+		size_t al1e = al1at-1;
+		if(al1e!=al->getend1()) {
+			cerr << "Warning: alignment end wrong. Should be " << al1e << " but is " << al->getend1() << endl;
+			return false;
+		} 
+	
+	} else {
+		size_t al1b = al1at+1;
+		if(al1b!=al->getbegin1()) {
+			cerr << "Warning: rev alignment begin wrong. Should be " << al1b << " but is " << al->getbegin1() << endl;
+			return false;
+		}
+	}
+	if(al2fw) {
+		size_t al2e = al2at-1;
+		if(al2e!=al->getend2()) {
+			cerr << "Warning: alignment end wrong. Should be " << al2e << " but is " << al->getend2() << endl;
+			return false;
+		} 
+	
+	} else {
+		size_t al2b = al2at+1;
+		if(al2b!=al->getbegin2()) {
+			cerr << "Warning: rev alignment begin wrong. Should be " << al2b << " but is " << al->getbegin2() << endl;
+			return false;
+		}
+	}
 
+	return true;
 }
 
 
