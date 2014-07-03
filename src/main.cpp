@@ -158,20 +158,23 @@ int do_model(int argc, char * argv[]) {
 
 	string fastafile(argv[2]);
 	string maffile(argv[3]);
+	
 
 	all_data data(fastafile, maffile);
 	overlap o(data);
-	
-	const pw_alignment & p = data.getAlignment(0);
-	const pw_alignment * s = &(data.getAlignment(3));
-	set<pw_alignment*, compare_pw_alignment> remove_alignments;
-	vector<pw_alignment> insert_alignments;
-	o.insert_without_partial_overlap(p);
-	o.split_partial_overlap(s, remove_alignments, insert_alignments);
-	
+	for (size_t i = 0 ; i< data.numAlignments();++i){	
+		const pw_alignment & p = data.getAlignment(i);
+			for(size_t j = 0 ; j < data.numAlignments();++j){
+				const pw_alignment * s = &(data.getAlignment(j));
+				set<pw_alignment*, compare_pw_alignment> remove_alignments;
+				vector<pw_alignment> insert_alignments;
+				o.insert_without_partial_overlap(p);
+				o.split_partial_overlap(s, remove_alignments, insert_alignments);
+				o.test_all();
+		}
+	}	
 	return 0;
 }
-
 
 #if !TEST
 	

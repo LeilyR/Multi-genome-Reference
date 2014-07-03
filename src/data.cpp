@@ -495,7 +495,7 @@ bool all_data::alignment_fits_ref(const pw_alignment * al) const {
 
 
 
-overlap::overlap(all_data & d): data(d){
+overlap::overlap(all_data & d): data(d), als_on_reference(d.numSequences()){
 
 }
 

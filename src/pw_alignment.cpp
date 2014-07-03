@@ -2,6 +2,8 @@
 
 pw_alignment::pw_alignment(string sample1str, string sample2str, size_t sample1_begin, size_t sample2_begin, size_t sample1_end, size_t sample2_end, size_t sample1reference, size_t sample2reference ): samples(2), begins(2), ends(2), references(2) {
 	assert(sample1str.length() == sample2str.length());
+
+
 	size_t bitlength = 3*sample1str.size();
 	samples.at(0).resize(bitlength);
 	samples.at(1).resize(bitlength);
@@ -21,14 +23,10 @@ pw_alignment::pw_alignment(string sample1str, string sample2str, size_t sample1_
 		samples.at(1).at(3*i+1) = bit2;
 		samples.at(1).at(3*i+2) = bit3;
 	}
-	vector<bool> sample1;
-	vector<bool> sample2;
 	begins.at(0) = sample1_begin;
 	begins.at(1) = sample2_begin;
 	ends.at(0) = sample1_end;
 	ends.at(1) = sample2_end;
-	samples.at(0) = sample1;
-	samples.at(1) = sample2;
 	references.at(0) = sample1reference;
 	references.at(1) = sample2reference;
 }
@@ -71,59 +69,105 @@ void  pw_alignment::set_alignment_bits(vector<bool> s1, vector<bool> s2){
 	samples.at(1) = s2;
 }
 
+
+/* cut before position
+*/
 void pw_alignment::split(bool sample, size_t position, pw_alignment & first_part, pw_alignment & second_part ) const{
 	vector<bool> fps1(samples.at(0).size());
 	vector<bool> fps2(samples.at(0).size());
 	vector<bool> sps1(samples.at(0).size());
 	vector<bool> sps2(samples.at(0).size());
 
-cout << "size " << samples.at(0).size() << endl;
+	print();
+
+cout << "size " << samples.at(0).size() << "split "<< sample << " at " << position<< endl;
 
 
 	size_t s = 0;
 	if (sample == true) {
+	if (getbegin1()<getend1()){
 	for (size_t i=0; i<samples.at(0).size()/3; ++i){
-cout << "bits " << samples.at(0).at(i*3) << samples.at(0).at(i*3+1) << samples.at(0).at(i*3+2)<< endl;
  		if (samples.at(0).at(0+i*3)== true && samples.at(0).at(1+i*3)==false && samples.at(0).at(2+i*3)==true) {
-cout << "gap at " << i << endl;
 			s=s+1;
 		}
-	fps1.at(3*i) = samples.at(0).at(3*i);
-	fps2.at(3*i) = samples.at(1).at(3*i);
-	fps1.at(3*i+1) = samples.at(0).at(3*i+1);
-	fps2.at(3*i+1) = samples.at(1).at(3*i+1);
-	fps1.at(3*i+2) = samples.at(0).at(3*i+2);
-	fps2.at(3*i+2) = samples.at(1).at(3*i+2);
-	if (i == position-1+s)
-		break;
+		fps1.at(3*i) = samples.at(0).at(3*i);
+		fps2.at(3*i) = samples.at(1).at(3*i);
+		fps1.at(3*i+1) = samples.at(0).at(3*i+1);
+		fps2.at(3*i+1) = samples.at(1).at(3*i+1);
+		fps1.at(3*i+2) = samples.at(0).at(3*i+2);
+		fps2.at(3*i+2) = samples.at(1).at(3*i+2);
+		if (i == position-getbegin1())
+			break;
 	
-}
+	}
 
-	fps1.resize(3*(position+s));
-	fps2.resize(3*(position+s));
+	fps1.resize(3*(position+s-getbegin1()));
+	fps2.resize(3*(position+s-getbegin1()));
 	first_part.set_alignment_bits(fps1,fps2); 
 
-for (size_t i=position+s;i<samples.at(0).size()/3;++i){
-      	sps1.at(3*(i-position-s)) = samples.at(0).at(3*i);
-	sps2.at(3*(i-position-s)) = samples.at(1).at(3*i);
-	sps1.at(3*(i-position-s)+1) = samples.at(0).at(3*i+1);
-	sps2.at(3*(i-position-s)+1) = samples.at(1).at(3*i+1);
-	sps1.at(3*(i-position-s)+2) = samples.at(0).at(3*i+2);
-	sps2.at(3*(i-position-s)+2) = samples.at(1).at(3*i+2);
+for (size_t i=position+s-getbegin1();i<samples.at(0).size()/3;++i){
+      	sps1.at(3*(i-position-s+getbegin1())) = samples.at(0).at(3*i);
+	sps2.at(3*(i-position-s+getbegin1())) = samples.at(1).at(3*i);
+	sps1.at(3*(i-position-s+getbegin1())+1) = samples.at(0).at(3*i+1);
+	sps2.at(3*(i-position-s+getbegin1())+1) = samples.at(1).at(3*i+1);
+	sps1.at(3*(i-position-s+getbegin1())+2) = samples.at(0).at(3*i+2);
+	sps2.at(3*(i-position-s+getbegin1())+2) = samples.at(1).at(3*i+2);
 
 }
 
-	sps1.resize(samples.at(0).size()-3*(position+s));
-	sps2.resize(samples.at(0).size()-3*(position+s));
+	sps1.resize(samples.at(0).size()-fps1.size());
+	sps2.resize(samples.at(0).size()-fps1.size());
 	cout << "size " << sps1.size() << endl;
 
 	second_part.set_alignment_bits(sps1,sps2);
 
 
+	first_part.print();
+	second_part.print();
+exit(0);
+	}
+	else{
+	for (size_t i=getend1()-position+1+s; i<samples.at(0).size()/3; ++i){
+ 		if (samples.at(0).at(0+i*3)== true && samples.at(0).at(1+i*3)==false && samples.at(0).at(2+i*3)==true) {
+			s=s+1;
+		}
+		fps1.at(3*(i-getend1()+position-1-s)) = samples.at(0).at(3*i);
+		fps2.at(3*(i-getend1()+position-1-s)) = samples.at(1).at(3*i);
+		fps1.at(3*(i-getend1()+position-1-s)+1) = samples.at(0).at(3*i+1);
+		fps2.at(3*(i-getend1()+position-1-s)+1) = samples.at(1).at(3*i+1);
+		fps1.at(3*(i-getend1()+position-1-s)+2) = samples.at(0).at(3*i+2);
+		fps2.at(3*(i-getend1()+position-1-s)+2) = samples.at(1).at(3*i+2);
+		
+	}
+
+	fps1.resize(3*(position+s-getbegin1()));
+	fps2.resize(3*(position+s-getbegin1()));
+	first_part.set_alignment_bits(fps1,fps2); 
+
+	for (size_t i=0;i<getend1()-position+1+s;++i){
+      	sps1.at(3*i) = samples.at(0).at(3*i);
+	sps2.at(3*i) = samples.at(1).at(3*i);
+	sps1.at(3*i+1) = samples.at(0).at(3*i+1);
+	sps2.at(3*i+1) = samples.at(1).at(3*i+1);
+	sps1.at(3*i+2) = samples.at(0).at(3*i+2);
+	sps2.at(3*i+2) = samples.at(1).at(3*i+2);
+
 }
 
+	sps1.resize(samples.at(0).size()-fps1.size());
+	sps2.resize(samples.at(0).size()-fps1.size());
+	cout << "size " << sps1.size() << endl;
+
+	second_part.set_alignment_bits(sps1,sps2);
+
+
+	}
+
+	}
+
 	else{
-    for (size_t i=0; i<samples.at(1).size()/3; ++i){
+		if(getbegin2()<getend2()){
+   		 for (size_t i=0; i<samples.at(1).size()/3; ++i){
 cout << "bits " << samples.at(1).at(i*3) << samples.at(1).at(i*3+1) << samples.at(1).at(i*3+2)<< endl;
  		if (samples.at(1).at(0+i*3)== true && samples.at(1).at(1+i*3)==false && samples.at(1).at(2+i*3)==true) {
 cout << "gap at " << i << endl;
@@ -135,32 +179,70 @@ cout << "gap at " << i << endl;
 	fps2.at(3*i+1) = samples.at(1).at(3*i+1);
 	fps1.at(3*i+2) = samples.at(0).at(3*i+2);
 	fps2.at(3*i+2) = samples.at(1).at(3*i+2);
-	if (i == position-1+s)
+	if (i == position-getbegin2())
 		break;
 	
 }
 
-	fps1.resize(3*(position+s));
-	fps2.resize(3*(position+s));
+	fps1.resize(3*(position+s-getbegin2()));
+	fps2.resize(3*(position+s-getbegin2()));
 	first_part.set_alignment_bits(fps1,fps2); 
 
-for (size_t i=position+s;i<samples.at(1).size()/3;++i){
-      	sps1.at(3*(i-position-s)) = samples.at(0).at(3*i);
-	sps2.at(3*(i-position-s)) = samples.at(1).at(3*i);
-	sps1.at(3*(i-position-s)+1) = samples.at(0).at(3*i+1);
-	sps2.at(3*(i-position-s)+1) = samples.at(1).at(3*i+1);
-	sps1.at(3*(i-position-s)+2) = samples.at(0).at(3*i+2);
-	sps2.at(3*(i-position-s)+2) = samples.at(1).at(3*i+2);
+for (size_t i=position+s-getbegin2();i<samples.at(1).size()/3;++i){
+      	sps1.at(3*(i-position-s+getbegin2())) = samples.at(0).at(3*i);
+	sps2.at(3*(i-position-s+getbegin2())) = samples.at(1).at(3*i);
+	sps1.at(3*(i-position-s+getbegin2())+1) = samples.at(0).at(3*i+1);
+	sps2.at(3*(i-position-s+getbegin2())+1) = samples.at(1).at(3*i+1);
+	sps1.at(3*(i-position-s+getbegin2())+2) = samples.at(0).at(3*i+2);
+	sps2.at(3*(i-position-s+getbegin2())+2) = samples.at(1).at(3*i+2);
 
 }
 
-	sps1.resize(samples.at(1).size()-3*(position+s));
-	sps2.resize(samples.at(1).size()-3*(position+s));
+	sps1.resize(samples.at(1).size()-fps2.size());
+	sps2.resize(samples.at(1).size()-fps2.size());
 	cout << "size " << sps1.size() << endl;
 
 	second_part.set_alignment_bits(sps1,sps2);
 
 
+	}
+		else{
+		for (size_t i=getend2()-position+1+s; i<samples.at(1).size()/3; ++i){
+ 		if (samples.at(1).at(0+i*3)== true && samples.at(1).at(1+i*3)==false && samples.at(1).at(2+i*3)==true) {
+			s=s+1;
+		}
+		fps1.at(3*(i-getend2()+position-1-s)) = samples.at(0).at(3*i);
+		fps2.at(3*(i-getend2()+position-1-s)) = samples.at(1).at(3*i);
+		fps1.at(3*(i-getend2()+position-1-s)+1) = samples.at(0).at(3*i+1);
+		fps2.at(3*(i-getend2()+position-1-s)+1) = samples.at(1).at(3*i+1);
+		fps1.at(3*(i-getend2()+position-1-s)+2) = samples.at(0).at(3*i+2);
+		fps2.at(3*(i-getend2()+position-1-s)+2) = samples.at(1).at(3*i+2);
+		
+	}
+
+	fps1.resize(3*(position+s-getbegin2()));
+	fps2.resize(3*(position+s-getbegin2()));
+	first_part.set_alignment_bits(fps1,fps2); 
+
+	for (size_t i=0;i<getend2()-position+1+s;++i){
+      	sps1.at(3*i) = samples.at(0).at(3*i);
+	sps2.at(3*i) = samples.at(1).at(3*i);
+	sps1.at(3*i+1) = samples.at(0).at(3*i+1);
+	sps2.at(3*i+1) = samples.at(1).at(3*i+1);
+	sps1.at(3*i+2) = samples.at(0).at(3*i+2);
+	sps2.at(3*i+2) = samples.at(1).at(3*i+2);
+
+}
+
+	sps1.resize(samples.at(1).size()-fps1.size());
+	sps2.resize(samples.at(1).size()-fps1.size());
+	cout << "size " << sps1.size() << endl;
+
+	second_part.set_alignment_bits(sps1,sps2);
+
+
+
+	}
 }
 }
 
@@ -313,7 +395,23 @@ char pw_alignment::base_translate_back(bool bit1, bool bit2, bool bit3) {
 }
 
 
-	bool compare_pw_alignment::operator()(const pw_alignment *const &a, const pw_alignment *const &b){
+void pw_alignment::print() const {
+	cout << "al seq "<< getreference1() << " b " << getbegin1() << " e " << getend1() << endl;
+	cout << "al seq "<< getreference2() << " b " << getbegin2() << " e " << getend2() << endl;
+	for(size_t col = 0; col < alignment_length(); col++) {
+		char c1;
+		char c2;
+		alignment_col(col, c1, c2);
+		cout << c1<<"\t"<<c2<<endl;
+		
+	
+	}
+
+
+}
+
+
+bool compare_pw_alignment::operator()(const pw_alignment *const &a, const pw_alignment *const &b){
 	size_t asmaller = 0;
 	size_t abigger = 1;
 	if(a->getreference(0) > a->getreference(1)) {
