@@ -77,7 +77,7 @@ void pw_alignment::split(bool sample, size_t position, pw_alignment & first_part
 	vector<bool> fps2(samples.at(0).size());
 	vector<bool> sps1(samples.at(0).size());
 	vector<bool> sps2(samples.at(0).size());
-	print();
+//	print();
 
 cout << "size " << samples.at(0).size() << "split "<< sample << " at " << position<< endl;
 
@@ -176,7 +176,7 @@ exit(0);
 
 	sps1.resize(samples.at(0).size()-fps1.size());
 	sps2.resize(samples.at(0).size()-fps1.size());
-	cout << "size " << sps1.size() << endl;
+//	cout << "size " << sps1.size() << endl;
 
 	second_part.set_alignment_bits(sps1,sps2);
 	second_part.setbegin1(getbegin1());
@@ -195,9 +195,9 @@ exit(0);
 		assert(position <= getend2());
 
    		 for (size_t i=0; i<samples.at(1).size()/3; ++i){
-cout << "bits " << samples.at(1).at(i*3) << samples.at(1).at(i*3+1) << samples.at(1).at(i*3+2)<< endl;
+//cout << "bits " << samples.at(1).at(i*3) << samples.at(1).at(i*3+1) << samples.at(1).at(i*3+2)<< endl;
  		if (samples.at(1).at(0+i*3)== true && samples.at(1).at(1+i*3)==false && samples.at(1).at(2+i*3)==true) {
-cout << "gap at " << i << endl;
+//cout << "gap at " << i << endl;
 			s=s+1;
 		}
 	fps1.at(3*i) = samples.at(0).at(3*i);
@@ -232,7 +232,7 @@ for (size_t i=position+s-getbegin2();i<samples.at(1).size()/3;++i){
 
 	sps1.resize(samples.at(1).size()-fps2.size());
 	sps2.resize(samples.at(1).size()-fps2.size());
-	cout << "size " << sps1.size() << endl;
+//	cout << "size " << sps1.size() << endl;
 
 	second_part.set_alignment_bits(sps1,sps2);
 	second_part.setbegin1(getend1()-samples.at(1).size()-fps2.size());
@@ -282,7 +282,7 @@ for (size_t i=position+s-getbegin2();i<samples.at(1).size()/3;++i){
 
 	sps1.resize(samples.at(1).size()-fps2.size());
 	sps2.resize(samples.at(1).size()-fps2.size());
-	cout << "size " << sps1.size() << endl;
+//	cout << "size " << sps1.size() << endl;
 
 	second_part.set_alignment_bits(sps1,sps2);
 	second_part.setbegin1(getbegin1());

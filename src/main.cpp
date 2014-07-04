@@ -162,6 +162,39 @@ int do_model(int argc, char * argv[]) {
 
 	all_data data(fastafile, maffile);
 	overlap o(data);
+
+	for (size_t i =0 ; i< 10; ++i){
+
+	const pw_alignment & p = data.getAlignment(i);
+
+	pw_alignment p1;
+	pw_alignment p2;
+	p.split(false,(p.getend2()+p.getbegin2())/2, p1, p2);
+/*	for(size_t j=0; j<p1.alignment_length(); ++j) {
+		char s1;
+		char s2;
+		
+		p1.alignment_col(j, s1, s2);
+		cout << "pos " << j << " s1 " << s1 << " s2 " << s2 << endl;
+}*/
+	
+		
+	//	const pw_alignment * s = & (data.getAlignment());
+	
+		set<pw_alignment*, compare_pw_alignment> remove_alignments;
+		vector<pw_alignment> insert_alignments;
+	//	o.insert_without_partial_overlap(p);
+	
+	o.split_partial_overlap(&p, remove_alignments, insert_alignments);
+	for(size_t j = 0 ; j < insert_alignments.size() ; j++){
+		o.insert_without_partial_overlap(insert_alignments.at(j));
+	}
+	for(set<pw_alignment*, compare_pw_alignment> ::iterator it = remove_alignments.begin(); it != remove_alignments.end(); ++it){
+		o.remove_alignment(*it);
+	}
+	
+}
+/*
 	for (size_t i = 0 ; i< data.numAlignments();++i){	
 		const pw_alignment & p = data.getAlignment(i);
 			for(size_t j = 0 ; j < data.numAlignments();++j){
@@ -172,7 +205,7 @@ int do_model(int argc, char * argv[]) {
 				o.split_partial_overlap(s, remove_alignments, insert_alignments);
 		}
 	}	
-				o.test_all();
+*/				o.test_all();
 	return 0;
 }
 
