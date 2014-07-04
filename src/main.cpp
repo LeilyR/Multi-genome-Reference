@@ -170,9 +170,9 @@ int do_model(int argc, char * argv[]) {
 				vector<pw_alignment> insert_alignments;
 				o.insert_without_partial_overlap(p);
 				o.split_partial_overlap(s, remove_alignments, insert_alignments);
-				o.test_all();
 		}
 	}	
+				o.test_all();
 	return 0;
 }
 
