@@ -567,58 +567,92 @@ void overlap::split_partial_overlap(const pw_alignment * new_alignment, set<pw_a
 			
 		if( allalignit1->second->getreference1() == new_alignment->getreference1()){
 
-		if(leftinsert1 <= alright1 && rightinsert1 >= alleft1) {
-			if (leftinsert1 >= alleft1 && rightinsert1 >= alright1){
-			al1->split (true,leftinsert1,p1,p2);
-			p2.split(true,alright1,p3,p4);
-		}
-			if (leftinsert1 <= alleft1 && rightinsert1 <= alright1){
-			al1->split (true,alleft1,p1,p2);
-			p1.split(true,rightinsert1,p3,p4);
-		}
+		if(leftinsert1 < alright1 && rightinsert1 > alleft1) {
+			if (leftinsert1 > alleft1 && rightinsert1 > alright1){
+				al1->split (true,leftinsert1,p1,p2);
+				new_alignment->split(true,alright1,p3,p4);
 
-			if (leftinsert1 >= alleft1 && rightinsert1 <= alright1){
-			al1->split (true,leftinsert1,p1,p2);
-			p2.split(true,rightinsert1,p3,p4);
-		}
-			if (leftinsert1 <= alleft1 && rightinsert1 >= alright1){
-			new_alignment->split (true,alleft1,p1,p2);
-			p2.split(true,alright1,p3,p4);
-		}
-	
+				split_partial_overlap(&p1,remove_alignments,insert_alignments);
+				split_partial_overlap(&p2,remove_alignments,insert_alignments);
+				split_partial_overlap(&p3,remove_alignments,insert_alignments);
+				split_partial_overlap(&p4,remove_alignments,insert_alignments);
+			}
+			if (leftinsert1 < alleft1 && rightinsert1 < alright1){
+				new_alignment->split (true,alleft1,p1,p2);
+				al1->split(true,rightinsert1,p3,p4);
+				split_partial_overlap(&p1,remove_alignments,insert_alignments);
+				split_partial_overlap(&p2,remove_alignments,insert_alignments);
+				split_partial_overlap(&p3,remove_alignments,insert_alignments);
+				split_partial_overlap(&p4,remove_alignments,insert_alignments);
+
+			}
+
+			if (leftinsert1 > alleft1 && rightinsert1 < alright1){
+				al1->split (true,leftinsert1,p1,p2);
+				p2.split(true,rightinsert1,p3,p4);
+				split_partial_overlap(&p1,remove_alignments,insert_alignments);
+				split_partial_overlap(&p3,remove_alignments,insert_alignments);
+				split_partial_overlap(&p4,remove_alignments,insert_alignments);
+
+			}
+			if (leftinsert1 < alleft1 && rightinsert1 > alright1){
+				new_alignment->split (true,alleft1,p1,p2);
+				p2.split(true,alright1,p3,p4);
+				split_partial_overlap(&p1,remove_alignments,insert_alignments);
+				split_partial_overlap(&p3,remove_alignments,insert_alignments);
+				split_partial_overlap(&p4,remove_alignments,insert_alignments);
+
+			}
+		
 		}
 
 		else break;	
 		}
 		else {
 
-		if(leftinsert1 <= alright1 && rightinsert1 >= alleft1) {
-			if (leftinsert1 >= alleft1 && rightinsert1 >= alright1){
-			al1->split (true,leftinsert1,p1,p2);
-			p2.split(false,alright1,p3,p4);
-		}
-			if (leftinsert1 <= alleft1 && rightinsert1 <= alright1){
-			al1->split (true,alleft1,p1,p2);
-			p1.split(false,rightinsert1,p3,p4);
-		}
+		if(leftinsert1 < alright1 && rightinsert1 > alleft1) {
+			if (leftinsert1 > alleft1 && rightinsert1 > alright1){
+				al1->split (true,leftinsert1,p1,p2);
+				new_alignment -> split(false,alright1,p3,p4);
+				split_partial_overlap(&p1,remove_alignments,insert_alignments);
+				split_partial_overlap(&p2,remove_alignments,insert_alignments);
+				split_partial_overlap(&p3,remove_alignments,insert_alignments);
+				split_partial_overlap(&p4,remove_alignments,insert_alignments);
+			}
 
-			if (leftinsert1 >= alleft1 && rightinsert1 <= alright1){
-			al1->split (true,leftinsert1,p1,p2);
-			p2.split(false,rightinsert1,p3,p4);
-		}
-			if (leftinsert1 <= alleft1 && rightinsert1 >= alright1){
-			new_alignment->split (true,alleft1,p1,p2);
-			p2.split(false,alright1,p3,p4);
-		}
+			if (leftinsert1 < alleft1 && rightinsert1 < alright1){
+				new_alignment->split (true,alleft1,p1,p2);
+				al1 -> split(false,rightinsert1,p3,p4);
+				split_partial_overlap(&p1,remove_alignments,insert_alignments);
+				split_partial_overlap(&p2,remove_alignments,insert_alignments);
+				split_partial_overlap(&p3,remove_alignments,insert_alignments);
+				split_partial_overlap(&p4,remove_alignments,insert_alignments);
+			}
+
+			if (leftinsert1 > alleft1 && rightinsert1 < alright1){
+				al1->split (true,leftinsert1,p1,p2);
+				p2.split(false,rightinsert1,p3,p4);
+				split_partial_overlap(&p1,remove_alignments,insert_alignments);
+				split_partial_overlap(&p3,remove_alignments,insert_alignments);
+				split_partial_overlap(&p4,remove_alignments,insert_alignments);
+			}
+
+			if (leftinsert1 < alleft1 && rightinsert1 > alright1){
+				new_alignment->split (true,alleft1,p1,p2);
+				p2.split(false,alright1,p3,p4);
+				split_partial_overlap(&p1,remove_alignments,insert_alignments);
+				split_partial_overlap(&p3,remove_alignments,insert_alignments);
+				split_partial_overlap(&p4,remove_alignments,insert_alignments);
+			}
 
 	
-			}
+		}
 
 
 
 		
 	}
-		}
+}
 
 
 	
@@ -627,7 +661,7 @@ void overlap::split_partial_overlap(const pw_alignment * new_alignment, set<pw_a
 	if(new_alignment->getend2() < leftinsert2) {
 		leftinsert2 = new_alignment->getend2();
 		rightinsert2 = new_alignment->getbegin2();
-}
+	}
 	multimap<size_t, pw_alignment*>::const_iterator allalignit2 = alignments_on_reference2.lower_bound(leftinsert2);
 
 
@@ -646,59 +680,92 @@ void overlap::split_partial_overlap(const pw_alignment * new_alignment, set<pw_a
 			
 		if( allalignit2->second->getreference2() == new_alignment->getreference2()){
 
-		if(leftinsert2 <= alright2 && rightinsert2 >= alleft2) {
-			if (leftinsert2 >= alleft2 && rightinsert2 >= alright2){
+		if(leftinsert2 < alright2 && rightinsert2 > alleft2) {
+			if (leftinsert2 > alleft2 && rightinsert2 > alright2){
 			al2->split (true,leftinsert2,p1,p2);
-			p2.split(true,alright2,p3,p4);
-			}
-			if (leftinsert2 <= alleft2 && rightinsert2 <= alright2){
-			al2->split (true,alleft2,p1,p2);
-			p1.split(true,rightinsert2,p3,p4);
+			new_alignment-> split(true,alright2,p3,p4);
+			split_partial_overlap(&p1,remove_alignments,insert_alignments);
+			split_partial_overlap(&p2,remove_alignments,insert_alignments);
+			split_partial_overlap(&p3,remove_alignments,insert_alignments);
+			split_partial_overlap(&p4,remove_alignments,insert_alignments);
 			}
 
-			if (leftinsert2 >= alleft2 && rightinsert2 <= alright2){
+			if (leftinsert2 < alleft2 && rightinsert2 < alright2){
+			new_alignment->split (true,alleft2,p1,p2);
+			al2 -> split(true,rightinsert2,p3,p4);
+			split_partial_overlap(&p1,remove_alignments,insert_alignments);
+			split_partial_overlap(&p2,remove_alignments,insert_alignments);
+			split_partial_overlap(&p3,remove_alignments,insert_alignments);
+			split_partial_overlap(&p4,remove_alignments,insert_alignments);
+			}
+
+			if (leftinsert2 > alleft2 && rightinsert2 < alright2){
 			al2->split (true,leftinsert2,p1,p2);
 			p2.split(true,rightinsert2,p3,p4);
+			split_partial_overlap(&p1,remove_alignments,insert_alignments);
+			split_partial_overlap(&p3,remove_alignments,insert_alignments);
+			split_partial_overlap(&p4,remove_alignments,insert_alignments);
 			}
-			if (leftinsert2 <= alleft2 && rightinsert2 >= alright2){
+
+			if (leftinsert2 < alleft2 && rightinsert2 > alright2){
 			new_alignment->split (true,alleft2,p1,p2);
 			p2.split(true,alright2,p3,p4);
+			split_partial_overlap(&p1,remove_alignments,insert_alignments);
+			split_partial_overlap(&p3,remove_alignments,insert_alignments);
+			split_partial_overlap(&p4,remove_alignments,insert_alignments);
 			}
 
 	
 		}
 
 		else break;	
-}
+	}
 		else {
 
-		if(leftinsert2 <= alright2 && rightinsert2 >= alleft2) {
-			if (leftinsert2 >= alleft2 && rightinsert2 >= alright2){
-			al2->split (true,leftinsert2,p1,p2);
-			p2.split(false,alright2,p3,p4);
-		}
-			if (leftinsert2 <= alleft2 && rightinsert2 <= alright2){
-			al2->split (true,alleft2,p1,p2);
-			p1.split(false,rightinsert2,p3,p4);
-		}
+		if(leftinsert2 < alright2 && rightinsert2 > alleft2) {
+			if (leftinsert2 > alleft2 && rightinsert2 > alright2){
+				al2->split (true,leftinsert2,p1,p2);
+				new_alignment -> split(false,alright2,p3,p4);
+				split_partial_overlap(&p1,remove_alignments,insert_alignments);
+				split_partial_overlap(&p2,remove_alignments,insert_alignments);
+				split_partial_overlap(&p3,remove_alignments,insert_alignments);
+				split_partial_overlap(&p4,remove_alignments,insert_alignments);
+			}
 
-			if (leftinsert2 >= alleft2 && rightinsert2 <= alright2){
-			al2->split (true,leftinsert2,p1,p2);
-			p2.split(false,rightinsert2,p3,p4);
-		}
-			if (leftinsert2 <= alleft2 && rightinsert2 >= alright2){
-			new_alignment->split (true,alleft2,p1,p2);
-			p2.split(false,alright2,p3,p4);
-		}
+			if (leftinsert2 < alleft2 && rightinsert2 < alright2){
+				new_alignment-> split (true,alleft2,p1,p2);
+				al2 -> split(false,rightinsert2,p3,p4);
+				split_partial_overlap(&p1,remove_alignments,insert_alignments);
+				split_partial_overlap(&p2,remove_alignments,insert_alignments);
+				split_partial_overlap(&p3,remove_alignments,insert_alignments);
+				split_partial_overlap(&p4,remove_alignments,insert_alignments);
+			}
+
+			if (leftinsert2 > alleft2 && rightinsert2 < alright2){
+				al2->split (true,leftinsert2,p1,p2);
+				p2.split(false,rightinsert2,p3,p4);
+				split_partial_overlap(&p1,remove_alignments,insert_alignments);
+				split_partial_overlap(&p3,remove_alignments,insert_alignments);
+				split_partial_overlap(&p4,remove_alignments,insert_alignments);
+			}
+
+			if (leftinsert2 < alleft2 && rightinsert2 > alright2){
+				new_alignment->split (true,alleft2,p1,p2);
+				p2.split(false,alright2,p3,p4);
+				split_partial_overlap(&p1,remove_alignments,insert_alignments);
+				split_partial_overlap(&p2,remove_alignments,insert_alignments);
+				split_partial_overlap(&p3,remove_alignments,insert_alignments);
+				split_partial_overlap(&p4,remove_alignments,insert_alignments);
+			}
 
 	
-			}
+		}
 
 
 
 		
 	}
-		}
+  }
 
 	
 }
@@ -744,8 +811,7 @@ void overlap::remove_alignment(pw_alignment *remove){
 	alignments.erase(remove);
 }
 
-
-void overlap::test_all() const {
+	void overlap::test_all() const {
 
 	for(set<pw_alignment*, compare_pw_alignment>::iterator it = alignments.begin(); it!=alignments.end(); ++it) {
 		pw_alignment * al = *it;

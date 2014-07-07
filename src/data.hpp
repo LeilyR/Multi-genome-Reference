@@ -88,7 +88,6 @@ public:
 	void insert_without_partial_overlap(const pw_alignment & p);
 	void remove_alignment(pw_alignment  *remove);
 
-
 	void test_all() const;
 
 
