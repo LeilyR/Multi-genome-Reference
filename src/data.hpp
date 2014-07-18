@@ -33,6 +33,9 @@ class dnastring {
 
 	static bool found_iupac_ambiguity;
 	static char complement(char c);
+	static size_t base_to_index(char base);
+	static char index_to_base(size_t index);
+
 
 	private:
 	vector<bool> bits;
@@ -58,9 +61,9 @@ class all_data {
 		size_t numSequences() const;
 		size_t numAlignments() const;
 
-
 		bool alignment_fits_ref(const pw_alignment * al) const;
-
+		void print_ref(const pw_alignment * al)const;
+	
 	private:
 		// data
 		vector<dnastring> sequences;
@@ -84,15 +87,14 @@ class overlap{
 public:
 	overlap(all_data&);
 	~overlap();
-	void split_partial_overlap(const pw_alignment * new_alignment, set<pw_alignment*, compare_pw_alignment> & remove_alignments, vector<pw_alignment> & insert_alignments) const;
+	void split_partial_overlap(const pw_alignment * new_alignment, set<pw_alignment*, compare_pw_alignment> & remove_alignments, vector<pw_alignment> & insert_alignments, size_t level) const;
 	void insert_without_partial_overlap(const pw_alignment & p);
 	void remove_alignment(pw_alignment  *remove);
 
 	void test_all() const;
-
-
-//	pw_alignment new_alignment;
-
+	void test_all_part()const;
+	void test_overlap()const;
+	const pw_alignment * get_al_at_left_end(size_t ref1, size_t ref2, size_t left1, size_t left2) const;
 private:
 	all_data & data;
 
@@ -103,6 +105,19 @@ private:
 
 
 	
+};
+
+class model{
+public:
+	model(all_data &);
+	~model();
+	void base_frequency(size_t acc);
+	void transforming_frequency(const pw_alignment & p);
+	//void bit_translate();
+private:
+	all_data & data;
+//	pw_alignment & p;
+
 };
 
 
