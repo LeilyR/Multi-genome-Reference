@@ -328,7 +328,7 @@ all_data::all_data(string fasta_all_sequences, string maf_all_alignments) {
 							alignments.push_back(al);
 
 							als_on_reference.at(idx1).insert(make_pair(start1, alidx));
-							als_on_reference.at(idx2).insert(make_pair(start1, alidx));
+							als_on_reference.at(idx2).insert(make_pair(start2, alidx));
 
 						}
 
