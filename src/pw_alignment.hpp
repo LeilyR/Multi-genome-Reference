@@ -42,6 +42,14 @@ class pw_alignment {
 	void setend1(size_t end1);
 	void setend2(size_t end2);
 
+	void setreference1(size_t ref1);
+	void setreference2(size_t ref2);
+
+	void get_lr_on_reference(size_t sequence, size_t & left, size_t & right) const;
+	void get_lr1(size_t & left, size_t & right) const;
+	void get_lr2(size_t & left, size_t & right) const;
+	void split_on_reference(size_t sequence, size_t pos, pw_alignment & fp, pw_alignment & sp) const;
+
 	void print() const;
 
 	private:
@@ -57,7 +65,7 @@ class pw_alignment {
 
 class compare_pw_alignment {
 	public:
-	bool operator()(const pw_alignment *const &a, const pw_alignment *const &b);
+	bool operator()(const pw_alignment *const &a, const pw_alignment *const &b) const ;
 };
 		
 #endif 
