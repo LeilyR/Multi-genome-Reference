@@ -610,5 +610,10 @@ bool compare_pw_alignment::operator()(const pw_alignment *const &a, const pw_ali
 	return false;
 }
 
+	void pw_alignment::set_cost(vector<double> create, vector<double> modify){
+		create_costs = create;
+		modify_costs = modify; 
+	}
+
 
 	

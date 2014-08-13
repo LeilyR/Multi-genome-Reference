@@ -5,10 +5,13 @@
 #include <iostream>
 #include <string>
 #include <map>
+#include <math.h> 
 
 #include <cassert>
 #include <cstdlib>
+
 using namespace std;
+
 
 class pw_alignment {
 	public:
@@ -52,11 +55,15 @@ class pw_alignment {
 
 	void print() const;
 
+	void set_cost(vector<double> create, vector<double> modify);
+
 	private:
 	vector<vector<bool> > samples;
 	vector<size_t> begins;
 	vector<size_t> ends;
 	vector<size_t> references;
+	vector<double> create_costs;
+	vector<double> modify_costs;
 	
 	static inline void base_translate(char base, bool & bit1, bool & bit2, bool & bit3);
 	static inline char base_translate_back(bool bit1, bool bit2, bool bit3);

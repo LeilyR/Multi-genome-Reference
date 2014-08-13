@@ -145,11 +145,16 @@ public:
 	void acc_base_frequency();
 	void alignment_modification();
 	void cost_function(pw_alignment& p);
+	vector<double> get_creat_cost(pw_alignment& p)const;
+	vector<double> get_modify_cost(pw_alignment& p)const;
 private:
 	all_data & data;
 	vector<vector<size_t> > transform;
 	vector<vector<double> > cost_on_acc;
 	vector<vector<vector<vector<double> > > >modification;
+	vector<double> cost_on_sample;
+	vector<double> modify_cost;
+
 };
 
 

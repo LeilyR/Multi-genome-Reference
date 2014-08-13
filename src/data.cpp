@@ -1826,7 +1826,7 @@ void overlap::remove_alignment(const pw_alignment * remove){
 		return gapOnSample1 || gapOnSample2;
 		}
 		
-	model::model(all_data & d): data(d),transform(6,vector<size_t>(6,1)),cost_on_acc (5, vector<double>(data.numAcc(),1)),modification(data.numAcc(), vector<vector<vector<double> > >(data.numAcc(),vector<vector<double> > (6, vector<double>(6,1) ))) {}
+	model::model(all_data & d): data(d),transform(6,vector<size_t>(6,1)),cost_on_acc (5, vector<double>(data.numAcc(),1)),modification(data.numAcc(), vector<vector<vector<double> > >(data.numAcc(),vector<vector<double> > (6, vector<double>(6,1) ))), cost_on_sample(2,0), modify_cost(2,0){}
 
 	model::~model(){}
 
@@ -1884,6 +1884,7 @@ void overlap::remove_alignment(const pw_alignment * remove){
 		vector<vector<double> >sequence_cost(2,vector<double>(5,1));
 		vector<vector<double> >creat_cost(2,vector<double>(5,1));		
 		vector<vector<vector<double> > > modification_cost(2,vector<vector<double> >(6,vector<double>(6,1)));
+	//	vector<double> cost_on_sample (2,0);
 		for(size_t i = 0 ; i < 5; i++){
 		 sequence_cost.at(0).at(i)= -log2(cost_on_acc.at(i).at(data.accNumber(p.getreference1())));
 		 sequence_cost.at(1).at(i)= -log2(cost_on_acc.at(i).at(data.accNumber(p.getreference2())));
@@ -1899,16 +1900,31 @@ void overlap::remove_alignment(const pw_alignment * remove){
 				}
 		for(size_t j=0; j<5; j++){	
 			creat_cost.at(0).at(j)= al_base_number.at(0).at(j)*sequence_cost.at(0).at(j);
-			cout<<"creat cost of "<< dnastring::index_to_base(j)<<"  on reference1 is "<<  (al_base_number.at(0).at(j))*(sequence_cost.at(0).at(j))<< " ."<<endl;
+			cost_on_sample.at(0)=cost_on_sample.at(0)+ creat_cost.at(0).at(j);
+			cout<<"creat cost of "<< dnastring::index_to_base(j)<<"  on reference1 is "<<  (al_base_number.at(0).at(j))*(sequence_cost.at(0).at(j))<<endl;
 			creat_cost.at(1).at(j)= al_base_number.at(1).at(j)*sequence_cost.at(1).at(j);
-			cout<<"creat cost of "<< dnastring::index_to_base(j)<<"  on reference2 is "<<  al_base_number.at(1).at(j)*sequence_cost.at(1).at(j)<< " ."<<endl;
-		}		
+			cost_on_sample.at(1)=cost_on_sample.at(1)+ creat_cost.at(1).at(j);			
+			cout<<"creat cost of "<< dnastring::index_to_base(j)<<"  on reference2 is "<<  al_base_number.at(1).at(j)*sequence_cost.at(1).at(j)<<endl;
+		}
+			cout<<"creat cost of the alignment on sample 1: "<< cost_on_sample.at(0);
+			cout<<"creat cost of the alignment on sample 2: "<< cost_on_sample.at(1);	
+		
 		for(size_t j=0; j<6; j++){	
 			for (size_t k= 0; k<6; k++){
-			 modification_cost.at(0).at(j).at(k) = -log2(modification.at(data.accNumber(p.getreference1())).at(data.accNumber(p.getreference2())).at(j).at(k));
-			 modification_cost.at(1).at(j).at(k) = -log2(modification.at(data.accNumber(p.getreference2())).at(data.accNumber(p.getreference1())).at(j).at(k));
+				modification_cost.at(0).at(j).at(k) = -log2(modification.at(data.accNumber(p.getreference1())).at(data.accNumber(p.getreference2())).at(j).at(k));
+				modify_cost.at(0)= modify_cost.at(0)+ modification_cost.at(0).at(j).at(k);
+				modification_cost.at(1).at(j).at(k) = -log2(modification.at(data.accNumber(p.getreference2())).at(data.accNumber(p.getreference1())).at(j).at(k));
+				modify_cost.at(1)= modify_cost.at(1)+ modification_cost.at(1).at(j).at(k);
 			}
 		}	
-
+		p.set_cost(cost_on_sample, modify_cost);
 	}
+	vector<double> model::get_creat_cost(pw_alignment& p)const{
+		return cost_on_sample;
+	}
+	vector<double> model::get_modify_cost(pw_alignment& p)const{
+		return modify_cost;
+	}
+
+
 
