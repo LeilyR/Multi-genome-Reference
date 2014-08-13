@@ -3,8 +3,10 @@
 #include <fstream>
 #include <sstream>
 #include <map>
+#include <math.h> 
 #include "pw_alignment.hpp"
 #include "data.hpp"
+#include "model.hpp"
 
 using namespace std;
 
@@ -162,39 +164,77 @@ int do_model(int argc, char * argv[]) {
 
 	all_data data(fastafile, maffile);
 	overlap o(data);
+	model m(data);
+	size_t inserted = 0;
+	m.acc_base_frequency();
+	m.alignment_modification();
 
-	for (size_t i =0 ; i< 10; ++i){
-
+	initial_alignment_set<model> ias(data, m);
+	exit(0);	
+//	for (size_t i =0 ; i<100 ; ++i)
+	//if(i>0 && i<34) continue;
+	for (size_t i =0 ; i< data.numAlignments(); ++i){
 	const pw_alignment & p = data.getAlignment(i);
+	cout << " p al " << endl;
+	p.print();
 
+
+	splitpoints s(p,o,data);
+	s.find_initial_split_point();
+		
 	pw_alignment p1;
 	pw_alignment p2;
-	p.split(false,(p.getend2()+p.getbegin2())/2, p1, p2);
+//	p.split(false,(p.getend2()+p.getbegin2())/2, p1, p2);
 /*	for(size_t j=0; j<p1.alignment_length(); ++j) {
 		char s1;
 		char s2;
 		
 		p1.alignment_col(j, s1, s2);
 		cout << "pos " << j << " s1 " << s1 << " s2 " << s2 << endl;
-}*/
+}
+*/
 	
 		
 	//	const pw_alignment * s = & (data.getAlignment());
-	
-		set<pw_alignment*, compare_pw_alignment> remove_alignments;
+		set<const pw_alignment*, compare_pw_alignment> remove_alignments;
 		vector<pw_alignment> insert_alignments;
 	//	o.insert_without_partial_overlap(p);
 	
-	o.split_partial_overlap(&p, remove_alignments, insert_alignments);
+//	o.split_partial_overlap(&p, remove_alignments, insert_alignments, 0);
+	s.split_all(remove_alignments,insert_alignments);
+size_t removesize = remove_alignments.size();
+		cout<<"removed size: "<< removesize<<endl;
+		cout << "inserted alignments:"	<<endl;
+		cout<<"insert alignment size: "<< insert_alignments.size() <<endl; 
 	for(size_t j = 0 ; j < insert_alignments.size() ; j++){
 		o.insert_without_partial_overlap(insert_alignments.at(j));
-	}
-	for(set<pw_alignment*, compare_pw_alignment> ::iterator it = remove_alignments.begin(); it != remove_alignments.end(); ++it){
+		inserted++;
+		insert_alignments.at(j).print();
+		m.cost_function(insert_alignments.at(j));
+		
+		}
+size_t removed = 0;
+	for(set<const pw_alignment*> ::iterator it = remove_alignments.begin(); it != remove_alignments.end(); ++it){
 		o.remove_alignment(*it);
+		const pw_alignment * remove = *it;
+		cout << "removed alignments:" <<endl;
+		remove->print();
+		removed++;
 	}
-	
-}
+	assert(removed == removesize);
+//	cout << " inserted " << inserted << endl;
+//	o.test_all();
+	cout<<"all the alignments: "<<endl;
+//	o.print_all_alignment();
+//	o.test_multimaps();
+	}	
+	cout << " inserted " << inserted << endl;
+//	o.test_overlap();
+
+
+
 /*
+	
 	for (size_t i = 0 ; i< data.numAlignments();++i){	
 		const pw_alignment & p = data.getAlignment(i);
 			for(size_t j = 0 ; j < data.numAlignments();++j){
@@ -204,10 +244,14 @@ int do_model(int argc, char * argv[]) {
 				o.insert_without_partial_overlap(p);
 				o.split_partial_overlap(s, remove_alignments, insert_alignments);
 		}
-	}	
-*/				o.test_all();
+}
+*/		
+	o.test_all_part();
+	
+	
 	return 0;
 }
+
 
 #if !TEST
 	
@@ -232,6 +276,7 @@ int main(int argc, char * argv[]) {
 
 	return 1;
 }
+
 
 
 

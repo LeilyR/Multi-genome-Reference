@@ -5,10 +5,13 @@
 #include <iostream>
 #include <string>
 #include <map>
+#include <math.h> 
 
 #include <cassert>
 #include <cstdlib>
+
 using namespace std;
+
 
 class pw_alignment {
 	public:
@@ -42,13 +45,30 @@ class pw_alignment {
 	void setend1(size_t end1);
 	void setend2(size_t end2);
 
+	void setreference1(size_t ref1);
+	void setreference2(size_t ref2);
+
+	void get_lr_on_reference(size_t sequence, size_t & left, size_t & right) const;
+	void get_lr1(size_t & left, size_t & right) const;
+	void get_lr2(size_t & left, size_t & right) const;
+	void split_on_reference(size_t sequence, size_t pos, pw_alignment & fp, pw_alignment & sp) const;
+
 	void print() const;
+
+	void set_cost(vector<double> create, vector<double> modify);
+
+	double get_create1() const;
+	double get_create2() const;
+	double get_modify1() const;
+	double get_modify2() const;
 
 	private:
 	vector<vector<bool> > samples;
 	vector<size_t> begins;
 	vector<size_t> ends;
 	vector<size_t> references;
+	vector<double> create_costs;
+	vector<double> modify_costs;
 	
 	static inline void base_translate(char base, bool & bit1, bool & bit2, bool & bit3);
 	static inline char base_translate_back(bool bit1, bool bit2, bool bit3);
@@ -57,7 +77,7 @@ class pw_alignment {
 
 class compare_pw_alignment {
 	public:
-	bool operator()(const pw_alignment *const &a, const pw_alignment *const &b);
+	bool operator()(const pw_alignment *const &a, const pw_alignment *const &b) const ;
 };
 		
 #endif 
