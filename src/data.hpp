@@ -120,7 +120,7 @@ private:
 
 class splitpoints {
 	public:
-	splitpoints(const pw_alignment & , const overlap &, all_data &);
+	splitpoints(const pw_alignment & , const overlap &, const all_data &);
 	~splitpoints();
 	void find_initial_split_points(size_t sequence, size_t left, size_t right);
 	void find_initial_split_point();//initial split points
@@ -131,7 +131,7 @@ class splitpoints {
 	private:
 	const overlap & overl;
 	const pw_alignment & newal;
-	all_data & data;
+	const all_data & data;
 	vector<set<size_t> > split_points;
 
 	

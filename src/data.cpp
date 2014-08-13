@@ -1464,7 +1464,7 @@ void overlap::remove_alignment(const pw_alignment * remove){
 	}
 		
 		
-	splitpoints::splitpoints(const pw_alignment & p, const overlap & o, all_data & d):overl(o), newal(p),data(d), split_points(d.numSequences()) {
+	splitpoints::splitpoints(const pw_alignment & p, const overlap & o, const all_data & d):overl(o), newal(p),data(d), split_points(d.numSequences()) {
 
 		}
 
@@ -1782,6 +1782,11 @@ void overlap::remove_alignment(const pw_alignment * remove){
 			
 	}
 	void splitpoints::splits(const pw_alignment * p,  vector<pw_alignment> & insert_alignments){
+	//	cout << "splits on ";
+	//	p->print();
+	//	cout << endl;
+
+
 		pw_alignment p1;
 		pw_alignment p2;
 		size_t left1;
@@ -1912,13 +1917,13 @@ void overlap::remove_alignment(const pw_alignment * remove){
 		for(size_t j=0; j<5; j++){	
 			creat_cost.at(0).at(j)= al_base_number.at(0).at(j)*sequence_cost.at(0).at(j);
 			cost_on_sample.at(0)=cost_on_sample.at(0)+ creat_cost.at(0).at(j);
-			cout<<"creat cost of "<< dnastring::index_to_base(j)<<"  on reference1 is "<<  (al_base_number.at(0).at(j))*(sequence_cost.at(0).at(j))<<endl;
+	//		cout<<"creat cost of "<< dnastring::index_to_base(j)<<"  on reference1 is "<<  (al_base_number.at(0).at(j))*(sequence_cost.at(0).at(j))<<endl;
 			creat_cost.at(1).at(j)= al_base_number.at(1).at(j)*sequence_cost.at(1).at(j);
 			cost_on_sample.at(1)=cost_on_sample.at(1)+ creat_cost.at(1).at(j);			
-			cout<<"creat cost of "<< dnastring::index_to_base(j)<<"  on reference2 is "<<  al_base_number.at(1).at(j)*sequence_cost.at(1).at(j)<<endl;
+	//		cout<<"creat cost of "<< dnastring::index_to_base(j)<<"  on reference2 is "<<  al_base_number.at(1).at(j)*sequence_cost.at(1).at(j)<<endl;
 		}
-			cout<<"creat cost of the alignment on sample 1: "<< cost_on_sample.at(0);
-			cout<<"creat cost of the alignment on sample 2: "<< cost_on_sample.at(1);	
+	//		cout<<"creat cost of the alignment on sample 1: "<< cost_on_sample.at(0);
+	//		cout<<"creat cost of the alignment on sample 2: "<< cost_on_sample.at(1);	
 		
 		for(size_t j=0; j<6; j++){	
 			for (size_t k= 0; k<6; k++){

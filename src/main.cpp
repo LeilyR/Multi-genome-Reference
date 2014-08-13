@@ -170,6 +170,8 @@ int do_model(int argc, char * argv[]) {
 	m.alignment_modification();
 
 	initial_alignment_set<model> ias(data, m);
+	ias.compute(o);
+
 	exit(0);	
 //	for (size_t i =0 ; i<100 ; ++i)
 	//if(i>0 && i<34) continue;
@@ -279,7 +281,7 @@ int main(int argc, char * argv[]) {
 
 
 
-
+#include "model.cpp"
 #endif
 
 
