@@ -1826,7 +1826,7 @@ void overlap::remove_alignment(const pw_alignment * remove){
 		return gapOnSample1 || gapOnSample2;
 		}
 		
-	model::model(all_data & d): data(d),transform(6,vector<size_t>(6,1)),cost_on_acc (5, vector<double>(data.numAcc(),1)),modification(data.numAcc(), vector<vector<vector<double> > >(data.numAcc(),vector<vector<double> > (6, vector<double>(6,1) ))), cost_on_sample(2,0), modify_cost(2,0){}
+	model::model(all_data & d): data(d),transform(6,vector<size_t>(6,1)),cost_on_acc (5, vector<double>(data.numAcc(),1)),modification(data.numAcc(), vector<vector<vector<double> > >(data.numAcc(),vector<vector<double> > (6, vector<double>(6,1) ))), cost_on_sample(2,0), modify_cost(2,0),create_cost(2,vector<double>(5,1)){}
 
 	model::~model(){}
 
@@ -1882,7 +1882,7 @@ void overlap::remove_alignment(const pw_alignment * remove){
 	void model::cost_function( pw_alignment& p){
 		vector<vector<size_t> >al_base_number(2,vector<size_t>(6,1));
 		vector<vector<double> >sequence_cost(2,vector<double>(5,1));
-		vector<vector<double> >creat_cost(2,vector<double>(5,1));		
+	//	vector<vector<double> >creat_cost(2,vector<double>(5,1));		
 		vector<vector<vector<double> > > modification_cost(2,vector<vector<double> >(6,vector<double>(6,1)));
 	//	vector<double> cost_on_sample (2,0);
 		for(size_t i = 0 ; i < 5; i++){
@@ -1899,11 +1899,11 @@ void overlap::remove_alignment(const pw_alignment * remove){
 			al_base_number.at(1).at(s2) ++ ;
 				}
 		for(size_t j=0; j<5; j++){	
-			creat_cost.at(0).at(j)= al_base_number.at(0).at(j)*sequence_cost.at(0).at(j);
-			cost_on_sample.at(0)=cost_on_sample.at(0)+ creat_cost.at(0).at(j);
+			create_cost.at(0).at(j)= al_base_number.at(0).at(j)*sequence_cost.at(0).at(j);
+			cost_on_sample.at(0)=cost_on_sample.at(0)+ create_cost.at(0).at(j);
 			cout<<"creat cost of "<< dnastring::index_to_base(j)<<"  on reference1 is "<<  (al_base_number.at(0).at(j))*(sequence_cost.at(0).at(j))<<endl;
-			creat_cost.at(1).at(j)= al_base_number.at(1).at(j)*sequence_cost.at(1).at(j);
-			cost_on_sample.at(1)=cost_on_sample.at(1)+ creat_cost.at(1).at(j);			
+			create_cost.at(1).at(j)= al_base_number.at(1).at(j)*sequence_cost.at(1).at(j);
+			cost_on_sample.at(1)=cost_on_sample.at(1)+ create_cost.at(1).at(j);			
 			cout<<"creat cost of "<< dnastring::index_to_base(j)<<"  on reference2 is "<<  al_base_number.at(1).at(j)*sequence_cost.at(1).at(j)<<endl;
 		}
 			cout<<"creat cost of the alignment on sample 1: "<< cost_on_sample.at(0);
@@ -1919,12 +1919,37 @@ void overlap::remove_alignment(const pw_alignment * remove){
 		}	
 		p.set_cost(cost_on_sample, modify_cost);
 	}
-	vector<double> model::get_creat_cost(pw_alignment& p)const{
+	vector<double> model::get_create_cost(pw_alignment& p)const{
 		return cost_on_sample;
 	}
 	vector<double> model::get_modify_cost(pw_alignment& p)const{
 		return modify_cost;
 	}
+	vector<vector<double> >model::get_base_create_cost(pw_alignment& p)const{
+		return create_cost;
+	}
+	mc_model::mc_model(model& m): mod(m){}
+	mc_model::~mc_model(){}
+	void mc_model::markov_model(pw_alignment & p){
+		vector<vector<vector<size_t> > > base_number (2, vector<vector<size_t> >(5, vector<size_t>(5,0)));
+		vector<double> probability (2,0);
+		for(size_t i = 0 ; i< p.alignment_length(); i++ ){
+			char s1ch;
+			char s2ch;
+			p.alignment_col(i, s1ch, s2ch);
+			size_t s1 = dnastring::base_to_index(s1ch);
+			size_t s2 = dnastring::base_to_index(s2ch);
+			base_number.at(0).at(s1).at(s2) ++ ;
+			base_number.at(1).at(s1).at(s2) ++ ;
+			probability.at(0) = base_number.at(0).at(s1).at(s2);
+			probability.at(1) = base_number.at(1).at(s1).at(s2);
+
+				}
+		
+		}
+			
+	
+	
 
 
 
