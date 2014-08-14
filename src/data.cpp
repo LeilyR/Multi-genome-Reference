@@ -1462,7 +1462,15 @@ void overlap::remove_alignment(const pw_alignment * remove){
 		if(it !=alignments.end()) return true;	
 		else return false;	
 	}
-		
+	
+	
+size_t overlap::size() const {
+
+//	for(size_t i=0; i<als_on_reference.size(); i++) {
+//		cout << " ref " << i << " al start/end points: " << als_on_reference.at(i).size() << endl;
+//	}
+	return alignments.size();
+}
 		
 	splitpoints::splitpoints(const pw_alignment & p, const overlap & o, const all_data & d):overl(o), newal(p),data(d), split_points(d.numSequences()) {
 

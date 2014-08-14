@@ -105,6 +105,8 @@ public:
 	const multimap<size_t, pw_alignment*>& get_als_on_reference_const(size_t sequence) const ;
 	void test_multimaps()  ;
 	bool checkAlignments(pw_alignment* const p)const;
+
+	size_t size() const;
 private:
 	all_data & data;
 	set<pw_alignment*, compare_pw_alignment> alignments;

@@ -171,8 +171,12 @@ int do_model(int argc, char * argv[]) {
 
 	initial_alignment_set<model> ias(data, m);
 	ias.compute(o);
+	cout << "There are " << o.size() << " alignment parts without partial overlap" << endl;
 
 	exit(0);	
+
+// Old code after here:
+
 //	for (size_t i =0 ; i<100 ; ++i)
 	//if(i>0 && i<34) continue;
 	for (size_t i =0 ; i< data.numAlignments(); ++i){

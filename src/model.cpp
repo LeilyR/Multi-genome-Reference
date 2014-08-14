@@ -18,6 +18,8 @@ void initial_alignment_set<T>::compute_simple(overlap & o) {
 	size_t used = 0;
 	size_t not_used = 0;
 	double total_gain = 0;
+	size_t pcs_ins = 0;
+	size_t pcs_rem = 0;
 	for(size_t i=0; i<sorted_original_als.size(); ++i) {
 		const pw_alignment * al = sorted_original_als.at(i);
 		double gain_of_al = 0;
@@ -28,6 +30,7 @@ void initial_alignment_set<T>::compute_simple(overlap & o) {
 		al->print();
 	cout << endl;	
 		splitpoints spl(*al, o, data);
+		spl.find_initial_split_point();
 		spl.split_all(remove_als, insert_als);
 
 		for(alset::const_iterator it = remove_als.begin(); it!=remove_als.end(); ++it) {
@@ -49,9 +52,11 @@ void initial_alignment_set<T>::compute_simple(overlap & o) {
 			used++;
 			for(alset::const_iterator it = remove_als.begin(); it!=remove_als.end(); ++it) {
 				o.remove_alignment(*it);
+				pcs_rem++;
 			}	
 			for(size_t j=0; j<insert_als.size(); ++j) {
 				o.insert_without_partial_overlap(insert_als.at(j));
+				pcs_ins++;
 			}
 
 			total_gain+=gain_of_al;
@@ -65,6 +70,7 @@ void initial_alignment_set<T>::compute_simple(overlap & o) {
 	}
 
 	cout << "Used " << used << " alignments with total gain " << total_gain << " not used: " << not_used << endl;
+	cout << "pieces removed: " << pcs_rem << " pieces inserted: " << pcs_ins << endl;
 
 }
 
