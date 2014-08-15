@@ -698,9 +698,13 @@ all_data::~all_data() {
 		}	
 		al -> print();
 }
-	overlap::overlap(all_data & d): data(d), als_on_reference(d.numSequences()){
+
+
+	overlap::overlap(const all_data & d): data(d), als_on_reference(d.numSequences()){
 
 }
+
+	overlap::overlap(const overlap & o): data(o.data), als_on_reference(o.data.numSequences()){}
 
 
 	void overlap::split_partial_overlap(const pw_alignment * new_alignment, set<const pw_alignment*, compare_pw_alignment> & remove_alignments, vector<pw_alignment> & insert_alignments, size_t level) const {
@@ -1463,7 +1467,12 @@ void overlap::remove_alignment(const pw_alignment * remove){
 		else return false;	
 	}
 	
-	
+
+void overlap::connectedComponents(vector< set<pw_alignment, compare_pw_alignment> > & comps) const {
+
+}
+
+
 size_t overlap::size() const {
 
 //	for(size_t i=0; i<als_on_reference.size(); i++) {
@@ -1490,21 +1499,21 @@ size_t overlap::size() const {
 				al->get_lr1(alleft, alright);
 				if(alright >= left) canbreak = false;
 				if(alleft < left && left <= alright) {
-					cout<<"here1"<<endl;
+	//				cout<<"here1"<<endl;
 				//	cout<<"al: "<<endl;
 				//	al->print();
 					insert_split_point(sequence, left);
 				}
 				if(alleft <= right && right < alright) {
-					cout<<"here2"<<endl;
+	//				cout<<"here2"<<endl;
 				//	cout<<"al: "<<endl;
 				//	al->print();
 					insert_split_point(sequence, right+1);
 
 				}
 				if(left < alleft && alleft < right) {
-					cout<<"here3"<<endl;
-					cout<<"al: "<<endl;
+	//				cout<<"here3"<<endl;
+	//				cout<<"al: "<<endl;
 				/*	for(size_t col = 0; col < al->alignment_length(); col++) {
 						char c1;
 						char c2;
@@ -1519,7 +1528,7 @@ size_t overlap::size() const {
 
 				}
 				if(left < alright && alright < right) {
-					cout<<"here4"<<endl;
+		//			cout<<"here4"<<endl;
 				//	cout<<"al: "<<endl;
 				//	al->print();
 				//	cout<<"newal: "<<endl;
@@ -1546,12 +1555,12 @@ size_t overlap::size() const {
 				
 				}
 				if(alleft <= right && right < alright) {
-					cout<<"here6"<<endl;
+			//		cout<<"here6"<<endl;
 				//	al->print();
 					insert_split_point(sequence, right+1);
 				}
 				if(left < alleft && alleft < right) {
-					cout<<"here7"<<endl;
+			//		cout<<"here7"<<endl;
 				//	cout<<"al: "<<endl;
 				//	al->print();
 				//	cout<<"newal: "<<endl;
@@ -1559,7 +1568,7 @@ size_t overlap::size() const {
 					insert_split_point(sequence, alleft);
 				}
 				if(left < alright && alright < right) {
-					cout<<"here8"<<endl;
+			//		cout<<"here8"<<endl;
 				//	cout<<"al: "<<endl;
 				//	al->print();
 				//	cout<<"newal: "<<endl;
@@ -1657,7 +1666,7 @@ size_t overlap::size() const {
 					if(alleft>position){
 						break;
 					}
-					al->print(); 
+			//		al->print(); 
 				//	cout<<"position"<<position<<endl;
 				//	cout<<"alleft"<<alleft<<endl;
 				//	cout<<"alright"<<alright<<endl;
@@ -1762,14 +1771,14 @@ size_t overlap::size() const {
 			}
 		}
 
-		cout << " in split all "<< remove_alignments.size() << " remove_alignments " << endl;
+	//	cout << " in split all "<< remove_alignments.size() << " remove_alignments " << endl;
 				vector<pw_alignment>  split_pieces;
 				splits(&newal, split_pieces);	
 				for(set<const pw_alignment*,compare_pw_alignment>::iterator removed = remove_alignments.begin(); removed != remove_alignments.end(); ++removed){
 				splits(*removed, split_pieces);			
 			}
-		cout<<"split_pieces: "<<endl;
-		for(size_t i = 0 ; i < split_pieces.size();i++){split_pieces.at(i).print();}	
+	//	cout<<"split_pieces: "<<endl;
+	//	for(size_t i = 0 ; i < split_pieces.size();i++){split_pieces.at(i).print();}	
 //		cout<<"size of split pieces"<<split_pieces.size()<<endl;
 		set<pw_alignment*,compare_pw_alignment> inserted_pieces;
 		for(size_t i = 0; i<split_pieces.size();i++) {
@@ -1859,7 +1868,7 @@ size_t overlap::size() const {
 				}
 		for(size_t t=0; t<5;t++){
 				cost_on_acc.at(t).at(m)= cost_on_acc.at(t).at(m)/numbases;
-				cout<< "cost of base "<< t <<" on acc "<< m << " is "<< cost_on_acc.at(t).at(m)<<endl;
+			//	cout<< "cost of base "<< t <<" on acc "<< m << " is "<< cost_on_acc.at(t).at(m)<<endl;
 				}
 			}
 		}

@@ -27,12 +27,14 @@ LIBARGS =
 
 
 PROGS = graph
-OBJS = pw_alignment.o data.o model.o
+OBJS = pw_alignment.o data.o
+
+#model.o
 
 
 all: $(PROGS)
 
-graph: main.cpp $(OBJS) 
+graph: main.cpp $(OBJS) model.cpp model.hpp pw_alignment.hpp data.hpp
 	$(CXX) -o graph $(CXXFLAGS) $(INCLUDEARGS) main.cpp $(OBJS) $(LIBARGS)
 	
 pw_alignment.o: pw_alignment.cpp pw_alignment.hpp
@@ -41,8 +43,8 @@ pw_alignment.o: pw_alignment.cpp pw_alignment.hpp
 data.o: data.cpp pw_alignment.hpp data.hpp
 	$(CXX) -o data.o $(CXXFLAGS) $(INCLUDEARGS) -c data.cpp
 
-model.o: model.cpp pw_alignment.hpp data.hpp model.hpp
-	$(CXX) -o model.o $(CXXFLAGS) $(INCLUDEARGS) -c model.cpp
+#model.o: model.cpp pw_alignment.hpp data.hpp model.hpp
+#	$(CXX) -o model.o $(CXXFLAGS) $(INCLUDEARGS) -c model.cpp
 
 clean:
 	@-rm -f $(PROGS) *.o *.so *.a *~

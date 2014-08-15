@@ -65,6 +65,7 @@ class all_data {
 		void print_ref(const pw_alignment * al)const;
 		vector<size_t> getAcc(string accName)const;//return the vector of all sequences for a certain acc.
 		size_t accNumber(size_t sequence_id);
+
 	
 	private:
 		// data
@@ -90,7 +91,8 @@ class all_data {
 
 class overlap{
 public:
-	overlap(all_data&);
+	overlap(const all_data&);
+	overlap(const overlap & o);
 	~overlap();
 	void split_partial_overlap(const pw_alignment * new_alignment, set<const pw_alignment*, compare_pw_alignment> & remove_alignments, vector<pw_alignment> & insert_alignments, size_t level) const;
 	void insert_without_partial_overlap(const pw_alignment & p);
@@ -106,9 +108,11 @@ public:
 	void test_multimaps()  ;
 	bool checkAlignments(pw_alignment* const p)const;
 
+	void connectedComponents(vector< set<pw_alignment, compare_pw_alignment> > & comps) const;
+
 	size_t size() const;
 private:
-	all_data & data;
+	const all_data & data;
 	set<pw_alignment*, compare_pw_alignment> alignments;
 	vector< multimap< size_t, pw_alignment *> > als_on_reference; // sequence index -> pos on that sequence -> alignment reference
 

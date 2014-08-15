@@ -109,8 +109,8 @@ void pw_alignment::split(bool sample, size_t position, pw_alignment & first_part
 					first_part.setend2(getbegin2()+position+s-s2-getbegin1()-1);
 				}
 				else{
-					cout<<"s: "<<s<<endl;
-					cout<<"s2: "<<s2<<endl;
+		//			cout<<"s: "<<s<<endl;
+		//			cout<<"s2: "<<s2<<endl;
 					first_part.setend2(getbegin2()-position-s+s2+getbegin1()+1);
 				}
 				
@@ -132,7 +132,7 @@ void pw_alignment::split(bool sample, size_t position, pw_alignment & first_part
 				if(getbegin2()<getend2()){
 					second_part.setbegin2(getbegin2()+first_part.alignment_length()-s2);
 				}
-				else{ cout<<"hey"<<endl;							
+				else{// cout<<"hey"<<endl;							
 					second_part.setbegin2(getbegin2()-first_part.alignment_length()+s2);
 				}
 				second_part.setend1(getend1());
@@ -307,7 +307,7 @@ void pw_alignment::split(bool sample, size_t position, pw_alignment & first_part
 				sps1.at(3*(i-getbegin2()+position-s-1)+2) = samples.at(0).at(3*i+2);
 				sps2.at(3*(i-getbegin2()+position-s-1)+2) = samples.at(1).at(3*i+2);
 			}
-			cout<<"sample size: "<<samples.at(1).size()<< "first part size: "<< fps2.size()<<endl;
+	//		cout<<"sample size: "<<samples.at(1).size()<< "first part size: "<< fps2.size()<<endl;
 			sps1.resize(samples.at(1).size()-fps2.size());
 			sps2.resize(samples.at(1).size()-fps2.size());
 			second_part.set_alignment_bits(sps1,sps2);

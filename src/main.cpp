@@ -156,27 +156,62 @@ int do_model(int argc, char * argv[]) {
 		cerr << "Parameters:" << endl;
 		cerr << "* fasta file from fasta_prepare" << endl;
 		cerr << "* maf file containing alignments of sequences contained in the fasta file" << endl;
+		cerr << "* number of threads to use (optional, default 10)" << endl;
 	}
 
 	string fastafile(argv[2]);
 	string maffile(argv[3]);
+	size_t num_threads = 1;
+	if(argc == 5) {
+		num_threads = atoi(argv[4]);
+	}
+	
+// Read all data
+	all_data data(fastafile, maffile);
 	
 
-	all_data data(fastafile, maffile);
-	overlap o(data);
+
+// Find connected components of alignments with some overlap
+	compute_cc cccs(data);
+	vector<set< const pw_alignment *, compare_pw_alignment> > ccs;
+	cccs.compute(ccs);
+	cout << " Found " << ccs.size() << " connected components" << endl;
+	for(size_t i=0; i<ccs.size(); i++) {
+		cout << "Connected component "<< i << " contains " << ccs.at(i).size() << " alignments" << endl;
+	}
+
+// Train the model on all data
 	model m(data);
-	size_t inserted = 0;
 	m.acc_base_frequency();
 	m.alignment_modification();
 
-	initial_alignment_set<model> ias(data, m);
-	ias.compute(o);
-	cout << "There are " << o.size() << " alignment parts without partial overlap" << endl;
+
+	vector<overlap> cc_overlap(ccs.size(), overlap(data));
+	// base cost to use an alignment (information need for its adress)
+	double cluster_base_cost = 0; //-log(data.numAlignments());
+// Select an initial alignment set for each connected component (in parallel)
+#pragma omp parallel for num_threads(num_threads) schedule(dynamic)
+	for(size_t i=0; i<ccs.size(); ++i) {
+		set< const pw_alignment *, compare_pw_alignment> & cc = ccs.at(i);
+		initial_alignment_set<model> ias(data, cc, m, cluster_base_cost);
+		ias.compute(cc_overlap.at(i));
+#pragma omp critical
+{
+		cout << "cc " << i << ": from " << cc.size() << " original als with total gain " << ias.get_max_gain() << " we made " << cc_overlap.at(i).size() << " pieces with total gain " << ias.get_result_gain() << endl; 
+}
+	
+	}
+
+//	initial_alignment_set<model> ias(data, m);
+//	ias.compute(o);
+//	cout << "There are " << o.size() << " alignment parts without partial overlap" << endl;
 
 	exit(0);	
 
 // Old code after here:
-
+	size_t inserted = 0;
+	overlap o(data);
+//	model m(data);
 //	for (size_t i =0 ; i<100 ; ++i)
 	//if(i>0 && i<34) continue;
 	for (size_t i =0 ; i< data.numAlignments(); ++i){
