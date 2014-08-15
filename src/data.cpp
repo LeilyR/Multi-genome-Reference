@@ -419,12 +419,6 @@ all_data::all_data(string fasta_all_sequences, string maf_all_alignments) {
 							als_on_reference.at(idx2).insert(make_pair(start2, alidx));
 
 
-							if(!alignment_fits_ref(&al)) {
-
-								
-								exit(1);
-							}
-
 						}
 
 					} else {
@@ -1826,7 +1820,7 @@ void overlap::remove_alignment(const pw_alignment * remove){
 		return gapOnSample1 || gapOnSample2;
 		}
 		
-	model::model(all_data & d): data(d),transform(6,vector<size_t>(6,1)),cost_on_acc (5, vector<double>(data.numAcc(),1)),modification(data.numAcc(), vector<vector<vector<double> > >(data.numAcc(),vector<vector<double> > (6, vector<double>(6,1) ))), cost_on_sample(2,0), modify_cost(2,0),create_cost(2,vector<double>(5,1)){}
+	model::model(all_data & d): data(d),transform(6,vector<size_t>(6,1)),cost_on_acc (5, vector<double>(data.numAcc(),1)),modification(data.numAcc(), vector<vector<vector<double> > >(data.numAcc(),vector<vector<double> > (6, vector<double>(6,1) ))) {}
 
 	model::~model(){}
 
@@ -1879,10 +1873,28 @@ void overlap::remove_alignment(const pw_alignment * remove){
 		}
 	}
 
-	void model::cost_function( pw_alignment& p){
+	void model::cost_function( pw_alignment& p) const {
+		vector<double> cost_on_sample(2);
+		vector<double> modify_cost(2);
+		double c1;
+		double c2;
+		double m1;
+		double m2;
+		cost_function(p, c1, c2, m1, m2);
+		cost_on_sample.at(0) = c1;
+		cost_on_sample.at(1) = c2;
+		modify_cost.at(0) = m1;
+		modify_cost.at(1) = m2;
+		p.set_cost(cost_on_sample, modify_cost);
+	}
+
+	void model::cost_function(const pw_alignment& p, double & c1, double & c2, double & m1, double & m2) const {
+
+		vector<double> cost_on_sample(2,0);
+		vector<double> modify_cost(2,0);
 		vector<vector<size_t> >al_base_number(2,vector<size_t>(6,1));
 		vector<vector<double> >sequence_cost(2,vector<double>(5,1));
-	//	vector<vector<double> >creat_cost(2,vector<double>(5,1));		
+		vector<vector<double> >create_cost(2,vector<double>(5,1));		
 		vector<vector<vector<double> > > modification_cost(2,vector<vector<double> >(6,vector<double>(6,1)));
 	//	vector<double> cost_on_sample (2,0);
 		for(size_t i = 0 ; i < 5; i++){
@@ -1917,39 +1929,141 @@ void overlap::remove_alignment(const pw_alignment * remove){
 				modify_cost.at(1)= modify_cost.at(1)+ modification_cost.at(1).at(j).at(k);
 			}
 		}	
-		p.set_cost(cost_on_sample, modify_cost);
-	}
-	vector<double> model::get_create_cost(pw_alignment& p)const{
-		return cost_on_sample;
-	}
-	vector<double> model::get_modify_cost(pw_alignment& p)const{
-		return modify_cost;
-	}
-	vector<vector<double> >model::get_base_create_cost(pw_alignment& p)const{
-		return create_cost;
-	}
-	mc_model::mc_model(model& m): mod(m){}
-	mc_model::~mc_model(){}
-	void mc_model::markov_model(pw_alignment & p){
-		vector<vector<vector<size_t> > > base_number (2, vector<vector<size_t> >(5, vector<size_t>(5,0)));
-		vector<double> probability (2,0);
-		for(size_t i = 0 ; i< p.alignment_length(); i++ ){
-			char s1ch;
-			char s2ch;
-			p.alignment_col(i, s1ch, s2ch);
-			size_t s1 = dnastring::base_to_index(s1ch);
-			size_t s2 = dnastring::base_to_index(s2ch);
-			base_number.at(0).at(s1).at(s2) ++ ;
-			base_number.at(1).at(s1).at(s2) ++ ;
-			probability.at(0) = base_number.at(0).at(s1).at(s2);
-			probability.at(1) = base_number.at(1).at(s1).at(s2);
+	
+		c1 = cost_on_sample.at(0);
+		c2 = cost_on_sample.at(1);
+		m1 = modify_cost.at(0);
+		m2 = modify_cost.at(1);
 
+	}
+	void model::gain_function(const pw_alignment& p, double & g1, double & g2) const {
+
+		double c1;
+		double c2;
+		double m1;
+		double m2;
+		cost_function(p, c1, c2, m1, m2);
+		/*
+				computing the gain:
+				without using the alignment: we pay c1 + c2
+				using the alignment: we pay c1 + m1 (or c2 + m2)
+				the gain of using the alignment is: c2 - m1 
+
+		*/
+		g1 = c2 - m1;
+		g2 = c1 - m2;
+
+	}
+
+	
+	mc_model::mc_model(all_data & d):data(d){}
+	mc_model::~mc_model(){}
+	void mc_model::markov_chain(){
+		size_t level = 2;
+		vector<map <string, vector<double> > > successive_bases;
+		for(size_t k = 0; k < data.numSequences(); k++){
+			size_t acc = data.accNumber(k);
+			for(size_t i = 0 ; i< data.getSequence(k).length(); i++ ){
+				char schr = data.getSequence(k).at(i);
+				size_t s = dnastring::base_to_index(schr);
+				stringstream context;		
+				for(size_t j = level; j>0; j--){
+					char rchr;
+					if(i-level >= 0){					
+						rchr = data.getSequence(k).at(i-level);
+					}else{
+						rchr = 'A';
+					}
+					context << rchr;
+				}
+				string seq;
+				context>>seq;
+				map <string, vector<double> >::iterator it= successive_bases.at(acc).find(seq);
+				if(it==successive_bases.at(acc).end()) {
+					successive_bases.at(acc).insert(make_pair(seq, vector<double>(0)));
+					it= successive_bases.at(acc).find(seq);
+				}
+				it->second.at(s)++;
+				
+			}
+			/*for(size_t i =0; i<base_number.size();i++){
+				size_t total = 0;
+				total = base_number.at(acc).at(i)+total;	
+				vector<double> base_frequency(5,0);
+				base_frequency.at(i) = base_number.at(acc).at(i)/total_base_number_on_acc.at(acc);
+				it->second.push_back(base_number.at(acc).at(i)/total* base_frequency.at(i));
+
+			}*/
+		}
+		for(size_t i =0 ; i< data.numAcc(); i++){
+			size_t total;
+			for(map <string, vector<double> >::iterator it= successive_bases.at(i).begin();it!=successive_bases.at(i).end();it++){
+				string seq = it->first;
+				vector<double> & base = successive_bases.at(i).at(seq);
+				for(size_t j = 0; j<5;j++){
+					total += base.at(j);
 				}
 		
+				for(size_t k=0; k<5;k++){
+				base.at(k) = -log2(base.at(k)/total);
+				}
+			}	
 		}
 			
-	
-	
 
 
+	}
+	
+	void mc_model::markov_chain_alignment(){
+		vector<vector<map <string, vector<double> > > >successive_bases;
+		for(size_t k = 0; k < data.numAlignments(); k++){
+			size_t left1;
+			size_t left2;
+			size_t right1;
+			size_t right2;
+			size_t level =2;
+			size_t acc1 = data.getAlignment(k).getreference1();
+			size_t acc2 = data.getAlignment(k).getreference2();
+			for(size_t i = 0; i<data.getAlignment(k).alignment_length(); i++){
+				char s1chr = data.getAlignment(k).getsample1().at(i);
+				char s2chr = data.getAlignment(k).getsample1().at(i);
+				size_t s1 = dnastring::base_to_index(s1chr);
+				size_t s2 = dnastring::base_to_index(s2chr);
+				data.getAlignment(k).get_lr1(left1,right1);
+				data.getAlignment(k).get_lr2(left2,right2);
+				stringstream context1;		
+				stringstream context2;		
+				for(size_t j = level; j>0; j--){
+					char r1chr;
+					char r2chr;
+					if(left1+i-level >= 0){					
+						r1chr = data.getAlignment(k).getsample1().at(left1+i-level);
+
+					}else{
+						r1chr = 'A';
+					}
+					if(left2+i-level >= 0){					
+						r2chr = data.getAlignment(k).getsample2().at(left2+i-level);
+
+					}else{
+						r2chr = 'A';
+					}
+
+					context1 << r1chr;
+					context2 << r2chr;
+				}
+				string seq1;
+				string seq2;
+				context1 >> seq1;
+				context2 >> seq2;
+
+
+
+			}
+
+		}		
+	
+	}			
+	
+	
 

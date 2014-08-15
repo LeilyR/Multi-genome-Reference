@@ -6,6 +6,7 @@
 #include <math.h> 
 #include "pw_alignment.hpp"
 #include "data.hpp"
+#include "model.hpp"
 
 using namespace std;
 
@@ -167,7 +168,9 @@ int do_model(int argc, char * argv[]) {
 	size_t inserted = 0;
 	m.acc_base_frequency();
 	m.alignment_modification();
-	
+
+	initial_alignment_set<model> ias(data, m);
+	exit(0);	
 //	for (size_t i =0 ; i<100 ; ++i)
 	//if(i>0 && i<34) continue;
 	for (size_t i =0 ; i< data.numAlignments(); ++i){

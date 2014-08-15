@@ -616,4 +616,16 @@ bool compare_pw_alignment::operator()(const pw_alignment *const &a, const pw_ali
 	}
 
 
+	double pw_alignment::get_create1() const {
+		return create_costs.at(0);
+	}
+	double pw_alignment::get_create2() const {
+		return create_costs.at(1);
+	}
+	double pw_alignment::get_modify1() const {
+		return modify_costs.at(0);
+	}
+	double pw_alignment::get_modify2() const {
+		return modify_costs.at(1);
+	}
 	

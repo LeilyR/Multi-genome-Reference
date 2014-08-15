@@ -57,6 +57,11 @@ class pw_alignment {
 
 	void set_cost(vector<double> create, vector<double> modify);
 
+	double get_create1() const;
+	double get_create2() const;
+	double get_modify1() const;
+	double get_modify2() const;
+
 	private:
 	vector<vector<bool> > samples;
 	vector<size_t> begins;

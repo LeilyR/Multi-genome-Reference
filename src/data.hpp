@@ -144,28 +144,25 @@ public:
 	~model();
 	void acc_base_frequency();
 	void alignment_modification();
-	void cost_function(pw_alignment& p);
-	vector<double> get_create_cost(pw_alignment& p)const;
-	vector<double> get_modify_cost(pw_alignment& p)const;
-	vector<vector<double> > get_base_create_cost(pw_alignment& p)const;
+	void cost_function(pw_alignment& p) const;
+	void cost_function(const pw_alignment& p, double & c1, double & c2, double & m1, double & m2) const ;
+	void gain_function(const pw_alignment& p, double & g1, double & g2) const;
+
 private:
 	all_data & data;
 	vector<vector<size_t> > transform;
 	vector<vector<double> > cost_on_acc;
 	vector<vector<vector<vector<double> > > >modification;
-	vector<double> cost_on_sample;
-	vector<double> modify_cost;
-	vector<vector<double> > create_cost;
 };
 	class mc_model{
 	public:
-		mc_model(model&);
+		mc_model(all_data&);
 		~mc_model();	
-		void markov_model(pw_alignment & p);
-private:
-	model& mod;
-
-};
+		void markov_chain();
+		void markov_chain_alignment();
+	private:
+		all_data & data;
+	};
 
 
 
