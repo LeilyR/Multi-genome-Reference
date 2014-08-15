@@ -28,6 +28,15 @@ void initial_alignment_set<T>::compute_simple(overlap & o) {
 		const pw_alignment * al = sorted_original_als.at(i);
 		double gain_of_al = 0;
 
+		// TODO remove
+		double gain1, gain2;
+		model.gain_function(*(sorted_original_als.at(i)), gain1, gain2);
+		gain1-=base_cost;
+		cout << endl<< "at alignment " << i << " length " << al->alignment_length() << " al base gain " << gain1 << endl;
+		al->print();
+		cout << endl;
+
+
 		alset remove_als;
 		vector<pw_alignment> insert_als;
 //		cout << " splitpoints on: " << al << " at " << i <<  " size " <<sorted_original_als.size()<< endl; 
@@ -43,7 +52,12 @@ void initial_alignment_set<T>::compute_simple(overlap & o) {
 			model.gain_function(*(*it), g1, g2);
 		//	if(g2<g1) g1 = g2;
 			g1-=base_cost;
+			cout << "r " << (*it)->alignment_length() << " r " << g1 << endl;
 			gain_of_al -= g1;
+
+			(*it)->print();
+			cout << endl;
+
 		}	
 		for(size_t j=0; j<insert_als.size(); ++j) {
 			double g1;
@@ -51,9 +65,14 @@ void initial_alignment_set<T>::compute_simple(overlap & o) {
 			model.gain_function(insert_als.at(j), g1, g2);
 		//	if(g1<g2) g1 = g2;
 			g1-=base_cost;
+			cout << "i " << (insert_als.at(j)).alignment_length() << " g " << g1 << endl;
 			gain_of_al += g1;
+
+			insert_als.at(j).print();
+			cout << endl;
+
 		}
-//		cout << " al " << i << " rem " << remove_als.size() << " insert " << insert_als.size() << " gain " << gain_of_al << endl;	
+		cout << " al " << i << " rem " << remove_als.size() << " insert " << insert_als.size() << " gain " << gain_of_al << endl;	
 		if(gain_of_al>=0) {
 			used++;
 			for(alset::const_iterator it = remove_als.begin(); it!=remove_als.end(); ++it) {

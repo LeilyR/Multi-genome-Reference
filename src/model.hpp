@@ -21,7 +21,7 @@ class initial_alignment_set {
 	
 			double gain1, gain2;
 			model.gain_function(*cur, gain1, gain2);
-			if(gain2 > gain1) gain1 = gain2;
+		//	if(gain2 > gain1) gain1 = gain2;
 
 			sorter.insert(make_pair(gain1, cur));
 
@@ -37,7 +37,7 @@ class initial_alignment_set {
 			sorted_original_als.at(pos) = alit;
 			pos++;
 		}
-		max_gain = sumgain;
+		max_gain = sumgain - sorter.size() * base_cost;
 		assert(pos == sorter.size());
 		cout << " " << sorter.size() << " input alignments, total gain: " << sumgain << " bit " << endl;
 	}
@@ -50,7 +50,7 @@ class initial_alignment_set {
 	
 			double gain1, gain2;
 			model.gain_function(*cur, gain1, gain2);
-			if(gain2 > gain1) gain1 = gain2;
+		//	if(gain2 > gain1) gain1 = gain2;
 
 			sorter.insert(make_pair(gain1, cur));
 
@@ -63,7 +63,7 @@ class initial_alignment_set {
 			sorted_original_als.at(pos) = alit;
 			pos++;
 		}
-		max_gain = sumgain;
+		max_gain = sumgain - sorter.size() * base_cost;
 		assert(pos == sorter.size());
 		cout << " " << sorter.size() << " input alignments, total gain: " << sumgain << " bit " << endl;
 	}

@@ -188,7 +188,8 @@ int do_model(int argc, char * argv[]) {
 
 	vector<overlap> cc_overlap(ccs.size(), overlap(data));
 	// base cost to use an alignment (information need for its adress)
-	double cluster_base_cost = 0; //-log(data.numAlignments());
+	double cluster_base_cost = log(data.numAlignments());
+	cout << " base cost " << cluster_base_cost << endl;
 // Select an initial alignment set for each connected component (in parallel)
 #pragma omp parallel for num_threads(num_threads) schedule(dynamic)
 	for(size_t i=0; i<ccs.size(); ++i) {
