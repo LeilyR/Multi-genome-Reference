@@ -1986,15 +1986,7 @@ void overlap::remove_alignment(const pw_alignment * remove){
 				it->second.at(s)++;
 				
 			}
-			/*for(size_t i =0; i<base_number.size();i++){
-				size_t total = 0;
-				total = base_number.at(acc).at(i)+total;	
-				vector<double> base_frequency(5,0);
-				base_frequency.at(i) = base_number.at(acc).at(i)/total_base_number_on_acc.at(acc);
-				it->second.push_back(base_number.at(acc).at(i)/total* base_frequency.at(i));
-
-			}*/
-		}
+					}
 		for(size_t i =0 ; i< data.numAcc(); i++){
 			size_t total;
 			for(map <string, vector<double> >::iterator it= successive_bases.at(i).begin();it!=successive_bases.at(i).end();it++){
@@ -2016,12 +2008,15 @@ void overlap::remove_alignment(const pw_alignment * remove){
 	
 	void mc_model::markov_chain_alignment(){
 		vector<vector<map <string, vector<double> > > >successive_bases;
+		vector<size_t> keep_length;
+		vector<size_t> keeps;
 		for(size_t k = 0; k < data.numAlignments(); k++){
 			size_t left1;
 			size_t left2;
 			size_t right1;
 			size_t right2;
 			size_t level =2;
+			size_t n = 0;
 			size_t acc1 = data.getAlignment(k).getreference1();
 			size_t acc2 = data.getAlignment(k).getreference2();
 			for(size_t i = 0; i<data.getAlignment(k).alignment_length(); i++){
@@ -2029,6 +2024,18 @@ void overlap::remove_alignment(const pw_alignment * remove){
 				char s2chr = data.getAlignment(k).getsample1().at(i);
 				size_t s1 = dnastring::base_to_index(s1chr);
 				size_t s2 = dnastring::base_to_index(s2chr);
+				for(size_t j = 0; j<data.getAlignment(k).alignment_length(); j++){
+					char q1chr = data.getAlignment(k).getsample1().at(j);
+					size_t q1 = dnastring::base_to_index(q1chr);
+					char q2chr = data.getAlignment(k).getsample2().at(j);
+					size_t q2 = dnastring::base_to_index(q2chr);
+					if(s1 == s2){	
+						n +=1;
+					}else{ 
+						if(i!=0) keep_length.at(i-1)= n;
+						else keep_length.at(0)=0;
+					}
+					if(q1 == q2) n+=1;
 				data.getAlignment(k).get_lr1(left1,right1);
 				data.getAlignment(k).get_lr2(left2,right2);
 				stringstream context1;		
@@ -2056,12 +2063,43 @@ void overlap::remove_alignment(const pw_alignment * remove){
 				string seq2;
 				context1 >> seq1;
 				context2 >> seq2;
-
-
-
+				map <string, vector<double> >::iterator it1= successive_bases.at(acc1).at(acc2).find(seq1);
+					if(it1==successive_bases.at(acc1).at(acc2).end()) {
+						successive_bases.at(acc1).at(acc2).insert(make_pair(seq1, vector<double>(0)));
+						it1= successive_bases.at(acc1).at(acc2).find(seq1);
+					}
+				it1->second.at(s2)++;
+				map <string, vector<double> >::iterator it2= successive_bases.at(acc2).at(acc2).find(seq2);
+					if(it2==successive_bases.at(acc2).at(acc2).end()) {
+						successive_bases.at(acc2).at(acc1).insert(make_pair(seq2, vector<double>(0)));
+						it2= successive_bases.at(acc2).at(acc1).find(seq2);
+					}
+				it2->second.at(s1)++;
+				}
 			}
-
-		}		
+			for(size_t m=0; m<keep_length.size();m++){
+				if (keep_length.at(m)!=0){
+					keeps.push_back(keep_length.at(m));
+				}
+			}	
+		}
+		for(size_t i =0 ; i< data.numAcc(); i++){
+			for(size_t j = 0; j < data.numAcc(); j++){
+				size_t total;
+				for(map <string, vector<double> >::iterator it= successive_bases.at(i).at(j).begin();it!=successive_bases.at(i).at(j).end();it++){
+					string seq = it->first;
+					vector<double> & base = successive_bases.at(i).at(j).at(seq);
+					for(size_t m = 0; m<6;m++){
+						total += base.at(m);
+					}
+		
+					for(size_t k=0; k<6;k++){
+						base.at(k) = -log2(base.at(k)/total);
+					}
+				}
+			}	
+		}
+		
 	
 	}			
 	
