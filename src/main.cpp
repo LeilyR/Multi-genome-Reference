@@ -3,12 +3,19 @@
 #include <fstream>
 #include <sstream>
 #include <map>
-#include <math.h> 
+#include <math.h>
+#include<ostream>
+#include<vector>
+//#include "/ebio/abt6/lrabbani/Downloads/dlib/dlib/entropy_encoder.h"
 #include "pw_alignment.hpp"
 #include "data.hpp"
 #include "model.hpp"
 
+
+
 using namespace std;
+//using namespace dlib;
+
 
 #define TEST 0
 
@@ -156,22 +163,82 @@ int do_model(int argc, char * argv[]) {
 		cerr << "Parameters:" << endl;
 		cerr << "* fasta file from fasta_prepare" << endl;
 		cerr << "* maf file containing alignments of sequences contained in the fasta file" << endl;
+		cerr << "* number of threads to use (optional, default 10)" << endl;
 	}
 
 	string fastafile(argv[2]);
 	string maffile(argv[3]);
+	size_t num_threads = 1;
+	if(argc == 5) {
+		num_threads = atoi(argv[4]);
+	}
 	
-
+// Read all data
 	all_data data(fastafile, maffile);
-	overlap o(data);
-	model m(data);
-	size_t inserted = 0;
-	m.acc_base_frequency();
-	m.alignment_modification();
+/*	overlap ol(data);
 
-	initial_alignment_set<model> ias(data, m);
-	exit(0);	
-//	for (size_t i =0 ; i<100 ; ++i)
+
+// Find connected components of alignments with some overlap
+	compute_cc cccs(data);
+	vector<set< const pw_alignment *, compare_pw_alignment> > ccs;
+	cccs.compute(ccs);
+	cout << " Found " << ccs.size() << " connected components" << endl;
+	for(size_t i=0; i<ccs.size(); i++) {
+		cout << "Connected component "<< i << " contains " << ccs.at(i).size() << " alignments" << endl;
+	}
+// Train the model on all data
+//	model m(data);
+	mc_model m(data);
+//	entropy_encoder_kernel_1 k();
+//	m.acc_base_frequency();
+//	m.alignment_modification();
+	m.markov_chain();
+	m.markov_chain_alignment();
+	clustering c(ol,data,m);
+
+	vector<overlap> cc_overlap(ccs.size(), overlap(data));
+	// base cost to use an alignment (information need for its adress)
+	double cluster_base_cost = log(data.numAlignments());
+	cout << " base cost " << cluster_base_cost << endl;
+// Select an initial alignment set for each connected component (in parallel)
+#pragma omp parallel for num_threads(num_threads) schedule(dynamic)
+	for(size_t i=0; i<ccs.size(); ++i) {
+		set< const pw_alignment *, compare_pw_alignment> & cc = ccs.at(i);
+		initial_alignment_set<mc_model> ias(data, cc, m, cluster_base_cost);
+		ias.compute(cc_overlap.at(i));
+#pragma omp critical
+{
+		cout << "cc " << i << ": from " << cc.size() << " original als with total gain " << ias.get_max_gain() << " we made " << cc_overlap.at(i).size() << " pieces with total gain " << ias.get_result_gain() << endl; 
+}
+	
+				
+	//	for(set< const pw_alignment *, compare_pw_alignment>::iterator it=cc.begin();it!=cc.end();it++ ){
+	//		const pw_alignment *al = *it;
+	//		al->getreference1();
+	//		k.getstream();
+
+	//	}
+	}
+
+//	c.calculate_similarity();
+//	c.update_values();
+//	c.update_clusters();
+
+//	initial_alignment_set<model> ias(data, m);
+//	ias.compute(o);
+//	cout << "There are " << o.size() << " alignment parts without partial overlap" << endl;
+
+	exit(0);*/	
+
+// Old code after here:
+	size_t inserted = 0;
+	overlap o(data);
+	mc_model m(data);
+	m.markov_chain();
+	m.markov_chain_alignment();
+	clustering c(o,data,m);
+
+//	for (size_t i =0 ; i<50 ; ++i)
 	//if(i>0 && i<34) continue;
 	for (size_t i =0 ; i< data.numAlignments(); ++i){
 	const pw_alignment & p = data.getAlignment(i);
@@ -210,7 +277,7 @@ size_t removesize = remove_alignments.size();
 		o.insert_without_partial_overlap(insert_alignments.at(j));
 		inserted++;
 		insert_alignments.at(j).print();
-		m.cost_function(insert_alignments.at(j));
+	//	m.cost_function(insert_alignments.at(j));
 		
 		}
 size_t removed = 0;
@@ -224,14 +291,14 @@ size_t removed = 0;
 	assert(removed == removesize);
 //	cout << " inserted " << inserted << endl;
 //	o.test_all();
-	cout<<"all the alignments: "<<endl;
+//	cout<<"all the alignments: "<<endl;
 //	o.print_all_alignment();
 //	o.test_multimaps();
 	}	
 	cout << " inserted " << inserted << endl;
 //	o.test_overlap();
 
-
+	
 
 /*
 	
@@ -247,6 +314,10 @@ size_t removed = 0;
 }
 */		
 	o.test_all_part();
+	c.calculate_similarity();
+	c.update_values();
+	c.update_clusters();
+
 	
 	
 	return 0;
@@ -279,7 +350,7 @@ int main(int argc, char * argv[]) {
 
 
 
-
+#include "model.cpp"
 #endif
 
 

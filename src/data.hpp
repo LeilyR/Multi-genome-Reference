@@ -10,6 +10,7 @@
 #include <set>
 #include<map>
 #include <math.h> 
+#include <algorithm>
 
 
 #include "pw_alignment.hpp"
@@ -65,6 +66,7 @@ class all_data {
 		void print_ref(const pw_alignment * al)const;
 		vector<size_t> getAcc(string accName)const;//return the vector of all sequences for a certain acc.
 		size_t accNumber(size_t sequence_id);
+
 	
 	private:
 		// data
@@ -90,7 +92,8 @@ class all_data {
 
 class overlap{
 public:
-	overlap(all_data&);
+	overlap(const all_data&);
+	overlap(const overlap & o);
 	~overlap();
 	void split_partial_overlap(const pw_alignment * new_alignment, set<const pw_alignment*, compare_pw_alignment> & remove_alignments, vector<pw_alignment> & insert_alignments, size_t level) const;
 	void insert_without_partial_overlap(const pw_alignment & p);
@@ -105,12 +108,14 @@ public:
 	const multimap<size_t, pw_alignment*>& get_als_on_reference_const(size_t sequence) const ;
 	void test_multimaps()  ;
 	bool checkAlignments(pw_alignment* const p)const;
+
+	void connectedComponents(vector< set<pw_alignment, compare_pw_alignment> > & comps) const;
+
+	size_t size() const;
 private:
-	all_data & data;
+	const all_data & data;
 	set<pw_alignment*, compare_pw_alignment> alignments;
 	vector< multimap< size_t, pw_alignment *> > als_on_reference; // sequence index -> pos on that sequence -> alignment reference
-
-
 
 
 	
@@ -120,7 +125,7 @@ private:
 
 class splitpoints {
 	public:
-	splitpoints(const pw_alignment & , const overlap &, all_data &);
+	splitpoints(const pw_alignment & , const overlap &, const all_data &);
 	~splitpoints();
 	void find_initial_split_points(size_t sequence, size_t left, size_t right);
 	void find_initial_split_point();//initial split points
@@ -128,11 +133,14 @@ class splitpoints {
 	void split_all(set<const pw_alignment*, compare_pw_alignment> & remove_alignments, vector<pw_alignment> & insert_alignments);
 	void splits(const pw_alignment * p,  vector<pw_alignment> & insert_alignments);
 	bool onlyGapSample(const pw_alignment* p);
+	 vector<pw_alignment>  get_insert () const;
+
 	private:
 	const overlap & overl;
 	const pw_alignment & newal;
-	all_data & data;
+	const all_data & data;
 	vector<set<size_t> > split_points;
+	vector<pw_alignment> insert_alignments;	
 
 	
 };
@@ -160,8 +168,13 @@ private:
 		~mc_model();	
 		void markov_chain();
 		void markov_chain_alignment();
+		void cost_function(const pw_alignment& p, double & c1, double & c2, double & m1, double & m2) const;
+		void gain_function(const pw_alignment& p, double & g1, double & g2) const;
 	private:
 		all_data & data;
+	vector<map <string, vector<double> > > sequence_successive_bases;
+	vector<vector<double> >modification_cost;
+	vector<vector<double> > create_cost;
 	};
 
 

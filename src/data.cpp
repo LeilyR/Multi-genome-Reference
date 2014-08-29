@@ -698,9 +698,13 @@ all_data::~all_data() {
 		}	
 		al -> print();
 }
-	overlap::overlap(all_data & d): data(d), als_on_reference(d.numSequences()){
+
+
+	overlap::overlap(const all_data & d): data(d), als_on_reference(d.numSequences()){
 
 }
+
+	overlap::overlap(const overlap & o): data(o.data), als_on_reference(o.data.numSequences()){}
 
 
 	void overlap::split_partial_overlap(const pw_alignment * new_alignment, set<const pw_alignment*, compare_pw_alignment> & remove_alignments, vector<pw_alignment> & insert_alignments, size_t level) const {
@@ -1462,9 +1466,19 @@ void overlap::remove_alignment(const pw_alignment * remove){
 		if(it !=alignments.end()) return true;	
 		else return false;	
 	}
+	
+
+
+
+size_t overlap::size() const {
+
+//	for(size_t i=0; i<als_on_reference.size(); i++) {
+//		cout << " ref " << i << " al start/end points: " << als_on_reference.at(i).size() << endl;
+//	}
+	return alignments.size();
+}
 		
-		
-	splitpoints::splitpoints(const pw_alignment & p, const overlap & o, all_data & d):overl(o), newal(p),data(d), split_points(d.numSequences()) {
+	splitpoints::splitpoints(const pw_alignment & p, const overlap & o, const all_data & d):overl(o), newal(p),data(d), split_points(d.numSequences()) {
 
 		}
 
@@ -1480,9 +1494,9 @@ void overlap::remove_alignment(const pw_alignment * remove){
 				size_t alleft;
 				size_t alright;
 				al->get_lr1(alleft, alright);
-				if(alright >= left) canbreak = false;
+				if(alleft > right) canbreak = false;
 				if(alleft < left && left <= alright) {
-					cout<<"here1"<<endl;
+	//				cout<<"here1"<<endl;
 				//	cout<<"al: "<<endl;
 				//	al->print();
 					insert_split_point(sequence, left);
@@ -1495,8 +1509,8 @@ void overlap::remove_alignment(const pw_alignment * remove){
 
 				}
 				if(left < alleft && alleft < right) {
-					cout<<"here3"<<endl;
-					cout<<"al: "<<endl;
+	//				cout<<"here3"<<endl;
+	//				cout<<"al: "<<endl;
 				/*	for(size_t col = 0; col < al->alignment_length(); col++) {
 						char c1;
 						char c2;
@@ -1513,7 +1527,7 @@ void overlap::remove_alignment(const pw_alignment * remove){
 				if(left < alright && alright < right) {
 					cout<<"here4"<<endl;
 				//	cout<<"al: "<<endl;
-				//	al->print();
+					al->print();
 				//	cout<<"newal: "<<endl;
 				//	newal.print();
 					insert_split_point(sequence, alright+1);
@@ -1526,7 +1540,7 @@ void overlap::remove_alignment(const pw_alignment * remove){
 				size_t alleft;
 				size_t alright;
 				al->get_lr2(alleft, alright);
-				if(alright >= left) canbreak = false;
+				if(alleft > right) canbreak = false;
 				if(alleft < left && left <= alright) {
 				//	cout<<"here5"<<endl;
 				//	cout<<"al: "<<endl;
@@ -1553,7 +1567,7 @@ void overlap::remove_alignment(const pw_alignment * remove){
 				if(left < alright && alright < right) {
 					cout<<"here8"<<endl;
 				//	cout<<"al: "<<endl;
-				//	al->print();
+					al->print();
 				//	cout<<"newal: "<<endl;
 				//	newal.print();
 					insert_split_point(sequence, alright+1);
@@ -1614,18 +1628,19 @@ void overlap::remove_alignment(const pw_alignment * remove){
 					size_t spright2;
 					newal.split(true, position, fp, sp);
 					sp.get_lr2(spleft2, spright2);
-					insert_split_point(sequence, spleft2);
+					insert_split_point(newal.getreference2(), spleft2);
 				}
 			}
 			if(newal.getreference2()==sequence) {
 				if(left2<position && right2>=position) {
+				//	cout<<"HERE!!"<<endl;
 					pw_alignment fp;
 					pw_alignment sp;
 					size_t spleft1;
 					size_t spright1;
 					newal.split(false, position, fp, sp);
 					sp.get_lr1(spleft1, spright1);
-					insert_split_point(sequence, spleft1);
+					insert_split_point(newal.getreference1(), spleft1);
 				}
 			}
 
@@ -1649,7 +1664,7 @@ void overlap::remove_alignment(const pw_alignment * remove){
 					if(alleft>position){
 						break;
 					}
-					al->print(); 
+			//		al->print(); 
 				//	cout<<"position"<<position<<endl;
 				//	cout<<"alleft"<<alleft<<endl;
 				//	cout<<"alright"<<alright<<endl;
@@ -1668,6 +1683,7 @@ void overlap::remove_alignment(const pw_alignment * remove){
 						if(sp.getreference1()==sequence) {
 							insert_split_point(sp.getreference2(), sp.getbegin2());
 						} else {
+						//	cout<<"Heya!!!"<<endl;
 							insert_split_point(sp.getreference1(), sp.getbegin1());
 						}
 					//}
@@ -1728,8 +1744,6 @@ void overlap::remove_alignment(const pw_alignment * remove){
 		for(size_t i = 0; i <data.numSequences();i++){
 			const multimap<size_t, pw_alignment *> & als_on_ref = overl.get_als_on_reference_const(i);
 			for(set<size_t>::iterator split = split_points.at(i).begin(); split!= split_points.at(i).end(); ++split){
-			//cout<< "split points: "<< *split<<endl;
-			//	cout << " multimap size " << als_on_ref.size();
 				for(multimap<size_t, pw_alignment*>::const_iterator it =als_on_ref.lower_bound(*split); it!=als_on_ref.end(); ++it){
 					pw_alignment * p = it-> second;
 					size_t pleft1;
@@ -1739,7 +1753,6 @@ void overlap::remove_alignment(const pw_alignment * remove){
 					p->get_lr1(pleft1,pright1);
 					p->get_lr1(pleft2,pright2);
 					if( pleft1<*split && pright1>*split){
-					//	pw_alignment *np = new pw_alignment(*p);
 						remove_alignments.insert(p);
 					//	cout<<"remove alignment1: "<<endl;
 					//	p->print();
@@ -1754,14 +1767,14 @@ void overlap::remove_alignment(const pw_alignment * remove){
 			}
 		}
 
-		cout << " in split all "<< remove_alignments.size() << " remove_alignments " << endl;
-				vector<pw_alignment>  split_pieces;
-				splits(&newal, split_pieces);	
-				for(set<const pw_alignment*,compare_pw_alignment>::iterator removed = remove_alignments.begin(); removed != remove_alignments.end(); ++removed){
-				splits(*removed, split_pieces);			
-			}
-		cout<<"split_pieces: "<<endl;
-		for(size_t i = 0 ; i < split_pieces.size();i++){split_pieces.at(i).print();}	
+	//	cout << " in split all "<< remove_alignments.size() << " remove_alignments " << endl;
+		vector<pw_alignment>  split_pieces;
+		splits(&newal, split_pieces);	
+		for(set<const pw_alignment*,compare_pw_alignment>::iterator removed = remove_alignments.begin(); removed != remove_alignments.end(); ++removed){
+			splits(*removed, split_pieces);			
+		}
+	//	cout<<"split_pieces: "<<endl;
+	//	for(size_t i = 0 ; i < split_pieces.size();i++){split_pieces.at(i).print();}	
 //		cout<<"size of split pieces"<<split_pieces.size()<<endl;
 		set<pw_alignment*,compare_pw_alignment> inserted_pieces;
 		for(size_t i = 0; i<split_pieces.size();i++) {
@@ -1790,18 +1803,15 @@ void overlap::remove_alignment(const pw_alignment * remove){
 		size_t right2;
 		p->get_lr1(left1,right1);
 		p->get_lr1(left2,right2);
-		for(set<size_t>::iterator splitp = split_points.at(p->getreference1()).upper_bound(left1); splitp!= split_points.at(p->getreference1()).end(); ++splitp){
-						if(right1>=*splitp){
-							p->split(true,*splitp,p1,p2);
-						//	cout<<"splitted parts: "<<endl;
-						//	p1.print();
-						//	p2.print();
-							p = &p2;
-							if(!onlyGapSample(&p1)){	
-								insert_alignments.push_back(p1);
-							}
-						}
-						else break;
+		for(set<size_t>::iterator splitp = split_points.at(p->getreference1()).upper_bound(left1); splitp!= split_points.at(p->getreference1()).end(); splitp++){
+			if(right1>=*splitp){
+				p->split(true,*splitp,p1,p2);
+				p = &p2;
+				if(!onlyGapSample(&p1)){	
+					insert_alignments.push_back(p1);
+				}
+			}
+			else break;
 		}
 		if(!onlyGapSample(p)){	
 			insert_alignments.push_back(*p);		
@@ -1819,6 +1829,9 @@ void overlap::remove_alignment(const pw_alignment * remove){
 		}
 		return gapOnSample1 || gapOnSample2;
 		}
+	vector<pw_alignment>  splitpoints::get_insert()const{
+		return insert_alignments;
+	}
 		
 	model::model(all_data & d): data(d),transform(6,vector<size_t>(6,1)),cost_on_acc (5, vector<double>(data.numAcc(),1)),modification(data.numAcc(), vector<vector<vector<double> > >(data.numAcc(),vector<vector<double> > (6, vector<double>(6,1) ))) {}
 
@@ -1846,7 +1859,7 @@ void overlap::remove_alignment(const pw_alignment * remove){
 				}
 		for(size_t t=0; t<5;t++){
 				cost_on_acc.at(t).at(m)= cost_on_acc.at(t).at(m)/numbases;
-				cout<< "cost of base "<< t <<" on acc "<< m << " is "<< cost_on_acc.at(t).at(m)<<endl;
+			//	cout<< "cost of base "<< t <<" on acc "<< m << " is "<< cost_on_acc.at(t).at(m)<<endl;
 				}
 			}
 		}
@@ -1913,13 +1926,13 @@ void overlap::remove_alignment(const pw_alignment * remove){
 		for(size_t j=0; j<5; j++){	
 			create_cost.at(0).at(j)= al_base_number.at(0).at(j)*sequence_cost.at(0).at(j);
 			cost_on_sample.at(0)=cost_on_sample.at(0)+ create_cost.at(0).at(j);
-			cout<<"creat cost of "<< dnastring::index_to_base(j)<<"  on reference1 is "<<  (al_base_number.at(0).at(j))*(sequence_cost.at(0).at(j))<<endl;
+	//		cout<<"creat cost of "<< dnastring::index_to_base(j)<<"  on reference1 is "<<  (al_base_number.at(0).at(j))*(sequence_cost.at(0).at(j))<<endl;
 			create_cost.at(1).at(j)= al_base_number.at(1).at(j)*sequence_cost.at(1).at(j);
 			cost_on_sample.at(1)=cost_on_sample.at(1)+ create_cost.at(1).at(j);			
-			cout<<"creat cost of "<< dnastring::index_to_base(j)<<"  on reference2 is "<<  al_base_number.at(1).at(j)*sequence_cost.at(1).at(j)<<endl;
+	//		cout<<"creat cost of "<< dnastring::index_to_base(j)<<"  on reference2 is "<<  al_base_number.at(1).at(j)*sequence_cost.at(1).at(j)<<endl;
 		}
-			cout<<"creat cost of the alignment on sample 1: "<< cost_on_sample.at(0);
-			cout<<"creat cost of the alignment on sample 2: "<< cost_on_sample.at(1);	
+	//		cout<<"creat cost of the alignment on sample 1: "<< cost_on_sample.at(0);
+	//		cout<<"creat cost of the alignment on sample 2: "<< cost_on_sample.at(1);	
 		
 		for(size_t j=0; j<6; j++){	
 			for (size_t k= 0; k<6; k++){
@@ -1956,11 +1969,11 @@ void overlap::remove_alignment(const pw_alignment * remove){
 	}
 
 	
-	mc_model::mc_model(all_data & d):data(d){}
+	mc_model::mc_model(all_data & d):data(d), sequence_successive_bases(data.numAcc()), modification_cost( data.numAcc(),vector<double>(data.numAcc(),1)), create_cost(data.numAcc(),vector<double>(5,1)){}
 	mc_model::~mc_model(){}
 	void mc_model::markov_chain(){
 		size_t level = 2;
-		vector<map <string, vector<double> > > successive_bases;
+	//	vector<vector<double> >create_cost(data.numAcc(),vector<double>(5,1));		
 		for(size_t k = 0; k < data.numSequences(); k++){
 			size_t acc = data.accNumber(k);
 			for(size_t i = 0 ; i< data.getSequence(k).length(); i++ ){
@@ -1969,37 +1982,42 @@ void overlap::remove_alignment(const pw_alignment * remove){
 				stringstream context;		
 				for(size_t j = level; j>0; j--){
 					char rchr;
-					if(i-level >= 0){					
-						rchr = data.getSequence(k).at(i-level);
+					signed long temp = i - level;
+					if(temp >= 0){
+						rchr = data.getSequence(k).at(i-j);
 					}else{
 						rchr = 'A';
+
 					}
 					context << rchr;
 				}
 				string seq;
 				context>>seq;
-				map <string, vector<double> >::iterator it= successive_bases.at(acc).find(seq);
-				if(it==successive_bases.at(acc).end()) {
-					successive_bases.at(acc).insert(make_pair(seq, vector<double>(0)));
-					it= successive_bases.at(acc).find(seq);
+				map <string, vector<double> >::iterator it= sequence_successive_bases.at(acc).find(seq);
+				if(it==sequence_successive_bases.at(acc).end()) {
+					sequence_successive_bases.at(acc).insert(make_pair(seq, vector<double>(5,1)));
+					it= sequence_successive_bases.at(acc).find(seq);
 				}
 				it->second.at(s)++;
 				
 			}
 					}
 		for(size_t i =0 ; i< data.numAcc(); i++){
-			size_t total;
-			for(map <string, vector<double> >::iterator it= successive_bases.at(i).begin();it!=successive_bases.at(i).end();it++){
+			int total;
+			for(map <string, vector<double> >::iterator it= sequence_successive_bases.at(i).begin();it!=sequence_successive_bases.at(i).end();it++){
 				string seq = it->first;
-				vector<double> & base = successive_bases.at(i).at(seq);
+				vector<double> & base = sequence_successive_bases.at(i).at(seq);
 				for(size_t j = 0; j<5;j++){
 					total += base.at(j);
+			//	cout<<"base: "<<base.at(0)<<endl;
 				}
-		
+		//	cout<<"totalnumber of bases for each seq:  "<< total<<endl;
 				for(size_t k=0; k<5;k++){
 				base.at(k) = -log2(base.at(k)/total);
+				create_cost.at(i).at(k) += base.at(k);
 				}
-			}	
+			//	cout<<"cr_cost: "<<base.at(0) <<endl;		
+			}
 		}
 			
 
@@ -2007,9 +2025,13 @@ void overlap::remove_alignment(const pw_alignment * remove){
 	}
 	
 	void mc_model::markov_chain_alignment(){
-		vector<vector<map <string, vector<double> > > >successive_bases;
-		vector<size_t> keep_length;
-		vector<size_t> keeps;
+	//	vector<vector<double> >modification_cost( data.numAcc(),vector<double>(data.numAcc(),1));
+	//	vector<vector<size_t> >al_base_number(2,vector<size_t>(6,1));
+		vector<vector<map <string, vector<double> > > >successive_bases(data.numAcc(),vector<map <string, vector<double> > >(data.numAcc()));
+		vector<vector<vector<size_t> > >keep_length(data.numAcc(),vector<vector<size_t> >(data.numAcc(),vector<size_t>(32,0)));
+		vector<vector<size_t> >  deletion(data.numAcc(),vector<size_t>(data.numAcc(),0));
+		vector<vector<size_t> >  insertion(data.numAcc(),vector<size_t>(data.numAcc(),0));
+		vector<vector<size_t> >  different_base(data.numAcc(),vector<size_t>(data.numAcc(),0));
 		for(size_t k = 0; k < data.numAlignments(); k++){
 			size_t left1;
 			size_t left2;
@@ -2017,25 +2039,47 @@ void overlap::remove_alignment(const pw_alignment * remove){
 			size_t right2;
 			size_t level =2;
 			size_t n = 0;
-			size_t acc1 = data.getAlignment(k).getreference1();
-			size_t acc2 = data.getAlignment(k).getreference2();
+			size_t acc1 = data.accNumber(data.getAlignment(k).getreference1());
+			size_t acc2 = data.accNumber(data.getAlignment(k).getreference2());
 			for(size_t i = 0; i<data.getAlignment(k).alignment_length(); i++){
-				char s1chr = data.getAlignment(k).getsample1().at(i);
-				char s2chr = data.getAlignment(k).getsample1().at(i);
+				uint32_t klength = 0;
+				char s1chr;
+				char s2chr;
+				data.getAlignment(k).alignment_col(i, s1chr, s2chr);				
 				size_t s1 = dnastring::base_to_index(s1chr);
 				size_t s2 = dnastring::base_to_index(s2chr);
-				for(size_t j = 0; j<data.getAlignment(k).alignment_length(); j++){
-					char q1chr = data.getAlignment(k).getsample1().at(j);
-					size_t q1 = dnastring::base_to_index(q1chr);
-					char q2chr = data.getAlignment(k).getsample2().at(j);
-					size_t q2 = dnastring::base_to_index(q2chr);
-					if(s1 == s2){	
-						n +=1;
-					}else{ 
-						if(i!=0) keep_length.at(i-1)= n;
-						else keep_length.at(0)=0;
+				if(s1 == s2){	
+					for(size_t j = i+n; j<data.getAlignment(k).alignment_length(); j++){
+						char q1chr;
+						char q2chr;
+						data.getAlignment(k).alignment_col(j, q1chr, q2chr);				
+						size_t q1 = dnastring::base_to_index(q1chr);
+						size_t q2 = dnastring::base_to_index(q2chr);
+						if(q1 == q2){
+							n+=1;
+							klength +=1;
+						}else break;
 					}
-					if(q1 == q2) n+=1;
+					uint32_t initial = 1;
+					for (uint32_t m = 0; m <32 ; m++){
+						uint32_t power_of_two = initial << m; 
+						if((klength & power_of_two) !=0){
+						//cout<<"power: "<< m <<endl;
+						keep_length.at(acc1).at(acc2).at(m)++;
+						//cout<<"keep: "<<keep_length.at(acc1).at(acc2).at(m)<<endl; 
+						}
+					}
+				}else{	
+					if((s1!=5) & (s2!=5)){
+						different_base.at(acc1).at(acc2)++;
+					}
+					if(s1==5){
+						insertion.at(acc1).at(acc2)++;
+					}
+					if(s2==5){
+						deletion.at(acc1).at(acc2)++;
+					}
+				}
 				data.getAlignment(k).get_lr1(left1,right1);
 				data.getAlignment(k).get_lr2(left2,right2);
 				stringstream context1;		
@@ -2043,15 +2087,15 @@ void overlap::remove_alignment(const pw_alignment * remove){
 				for(size_t j = level; j>0; j--){
 					char r1chr;
 					char r2chr;
-					if(left1+i-level >= 0){					
-						r1chr = data.getAlignment(k).getsample1().at(left1+i-level);
-
+					signed long temp1 =left1 + i - level;
+					signed long temp2 =left2 + i - level;										
+					if(temp1>= 0){	
+						r1chr = data.getSequence(data.getAlignment(k).getreference1()).at(left1+i-j);//not necessarily on the alignment but on the reference sequence. 
 					}else{
 						r1chr = 'A';
 					}
-					if(left2+i-level >= 0){					
-						r2chr = data.getAlignment(k).getsample2().at(left2+i-level);
-
+					if(temp2 >= 0){	
+						r2chr = data.getSequence(data.getAlignment(k).getreference2()).at(left2+i-j);
 					}else{
 						r2chr = 'A';
 					}
@@ -2065,43 +2109,75 @@ void overlap::remove_alignment(const pw_alignment * remove){
 				context2 >> seq2;
 				map <string, vector<double> >::iterator it1= successive_bases.at(acc1).at(acc2).find(seq1);
 					if(it1==successive_bases.at(acc1).at(acc2).end()) {
-						successive_bases.at(acc1).at(acc2).insert(make_pair(seq1, vector<double>(0)));
+						successive_bases.at(acc1).at(acc2).insert(make_pair(seq1, vector<double>(6,1)));
 						it1= successive_bases.at(acc1).at(acc2).find(seq1);
 					}
 				it1->second.at(s2)++;
 				map <string, vector<double> >::iterator it2= successive_bases.at(acc2).at(acc2).find(seq2);
 					if(it2==successive_bases.at(acc2).at(acc2).end()) {
-						successive_bases.at(acc2).at(acc1).insert(make_pair(seq2, vector<double>(0)));
+						successive_bases.at(acc2).at(acc1).insert(make_pair(seq2, vector<double>(6,1)));
 						it2= successive_bases.at(acc2).at(acc1).find(seq2);
 					}
 				it2->second.at(s1)++;
-				}
 			}
-			for(size_t m=0; m<keep_length.size();m++){
-				if (keep_length.at(m)!=0){
-					keeps.push_back(keep_length.at(m));
-				}
-			}	
+							
 		}
-		for(size_t i =0 ; i< data.numAcc(); i++){
-			for(size_t j = 0; j < data.numAcc(); j++){
-				size_t total;
-				for(map <string, vector<double> >::iterator it= successive_bases.at(i).at(j).begin();it!=successive_bases.at(i).at(j).end();it++){
-					string seq = it->first;
-					vector<double> & base = successive_bases.at(i).at(j).at(seq);
-					for(size_t m = 0; m<6;m++){
-						total += base.at(m);
-					}
+			
+			for(size_t i =0 ; i< data.numAcc(); i++){
+				for(size_t j = 0; j < data.numAcc(); j++){
+					size_t total;
+					for(map <string, vector<double> >::iterator it= successive_bases.at(i).at(j).begin();it!=successive_bases.at(i).at(j).end();it++){
+						string seq = it->first;
+						vector<double> & base = successive_bases.at(i).at(j).at(seq);
+						for(size_t m = 0; m<6;m++){
+							total += base.at(m);
+						}
 		
-					for(size_t k=0; k<6;k++){
-						base.at(k) = -log2(base.at(k)/total);
+						for(size_t k=0; k<6;k++){
+							base.at(k) = -log2(base.at(k)/total);
+						modification_cost.at(i).at(j) += base.at(k);
+						}
 					}
-				}
-			}	
-		}
-		
+				}	
+			}
+				
 	
 	}			
 	
-	
+	void mc_model::cost_function(const pw_alignment& p, double & c1, double & c2, double & m1, double & m2) const{
+		vector<double> cost_on_sample(2,0);
+		vector<vector<size_t> >al_base_number(2,vector<size_t>(6,1));
+		char s1chr;
+		char s2chr;
+		for(size_t i = 0; i<p.alignment_length(); i++){
+			p.alignment_col(i, s1chr, s2chr);				
+			size_t s1 = dnastring::base_to_index(s1chr);
+			size_t s2 = dnastring::base_to_index(s2chr);
+			al_base_number.at(0).at(s1) ++ ;
+			al_base_number.at(1).at(s2) ++ ;
+		}
+		size_t acc1 = data.accNumber(p.getreference1());
+		size_t acc2 = data.accNumber(p.getreference2());
+		for(size_t m = 0; m<5;m++){
+			cost_on_sample.at(0) += al_base_number.at(0).at(m) * create_cost.at(acc1).at(m);
+			cost_on_sample.at(1) += al_base_number.at(1).at(m) * create_cost.at(acc2).at(m);
 
+				}
+
+		c1 = cost_on_sample.at(0);
+		c2 = cost_on_sample.at(1);
+		m1 = modification_cost.at(acc1).at(acc2);
+		m2 = modification_cost.at(acc2).at(acc1);
+
+		
+	}
+	void mc_model::gain_function(const pw_alignment& p, double & g1, double & g2) const{
+		double c1;
+		double c2;
+		double m1;
+		double m2;
+		cost_function(p, c1, c2, m1, m2);
+		g1 = c2 - m1;
+		g2 = c1 - m2;
+
+	}
