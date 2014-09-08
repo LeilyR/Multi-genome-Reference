@@ -156,7 +156,9 @@ int do_fasta_prepare(int argc, char * argv[]) {
 
 
 int do_model(int argc, char * argv[]) {
-
+	typedef model use_model;
+	typedef clustering<use_model> use_clustering;
+	typedef initial_alignment_set<use_model> use_ias;
 	if(argc < 4) {
 		usage();
 		cerr << "Program: model" << endl;
@@ -175,7 +177,7 @@ int do_model(int argc, char * argv[]) {
 	
 // Read all data
 	all_data data(fastafile, maffile);
-/*	overlap ol(data);
+	overlap ol(data);
 
 
 // Find connected components of alignments with some overlap
@@ -187,24 +189,23 @@ int do_model(int argc, char * argv[]) {
 		cout << "Connected component "<< i << " contains " << ccs.at(i).size() << " alignments" << endl;
 	}
 // Train the model on all data
-//	model m(data);
-	mc_model m(data);
+	use_model m(data);
+	m.train();
+//	mc_model m(data);
 //	entropy_encoder_kernel_1 k();
-//	m.acc_base_frequency();
-//	m.alignment_modification();
-	m.markov_chain();
-	m.markov_chain_alignment();
-	clustering c(ol,data,m);
+//	m.markov_chain();
+//	m.markov_chain_alignment();
+	use_clustering clust(ol,data,m);
 
 	vector<overlap> cc_overlap(ccs.size(), overlap(data));
 	// base cost to use an alignment (information need for its adress)
-	double cluster_base_cost = log(data.numAlignments());
+	double cluster_base_cost = log2(data.numAlignments());
 	cout << " base cost " << cluster_base_cost << endl;
 // Select an initial alignment set for each connected component (in parallel)
 #pragma omp parallel for num_threads(num_threads) schedule(dynamic)
 	for(size_t i=0; i<ccs.size(); ++i) {
 		set< const pw_alignment *, compare_pw_alignment> & cc = ccs.at(i);
-		initial_alignment_set<mc_model> ias(data, cc, m, cluster_base_cost);
+		use_ias ias(data, cc, m, cluster_base_cost);
 		ias.compute(cc_overlap.at(i));
 #pragma omp critical
 {
@@ -228,9 +229,10 @@ int do_model(int argc, char * argv[]) {
 //	ias.compute(o);
 //	cout << "There are " << o.size() << " alignment parts without partial overlap" << endl;
 
-	exit(0);*/	
+	exit(0);	
 
 // Old code after here:
+	/*
 	size_t inserted = 0;
 	overlap o(data);
 	mc_model m(data);
@@ -261,7 +263,7 @@ int do_model(int argc, char * argv[]) {
 }
 */
 	
-		
+/*		
 	//	const pw_alignment * s = & (data.getAlignment());
 		set<const pw_alignment*, compare_pw_alignment> remove_alignments;
 		vector<pw_alignment> insert_alignments;
@@ -312,14 +314,16 @@ size_t removed = 0;
 				o.split_partial_overlap(s, remove_alignments, insert_alignments);
 		}
 }
-*/		
+*		
 	o.test_all_part();
 	c.calculate_similarity();
 	c.update_values();
 	c.update_clusters();
 
 	
-	
+*/
+
+
 	return 0;
 }
 

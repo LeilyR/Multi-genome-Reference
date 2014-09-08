@@ -707,457 +707,6 @@ all_data::~all_data() {
 	overlap::overlap(const overlap & o): data(o.data), als_on_reference(o.data.numSequences()){}
 
 
-	void overlap::split_partial_overlap(const pw_alignment * new_alignment, set<const pw_alignment*, compare_pw_alignment> & remove_alignments, vector<pw_alignment> & insert_alignments, size_t level) const {
-/*
-	data.alignment_fits_ref(new_alignment);
-	pw_alignment p1;
-	pw_alignment p2;
-	pw_alignment p3;
-	pw_alignment p4;
-
-	cout << "INS " << level<< endl;
-	new_alignment->print();
-
-	
-	if(new_alignment->alignment_length()>1){
-
-	const multimap<size_t , pw_alignment *> & alignments_on_reference1 = als_on_reference.at(new_alignment->getreference1());
-
-	const multimap<size_t , pw_alignment *> & alignments_on_reference2 = als_on_reference.at(new_alignment->getreference2());
-
-
-	size_t leftinsert1 = new_alignment->getbegin1();
-	size_t rightinsert1 = new_alignment->getend1();
-	if(new_alignment->getend1() < leftinsert1) {
-		leftinsert1 = new_alignment->getend1();
-		rightinsert1 = new_alignment->getbegin1();
-	}
-	multimap<size_t, pw_alignment*>::const_iterator allalignit1 = alignments_on_reference1.lower_bound(leftinsert1);
-
-
-	if(allalignit1 == alignments_on_reference1.end()) allalignit1 = alignments_on_reference1.begin();
-	bool overlap_found = false;
-	for(; allalignit1 != alignments_on_reference1.end(); ++allalignit1) {
-		const pw_alignment * al1 = allalignit1->second;
-
-		pw_alignment cal1(*al1);
-	//	pw_alignment * nal1 = new pw_alignment(*al1);
-		set<const pw_alignment*, compare_pw_alignment> ::const_iterator it1 = remove_alignments.find(&cal1) ;
-		if(it1!= remove_alignments.end()) {
-			cout << "al1 was already removed " << endl;
-		}
-		if (it1 == remove_alignments.end()){
-		size_t alleft1;
-		size_t alright1;
-		alleft1 = al1->getbegin1();
-		alright1 = al1->getend1();
-		if(alleft1 > al1->getend1()) {
-		alleft1 = al1->getend1();
-		alright1 = al1->getbegin1();
-		}
-			
-		if( allalignit1->second->getreference1() == new_alignment->getreference1()){
-
-		if(leftinsert1 < alright1 && rightinsert1 > alleft1) {
-			if (leftinsert1 > alleft1 && rightinsert1 > alright1){
-				overlap_found = true;
-				pw_alignment * nal1 = new pw_alignment(*al1);
-				al1->split (true,leftinsert1,p1,p2);
-				remove_alignments.insert(nal1);				
-				new_alignment->split(true,alright1+1,p3,p4);
-				split_partial_overlap(&p1,remove_alignments,insert_alignments, level + 1);
-				split_partial_overlap(&p2,remove_alignments,insert_alignments, level + 1);
-				split_partial_overlap(&p3,remove_alignments,insert_alignments, level + 1);
-				split_partial_overlap(&p4,remove_alignments,insert_alignments, level + 1);
-				}
-			if (leftinsert1 > alleft1 && rightinsert1 == alright1){
-				overlap_found = true;
-				pw_alignment * nal1 = new pw_alignment(*al1);
-				al1->split (true,leftinsert1,p1,p2);
-				remove_alignments.insert(nal1);
-				insert_alignments.push_back(*new_alignment);
-				insert_alignments.push_back(p2);
-				split_partial_overlap(&p1,remove_alignments,insert_alignments, level + 1);
-				}
-			if (leftinsert1 == alleft1 && rightinsert1 > alright1){
-				overlap_found = true;
-				new_alignment->split(true,alright1+1,p3,p4);
-				insert_alignments.push_back(*al1);
-				split_partial_overlap(&p3,remove_alignments,insert_alignments, level + 1);
-				split_partial_overlap(&p4,remove_alignments,insert_alignments, level + 1);
-				}
-			 
-			if (leftinsert1 < alleft1 && rightinsert1 < alright1){
-				overlap_found = true;
-				pw_alignment * nal1 = new pw_alignment(*al1);
-				new_alignment->split (true,alleft1,p1,p2);
-				al1->split(true,rightinsert1+1,p3,p4);
-				remove_alignments.insert(nal1);
-				split_partial_overlap(&p1,remove_alignments,insert_alignments, level + 1);
-				split_partial_overlap(&p2,remove_alignments,insert_alignments, level + 1);
-				split_partial_overlap(&p3,remove_alignments,insert_alignments, level + 1);
-				split_partial_overlap(&p4,remove_alignments,insert_alignments, level + 1);
-				}
-			if (leftinsert1 < alleft1 && rightinsert1 == alright1){
-				overlap_found = true;
-				new_alignment->split (true,alleft1,p1,p2);
-				insert_alignments.push_back(*al1);
-				split_partial_overlap(&p1,remove_alignments,insert_alignments, level + 1);
-				}
-			if (leftinsert1 == alleft1 && rightinsert1 < alright1){
-				overlap_found = true;
-				pw_alignment * nal1 = new pw_alignment(*al1);
-				al1->split(true,rightinsert1+1,p3,p4);
-				remove_alignments.insert(nal1);	
-				insert_alignments.push_back(*new_alignment);
-				insert_alignments.push_back(p3);
-				split_partial_overlap(&p4,remove_alignments,insert_alignments, level + 1);
-				}
-
-
-			if (leftinsert1 > alleft1 && rightinsert1 < alright1){
-				overlap_found = true;
-				pw_alignment * nal1 = new pw_alignment(*al1);
-				al1->split (true,leftinsert1,p1,p2);
-				size_t oldsize = remove_alignments.size();
-				remove_alignments.insert(nal1);		
-				assert(oldsize+1== remove_alignments.size());		
-				p2.split(true,rightinsert1+1,p3,p4);
-				insert_alignments.push_back(*new_alignment);
-				split_partial_overlap(&p1,remove_alignments,insert_alignments, level + 1);
-				split_partial_overlap(&p3,remove_alignments,insert_alignments, level + 1);
-				split_partial_overlap(&p4,remove_alignments,insert_alignments, level + 1);
-				}
-		
-
-			if (leftinsert1 < alleft1 && rightinsert1 > alright1){
-				overlap_found = true;
-				new_alignment->split (true,alleft1,p1,p2);
-				p2.split(true,alright1+1,p3,p4);
-				insert_alignments.push_back(*al1);
-				split_partial_overlap(&p1,remove_alignments,insert_alignments, level + 1);
-				split_partial_overlap(&p3,remove_alignments,insert_alignments, level + 1);
-				split_partial_overlap(&p4,remove_alignments,insert_alignments, level + 1);
-				
-				}
-					
-		}
-
-		else break;	
-		}
-		else {
-			assert(al1->getreference2() == new_alignment->getreference1());
-
-		if(leftinsert1 < alright1 && rightinsert1 > alleft1) {
-			if (leftinsert1 > alleft1 && rightinsert1 > alright1){
-				overlap_found = true;
-				pw_alignment * nal1 = new pw_alignment(*al1);
-				al1->split (false,leftinsert1,p1,p2);
-				remove_alignments.insert(nal1);				
-				new_alignment -> split(true,alright1+1,p3,p4);
-				split_partial_overlap(&p1,remove_alignments,insert_alignments, level + 1);
-				split_partial_overlap(&p2,remove_alignments,insert_alignments, level + 1);
-				split_partial_overlap(&p3,remove_alignments,insert_alignments, level + 1);
-				split_partial_overlap(&p4,remove_alignments,insert_alignments, level + 1);
-				}
-			if (leftinsert1 > alleft1 && rightinsert1 == alright1){
-				overlap_found = true;
-				pw_alignment * nal1 = new pw_alignment(*al1);
-				al1->split (false,leftinsert1,p1,p2);
-				remove_alignments.insert(nal1);
-				insert_alignments.push_back(*new_alignment);
-				split_partial_overlap(&p1,remove_alignments,insert_alignments, level + 1);
-				split_partial_overlap(&p2,remove_alignments,insert_alignments, level + 1);
-				}
-			if (leftinsert1 == alleft1 && rightinsert1 > alright1){
-				overlap_found = true;
-				insert_alignments.push_back(*al1);		
-				new_alignment -> split(true,alright1+1,p3,p4);
-				split_partial_overlap(&p3,remove_alignments,insert_alignments, level + 1);
-				split_partial_overlap(&p4,remove_alignments,insert_alignments, level + 1);
-				}
-
-
-			if (leftinsert1 < alleft1 && rightinsert1 < alright1){
-				overlap_found = true;
-				pw_alignment * nal1 = new pw_alignment(*al1);
-				new_alignment->split (true,alleft1,p1,p2);
-				al1 -> split(false,rightinsert1+1,p3,p4);
-				remove_alignments.insert(nal1);	
-				split_partial_overlap(&p1,remove_alignments,insert_alignments, level + 1);
-				split_partial_overlap(&p2,remove_alignments,insert_alignments, level + 1);
-				split_partial_overlap(&p3,remove_alignments,insert_alignments, level + 1);
-				split_partial_overlap(&p4,remove_alignments,insert_alignments, level + 1);
-				}
-			if (leftinsert1 < alleft1 && rightinsert1 == alright1){
-				overlap_found = true;
-				new_alignment->split (true,alleft1,p1,p2);
-				insert_alignments.push_back(*al1);
-				split_partial_overlap(&p1,remove_alignments,insert_alignments, level + 1);
-				split_partial_overlap(&p2,remove_alignments,insert_alignments, level + 1);
-				}
-			if (leftinsert1 == alleft1 && rightinsert1 < alright1){
-				overlap_found = true;
-				pw_alignment * nal1 = new pw_alignment(*al1);
-				al1->split (false,alleft1,p1,p2);
-				remove_alignments.insert(nal1);			
-				insert_alignments.push_back(*new_alignment);
-				split_partial_overlap(&p1,remove_alignments,insert_alignments, level + 1);
-				split_partial_overlap(&p2,remove_alignments,insert_alignments, level + 1);
-				}
-
-	
-			if (leftinsert1 > alleft1 && rightinsert1 < alright1){
-				overlap_found = true;
-				pw_alignment * nal1 = new pw_alignment(*al1);
-				al1->split (false,leftinsert1,p1,p2);
-				remove_alignments.insert(nal1);	
-				p2.split(false,rightinsert1+1,p3,p4);
-				insert_alignments.push_back(*new_alignment);
-				split_partial_overlap(&p1,remove_alignments,insert_alignments, level + 1);
-				split_partial_overlap(&p3,remove_alignments,insert_alignments, level + 1);
-				split_partial_overlap(&p4,remove_alignments,insert_alignments, level + 1);
-				}
-
-			if (leftinsert1 < alleft1 && rightinsert1 > alright1){
-				overlap_found = true;
-				new_alignment->split (true,alleft1,p1,p2);
-				p2.split(true,alright1+1,p3,p4);
-				insert_alignments.push_back(*al1);
-				split_partial_overlap(&p1,remove_alignments,insert_alignments, level + 1);
-				split_partial_overlap(&p3,remove_alignments,insert_alignments, level + 1);
-				split_partial_overlap(&p4,remove_alignments,insert_alignments, level + 1);
-				}
-
-		
-			}
-
-
-		}
-		}
-	
-
-	}
-	
-	size_t leftinsert2 = new_alignment->getbegin2();
-	size_t rightinsert2 = new_alignment->getend2();
-	if(new_alignment->getend2() < leftinsert2) {
-		leftinsert2 = new_alignment->getend2();
-		rightinsert2 = new_alignment->getbegin2();
-	}
-	multimap<size_t, pw_alignment*>::const_iterator allalignit2 = alignments_on_reference2.lower_bound(leftinsert2);
-
-
-	if(allalignit2 == alignments_on_reference2.end()) allalignit2 = alignments_on_reference2.begin();
-	for(; allalignit2 != alignments_on_reference2.end(); ++allalignit2) {
-		const pw_alignment * al2 = allalignit2->second;
-		pw_alignment cal2(*al2);
-		set<pw_alignment*, compare_pw_alignment> ::const_iterator it2 = remove_alignments.find(&cal2) ;
-		if(it2!= remove_alignments.end()) {
-			cout << "al2 was already removed " << endl;
-		}
-		if (it2 == remove_alignments.end()){
-		size_t alleft2;
-		size_t alright2;
-		alleft2 = al2->getbegin2();
-		alright2 = al2->getend2();
-		if(alleft2 > al2->getend2()) {
-		alleft2 = al2->getend2();
-		alright2 = al2->getbegin2();
-		}
-			
-		if( allalignit2->second->getreference2() == new_alignment->getreference2()){
-
-		if(leftinsert2 < alright2 && rightinsert2 > alleft2) {
-			if (leftinsert2 > alleft2 && rightinsert2 > alright2){
-				overlap_found = true;
-	cout<<"HERE6!"<<endl;
-				pw_alignment * nal2 = new pw_alignment(*al2);
-				al2->split (false,leftinsert2,p1,p2);
-				remove_alignments.insert(nal2);
-				new_alignment-> split(false,alright2+1,p3,p4);
-				split_partial_overlap(&p1,remove_alignments,insert_alignments, level + 1);
-				split_partial_overlap(&p2,remove_alignments,insert_alignments, level + 1);
-				split_partial_overlap(&p3,remove_alignments,insert_alignments, level + 1);
-				split_partial_overlap(&p4,remove_alignments,insert_alignments, level + 1);
-				}
-			if (leftinsert2 > alleft2 && rightinsert2 == alright2){
-				overlap_found = true;
-	cout<<"HERE5!"<<endl;
-				pw_alignment * nal2 = new pw_alignment(*al2);
-				al2->split (false,leftinsert2,p1,p2);
-				remove_alignments.insert(nal2);
-				insert_alignments.push_back(*new_alignment);
-				split_partial_overlap(&p1,remove_alignments,insert_alignments, level + 1);
-				split_partial_overlap(&p2,remove_alignments,insert_alignments, level + 1);
-				}
-			if (leftinsert2 == alleft2 && rightinsert2 > alright2){
-				overlap_found = true;
-	cout<<"HERE4!"<<endl;
-				new_alignment->split(false,alright2+1,p3,p4);
-				insert_alignments.push_back(*al2);
-				split_partial_overlap(&p3,remove_alignments,insert_alignments, level + 1);
-				split_partial_overlap(&p4,remove_alignments,insert_alignments, level + 1);
-				}
-
-		
-			if (leftinsert2 < alleft2 && rightinsert2 < alright2){
-				overlap_found = true;
-	cout<<"HERE3!"<<endl;
-				pw_alignment * nal2 = new pw_alignment(*al2);
-				new_alignment->split (false,alleft2,p1,p2);
-				al2 -> split(false,rightinsert2+1,p3,p4);
-				remove_alignments.insert(nal2);
-				split_partial_overlap(&p1,remove_alignments,insert_alignments, level + 1);
-				split_partial_overlap(&p2,remove_alignments,insert_alignments, level + 1);
-				split_partial_overlap(&p3,remove_alignments,insert_alignments, level + 1);
-				split_partial_overlap(&p4,remove_alignments,insert_alignments, level + 1);
-				}
-			if (leftinsert2 < alleft2 && rightinsert2 == alright2){
-				overlap_found = true;
-	cout<<"HERE2!"<<endl;
-				new_alignment->split (false,alleft2,p1,p2);
-				insert_alignments.push_back(*al2);
-				split_partial_overlap(&p1,remove_alignments,insert_alignments, level + 1);
-				split_partial_overlap(&p2,remove_alignments,insert_alignments, level + 1);
-				}
-			if (leftinsert2 == alleft2 && rightinsert2 < alright2){
-				overlap_found = true;
-	cout<<"HERE1!"<<endl;
-				pw_alignment * nal2 = new pw_alignment(*al2);
-				al2 -> split(false,rightinsert2+1,p3,p4);
-				remove_alignments.insert(nal2);
-				insert_alignments.push_back(*new_alignment);
-				split_partial_overlap(&p3,remove_alignments,insert_alignments, level + 1);
-				split_partial_overlap(&p4,remove_alignments,insert_alignments, level + 1);
-				}
-
-			if (leftinsert2 > alleft2 && rightinsert2 < alright2){
-				overlap_found = true;
-	cout<<"HERE7!"<<endl;
-				pw_alignment * nal2 = new pw_alignment(*al2);
-				al2->split (false,leftinsert2,p1,p2);
-				p2.split(false,rightinsert2+1,p3,p4);
-				remove_alignments.insert(nal2);			
-				insert_alignments.push_back(*new_alignment);
-				split_partial_overlap(&p1,remove_alignments,insert_alignments, level + 1);
-				split_partial_overlap(&p3,remove_alignments,insert_alignments, level + 1);
-				split_partial_overlap(&p4,remove_alignments,insert_alignments, level + 1);
-				}
-				
-			if (leftinsert2 < alleft2 && rightinsert2 > alright2){
-				overlap_found = true;
-	cout<<"HERE8!"<<endl;
-				new_alignment->split (false,alleft2,p1,p2);
-				p2.split(false,alright2+1,p3,p4);		
-				insert_alignments.push_back(*al2);
-			split_partial_overlap(&p1,remove_alignments,insert_alignments, level + 1);
-			split_partial_overlap(&p3,remove_alignments,insert_alignments, level + 1);
-			split_partial_overlap(&p4,remove_alignments,insert_alignments, level + 1);
-				}
-		
-	
-		}
-
-		else break;	
-	}
-		else {
-			assert(al2->getreference1()==new_alignment->getreference2());
-		if(leftinsert2 < alright2 && rightinsert2 > alleft2) {
-			if (leftinsert2 > alleft2 && rightinsert2 > alright2){
-				overlap_found = true;
-				pw_alignment * nal2 = new pw_alignment(*al2);
-				al2->split (true,leftinsert2,p1,p2);
-				remove_alignments.insert(nal2);
-				new_alignment -> split(false,alright2+1,p3,p4);
-				split_partial_overlap(&p1,remove_alignments,insert_alignments, level + 1);
-				split_partial_overlap(&p2,remove_alignments,insert_alignments, level + 1);
-				split_partial_overlap(&p3,remove_alignments,insert_alignments, level + 1);
-				split_partial_overlap(&p4,remove_alignments,insert_alignments, level + 1);
-				}
-			if (leftinsert2 > alleft2 && rightinsert2 == alright2){
-				overlap_found = true;
-				pw_alignment * nal2 = new pw_alignment(*al2);
-				al2->split (true,leftinsert2,p1,p2);
-				remove_alignments.insert(nal2);
-				insert_alignments.push_back(*new_alignment);
-				split_partial_overlap(&p1,remove_alignments,insert_alignments, level + 1);
-				split_partial_overlap(&p2,remove_alignments,insert_alignments, level + 1);
-				}
-			if (leftinsert2 == alleft2 && rightinsert2 > alright2){
-				overlap_found = true;
-				new_alignment -> split(false,alright2+1,p3,p4);
-				insert_alignments.push_back(*al2);
-				split_partial_overlap(&p3,remove_alignments,insert_alignments, level + 1);
-				split_partial_overlap(&p4,remove_alignments,insert_alignments, level + 1);
-				}
-
-			if (leftinsert2 < alleft2 && rightinsert2 < alright2){
-				overlap_found = true;
-				pw_alignment * nal2 = new pw_alignment(*al2);
-				new_alignment-> split (false,alleft2,p1,p2);
-				al2 -> split(true,rightinsert2+1,p3,p4);
-				remove_alignments.insert(nal2);
-				split_partial_overlap(&p1,remove_alignments,insert_alignments, level + 1);
-				split_partial_overlap(&p2,remove_alignments,insert_alignments, level + 1);
-				split_partial_overlap(&p3,remove_alignments,insert_alignments, level + 1);
-				split_partial_overlap(&p4,remove_alignments,insert_alignments, level + 1);
-				}
-			if (leftinsert2 < alleft2 && rightinsert2 == alright2){
-				overlap_found = true;
-				new_alignment-> split (false,alleft2,p1,p2);
-				insert_alignments.push_back(*al2);
-				split_partial_overlap(&p1,remove_alignments,insert_alignments, level + 1);
-				split_partial_overlap(&p2,remove_alignments,insert_alignments, level + 1);
-				}
-			if (leftinsert2 == alleft2 && rightinsert2 < alright2){
-				overlap_found = true;
-				pw_alignment * nal2 = new pw_alignment(*al2);
-				al2 -> split(true,rightinsert2+1,p3,p4);
-				remove_alignments.insert(nal2);
-				insert_alignments.push_back(*new_alignment);
-				split_partial_overlap(&p3,remove_alignments,insert_alignments, level + 1);
-				split_partial_overlap(&p4,remove_alignments,insert_alignments, level + 1);
-				}
-
-			if (leftinsert2 > alleft2 && rightinsert2 < alright2){
-				overlap_found = true;
-				pw_alignment * nal2 = new pw_alignment(*al2);
-				al2->split (true,leftinsert2,p1,p2);
-				p2.split(true,rightinsert2+1,p3,p4);
-				remove_alignments.insert(nal2);		
-				insert_alignments.push_back(*new_alignment);
-				split_partial_overlap(&p1,remove_alignments,insert_alignments, level + 1);
-				split_partial_overlap(&p3,remove_alignments,insert_alignments, level + 1);
-				split_partial_overlap(&p4,remove_alignments,insert_alignments, level + 1);
-				}
-
-			if (leftinsert2 < alleft2 && rightinsert2 > alright2){
-				overlap_found = true;
-				new_alignment->split (false,alleft2,p1,p2);
-				p2.split(false,alright2+1,p3,p4);		
-				insert_alignments.push_back(*al2);
-				split_partial_overlap(&p1,remove_alignments,insert_alignments, level + 1);
-				split_partial_overlap(&p2,remove_alignments,insert_alignments, level + 1);
-				split_partial_overlap(&p3,remove_alignments,insert_alignments, level + 1);
-				split_partial_overlap(&p4,remove_alignments,insert_alignments, level + 1);
-				}
-	
-		}
-
-
-
-		}	
-}	
-}
-	if(!overlap_found){
-		insert_alignments.push_back(*new_alignment);
-			}
-
-		
-	}*/
-}
-
 	
 overlap::~overlap(){}
 
@@ -1833,7 +1382,7 @@ size_t overlap::size() const {
 		return insert_alignments;
 	}
 		
-	model::model(all_data & d): data(d),transform(6,vector<size_t>(6,1)),cost_on_acc (5, vector<double>(data.numAcc(),1)),modification(data.numAcc(), vector<vector<vector<double> > >(data.numAcc(),vector<vector<double> > (6, vector<double>(6,1) ))) {}
+	model::model(all_data & d): data(d),cost_on_acc (5, vector<double>(data.numAcc(),1)),modification(data.numAcc(), vector<vector<vector<double> > >(data.numAcc(),vector<vector<double> > (6, vector<double>(6,1) ))) {}
 
 	model::~model(){}
 
@@ -1866,6 +1415,7 @@ size_t overlap::size() const {
 
 		void model::alignment_modification(){
 	//	vector<vector<vector<vector<double> > > >modification(data.numAcc(), vector<vector<vector<double> > >(data.numAcc(),vector<vector<double> > (6, vector<double>(6,0) )));
+		// count:
 		for(size_t i = 0 ; i< data.numAlignments() ; i++){
 			const pw_alignment & p = data.getAlignment(i);
 			size_t acc1 = data.accNumber(p.getreference1());	
@@ -1876,22 +1426,40 @@ size_t overlap::size() const {
 				p.alignment_col(j, s1ch, s2ch);
 				size_t s1 = dnastring::base_to_index(s1ch);
 				size_t s2 = dnastring::base_to_index(s2ch);
-				transform.at(s1).at(s2)++;
+				modification.at(acc1).at(acc2).at(s1).at(s2)+=1.0;
+				modification.at(acc2).at(acc1).at(s2).at(s1)+=1.0;
 			}
-			for(size_t k = 0 ; k<6; k++ ){
-				for (size_t m=0; m<6 ; m++){	
-			modification.at(acc1).at(acc2).at(k).at(m) += transform.at(k).at(m);
+		}
+
+		// sum up and divide to get frequencies
+		for(size_t acc1=0; acc1 < data.numAcc(); ++acc1) {
+			for(size_t acc2=0; acc2 < data.numAcc(); ++acc2) {
+				for(size_t j=0; j<6; ++j) {
+					double sum = 0;
+					for(size_t k=0; k<6; ++k) {
+
+						cout << "k " << k << " num " << modification.at(acc1).at(acc2).at(j).at(k) << endl;
+						sum+=modification.at(acc1).at(acc2).at(j).at(k);
+					}	
+					for(size_t k=0; k<6; ++k) {
+						modification.at(acc1).at(acc2).at(j).at(k)/=sum;
+						cout << " simple model cost: acc " << acc1 << " to " << acc2 << " modify " << j << " to " << k << " costs " << -log2(modification.at(acc1).at(acc2).at(j).at(k)) << " bits " << endl; 
+					
+					}
 				}
+
 			}
 		}
 	}
 
 	void model::cost_function( pw_alignment& p) const {
+//		cout << " cf2 " << endl;
 		vector<double> cost_on_sample(2);
 		vector<double> modify_cost(2);
 		double c1;
 		double c2;
 		double m1;
+
 		double m2;
 		cost_function(p, c1, c2, m1, m2);
 		cost_on_sample.at(0) = c1;
@@ -1902,18 +1470,22 @@ size_t overlap::size() const {
 	}
 
 	void model::cost_function(const pw_alignment& p, double & c1, double & c2, double & m1, double & m2) const {
+		cout << " cf " << endl;
+		p.print(); // TODO 
 
 		vector<double> cost_on_sample(2,0);
 		vector<double> modify_cost(2,0);
-		vector<vector<size_t> >al_base_number(2,vector<size_t>(6,1));
-		vector<vector<double> >sequence_cost(2,vector<double>(5,1));
-		vector<vector<double> >create_cost(2,vector<double>(5,1));		
-		vector<vector<vector<double> > > modification_cost(2,vector<vector<double> >(6,vector<double>(6,1)));
+		vector<vector<size_t> >al_base_number(2,vector<size_t>(6,0));
+		vector<vector<double> >sequence_cost(2,vector<double>(5,0));
+		vector<vector<double> >create_cost(2,vector<double>(5,0));		
+	//	vector<vector<vector<double> > > modification_cost(2,vector<vector<double> >(6,vector<double>(6,0)));
+		vector<vector<double> > modification_number(6, vector<double>(6,0)); // in (i,j): store modifications from 1 to 2
 	//	vector<double> cost_on_sample (2,0);
 		for(size_t i = 0 ; i < 5; i++){
 		 sequence_cost.at(0).at(i)= -log2(cost_on_acc.at(i).at(data.accNumber(p.getreference1())));
 		 sequence_cost.at(1).at(i)= -log2(cost_on_acc.at(i).at(data.accNumber(p.getreference2())));
 		}
+//		cout << " alsample size " << p.getsample1().size() << endl;
 		for(size_t i = 0 ; i< p.getsample1().size()/3; i++ ){
 			char s1ch;
 			char s2ch;
@@ -1922,24 +1494,26 @@ size_t overlap::size() const {
 			size_t s2 = dnastring::base_to_index(s2ch);
 			al_base_number.at(0).at(s1) ++ ;
 			al_base_number.at(1).at(s2) ++ ;
-				}
+
+			modification_number.at(s1).at(s2)+=1.0;
+		}
 		for(size_t j=0; j<5; j++){	
 			create_cost.at(0).at(j)= al_base_number.at(0).at(j)*sequence_cost.at(0).at(j);
 			cost_on_sample.at(0)=cost_on_sample.at(0)+ create_cost.at(0).at(j);
-	//		cout<<"creat cost of "<< dnastring::index_to_base(j)<<"  on reference1 is "<<  (al_base_number.at(0).at(j))*(sequence_cost.at(0).at(j))<<endl;
+//			cout<<"creat cost of "<< dnastring::index_to_base(j)<<"  on reference1 is "<<  (al_base_number.at(0).at(j))*(sequence_cost.at(0).at(j))<<endl;
 			create_cost.at(1).at(j)= al_base_number.at(1).at(j)*sequence_cost.at(1).at(j);
 			cost_on_sample.at(1)=cost_on_sample.at(1)+ create_cost.at(1).at(j);			
-	//		cout<<"creat cost of "<< dnastring::index_to_base(j)<<"  on reference2 is "<<  al_base_number.at(1).at(j)*sequence_cost.at(1).at(j)<<endl;
+//			cout<<"creat cost of "<< dnastring::index_to_base(j)<<"  on reference2 is "<<  al_base_number.at(1).at(j)*sequence_cost.at(1).at(j)<<endl;
 		}
-	//		cout<<"creat cost of the alignment on sample 1: "<< cost_on_sample.at(0);
-	//		cout<<"creat cost of the alignment on sample 2: "<< cost_on_sample.at(1);	
+//			cout<<"creat cost of the alignment on sample 1: "<< cost_on_sample.at(0);
+//			cout<<"creat cost of the alignment on sample 2: "<< cost_on_sample.at(1);	
 		
 		for(size_t j=0; j<6; j++){	
 			for (size_t k= 0; k<6; k++){
-				modification_cost.at(0).at(j).at(k) = -log2(modification.at(data.accNumber(p.getreference1())).at(data.accNumber(p.getreference2())).at(j).at(k));
-				modify_cost.at(0)= modify_cost.at(0)+ modification_cost.at(0).at(j).at(k);
-				modification_cost.at(1).at(j).at(k) = -log2(modification.at(data.accNumber(p.getreference2())).at(data.accNumber(p.getreference1())).at(j).at(k));
-				modify_cost.at(1)= modify_cost.at(1)+ modification_cost.at(1).at(j).at(k);
+			//	modification_cost.at(0).at(j).at(k) = -log2(modification.at(data.accNumber(p.getreference1())).at(data.accNumber(p.getreference2())).at(j).at(k));
+				modify_cost.at(0) +=  -log2(modification.at(data.accNumber(p.getreference1())).at(data.accNumber(p.getreference2())).at(j).at(k)) * modification_number.at(j).at(k);
+			//	modification_cost.at(1).at(j).at(k) = -log2(modification.at(data.accNumber(p.getreference2())).at(data.accNumber(p.getreference1())).at(j).at(k));
+				modify_cost.at(1) +=  -log2(modification.at(data.accNumber(p.getreference2())).at(data.accNumber(p.getreference1())).at(j).at(k)) * modification_number.at(k).at(j);
 			}
 		}	
 	
@@ -1947,6 +1521,7 @@ size_t overlap::size() const {
 		c2 = cost_on_sample.at(1);
 		m1 = modify_cost.at(0);
 		m2 = modify_cost.at(1);
+//		cout << " create 2 " << c2 << " m1 " << m1 << endl; 
 
 	}
 	void model::gain_function(const pw_alignment& p, double & g1, double & g2) const {
@@ -1963,12 +1538,18 @@ size_t overlap::size() const {
 				the gain of using the alignment is: c2 - m1 
 
 		*/
+		cout << "in gain: create 2 " << c2 << " m1 " << m1 << endl; 
+
 		g1 = c2 - m1;
 		g2 = c1 - m2;
 
 	}
 
-	
+	void model::train() {
+		acc_base_frequency();
+		alignment_modification();
+	}
+
 	mc_model::mc_model(all_data & d):data(d), sequence_successive_bases(data.numAcc()), modification_cost( data.numAcc(),vector<double>(data.numAcc(),1)), create_cost(data.numAcc(),vector<double>(5,1)){}
 	mc_model::~mc_model(){}
 	void mc_model::markov_chain(){
@@ -2177,6 +1758,8 @@ size_t overlap::size() const {
 		double m1;
 		double m2;
 		cost_function(p, c1, c2, m1, m2);
+
+		cout << " gain function c2 " << c2 << " m1 " << m1 << " gain " << g1 << endl; 
 		g1 = c2 - m1;
 		g2 = c1 - m2;
 

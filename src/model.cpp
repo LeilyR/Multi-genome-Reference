@@ -29,7 +29,7 @@ void initial_alignment_set<T>::compute_simple(overlap & o) {
 
 		// TODO remove
 		double gain1, gain2;
-		common_model.gain_function(*(sorted_original_als.at(i)), gain1, gain2);
+		common_model.gain_function(*(al), gain1, gain2);
 		gain1-=base_cost;
 		cout << endl<< "at alignment " << i << " length " << al->alignment_length() << " al base gain " << gain1 << endl;
 		al->print();
@@ -223,15 +223,20 @@ void compute_cc::cc_step(size_t ref, size_t left, size_t right, set <const pw_al
 	
 	
 }
-	clustering::clustering(overlap & o, all_data & d,mc_model & m):overl(o),data(d),model(m),als_on_ref(data.numSequences()),gain(data.numSequences(),vector<vector<double> >(data.numSequences(),vector<double>(500000,0))),ava(data.numSequences(),vector<vector<double> >(data.numSequences(),vector<double>(500000,0))),res(data.numSequences(),vector<vector<double> >(data.numSequences(),vector<double>(500000,0))){
+
+template<typename tmodel>
+clustering<tmodel>::clustering(overlap & o, all_data & d,tmodel & m):overl(o),data(d),model(m),als_on_ref(data.numSequences()),gain(data.numSequences(),vector<vector<double> >(data.numSequences(),vector<double>(500000,0))),ava(data.numSequences(),vector<vector<double> >(data.numSequences(),vector<double>(500000,0))),res(data.numSequences(),vector<vector<double> >(data.numSequences(),vector<double>(500000,0))){
 	/*	for(size_t i=0; i<data.numAlignments(); ++i) {
 			const pw_alignment * a = &(data.getAlignment(i));
 			alignments.insert(a);
 		}*/
 
 	}
-	clustering::~clustering(){}
-	void clustering::als_on_reference(const pw_alignment * p) {
+template<typename tmodel>
+clustering<tmodel>::~clustering(){}
+
+template<typename tmodel>
+void clustering<tmodel>::als_on_reference(const pw_alignment * p) {
 /*	size_t ref1 = p->getreference1();
 	size_t ref2 = p->getreference2();
 
@@ -243,7 +248,8 @@ void compute_cc::cc_step(size_t ref, size_t left, size_t right, set <const pw_al
 	}
 
 //making a matrix that represents gain values:(First i did everything considering references on each alignemnt then i thought i may need to specify their position on the reference 'cus otherwise i couldnt clearly present the specific piece of alignemnt on the reference sequence. But then adding positions made things complicated and it is not working properly.I mean i had no idea how i can initialize the gain matrix and the way it works now it is so slow.)
-	void clustering::calculate_similarity(){
+template<typename tmodel>
+void clustering<tmodel>::calculate_similarity(){
 		double g1;
 		double g2;
 		for (size_t i = 0; i< data.numSequences();i++){
@@ -261,7 +267,9 @@ void compute_cc::cc_step(size_t ref, size_t left, size_t right, set <const pw_al
 	
 		}
 	}
-	void clustering::update_values(){
+
+template<typename tmodel>
+	void clustering<tmodel>::update_values(){
 	//	size_t iteration = 100;
 		//for(size_t l=0; l<iteration;l++){
 		for(size_t i= 0; i<data.numSequences();i++){
@@ -305,7 +313,9 @@ void compute_cc::cc_step(size_t ref, size_t left, size_t right, set <const pw_al
 		}
 //	}
 }
-	void clustering::update_clusters(size_t acc){
+
+template<typename tmodel>
+	void clustering<tmodel>::update_clusters(size_t acc){
 	/*	size_t iteration = 100;
 		double damp_value = 0.6;
 		vector<size_t> examplar(data.numAcc(),0); //examplars of the class of acc, acc will be the center.
@@ -325,7 +335,9 @@ void compute_cc::cc_step(size_t ref, size_t left, size_t right, set <const pw_al
 		}*/
 		
 	}
-	void clustering::update_clusters(){
+
+template<typename tmodel>
+	void clustering<tmodel>::update_clusters(){
 		vector<vector<vector<double> > >examplar;
 		vector<size_t> center;
 		for(size_t i = 0; i<data.numSequences(); i++){

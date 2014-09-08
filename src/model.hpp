@@ -16,7 +16,7 @@ typedef  set<const pw_alignment*, compare_pw_alignment> alset;
 template<typename T>
 class initial_alignment_set {
 	public:
-	initial_alignment_set(const all_data & d, const T & a_model, double base_cost): data(d), common_model(a_model), sorted_original_als(d.numAlignments()) {
+	initial_alignment_set(const all_data & d, const T & a_model, double base_cost): data(d), common_model(a_model) {
 		this->base_cost = base_cost;
 		multimap<double, const pw_alignment*> sorter;
 		double sumgain = 0;
@@ -25,13 +25,16 @@ class initial_alignment_set {
 	
 			double gain1, gain2;
 			common_model.gain_function(*cur, gain1, gain2);
+			// TODO gain1 and gain2
 		//	if(gain2 > gain1) gain1 = gain2;
-
-			sorter.insert(make_pair(gain1, cur));
-
+			cout << " al " << i << " gain1 " << gain1 << endl;
+			if(gain1-base_cost > 0.0) {
+				sorter.insert(make_pair(gain1, cur));
+			}
 			sumgain+=gain1;
 		}
 
+		sorted_original_als = vector<const pw_alignment*>(sorter.size(), NULL);
 		size_t pos = 0;
 		for(multimap<double, const pw_alignment*>::reverse_iterator rit = sorter.rbegin(); rit!=sorter.rend(); ++rit) {
 			const pw_alignment * alit = rit->second;
@@ -45,7 +48,7 @@ class initial_alignment_set {
 		assert(pos == sorter.size());
 		cout << " " << sorter.size() << " input alignments, total gain: " << sumgain << " bit " << endl;
 	}
-	initial_alignment_set(const all_data & d, const set< const pw_alignment *, compare_pw_alignment> & als, const T & a_model, double base_cost): data(d), common_model(a_model), sorted_original_als(als.size()) {
+	initial_alignment_set(const all_data & d, const set< const pw_alignment *, compare_pw_alignment> & als, const T & a_model, double base_cost): data(d), common_model(a_model) {
 		this->base_cost = base_cost;
 		multimap<double, const pw_alignment*> sorter;
 		double sumgain = 0;
@@ -55,12 +58,14 @@ class initial_alignment_set {
 			double gain1, gain2;
 			common_model.gain_function(*cur, gain1, gain2);
 		//	if(gain2 > gain1) gain1 = gain2;
-
-			sorter.insert(make_pair(gain1, cur));
-
+			cout << " al length " << cur->alignment_length() << " gain1 " << gain1 << " gain2 " << gain2 <<  endl;
+			if(gain1 - base_cost>0.0) {
+				sorter.insert(make_pair(gain1, cur));
+			}
 			sumgain+=gain1;
 		}
 
+		sorted_original_als = vector<const pw_alignment *>(sorter.size(), NULL);
 		size_t pos = 0;
 		for(multimap<double, const pw_alignment*>::reverse_iterator rit = sorter.rbegin(); rit!=sorter.rend(); ++rit) {
 			const pw_alignment * alit = rit->second;
@@ -123,9 +128,11 @@ class compute_cc {
 	void cc_step(size_t ref, size_t left, size_t right, set <const pw_alignment *, compare_pw_alignment> & cc, set <const pw_alignment *, compare_pw_alignment> & seen );
 
 };
+
+template<typename tmodel>
 class clustering {
 	public:
-	clustering(overlap &,all_data &, mc_model&);
+	clustering(overlap &,all_data &, tmodel&);
 	~clustering();
 	void als_on_reference(const pw_alignment * p);
 	void calculate_similarity();//Fill in a matrix with gain values for each two accessions.
@@ -135,7 +142,7 @@ class clustering {
 	private:
 	overlap & overl;
 	all_data & data;
-	mc_model & model;
+	tmodel & model;
 //	set<const pw_alignment *, compare_pw_alignment> alignments;
 	vector< multimap<size_t, pw_alignment *> > als_on_ref;
 	vector<vector<vector<double> > >gain;//consider it as similarity function, though in your slides you mentioned modification can be the similarity function.

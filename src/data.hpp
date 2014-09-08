@@ -156,9 +156,11 @@ public:
 	void cost_function(const pw_alignment& p, double & c1, double & c2, double & m1, double & m2) const ;
 	void gain_function(const pw_alignment& p, double & g1, double & g2) const;
 
+	void train();
+
 private:
 	all_data & data;
-	vector<vector<size_t> > transform;
+//	vector<vector<size_t> > transform;
 	vector<vector<double> > cost_on_acc;
 	vector<vector<vector<vector<double> > > >modification;
 };
