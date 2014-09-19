@@ -1459,7 +1459,6 @@ size_t overlap::size() const {
 		double c1;
 		double c2;
 		double m1;
-
 		double m2;
 		cost_function(p, c1, c2, m1, m2);
 		cost_on_sample.at(0) = c1;
@@ -1550,7 +1549,19 @@ size_t overlap::size() const {
 		alignment_modification();
 	}
 
-	mc_model::mc_model(all_data & d):data(d), sequence_successive_bases(data.numAcc()), modification_cost( data.numAcc(),vector<double>(data.numAcc(),1)), create_cost(data.numAcc(),vector<double>(5,1)){}
+	mc_model::mc_model(all_data & d):data(d), sequence_successive_bases(data.numAcc()), create_cost(data.numAcc(),vector<double>(5,1)),mod_cost(data.numAcc(),vector<map<string, vector<double> > >(data.numAcc())){
+		size_t numberOfPowers = NUM_DELETE;
+		if(NUM_KEEP>numberOfPowers) {
+			numberOfPowers = NUM_KEEP;
+		}
+		powersOfTwo = vector<size_t>(numberOfPowers, 1);
+		for(size_t i=1; i< numberOfPowers; ++i) {
+			powersOfTwo.at(i) = powersOfTwo.at(i-1)*2;
+		
+		}
+
+
+	}
 	mc_model::~mc_model(){}
 	void mc_model::markov_chain(){
 		size_t level = 2;
@@ -1606,161 +1617,501 @@ size_t overlap::size() const {
 	}
 	
 	void mc_model::markov_chain_alignment(){
-	//	vector<vector<double> >modification_cost( data.numAcc(),vector<double>(data.numAcc(),1));
-	//	vector<vector<size_t> >al_base_number(2,vector<size_t>(6,1));
-		vector<vector<map <string, vector<double> > > >successive_bases(data.numAcc(),vector<map <string, vector<double> > >(data.numAcc()));
-		vector<vector<vector<size_t> > >keep_length(data.numAcc(),vector<vector<size_t> >(data.numAcc(),vector<size_t>(32,0)));
-		vector<vector<size_t> >  deletion(data.numAcc(),vector<size_t>(data.numAcc(),0));
-		vector<vector<size_t> >  insertion(data.numAcc(),vector<size_t>(data.numAcc(),0));
-		vector<vector<size_t> >  different_base(data.numAcc(),vector<size_t>(data.numAcc(),0));
+		counting_functor functor(data);
 		for(size_t k = 0; k < data.numAlignments(); k++){
-			size_t left1;
-			size_t left2;
-			size_t right1;
-			size_t right2;
-			size_t level =2;
-			size_t n = 0;
-			size_t acc1 = data.accNumber(data.getAlignment(k).getreference1());
-			size_t acc2 = data.accNumber(data.getAlignment(k).getreference2());
-			for(size_t i = 0; i<data.getAlignment(k).alignment_length(); i++){
-				uint32_t klength = 0;
-				char s1chr;
-				char s2chr;
-				data.getAlignment(k).alignment_col(i, s1chr, s2chr);				
-				size_t s1 = dnastring::base_to_index(s1chr);
-				size_t s2 = dnastring::base_to_index(s2chr);
-				if(s1 == s2){	
-					for(size_t j = i+n; j<data.getAlignment(k).alignment_length(); j++){
-						char q1chr;
-						char q2chr;
-						data.getAlignment(k).alignment_col(j, q1chr, q2chr);				
-						size_t q1 = dnastring::base_to_index(q1chr);
-						size_t q2 = dnastring::base_to_index(q2chr);
-						if(q1 == q2){
-							n+=1;
-							klength +=1;
-						}else break;
-					}
-					uint32_t initial = 1;
-					for (uint32_t m = 0; m <32 ; m++){
-						uint32_t power_of_two = initial << m; 
-						if((klength & power_of_two) !=0){
-						//cout<<"power: "<< m <<endl;
-						keep_length.at(acc1).at(acc2).at(m)++;
-						//cout<<"keep: "<<keep_length.at(acc1).at(acc2).at(m)<<endl; 
-						}
-					}
-				}else{	
-					if((s1!=5) & (s2!=5)){
-						different_base.at(acc1).at(acc2)++;
-					}
-					if(s1==5){
-						insertion.at(acc1).at(acc2)++;
-					}
-					if(s2==5){
-						deletion.at(acc1).at(acc2)++;
-					}
-				}
-				data.getAlignment(k).get_lr1(left1,right1);
-				data.getAlignment(k).get_lr2(left2,right2);
-				stringstream context1;		
-				stringstream context2;		
-				for(size_t j = level; j>0; j--){
-					char r1chr;
-					char r2chr;
-					signed long temp1 =left1 + i - level;
-					signed long temp2 =left2 + i - level;										
-					if(temp1>= 0){	
-						r1chr = data.getSequence(data.getAlignment(k).getreference1()).at(left1+i-j);//not necessarily on the alignment but on the reference sequence. 
-					}else{
-						r1chr = 'A';
-					}
-					if(temp2 >= 0){	
-						r2chr = data.getSequence(data.getAlignment(k).getreference2()).at(left2+i-j);
-					}else{
-						r2chr = 'A';
-					}
-
-					context1 << r1chr;
-					context2 << r2chr;
-				}
-				string seq1;
-				string seq2;
-				context1 >> seq1;
-				context2 >> seq2;
-				map <string, vector<double> >::iterator it1= successive_bases.at(acc1).at(acc2).find(seq1);
-					if(it1==successive_bases.at(acc1).at(acc2).end()) {
-						successive_bases.at(acc1).at(acc2).insert(make_pair(seq1, vector<double>(6,1)));
-						it1= successive_bases.at(acc1).at(acc2).find(seq1);
-					}
-				it1->second.at(s2)++;
-				map <string, vector<double> >::iterator it2= successive_bases.at(acc2).at(acc2).find(seq2);
-					if(it2==successive_bases.at(acc2).at(acc2).end()) {
-						successive_bases.at(acc2).at(acc1).insert(make_pair(seq2, vector<double>(6,1)));
-						it2= successive_bases.at(acc2).at(acc1).find(seq2);
-					}
-				it2->second.at(s1)++;
+			const pw_alignment & p = data.getAlignment(k);
+			computing_modification_oneToTwo(p,functor);
+			computing_modification_twoToOne(p,functor);
 			}
-							
-		}
-			
-			for(size_t i =0 ; i< data.numAcc(); i++){
-				for(size_t j = 0; j < data.numAcc(); j++){
-					size_t total;
-					for(map <string, vector<double> >::iterator it= successive_bases.at(i).at(j).begin();it!=successive_bases.at(i).at(j).end();it++){
-						string seq = it->first;
-						vector<double> & base = successive_bases.at(i).at(j).at(seq);
-						for(size_t m = 0; m<6;m++){
-							total += base.at(m);
+		functor.total_context();
+		for(size_t i = 0; i< data.numAcc();i++){
+			for(size_t j = 0; j < data.numAcc();j++){
+				for(map <string, vector<double> >::const_iterator it= functor.get_context(i,j).begin();it!=functor.get_context(i,j).end();it++){
+					string seq1 = it->first;
+					const vector<double> & base = functor.get_context(i,j).at(seq1);
+				/*	cout<<"base is: "<<endl;
+					for(size_t a= 0; a< base.size();a++){
+						cout<< "base at "<<  print_modification_character(a)<<" is "<<base.at(a)<<endl;
+					}*/
+				/*	cout<< "context is: "<<endl;
+					for(size_t m = 0 ; m < seq1.size() ; m++){
+						cout<< int(seq1.at(m))<<endl;
+					}*/
+				//	cout<<"the total number of happening the above context between "<<i<<" and "<<j<<" is "<< functor.get_total(i,j,seq1) <<endl;
+					for(size_t k = 0; k< (NUM_DELETE+NUM_KEEP+10);k++){
+				//		cout<<"The number of happening "<< print_modification_character(k) << " between acc " <<i<< " and acc " << j << " after a certain context is "<< base.at(k)<<endl;
+						cout<<"In MC model, the cost value of modifying a pattern on acc " << i << " to " <<print_modification_character(k) << " on acc " << j << " is " << -log2(base.at(k)/functor.get_total(i,j,seq1)) << " bits " << endl; 
+						map <string, vector<double> >::iterator it1= mod_cost.at(i).at(j).find(seq1);
+						if(it1==mod_cost.at(i).at(j).end()) {
+							mod_cost.at(i).at(j).insert(make_pair(seq1, vector<double>((NUM_DELETE+NUM_KEEP+10),1)));
+							it1= mod_cost.at(i).at(j).find(seq1);
 						}
-		
-						for(size_t k=0; k<6;k++){
-							base.at(k) = -log2(base.at(k)/total);
-						modification_cost.at(i).at(j) += base.at(k);
-						}
+						it1->second.at(k)=-log2(base.at(k)/functor.get_total(i,j,seq1));
 					}
-				}	
-			}
-				
-	
-	}			
-	
-	void mc_model::cost_function(const pw_alignment& p, double & c1, double & c2, double & m1, double & m2) const{
-		vector<double> cost_on_sample(2,0);
-		vector<vector<size_t> >al_base_number(2,vector<size_t>(6,1));
-		char s1chr;
-		char s2chr;
-		for(size_t i = 0; i<p.alignment_length(); i++){
-			p.alignment_col(i, s1chr, s2chr);				
-			size_t s1 = dnastring::base_to_index(s1chr);
-			size_t s2 = dnastring::base_to_index(s2chr);
-			al_base_number.at(0).at(s1) ++ ;
-			al_base_number.at(1).at(s2) ++ ;
+				}		
+			}			
 		}
-		size_t acc1 = data.accNumber(p.getreference1());
-		size_t acc2 = data.accNumber(p.getreference2());
-		for(size_t m = 0; m<5;m++){
-			cost_on_sample.at(0) += al_base_number.at(0).at(m) * create_cost.at(acc1).at(m);
-			cost_on_sample.at(1) += al_base_number.at(1).at(m) * create_cost.at(acc2).at(m);
-
-				}
-
-		c1 = cost_on_sample.at(0);
-		c2 = cost_on_sample.at(1);
-		m1 = modification_cost.at(acc1).at(acc2);
-		m2 = modification_cost.at(acc2).at(acc1);
-
-		
 	}
-	void mc_model::gain_function(const pw_alignment& p, double & g1, double & g2) const{
+
+	void mc_model::cost_function( pw_alignment& p) const {
+		vector<double> cost_on_sample(2);
+		vector<double> modify_cost(2);
 		double c1;
 		double c2;
 		double m1;
 		double m2;
 		cost_function(p, c1, c2, m1, m2);
+		cost_on_sample.at(0) = c1;
+		cost_on_sample.at(1) = c2;
+		modify_cost.at(0) = m1;
+		modify_cost.at(1) = m2;
+		p.set_cost(cost_on_sample, modify_cost);
+	}
+
+	void mc_model::cost_function(const pw_alignment& p, double & c1, double & c2, double & m1, double & m2)const {
+		counting_functor  f(data);
+		size_t level = 2;
+		computing_modification_oneToTwo(p,f);
+		computing_modification_twoToOne(p,f);
+		f.total_context();
+		vector<double> cost_on_sample(2,0);
+		vector<double> modify_cost(2,0);
+		size_t acc1 = data.accNumber(p.getreference1());
+		size_t acc2 = data.accNumber(p.getreference2());
+		vector <map < string, vector<double> > >alignment_successive_bases(2);
+		char s1chr;
+		char s2chr;
+		for(size_t i = level; i<p.alignment_length(); i++){
+			p.alignment_col(i, s1chr, s2chr);				
+			size_t s1 = dnastring::base_to_index(s1chr);
+			size_t s2 = dnastring::base_to_index(s2chr);
+			stringstream context1;	
+			stringstream context2;	
+				for(size_t j = level; j>0; j--){
+					char r1chr;
+					char r2chr;
+					p.alignment_col(i-j, r1chr, r2chr);				
+					context1 << r1chr;
+					context2 << r2chr;
+			}
+			string seq1;
+			string seq2;
+			context1>>seq1;
+			context2>>seq2;
+			map <string, vector<double> >::iterator it= alignment_successive_bases.at(0).find(seq1);
+				if(it==alignment_successive_bases.at(0).end()) {
+					alignment_successive_bases.at(0).insert(make_pair(seq1, vector<double>(6,1)));
+					it= alignment_successive_bases.at(0).find(seq1);
+				}
+				it->second.at(s1)++;
+			map <string, vector<double> >::iterator it1= alignment_successive_bases.at(1).find(seq2);
+				if(it1==alignment_successive_bases.at(1).end()) {
+					alignment_successive_bases.at(1).insert(make_pair(seq2, vector<double>(6,1)));
+					it1= alignment_successive_bases.at(1).find(seq2);
+				}
+				it1->second.at(s2)++;			
+		}	
+		for(map <string, vector<double> >::iterator it= alignment_successive_bases.at(0).begin();it!=alignment_successive_bases.at(0).end();it++){
+			string seq = it->first;
+			int total1 = 1;
+			vector<double> & base = alignment_successive_bases.at(0).at(seq);
+			for(size_t j = 0; j<6;j++){
+				total1 += base.at(j);
+			}
+			for(size_t m = 0; m<6;m++){
+				cost_on_sample.at(0) += -log2(base.at(m)/total1);
+			}
+
+		}
+		for(map <string, vector<double> >::iterator it= alignment_successive_bases.at(1).begin();it!=alignment_successive_bases.at(1).end();it++){
+			string seq = it->first;
+			int total2 = 1;
+			vector<double> & base = alignment_successive_bases.at(1).at(seq);
+			for(size_t j = 0; j<6;j++){
+				total2 += base.at(j);
+			}
+			for(size_t m = 0; m<6;m++){
+				cost_on_sample.at(1) += -log2(base.at(m)/total2);
+			}
+		}
+		for(map <string, vector<double> >::const_iterator it= f.get_context(acc1,acc2).begin();it!=f.get_context(acc1,acc2).end();it++){
+					string seq1 = it->first;
+					const vector<double> & base = f.get_context(acc1,acc2).at(seq1);
+					for(size_t k = 0; k< (NUM_DELETE+NUM_KEEP+10);k++){
+						modify_cost.at(0) +=-log2(base.at(k)/f.get_total(acc1,acc2,seq1));
+					}
+				}
+
+		for(map <string, vector<double> >::const_iterator it= f.get_context(acc2,acc1).begin();it!=f.get_context(acc2,acc1).end();it++){
+					string seq1 = it->first;
+					const vector<double> & base = f.get_context(acc2,acc1).at(seq1);
+					for(size_t k = 0; k< (NUM_DELETE+NUM_KEEP+10);k++){
+						modify_cost.at(1) +=-log2(base.at(k)/f.get_total(acc2,acc1,seq1));
+					}
+				}
+
+		c1 = cost_on_sample.at(0);
+		c2 = cost_on_sample.at(1);
+		m1 = modify_cost.at(0);
+		m2 = modify_cost.at(1);
+		
+	}
+	void mc_model::gain_function(const pw_alignment& p, double & g1, double & g2)const {
+		double c1;
+		double c2;
+		double m1;
+		double m2;
+		cost_function(p, c1, c2, m1,m2);
 
 		cout << " gain function c2 " << c2 << " m1 " << m1 << " gain " << g1 << endl; 
 		g1 = c2 - m1;
 		g2 = c1 - m2;
 
 	}
+	
+	void mc_model::train(){
+		markov_chain();
+		markov_chain_alignment();
+		
+	}
+
+
+	char mc_model::modification_character(int modify_base, int num_delete, int insert_base, int num_keep)const {
+		//return the enc
+		if(num_delete != -1){
+		//	cout<< "there is a delete of length "<< num_delete <<endl; 
+			return NUM_DELETE+num_delete;
+		}
+		if(num_keep != -1){
+		//	cout<< "there is a keep of length" << num_keep << endl;
+			return NUM_KEEP+num_keep;
+		}
+		if(modify_base != -1) {
+		//	cout<< "there is a modification at " << dnastring::index_to_base(modify_base) << endl;
+			return modify_base;
+		}
+		if(insert_base != -1){
+		//	cout<< " there is a insertion at " << dnastring::index_to_base(insert_base) <<endl;
+			return insert_base + NUM_KEEP + NUM_DELETE + 5;
+		}
+		assert (false);
+		return -1;
+	}
+		string mc_model::print_modification_character(char enc){
+			int modify_base = -1;
+			int num_delete =-1;
+			int insert_base = -1;
+			int num_keep = -1;
+			modification(enc, modify_base, num_delete, insert_base, num_keep);
+
+			stringstream s;
+			if(num_delete != -1){
+				s<< " a delete of length " <<  num_delete; 
+			}
+			if(num_keep != -1){
+				s<< " a keep of length" << num_keep;
+			}
+			if(modify_base != -1) {
+				s<< " a modification at " << dnastring::index_to_base(modify_base);
+			}
+			if(insert_base != -1){
+				s<< " a insertion at " << dnastring::index_to_base(insert_base);
+			}
+			return s.str();
+		}
+
+	void mc_model::modification(char enc, int & modify_base, int & num_delete, int & insert_base, int & num_keep) {
+		modify_base = -1;
+		num_delete =-1;
+		insert_base = -1;
+		num_keep = -1;
+
+		if(enc < 5) {
+			modify_base = enc;
+			return;
+		}
+
+		if(enc < 5 + NUM_DELETE) {
+			num_delete = powersOfTwo.at(enc - 5);
+			return;
+		}
+		if (enc < 5 + NUM_DELETE + NUM_KEEP){
+			num_keep = powersOfTwo.at(enc-NUM_DELETE-5);
+			return;
+		}
+		if(enc< 5+ 5 + NUM_KEEP + NUM_DELETE){
+			insert_base = enc- 5 - 5 - NUM_KEEP - NUM_DELETE;
+		}
+	}
+	void mc_model::computing_modification_oneToTwo(const pw_alignment & p, abstract_context_functor & functor)const{
+		size_t level =2;
+		string seq = "" ;
+		for(size_t j = 0; j < level; j++){
+			seq+=modification_character(1,-1,-1,-1);
+		}
+		for (size_t i = 0; i< p.alignment_length(); i++){
+			size_t n = 0;
+			int modify_base =-1;
+			int num_delete=-1;
+			int insert_base=-1;
+			int num_keep=-1;
+			string seq1(" ",level+1);
+			char seq2;
+			for(size_t w = level; w>0 ;w--){	
+				seq1.at(level-w)=seq.at(seq.size()-w);
+			}
+			char s1chr;
+			char s2chr;
+			size_t s1;
+			size_t s2;
+			p.alignment_col(i, s1chr, s2chr);				
+			s1 = dnastring::base_to_index(s1chr);
+			s2 = dnastring::base_to_index(s2chr);
+		//	cout<<"context at position zero is: "<< int(seq1.at(0))<<endl;
+			seq1.at(level)=s1;
+			if(s1 == s2){
+				size_t klength = 0;
+				size_t l1 = 0;													
+				for(size_t j = i; j<p.alignment_length(); j++){
+					char q1chr;
+					char q2chr;
+					p.alignment_col(j, q1chr, q2chr);				
+					size_t q1 = dnastring::base_to_index(q1chr);
+					size_t q2 = dnastring::base_to_index(q2chr);
+					if(q1 == q2){
+						klength +=1;
+					}else {	
+						break;
+					}
+				}
+			/*	if(i<51){
+					cout<<"keep length at "<< i << " is  "<< klength<<endl;
+				}*/
+				n = klength-1;
+				for (size_t m = 0; m< powersOfTwo.size();m++){
+					if((klength & powersOfTwo.at(m)) != 0){
+						num_keep=m;
+						seq += modification_character(modify_base,num_delete,insert_base,num_keep);
+						l1++;
+					}
+				}
+				seq2 = seq.at(seq.size()-l1);
+			//	cout<<"last pattern: "<< int(seq2)<<endl;
+				functor. see_context(&p,i,seq1,seq2);
+			}else{
+				if((s1!=5) & (s2!=5)){
+					modify_base = s1;
+				/*	if(i<51){
+						cout<<"modification at "<< i << " is  "<<s1 <<endl;
+					}*/
+					seq += modification_character(modify_base,num_delete,insert_base,num_keep);
+					seq2 = modification_character(modify_base,num_delete,insert_base,num_keep);
+					functor. see_context(&p,i,seq1,seq2);
+				}
+				if(s1 == 5){
+					insert_base = s2;
+					seq += modification_character(modify_base,num_delete,insert_base,num_keep);						
+					seq2 = modification_character(modify_base,num_delete,insert_base,num_keep);
+					functor. see_context(&p,i,seq1,seq2);						
+				}
+				if(s2 == 5){
+					size_t dlength = 0;
+					size_t l1 = 0;												
+					for(size_t j = i; j < p.alignment_length(); j++){
+						char q1chr;
+						char q2chr;
+						p.alignment_col(j, q1chr, q2chr);				
+						size_t q1 = dnastring::base_to_index(q1chr);
+						size_t q2 = dnastring::base_to_index(q2chr);
+						if(q2 == 5 ){
+							dlength +=1;
+						}else {
+							break;
+						}
+					}
+					n = dlength-1;
+					for (size_t m = 0; m< powersOfTwo.size();m++){
+						if((dlength & powersOfTwo.at(m)) != 0){
+							num_delete = m;
+							seq += modification_character(modify_base,num_delete,insert_base,num_keep);		
+							l1++;							
+						}
+					}
+					seq2 = seq.at(seq.size()-l1);
+					functor. see_context(&p,i,seq1,seq2);	
+				}
+
+			}
+			i=i+n;
+			//	uint32_t initial = 1;
+			//	for (uint32_t m = 0; m <32 ; m++)
+			//		uint32_t power_of_two = initial << m; 
+			//		if((klength & power_of_two) !=0)
+		}
+	/*	cout<<"The alignment is: "<<endl;
+		p.print();
+		cout<<"encoded sequence from one to two is: "<<endl;
+		for(size_t m = 0; m < seq.size(); m ++){
+			cout<< int(seq.at(m))<<endl;
+			if (m > 50) break;
+		}*/
+	}
+
+	
+	void mc_model::computing_modification_twoToOne(const pw_alignment & p, abstract_context_functor & functor)const{
+		size_t level =2;
+		string seq = "" ;
+		for(size_t j = 0; j < level; j++){
+			seq+=modification_character(1,-1,-1,-1);
+		}
+		for (size_t i = 0; i< p.alignment_length(); i++){
+			int modify_base =-1;
+			int num_delete=-1;
+			int insert_base=-1;
+			int num_keep=-1;
+			size_t n = 0;			
+			string seq1(" ",level+1);
+			char seq2;
+			for(size_t w = level; w>0 ;w--){
+				seq1.at(level-w)=seq.at(seq.size()-w);
+			}
+			char s1chr;
+			char s2chr;
+			size_t s1;
+			size_t s2;
+			p.alignment_col(i, s1chr, s2chr);				
+			s1 = dnastring::base_to_index(s1chr);
+			s2 = dnastring::base_to_index(s2chr);
+			seq1.at(level)=s1;
+			if(s1 == s2){
+				size_t klength = 0;
+				size_t l1 = 0;													
+				for(size_t j = i; j<p.alignment_length(); j++){
+					char q1chr;
+					char q2chr;
+					p.alignment_col(j, q1chr, q2chr);				
+					size_t q1 = dnastring::base_to_index(q1chr);
+					size_t q2 = dnastring::base_to_index(q2chr);
+					if(q1 == q2){
+						klength +=1;
+					}else {	
+						break;
+					}
+				}
+				n = klength-1;
+			/*	if(i<51){
+					cout<<"keep length at "<< i << " is  "<< klength<<endl;
+				}*/
+				for (size_t m = 0; m< powersOfTwo.size();m++){
+					if((klength & powersOfTwo.at(m)) != 0){
+						num_keep=m;
+						seq += modification_character(modify_base,num_delete,insert_base,num_keep);
+						l1++;
+					}
+				}
+				seq2 = seq.at(seq.size()-l1);
+				functor. see_context(&p,i,seq1,seq2);				
+			}else{
+				if((s1!=5) & (s2!=5)){
+					modify_base = s2;
+				/*	if(i<51){
+						cout<<"modification at "<< i << " is  "<<s2 <<endl;
+					}*/
+					seq += modification_character(modify_base,num_delete,insert_base,num_keep);
+					seq2 = modification_character(modify_base,num_delete,insert_base,num_keep);
+					functor. see_context(&p,i,seq1,seq2);
+				}
+				if(s2 == 5){
+					insert_base = s1;
+					seq += modification_character(modify_base,num_delete,insert_base,num_keep);						
+					seq2 = modification_character(modify_base,num_delete,insert_base,num_keep);
+					functor. see_context(&p,i,seq1,seq2);						
+				}
+				if(s1 == 5){
+					size_t dlength = 0;
+					size_t l1 = 0;												
+					for(size_t j = i; j < p.alignment_length(); j++){
+						char q1chr;
+						char q2chr;
+						p.alignment_col(j, q1chr, q2chr);				
+						size_t q1 = dnastring::base_to_index(q1chr);
+						size_t q2 = dnastring::base_to_index(q2chr);
+						if(q1 == 5 ){
+							dlength +=1;
+						}else {
+							break;
+						}
+					}
+					n = dlength-1;
+					for (size_t m = 0; m< powersOfTwo.size();m++){
+						if((dlength & powersOfTwo.at(m)) != 0){
+							num_delete = m;
+							seq += modification_character(modify_base,num_delete,insert_base,num_keep);		
+							l1++;							
+						}
+					}
+					seq2 = seq.at(seq.size()-l1);
+					functor. see_context(&p,i,seq1,seq2);	
+				}
+			}
+			i=i+n;
+		}		
+	/*	cout<<"The alignment is: "<<endl;
+		p.print();
+		cout<<"encoded sequence from two to one is: "<<endl;
+		for(size_t m = 0; m < seq.size(); m ++){
+			cout<< int(seq.at(m))<<endl;
+			if (m > 50) break;
+		}*/
+
+	}
+	abstract_context_functor::abstract_context_functor(){
+	
+	}
+	void abstract_context_functor::see_context(const pw_alignment * p, size_t pos, string context, char last_char){
+		
+	}
+	counting_functor::counting_functor(all_data & d):data(d), successive_modification(data.numAcc(),vector<map<string, vector<double> > >(data.numAcc())),total(data.numAcc(),vector<map<string, double > >(data.numAcc())) {}
+
+	void counting_functor::see_context(const pw_alignment * p, size_t pos, string context, char last_char){
+		size_t acc1 = data.accNumber(p->getreference1());
+		size_t acc2 = data.accNumber(p->getreference2());
+		map <string, vector<double> >::iterator it1= successive_modification.at(acc1).at(acc2).find(context);
+			if(it1==successive_modification.at(acc1).at(acc2).end()) {
+				successive_modification.at(acc1).at(acc2).insert(make_pair(context, vector<double>((NUM_DELETE+NUM_KEEP+10),1)));
+				it1= successive_modification.at(acc1).at(acc2).find(context);
+			}
+			it1->second.at(last_char)++;
+	}
+	void counting_functor::total_context(){
+		for(size_t i = 0; i < data.numAcc(); i++){
+			for(size_t j = 0; j<data.numAcc(); j++){
+				for(map<string, vector<double> >::iterator it = successive_modification.at(i).at(j).begin(); it!= successive_modification.at(i).at(j).end();it++){
+					string context = it->first;
+					map<string, double >::iterator it1=total.at(i).at(j).find(context);
+					if(it1 == total.at(i).at(j).end()){
+						total.at(i).at(j).insert(make_pair(context,0));
+						it1=total.at(i).at(j).find(context);
+					}
+					for(size_t k = 0; k < NUM_DELETE+NUM_KEEP+10; k++){
+					it1->second += it->second.at(k);	
+					}
+				}
+			}
+		}
+
+
+	}
+
+	double counting_functor::get_total(size_t acc1, size_t acc2, string context)const{
+		return total.at(acc1).at(acc2).at(context);
+	}
+
+			
+	
+	
+	
+	const map<string, vector<double> > & counting_functor::get_context(size_t acc1, size_t acc2)const{
+		return successive_modification.at(acc1).at(acc2);
+	}
+

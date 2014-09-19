@@ -155,8 +155,8 @@ int do_fasta_prepare(int argc, char * argv[]) {
  
 
 
-int do_model(int argc, char * argv[]) {
-	typedef model use_model;
+int do_mc_model(int argc, char * argv[]) {
+	typedef mc_model use_model;
 	typedef clustering<use_model> use_clustering;
 	typedef initial_alignment_set<use_model> use_ias;
 	if(argc < 4) {
@@ -178,6 +178,7 @@ int do_model(int argc, char * argv[]) {
 // Read all data
 	all_data data(fastafile, maffile);
 	overlap ol(data);
+	counting_functor functor(data);
 
 
 // Find connected components of alignments with some overlap
@@ -341,7 +342,7 @@ int main(int argc, char * argv[]) {
 	if(0==program.compare("fasta_prepare")) {
 		return do_fasta_prepare(argc, argv);
 	} else if(0==program.compare("model")) {
-		return do_model(argc, argv);
+		return do_mc_model(argc, argv);
 	}
 
 	else {

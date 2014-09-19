@@ -23,6 +23,7 @@ void initial_alignment_set<T>::compute_simple(overlap & o) {
 	double total_gain = 0;
 	size_t pcs_ins = 0;
 	size_t pcs_rem = 0;
+	cout<< "sorted alignment size" << sorted_original_als.size()<<endl;	
 	for(size_t i=0; i<sorted_original_als.size(); ++i) {
 		const pw_alignment * al = sorted_original_als.at(i);
 		double gain_of_al = 0;
@@ -31,7 +32,7 @@ void initial_alignment_set<T>::compute_simple(overlap & o) {
 		double gain1, gain2;
 		common_model.gain_function(*(al), gain1, gain2);
 		gain1-=base_cost;
-		cout << endl<< "at alignment " << i << " length " << al->alignment_length() << " al base gain " << gain1 << endl;
+		cout << endl<<"at alignment " << i << " length " << al->alignment_length() << " al base gain " << gain1 << endl;
 		al->print();
 		cout << endl;
 
@@ -59,6 +60,7 @@ void initial_alignment_set<T>::compute_simple(overlap & o) {
 
 		}	
 		for(size_t j=0; j<insert_als.size(); ++j) {
+			
 			double g1;
 			double g2;
 			common_model.gain_function(insert_als.at(j), g1, g2);
