@@ -82,6 +82,7 @@ void pw_alignment::split(bool sample, size_t position, pw_alignment & first_part
 	if (sample == true) {
 		if (getbegin1()<getend1()){
 			assert(position > getbegin1());
+			assert(position <= getend1());
 				for (size_t i=0; i<samples.at(0).size()/3; ++i){
  					if (samples.at(0).at(0+i*3)== true && samples.at(0).at(1+i*3)==false && samples.at(0).at(2+i*3)==true) {
 						s=s+1;
@@ -203,7 +204,8 @@ void pw_alignment::split(bool sample, size_t position, pw_alignment & first_part
 
 	else{
 		if(getbegin2()<getend2()){
-		assert(position > getbegin2());	
+		assert(position > getbegin2());
+		assert(position <= getend2());	
    				 for (size_t i=0; i<samples.at(1).size()/3; ++i){
  					if (samples.at(1).at(0+i*3)== true && samples.at(1).at(1+i*3)==false && samples.at(1).at(2+i*3)==true) {
 						s=s+1;
@@ -325,6 +327,109 @@ void pw_alignment::split(bool sample, size_t position, pw_alignment & first_part
 	
 	
 	}
+}
+
+/*
+
+   	remove gap containing columns at the ends of an alignment
+
+	ATCTCTAAT--
+	-TCTTTAATTT
+	to
+	 TCTCTAAT
+	 TCTTTAAT
+*/   
+void pw_alignment::remove_end_gaps(pw_alignment & res) const {
+
+//	cout << "reg: " << endl;
+//	print();
+//	cout << endl;
+
+	// get first/last alignment column without gaps
+	size_t first_col = 0;
+	size_t last_col = alignment_length() -1;
+	size_t start_gaps1 = 0;
+	size_t start_gaps2 = 0;
+	size_t end_gaps1 = 0;
+	size_t end_gaps2 = 0;
+	for(size_t i=0; i<=last_col; ++i) {
+		char c1;
+		char c2;
+		alignment_col(i, c1, c2);
+		if(c1=='-') start_gaps1++;
+		if(c2=='-') start_gaps2++;
+		if(c1!='-' && c2!='-') {
+			first_col = i;
+			break;
+		}	
+	}
+	for(size_t i=last_col; i>=0; i--) {
+		char c1;
+		char c2;
+		alignment_col(i, c1, c2);
+		if(c1=='-') end_gaps1++;
+		if(c2=='-') end_gaps2++;
+		if(c1!='-' && c2!='-') {
+			last_col = i;
+			break;
+		}
+	}
+
+//	cout << " start gaps " << start_gaps1 << " " << start_gaps2 << endl;
+//	cout << " end gaps " << end_gaps1 << " " << end_gaps2 << endl;
+//	cout << " first col " << first_col << " last col " << last_col << endl;
+
+
+	assert(start_gaps1==0 || start_gaps2==0);
+	assert(end_gaps1==0 || end_gaps2==0);
+
+	res = *this;
+	// cut alignment first part
+	if(first_col>0) {
+		pw_alignment gaps;
+		if(start_gaps1>0) {
+			if(getbegin2()<getend2()) {
+//				cout << " split 1 " << endl;
+				split(false, getbegin2()+start_gaps1, gaps, res);	
+			} else {
+//				cout << " split 2 " << endl;
+				split(false, getbegin2()-start_gaps1+1, gaps, res); // falsch?
+			}
+		} else { // gaps on second ref
+			if(getbegin1()<getend1()) {
+//				cout << " split 3 " << endl;
+				split(true, getbegin1()+start_gaps2, gaps, res);
+			} else {
+//				cout << " split 4 " << endl;
+				split(true, getbegin1()-start_gaps2+1, gaps, res);
+			}
+		}
+	}
+	// cut alignment last part
+	if(last_col + 1 < alignment_length()) {
+		pw_alignment gaps;
+		if(end_gaps1>0) {
+			if(getbegin2()<getend2()) {
+//				cout << " split 5 " << endl;
+				res.split(false, getend2()-end_gaps1+1, res, gaps);
+			} else {
+//				cout << " split 6 " << endl;
+				res.split(false, getend2()+end_gaps1, res, gaps);
+			}
+		} else { // gaps on first ref
+			if(getbegin1()<getend1()) {
+//				cout << " split 7 " << endl;
+				res.split(true, getend1()-end_gaps2+1, res, gaps);
+			} else {
+//				cout << " split 8 " << endl;
+				res.split(true, getend2()+end_gaps2, res, gaps);
+			}
+		}
+	}
+
+//	cout << " regres " << endl;
+//	res.print();
+//	cout << endl;
 }
 
 
@@ -543,14 +648,26 @@ char pw_alignment::base_translate_back(bool bit1, bool bit2, bool bit3) {
 	cout << "al1 seq "<< getreference1() << " b " << getbegin1() << " e " << getend1() << endl;
 	cout << "al2 seq "<< getreference2() << " b " << getbegin2() << " e " << getend2() << endl;
 
+
+//	if(alignment_length() < 80) {
+//	for(size_t col = 0; col < alignment_length(); col++) {
+//		char c1;
+//		char c2;
+//		alignment_col(col, c1, c2);
+//		cout <<col <<"\t"<< c1<<"\t"<<c2<<endl;
+//	if(col>50) break;	
+//	}
+
+//	}
 /*	for(size_t col = 0; col < alignment_length(); col++) {
 		char c1;
 		char c2;
 		alignment_col(col, c1, c2);
-		cout <<col <<"/t"<< c1<<"\t"<<c2<<endl;
+		cout <<col <<"\t"<< c1<<"\t"<<c2<<endl;
 	if(col>50) break;	
 	}*/
-	} 
+
+} 
 
 
 
