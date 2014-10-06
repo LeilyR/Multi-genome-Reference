@@ -169,25 +169,74 @@ private:
 	vector<vector<double> > cost_on_acc;
 	vector<vector<vector<vector<double> > > >modification;
 };
-	class mc_model{
+
+#define NUM_DELETE 5
+#define NUM_KEEP 10
+
+class abstract_context_functor {
+	public:
+	abstract_context_functor();
+	virtual void see_context(const pw_alignment * p, size_t pos, string context, char last_char);
+	
+
+};
+
+
+class counting_functor : public abstract_context_functor {
+	public:
+	counting_functor(all_data &);
+	virtual void see_context(const pw_alignment * p, size_t pos, string context, char last_char);
+	const map<string, vector<double> > & get_context(size_t acc1, size_t acc2)const;
+	void total_context();
+	double get_total(size_t acc1, size_t acc2, string context)const;
+	private:
+	all_data & data;
+	vector<vector<map<string, vector<double> > > >successive_modification;
+	vector<vector<map <string, double > > > total;			
+
+
+
+
+};
+
+class adding_functor : public abstract_context_functor {
+	public:
+
+};
+class encoding_functor : public abstract_context_functor {
+
+
+};
+class decoding_functor : public abstract_context_functor {
+
+
+};
+
+class mc_model{
 	public:
 		mc_model(all_data&);
 		~mc_model();	
 		void markov_chain();
 		void markov_chain_alignment();
-		void cost_function(const pw_alignment& p, double & c1, double & c2, double & m1, double & m2) const;
-		void gain_function(const pw_alignment& p, double & g1, double & g2) const;
+		void cost_function(const pw_alignment& p, double & c1, double & c2, double & m1, double & m2)const ;
+		void gain_function(const pw_alignment& p, double & g1, double & g2)const ;
+		void train();
+		char modification_character(int modify_base, int num_delete, int insert_base, int num_keep)const;
+		void modification(char enc, int & modify_base, int & num_delete, int & insert_base, int & num_keep);
+		void computing_modification_oneToTwo(const pw_alignment & p, abstract_context_functor & functor)const;
+		void computing_modification_twoToOne(const pw_alignment & p, abstract_context_functor & functor)const;
+		void cost_function( pw_alignment& p) const;
+		string print_modification_character(char enc);
 	private:
-		all_data & data;
-	vector<map <string, vector<double> > > sequence_successive_bases;
-	vector<vector<double> >modification_cost;
+	all_data & data;
+	vector<map<string, vector<double> > >sequence_successive_bases;
 	vector<vector<double> > create_cost;
-	};
+	vector<size_t> powersOfTwo;
+	vector<vector<map<string, vector<double> > > >mod_cost;
 
-
-
-
-
+};
+	
+	
 
 
 
