@@ -1574,7 +1574,7 @@ size_t overlap::size() const {
 				stringstream context;		
 				for(size_t j = level; j>0; j--){
 					char rchr;
-					signed long temp = i - level;
+					signed long temp = i - j;
 					if(temp >= 0){
 						rchr = data.getSequence(k).at(i-j);
 					}else{
@@ -1595,20 +1595,20 @@ size_t overlap::size() const {
 			}
 					}
 		for(size_t i =0 ; i< data.numAcc(); i++){
-			int total;
 			for(map <string, vector<double> >::iterator it= sequence_successive_bases.at(i).begin();it!=sequence_successive_bases.at(i).end();it++){
 				string seq = it->first;
+				int total = 0;
 				vector<double> & base = sequence_successive_bases.at(i).at(seq);
 				for(size_t j = 0; j<5;j++){
 					total += base.at(j);
-			//	cout<<"base: "<<base.at(0)<<endl;
+			//	cout<<"base: "<<base.at(j)<<endl;
 				}
 		//	cout<<"totalnumber of bases for each seq:  "<< total<<endl;
 				for(size_t k=0; k<5;k++){
-				base.at(k) = -log2(base.at(k)/total);
-				create_cost.at(i).at(k) += base.at(k);
+					base.at(k) = -log2(base.at(k)/total);
+					create_cost.at(i).at(k) += base.at(k);
+				//	cout<<"cr_cost: "<<base.at(k) <<endl;		
 				}
-			//	cout<<"cr_cost: "<<base.at(0) <<endl;		
 			}
 		}
 			
@@ -1629,18 +1629,18 @@ size_t overlap::size() const {
 				for(map <string, vector<double> >::const_iterator it= functor.get_context(i,j).begin();it!=functor.get_context(i,j).end();it++){
 					string seq1 = it->first;
 					const vector<double> & base = functor.get_context(i,j).at(seq1);
-				/*	cout<<"base is: "<<endl;
-					for(size_t a= 0; a< base.size();a++){
-						cout<< "base at "<<  print_modification_character(a)<<" is "<<base.at(a)<<endl;
-					}*/
-				/*	cout<< "context is: "<<endl;
-					for(size_t m = 0 ; m < seq1.size() ; m++){
-						cout<< int(seq1.at(m))<<endl;
-					}*/
+				//	cout<<"base is: "<<endl;
+				//	for(size_t a= 0; a< base.size();a++){
+				//		cout<< "base at "<< a<< " which is  " << print_modification_character(a)<<" is "<<base.at(a)<<endl;
+				//	}
+				//	cout<< "context is: "<<endl;
+				//	for(size_t m = 0 ; m < seq1.size() ; m++){
+				//		cout<< int(seq1.at(m))<<endl;
+				//	}
 				//	cout<<"the total number of happening the above context between "<<i<<" and "<<j<<" is "<< functor.get_total(i,j,seq1) <<endl;
 					for(size_t k = 0; k< (NUM_DELETE+NUM_KEEP+10);k++){
 				//		cout<<"The number of happening "<< print_modification_character(k) << " between acc " <<i<< " and acc " << j << " after a certain context is "<< base.at(k)<<endl;
-						cout<<"In MC model, the cost value of modifying a pattern on acc " << i << " to " <<print_modification_character(k) << " on acc " << j << " is " << -log2(base.at(k)/functor.get_total(i,j,seq1)) << " bits " << endl; 
+				//		cout<<"In MC model, the cost value of" <<print_modification_character(k) <<  " after above pattern between acc " << i << " and acc " << j << " is " << -log2(base.at(k)/functor.get_total(i,j,seq1)) << " bits " << endl; 
 						map <string, vector<double> >::iterator it1= mod_cost.at(i).at(j).find(seq1);
 						if(it1==mod_cost.at(i).at(j).end()) {
 							mod_cost.at(i).at(j).insert(make_pair(seq1, vector<double>((NUM_DELETE+NUM_KEEP+10),1)));
@@ -1665,96 +1665,105 @@ size_t overlap::size() const {
 		cost_on_sample.at(1) = c2;
 		modify_cost.at(0) = m1;
 		modify_cost.at(1) = m2;
+
 		p.set_cost(cost_on_sample, modify_cost);
 	}
 
 	void mc_model::cost_function(const pw_alignment& p, double & c1, double & c2, double & m1, double & m2)const {
 		counting_functor  f(data);
+		p.print();
+		size_t length = p.alignment_length();
 		size_t level = 2;
 		computing_modification_oneToTwo(p,f);
 		computing_modification_twoToOne(p,f);
-		f.total_context();
 		vector<double> cost_on_sample(2,0);
 		vector<double> modify_cost(2,0);
 		size_t acc1 = data.accNumber(p.getreference1());
 		size_t acc2 = data.accNumber(p.getreference2());
-		vector <map < string, vector<double> > >alignment_successive_bases(2);
 		char s1chr;
 		char s2chr;
-		for(size_t i = level; i<p.alignment_length(); i++){
-			p.alignment_col(i, s1chr, s2chr);				
+		size_t left1;
+		size_t right1;	
+		size_t left2;
+		size_t right2;
+		p.get_lr1(left1,right1);
+		p.get_lr2(left2,right2);
+		for(size_t i = left1; i< right1; i++){
+			s1chr = data.getSequence(p.getreference1()).at(i);
 			size_t s1 = dnastring::base_to_index(s1chr);
+			stringstream context1;
+			for (size_t j = level; j>0; j--){
+				
+				if(i<j){
+					char r1chr = 'A';
+					context1 << r1chr;					
+				}else{
+					char r1chr = data.getSequence(p.getreference1()).at(i-j);
+					context1 << r1chr;	
+				}
+			}
+		string seq1;
+		context1>>seq1;
+		map <string, vector<double> >::const_iterator it= sequence_successive_bases.at(acc1).find(seq1);
+		cost_on_sample.at(0) += it->second.at(s1);
+		}		
+		for(size_t i = left2; i<right2; i++){
+			s2chr = data.getSequence(p.getreference2()).at(i);
 			size_t s2 = dnastring::base_to_index(s2chr);
-			stringstream context1;	
-			stringstream context2;	
-				for(size_t j = level; j>0; j--){
-					char r1chr;
-					char r2chr;
-					p.alignment_col(i-j, r1chr, r2chr);				
-					context1 << r1chr;
-					context2 << r2chr;
+			stringstream context2;
+			for(size_t j = level; j>0; j--){
+				if(i<j){
+						char r2chr = 'A';
+						context2 << r2chr;	
+				}else{
+						char r2chr = data.getSequence(p.getreference2()).at(i-j);
+						context2 << r2chr;
+				}
 			}
-			string seq1;
 			string seq2;
-			context1>>seq1;
 			context2>>seq2;
-			map <string, vector<double> >::iterator it= alignment_successive_bases.at(0).find(seq1);
-				if(it==alignment_successive_bases.at(0).end()) {
-					alignment_successive_bases.at(0).insert(make_pair(seq1, vector<double>(6,1)));
-					it= alignment_successive_bases.at(0).find(seq1);
-				}
-				it->second.at(s1)++;
-			map <string, vector<double> >::iterator it1= alignment_successive_bases.at(1).find(seq2);
-				if(it1==alignment_successive_bases.at(1).end()) {
-					alignment_successive_bases.at(1).insert(make_pair(seq2, vector<double>(6,1)));
-					it1= alignment_successive_bases.at(1).find(seq2);
-				}
-				it1->second.at(s2)++;			
+			map <string, vector<double> >::const_iterator it1= sequence_successive_bases.at(acc2).find(seq2);
+			cost_on_sample.at(1) += it1->second.at(s2);
 		}	
-		for(map <string, vector<double> >::iterator it= alignment_successive_bases.at(0).begin();it!=alignment_successive_bases.at(0).end();it++){
-			string seq = it->first;
-			int total1 = 1;
-			vector<double> & base = alignment_successive_bases.at(0).at(seq);
-			for(size_t j = 0; j<6;j++){
-				total1 += base.at(j);
-			}
-			for(size_t m = 0; m<6;m++){
-				cost_on_sample.at(0) += -log2(base.at(m)/total1);
-			}
-
-		}
-		for(map <string, vector<double> >::iterator it= alignment_successive_bases.at(1).begin();it!=alignment_successive_bases.at(1).end();it++){
-			string seq = it->first;
-			int total2 = 1;
-			vector<double> & base = alignment_successive_bases.at(1).at(seq);
-			for(size_t j = 0; j<6;j++){
-				total2 += base.at(j);
-			}
-			for(size_t m = 0; m<6;m++){
-				cost_on_sample.at(1) += -log2(base.at(m)/total2);
-			}
-		}
+									
 		for(map <string, vector<double> >::const_iterator it= f.get_context(acc1,acc2).begin();it!=f.get_context(acc1,acc2).end();it++){
-					string seq1 = it->first;
-					const vector<double> & base = f.get_context(acc1,acc2).at(seq1);
-					for(size_t k = 0; k< (NUM_DELETE+NUM_KEEP+10);k++){
-						modify_cost.at(0) +=-log2(base.at(k)/f.get_total(acc1,acc2,seq1));
-					}
-				}
+			string seq1 = it->first;
+			const vector<double> & base = f.get_context(acc1,acc2).at(seq1);
+			map <string, vector<double> >::const_iterator it1= mod_cost.at(acc1).at(acc2).find(seq1);
+			for(size_t k = 0; k< (NUM_DELETE+NUM_KEEP+10);k++){
+				modify_cost.at(0) +=(base.at(k)-1)*(it1->second.at(k));
+			}
+		/*	cout<< " context is "<<endl;
+			for(size_t i = 0 ; i < seq1.size(); i++){
+				cout<< int(seq1.at(i))<<endl;
+			}
+			cout<<"base is: "<<endl;
+			for(size_t a= 0; a< base.size();a++){
+				cout<< "base at "<< a << " which is " << print_modification_character(a)<<" is "<<base.at(a)<<endl;
+				cout<< "modification cost of it is "<< -log2(base.at(a)/f.get_total(acc1,acc2,seq1))<<endl;
+			}*/	
 
+		}
 		for(map <string, vector<double> >::const_iterator it= f.get_context(acc2,acc1).begin();it!=f.get_context(acc2,acc1).end();it++){
-					string seq1 = it->first;
-					const vector<double> & base = f.get_context(acc2,acc1).at(seq1);
-					for(size_t k = 0; k< (NUM_DELETE+NUM_KEEP+10);k++){
-						modify_cost.at(1) +=-log2(base.at(k)/f.get_total(acc2,acc1,seq1));
-					}
-				}
+			string seq1 = it->first;
+		/*	cout<< " context2 is "<<endl;
+			for(size_t i = 0 ; i < seq1.size(); i++){
+				cout<< int(seq1.at(i))<<endl;
+			}*/
+			const vector<double> & base = f.get_context(acc2,acc1).at(seq1);
+			map <string, vector<double> >::const_iterator it1= mod_cost.at(acc2).at(acc1).find(seq1);
+			for(size_t k = 0; k< (NUM_DELETE+NUM_KEEP+10);k++){
+				modify_cost.at(1) +=(base.at(k)-1)*(it1->second.at(k));
+			}
+		//	cout<<"Modification cost on the second ref: " << modify_cost.at(1) << endl;			
+		}
 
 		c1 = cost_on_sample.at(0);
 		c2 = cost_on_sample.at(1);
 		m1 = modify_cost.at(0);
 		m2 = modify_cost.at(1);
-		
+		cout<< "length: " << length<<endl;
+	//	cout<< "c1: " << c1 << " c2: "<< c2 << " m1: "<< m1<< " m2: "<< m2 <<endl;
 	}
 	void mc_model::gain_function(const pw_alignment& p, double & g1, double & g2)const {
 		double c1;
@@ -1763,9 +1772,13 @@ size_t overlap::size() const {
 		double m2;
 		cost_function(p, c1, c2, m1,m2);
 
-		cout << " gain function c2 " << c2 << " m1 " << m1 << " gain " << g1 << endl; 
+	
 		g1 = c2 - m1;
 		g2 = c1 - m2;
+
+		cout << " gain function c2 " << c2 << " m1 " << m1 << " gain1 " << g1 << endl; 
+		cout << " gain function c1 " << c1 << " m2 " << m2 << " gain2 " << g2 << endl; 
+
 
 	}
 	
@@ -1797,7 +1810,7 @@ size_t overlap::size() const {
 		assert (false);
 		return -1;
 	}
-		string mc_model::print_modification_character(char enc){
+		string mc_model::print_modification_character(char enc)const{
 			int modify_base = -1;
 			int num_delete =-1;
 			int insert_base = -1;
@@ -1812,7 +1825,7 @@ size_t overlap::size() const {
 				s<< " a keep of length" << num_keep;
 			}
 			if(modify_base != -1) {
-				s<< " a modification at " << dnastring::index_to_base(modify_base);
+				s<< " a modification to " << dnastring::index_to_base(modify_base);
 			}
 			if(insert_base != -1){
 				s<< " a insertion at " << dnastring::index_to_base(insert_base);
@@ -1820,7 +1833,7 @@ size_t overlap::size() const {
 			return s.str();
 		}
 
-	void mc_model::modification(char enc, int & modify_base, int & num_delete, int & insert_base, int & num_keep) {
+	void mc_model::modification(char enc, int & modify_base, int & num_delete, int & insert_base, int & num_keep)const {
 		modify_base = -1;
 		num_delete =-1;
 		insert_base = -1;
@@ -1846,10 +1859,15 @@ size_t overlap::size() const {
 	void mc_model::computing_modification_oneToTwo(const pw_alignment & p, abstract_context_functor & functor)const{
 		size_t level =2;
 		string seq = "" ;
+		size_t acc1 = data.accNumber(p.getreference1());
+		size_t acc2 = data.accNumber(p.getreference2());
+		size_t first_patterns = level;		
 		for(size_t j = 0; j < level; j++){
-			seq+=modification_character(1,-1,-1,-1);
+			first_patterns--;
+			seq+=modification_character(-1,-1,-1,first_patterns);
 		}
 		for (size_t i = 0; i< p.alignment_length(); i++){
+			cout<<"i: "<< i << endl;
 			size_t n = 0;
 			int modify_base =-1;
 			int num_delete=-1;
@@ -1857,7 +1875,8 @@ size_t overlap::size() const {
 			int num_keep=-1;
 			string seq1(" ",level+1);
 			char seq2;
-			for(size_t w = level; w>0 ;w--){	
+			//cout<<"seq size: "<< seq.size()<<endl;
+			for(size_t w = level; w>0 ;w--){
 				seq1.at(level-w)=seq.at(seq.size()-w);
 			}
 			char s1chr;
@@ -1867,11 +1886,9 @@ size_t overlap::size() const {
 			p.alignment_col(i, s1chr, s2chr);				
 			s1 = dnastring::base_to_index(s1chr);
 			s2 = dnastring::base_to_index(s2chr);
-		//	cout<<"context at position zero is: "<< int(seq1.at(0))<<endl;
 			seq1.at(level)=s1;
 			if(s1 == s2){
 				size_t klength = 0;
-				size_t l1 = 0;													
 				for(size_t j = i; j<p.alignment_length(); j++){
 					char q1chr;
 					char q2chr;
@@ -1880,24 +1897,30 @@ size_t overlap::size() const {
 					size_t q2 = dnastring::base_to_index(q2chr);
 					if(q1 == q2){
 						klength +=1;
-					}else {	
+					}else{	
 						break;
 					}
 				}
 			/*	if(i<51){
 					cout<<"keep length at "<< i << " is  "<< klength<<endl;
 				}*/
-				n = klength-1;
-				for (size_t m = 0; m< powersOfTwo.size();m++){
-					if((klength & powersOfTwo.at(m)) != 0){
-						num_keep=m;
-						seq += modification_character(modify_base,num_delete,insert_base,num_keep);
-						l1++;
+				if(klength > powersOfTwo.at(powersOfTwo.size()-1)){
+					num_keep= powersOfTwo.size()-1;
+					n=powersOfTwo.at(num_keep)-1;
+					seq+=modification_character(modify_base,num_delete,insert_base,num_keep);
+				}else{
+					for (size_t m = powersOfTwo.size()-1; m >= 0; m--){
+						if((klength & powersOfTwo.at(m)) != 0){
+							num_keep=m;
+							n= powersOfTwo.at(num_keep)-1;
+							seq += modification_character(modify_base,num_delete,insert_base,num_keep);
+							break;
+						}
 					}
 				}
-				seq2 = seq.at(seq.size()-l1);
-			//	cout<<"last pattern: "<< int(seq2)<<endl;
-				functor. see_context(&p,i,seq1,seq2);
+				seq2 = seq.at(seq.size()-1);
+				cout<< "recorded keep length: " << n+1 << endl;
+				functor. see_context(acc1,acc2,i,seq1,seq2);
 			}else{
 				if((s1!=5) & (s2!=5)){
 					modify_base = s1;
@@ -1905,18 +1928,17 @@ size_t overlap::size() const {
 						cout<<"modification at "<< i << " is  "<<s1 <<endl;
 					}*/
 					seq += modification_character(modify_base,num_delete,insert_base,num_keep);
-					seq2 = modification_character(modify_base,num_delete,insert_base,num_keep);
-					functor. see_context(&p,i,seq1,seq2);
+					seq2 = modification_character(s2,num_delete,insert_base,num_keep);
+					functor. see_context(acc1,acc2,i,seq1,seq2);
 				}
 				if(s1 == 5){
 					insert_base = s2;
 					seq += modification_character(modify_base,num_delete,insert_base,num_keep);						
 					seq2 = modification_character(modify_base,num_delete,insert_base,num_keep);
-					functor. see_context(&p,i,seq1,seq2);						
+					functor. see_context(acc1,acc2,i,seq1,seq2);						
 				}
 				if(s2 == 5){
 					size_t dlength = 0;
-					size_t l1 = 0;												
 					for(size_t j = i; j < p.alignment_length(); j++){
 						char q1chr;
 						char q2chr;
@@ -1929,40 +1951,55 @@ size_t overlap::size() const {
 							break;
 						}
 					}
-					n = dlength-1;
-					for (size_t m = 0; m< powersOfTwo.size();m++){
-						if((dlength & powersOfTwo.at(m)) != 0){
-							num_delete = m;
-							seq += modification_character(modify_base,num_delete,insert_base,num_keep);		
-							l1++;							
+					if(dlength > powersOfTwo.at(powersOfTwo.size()-1)){
+						num_delete= powersOfTwo.size()-1;
+						n= powersOfTwo.at(num_delete)-1;
+						seq+=modification_character(modify_base,num_delete,insert_base,num_keep);
+					}else{
+						for (size_t m = powersOfTwo.size()-1;m>=0;m--){
+							if((dlength & powersOfTwo.at(m)) != 0){
+								num_delete = m;
+								n= powersOfTwo.at(num_delete)-1;
+								seq += modification_character(modify_base,num_delete,insert_base,num_keep);		
+								break;
+							}
 						}
 					}
-					seq2 = seq.at(seq.size()-l1);
-					functor. see_context(&p,i,seq1,seq2);	
+					seq2 = seq.at(seq.size()-1);
+					functor. see_context(acc1,acc2,i,seq1,seq2);
 				}
 
 			}
+			cout<< " context1 is "<<endl;
+			for(size_t h = 0 ; h < seq1.size(); h++){
+				cout<< int(seq1.at(h))<<endl;
+			}
+			cout<<"last char: "<<int(seq2)<<endl;
+			cout<<"i+n: "<< i+n<<endl;
 			i=i+n;
 			//	uint32_t initial = 1;
 			//	for (uint32_t m = 0; m <32 ; m++)
 			//		uint32_t power_of_two = initial << m; 
 			//		if((klength & power_of_two) !=0)
 		}
-	/*	cout<<"The alignment is: "<<endl;
-		p.print();
+	//	cout<<"The alignment is: "<<endl;
+	//	p.print();
 		cout<<"encoded sequence from one to two is: "<<endl;
 		for(size_t m = 0; m < seq.size(); m ++){
 			cout<< int(seq.at(m))<<endl;
-			if (m > 50) break;
-		}*/
+		}
 	}
 
 	
 	void mc_model::computing_modification_twoToOne(const pw_alignment & p, abstract_context_functor & functor)const{
 		size_t level =2;
 		string seq = "" ;
+		size_t acc1 = data.accNumber(p.getreference1());
+		size_t acc2 = data.accNumber(p.getreference2());
+		size_t first_patterns = level;
 		for(size_t j = 0; j < level; j++){
-			seq+=modification_character(1,-1,-1,-1);
+			first_patterns --;
+			seq+=modification_character(-1,-1,-1,first_patterns);
 		}
 		for (size_t i = 0; i< p.alignment_length(); i++){
 			int modify_base =-1;
@@ -1982,10 +2019,9 @@ size_t overlap::size() const {
 			p.alignment_col(i, s1chr, s2chr);				
 			s1 = dnastring::base_to_index(s1chr);
 			s2 = dnastring::base_to_index(s2chr);
-			seq1.at(level)=s1;
+			seq1.at(level)=s2;
 			if(s1 == s2){
 				size_t klength = 0;
-				size_t l1 = 0;													
 				for(size_t j = i; j<p.alignment_length(); j++){
 					char q1chr;
 					char q2chr;
@@ -1998,19 +2034,26 @@ size_t overlap::size() const {
 						break;
 					}
 				}
-				n = klength-1;
 			/*	if(i<51){
 					cout<<"keep length at "<< i << " is  "<< klength<<endl;
 				}*/
-				for (size_t m = 0; m< powersOfTwo.size();m++){
-					if((klength & powersOfTwo.at(m)) != 0){
-						num_keep=m;
-						seq += modification_character(modify_base,num_delete,insert_base,num_keep);
-						l1++;
+
+				if(klength > powersOfTwo.at(powersOfTwo.size()-1)){
+					num_keep= powersOfTwo.size()-1;
+					n=powersOfTwo.at(num_keep)-1;
+					seq+=modification_character(modify_base,num_delete,insert_base,num_keep);
+				}else{
+					for (size_t m =powersOfTwo.size()-1; m>= 0; m--){
+						if((klength & powersOfTwo.at(m)) != 0){
+							num_keep=m;
+							n=powersOfTwo.at(num_keep)-1;						
+							seq += modification_character(modify_base,num_delete,insert_base,num_keep);
+							break;
+						}
 					}
 				}
-				seq2 = seq.at(seq.size()-l1);
-				functor. see_context(&p,i,seq1,seq2);				
+				seq2 = seq.at(seq.size()-1);
+				functor. see_context(acc2,acc1,i,seq1,seq2);
 			}else{
 				if((s1!=5) & (s2!=5)){
 					modify_base = s2;
@@ -2018,18 +2061,17 @@ size_t overlap::size() const {
 						cout<<"modification at "<< i << " is  "<<s2 <<endl;
 					}*/
 					seq += modification_character(modify_base,num_delete,insert_base,num_keep);
-					seq2 = modification_character(modify_base,num_delete,insert_base,num_keep);
-					functor. see_context(&p,i,seq1,seq2);
+					seq2 = modification_character(s1,num_delete,insert_base,num_keep);
+					functor. see_context(acc2,acc1,i,seq1,seq2);
 				}
 				if(s2 == 5){
 					insert_base = s1;
-					seq += modification_character(modify_base,num_delete,insert_base,num_keep);						
+					seq += modification_character(modify_base,num_delete,insert_base,num_keep);					
 					seq2 = modification_character(modify_base,num_delete,insert_base,num_keep);
-					functor. see_context(&p,i,seq1,seq2);						
+					functor. see_context(acc2,acc1,i,seq1,seq2);						
 				}
 				if(s1 == 5){
 					size_t dlength = 0;
-					size_t l1 = 0;												
 					for(size_t j = i; j < p.alignment_length(); j++){
 						char q1chr;
 						char q2chr;
@@ -2042,46 +2084,54 @@ size_t overlap::size() const {
 							break;
 						}
 					}
-					n = dlength-1;
-					for (size_t m = 0; m< powersOfTwo.size();m++){
-						if((dlength & powersOfTwo.at(m)) != 0){
-							num_delete = m;
-							seq += modification_character(modify_base,num_delete,insert_base,num_keep);		
-							l1++;							
+					if(dlength > powersOfTwo.at(powersOfTwo.size()-1)){
+						num_delete= powersOfTwo.size()-1;
+						n = powersOfTwo.at(num_delete)-1;
+						seq+=modification_character(modify_base,num_delete,insert_base,num_keep);
+					}else{
+						for (size_t m = powersOfTwo.size()-1; m>0; m--){
+							if((dlength & powersOfTwo.at(m)) != 0){
+								num_delete = m;
+								n = powersOfTwo.at(num_delete)-1;
+								seq += modification_character(modify_base,num_delete,insert_base,num_keep);			
+							}
 						}
 					}
-					seq2 = seq.at(seq.size()-l1);
-					functor. see_context(&p,i,seq1,seq2);	
+					seq2 = seq.at(seq.size()-1);
+					functor. see_context(acc2,acc1,i,seq1,seq2);
 				}
 			}
+			cout<< " context2 is "<<endl;
+			for(size_t h = 0 ; h < seq1.size(); h++){
+				cout<< int(seq1.at(h))<<endl;
+			}
+			cout<<"last char: "<<int(seq2)<<endl;
 			i=i+n;
 		}		
-	/*	cout<<"The alignment is: "<<endl;
-		p.print();
 		cout<<"encoded sequence from two to one is: "<<endl;
 		for(size_t m = 0; m < seq.size(); m ++){
 			cout<< int(seq.at(m))<<endl;
-			if (m > 50) break;
-		}*/
+		}
 
 	}
 	abstract_context_functor::abstract_context_functor(){
 	
 	}
-	void abstract_context_functor::see_context(const pw_alignment * p, size_t pos, string context, char last_char){
+	void abstract_context_functor::see_context(size_t acc1, size_t acc2, size_t pos, string context, char last_char){
 		
 	}
 	counting_functor::counting_functor(all_data & d):data(d), successive_modification(data.numAcc(),vector<map<string, vector<double> > >(data.numAcc())),total(data.numAcc(),vector<map<string, double > >(data.numAcc())) {}
 
-	void counting_functor::see_context(const pw_alignment * p, size_t pos, string context, char last_char){
-		size_t acc1 = data.accNumber(p->getreference1());
-		size_t acc2 = data.accNumber(p->getreference2());
+	void counting_functor::see_context(size_t acc1, size_t acc2, size_t pos, string context, char last_char){
 		map <string, vector<double> >::iterator it1= successive_modification.at(acc1).at(acc2).find(context);
-			if(it1==successive_modification.at(acc1).at(acc2).end()) {
-				successive_modification.at(acc1).at(acc2).insert(make_pair(context, vector<double>((NUM_DELETE+NUM_KEEP+10),1)));
-				it1= successive_modification.at(acc1).at(acc2).find(context);
-			}
+		if(it1==successive_modification.at(acc1).at(acc2).end()) {
+			successive_modification.at(acc1).at(acc2).insert(make_pair(context, vector<double>((NUM_DELETE+NUM_KEEP+10),1)));
+			it1= successive_modification.at(acc1).at(acc2).find(context);
+		}
 			it1->second.at(last_char)++;
+		//	cout<< "context is: "<< endl;
+		//	for(size_t i = 0 ; i < context.size();i++){cout<< int(context.at(i))<<endl;}
+		//	cout<<"number of happening "<<int(last_char)<< " after above context is "<< it1->second.at(last_char)<<endl;
 	}
 	void counting_functor::total_context(){
 		for(size_t i = 0; i < data.numAcc(); i++){

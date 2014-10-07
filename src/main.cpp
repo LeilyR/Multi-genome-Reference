@@ -6,7 +6,7 @@
 #include <math.h>
 #include<ostream>
 #include<vector>
-//#include "/ebio/abt6/lrabbani/Downloads/dlib/dlib/entropy_encoder.h"
+#include "/ebio/abt6/lrabbani/Downloads/dlib/dlib/entropy_encoder/entropy_encoder_kernel_2.h"
 #include "pw_alignment.hpp"
 #include "data.hpp"
 #include "model.hpp"
@@ -14,7 +14,7 @@
 
 
 using namespace std;
-//using namespace dlib;
+using namespace dlib;
 
 
 #define TEST 0
@@ -193,7 +193,7 @@ int do_mc_model(int argc, char * argv[]) {
 	use_model m(data);
 	m.train();
 //	mc_model m(data);
-//	entropy_encoder_kernel_1 k();
+	entropy_encoder_kernel_2 k();
 //	m.markov_chain();
 //	m.markov_chain_alignment();
 	use_clustering clust(ol,data,m);
@@ -214,12 +214,12 @@ int do_mc_model(int argc, char * argv[]) {
 }
 	
 				
-	//	for(set< const pw_alignment *, compare_pw_alignment>::iterator it=cc.begin();it!=cc.end();it++ ){
-	//		const pw_alignment *al = *it;
-	//		al->getreference1();
-	//		k.getstream();
+		for(set< const pw_alignment *, compare_pw_alignment>::iterator it=cc.begin();it!=cc.end();it++ ){
+			const pw_alignment *al = *it;
+			size_t index = al ->getreference1();
+			//k.set_stream(??); how can we set the stream?
 
-	//	}
+		}
 	}
 
 //	c.calculate_similarity();

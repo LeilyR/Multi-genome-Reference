@@ -548,7 +548,7 @@ char pw_alignment::base_translate_back(bool bit1, bool bit2, bool bit3) {
 		char c2;
 		alignment_col(col, c1, c2);
 		cout <<col <<"/t"<< c1<<"\t"<<c2<<endl;
-	if(col>50) break;	
+//	if(col>50) break;	
 	}
 	} 
 
