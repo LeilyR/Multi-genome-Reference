@@ -708,7 +708,11 @@ all_data::~all_data() {
 
 
 	
-overlap::~overlap(){}
+overlap::~overlap(){
+	for(set<pw_alignment*, compare_pw_alignment>::iterator it = alignments.begin(); it!=alignments.end(); ++it) {
+		delete *it;
+	}
+}
 
 void overlap::remove_alignment(const pw_alignment * remove){
 	pair< multimap<size_t, pw_alignment*>::iterator, multimap<size_t, pw_alignment*>::iterator > eqrb1 =
