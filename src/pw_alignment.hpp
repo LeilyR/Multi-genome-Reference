@@ -33,6 +33,7 @@ class pw_alignment {
 	size_t getreference1() const;
 	size_t getreference2() const;
 	void split(bool sample, size_t position, pw_alignment & first_part, pw_alignment & second_part) const;
+	void remove_end_gaps(pw_alignment & res) const;
 	void set_alignment_bits(vector<bool> s1, vector<bool> s2);
 	vector<bool> getsample(size_t id)const;
 	size_t getbegin(size_t id)const;

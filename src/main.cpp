@@ -134,6 +134,19 @@ int do_fasta_prepare(int argc, char * argv[]) {
 					stringstream nhead;
 					nhead << ">" << names.at(i) << ":" << nname;
 					outf << nhead.str() << endl;
+
+						
+						
+/*
+	for(size_t col = 0; col < alignment_length(); col++) {
+		char c1;
+		char c2;
+		alignment_col(col, c1, c2);
+		cout <<col <<"\t"<< c1<<"\t"<<c2<<endl;
+	if(col>50) break;	
+	}
+*/	
+
 				} else {
 					outf << str << endl;
 				}
@@ -159,6 +172,7 @@ int do_mc_model(int argc, char * argv[]) {
 	typedef mc_model use_model;
 	typedef clustering<use_model> use_clustering;
 	typedef initial_alignment_set<use_model> use_ias;
+	typedef affpro_clusters<use_model> use_affpro;
 	if(argc < 4) {
 		usage();
 		cerr << "Program: model" << endl;
@@ -208,10 +222,27 @@ int do_mc_model(int argc, char * argv[]) {
 		set< const pw_alignment *, compare_pw_alignment> & cc = ccs.at(i);
 		use_ias ias(data, cc, m, cluster_base_cost);
 		ias.compute(cc_overlap.at(i));
+
+		// TODO this can be done a lot faster because there is no partial overlap here
+		vector< set<const pw_alignment *, compare_pw_alignment> > cc_cluster_in;
+		compute_cc occ(cc_overlap.at(i), data.numSequences());
+		occ.compute(cc_cluster_in);
 #pragma omp critical
 {
-		cout << "cc " << i << ": from " << cc.size() << " original als with total gain " << ias.get_max_gain() << " we made " << cc_overlap.at(i).size() << " pieces with total gain " << ias.get_result_gain() << endl; 
+		cout << "cc " << i << ": from " << cc.size() << " original als with total gain " << ias.get_max_gain() << " we made " << cc_overlap.at(i).size() << " pieces with total gain " << ias.get_result_gain() <<  endl; 
+		cout << " components for clustering: " << endl;
+		for(size_t j=0; j<cc_cluster_in.size(); ++j) {
+			cout << " run affpro on " << cc_cluster_in.at(j).size();
+
+			use_affpro uaf(cc_cluster_in.at(j), m, cluster_base_cost);
+			uaf.run();
+		}
+		cout << endl;
+
+
 }
+
+		
 	
 				
 		for(set< const pw_alignment *, compare_pw_alignment>::iterator it=cc.begin();it!=cc.end();it++ ){

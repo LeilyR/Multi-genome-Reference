@@ -8,6 +8,11 @@
 
 #include "data.hpp"
 
+
+extern "C" {
+#include "apcluster.h"
+}
+
 using namespace std;
 
 
@@ -112,6 +117,19 @@ class compute_cc {
 		}
 	
 	}
+
+	compute_cc(const overlap & ovrlp, size_t num_sequences): als_on_reference(num_sequences), last_pos(num_sequences, 0) {
+		max_al_ref_length = 0;
+		const set<pw_alignment*, compare_pw_alignment> & als = ovrlp.get_all();
+		for(set<pw_alignment*, compare_pw_alignment>::const_iterator it = als.begin(); it!=als.end(); ++it) {
+			const pw_alignment * al = *it;
+			alignments.insert(al);
+			add_on_mmaps(al);
+		}
+	
+	}
+
+
 	compute_cc(const all_data & dat);
 	~compute_cc() {}
 
@@ -151,6 +169,142 @@ class clustering {
 	
 };
 
+
+
+template<typename tmodel>
+class affpro_clusters {
+	public:
+
+	affpro_clusters(const overlap & ovlp, const tmodel & model, double base_cost): model(model), base_cost(base_cost) {
+
+		const set<pw_alignment*, compare_pw_alignment> & als = ovlp.get_all();
+		for(set<pw_alignment*, compare_pw_alignment>::const_iterator it = als.begin(); it!=als.end(); ++it) {
+			const pw_alignment * al = *it;
+			add_alignment(al);
+		}
+
+	}
+
+	affpro_clusters(const set<const pw_alignment *, compare_pw_alignment> & inset, const tmodel & model, double base_cost):model(model), base_cost(base_cost) {
+		for(set<const pw_alignment*, compare_pw_alignment>::iterator it = inset.begin(); it!=inset.end(); ++it) {
+			const pw_alignment * al = *it;
+			add_alignment(al);
+		}
+	}
+
+
+void run() {
+	// convert to c-style matrix
+	double * data = new double[simmatrix.size() * simmatrix.size()];
+	int * result = new int[simmatrix.size()];
+	if(simmatrix.size()>2) {
+	for(size_t i=0; i<simmatrix.size(); ++i) {
+		for(size_t j=0; j<simmatrix.size(); ++j) {
+			data[i*simmatrix.size() + j] = simmatrix.at(i).at(j);
+		}
+	}
+
+	APOPTIONS apoptions;
+	apoptions.cbSize = sizeof(APOPTIONS);
+	apoptions.lambda = 0.9;
+	apoptions.minimum_iterations = 1;
+	apoptions.converge_iterations = 20;
+	apoptions.maximum_iterations = 5000;
+	apoptions.nonoise = 1;
+	apoptions.progress=NULL; apoptions.progressf=NULL;
+	double netsim;
+	int iter = apcluster32(data, NULL, NULL, simmatrix.size()*simmatrix.size(), result, &netsim, &apoptions);
+	cout << "iter " << iter << endl;
+	if(iter <= 0 || result[0]==-1) {
+		apoptions.converge_iterations = 10;
+		apoptions.maximum_iterations = 15000;
+		apoptions.lambda = 0.98;
+		iter = apcluster32(data, NULL, NULL, simmatrix.size()*simmatrix.size(), result, &netsim, &apoptions);
+		cout << "iter " << iter << endl;
+	}
+	if(iter <= 0 || result[0]==-1) {
+		apoptions.converge_iterations = 10;
+		apoptions.maximum_iterations = 15000;
+		apoptions.lambda = 0.995;
+		iter = apcluster32(data, NULL, NULL, simmatrix.size()*simmatrix.size(), result, &netsim, &apoptions);
+		cout << "iter " << iter << endl;
+
+	}
+	} else {
+		if(simmatrix.size()==1) {
+			result[0] = 0;
+		} else {
+		// simpler algorithm for only 2 element
+			double one = simmatrix.at(0).at(0) + simmatrix.at(1).at(0);
+			double two = simmatrix.at(1).at(1) + simmatrix.at(0).at(1);
+			double separate = simmatrix.at(0).at(0) + simmatrix.at(1).at(1);
+
+			if(one > two && one > separate) {
+				result[0] = 0;
+				result[1] = 1;
+			} else if(two > one && two > separate) {
+				result[0] = 1;
+				result[1] = 1;
+			} else {
+				result[0] = 0;
+				result[1] = 1;
+			}
+
+		}
+	}
+// TODO conv error res -1
+
+	double totalccost = 0;
+	for(size_t i=0; i<simmatrix.size(); ++i) {
+		totalccost -= simmatrix.at(i).at(i);
+	}
+
+	double apcost = 0;
+	for(size_t i=0; i<simmatrix.size(); ++i) {
+		if(result[i]==-1) {
+			result[i] = i;
+		}
+		if(i==result[i]) {
+			apcost-=simmatrix.at(i).at(i);
+		} else {
+			apcost-=simmatrix.at(i).at(result[i]);
+		}
+	}
+	for(size_t i=0; i<simmatrix.size(); ++i) {
+		cout << sequence_names.at(i) << " res " << i << " is " << result[i] << " ( length " << sequence_lengths.at(i) << ")";
+
+		if(result[i]==i) {
+			cout << " " << simmatrix.at(i).at(i) << endl;
+		} else {
+			cout << " " << simmatrix.at(i).at(result[i]) << " : " << simmatrix.at(i).at(i) << endl;
+		}
+	}
+
+	double apgain = totalccost - apcost;
+
+	cout << "Total sequence cost " << totalccost << " ap clustering cost " << apcost << " gain: " << apgain << endl;
+
+	delete [] data;
+	delete [] result;
+
+
+}
+
+
+// simil = neg distance, diagonale pref = neg cost
+
+	private:
+	const tmodel & model;
+	double base_cost;
+	// TODO do we need distances for all pairs of sequence pieces?
+	map<string, size_t> sequence_pieces; // chr:leftpos -> seq_piece index
+	vector<string> sequence_names;
+       	vector<size_t> sequence_lengths;	
+	vector<vector<double> > simmatrix;
+
+
+	void add_alignment(const pw_alignment *al);
+};
 
 
 #endif

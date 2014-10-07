@@ -39,12 +39,19 @@ void initial_alignment_set<T>::compute_simple(overlap & o) {
 
 		alset remove_als;
 		vector<pw_alignment> insert_als;
+
+		// TODO
 //		cout << " splitpoints on: " << al << " at " << i <<  " size " <<sorted_original_als.size()<< endl; 
 //		al->print();
 //		cout << endl;	
+	
+//		o.print_all_alignment();
+
+
 		splitpoints spl(*al, o, data);
 		spl.find_initial_split_point();
 		spl.split_all(remove_als, insert_als);
+		vector<double> insert_gains(insert_als.size(), 0);
 
 		for(alset::const_iterator it = remove_als.begin(); it!=remove_als.end(); ++it) {
 			double g1;
@@ -52,7 +59,7 @@ void initial_alignment_set<T>::compute_simple(overlap & o) {
 			common_model.gain_function(*(*it), g1, g2);
 		//	if(g2<g1) g1 = g2;
 			g1-=base_cost;
-			cout << "r " << (*it)->alignment_length() << " r " << g1 << endl;
+			cout << "r " << (*it)->alignment_length() << " g " << g1 << endl;
 			gain_of_al -= g1;
 
 			(*it)->print();
@@ -66,11 +73,14 @@ void initial_alignment_set<T>::compute_simple(overlap & o) {
 			common_model.gain_function(insert_als.at(j), g1, g2);
 		//	if(g1<g2) g1 = g2;
 			g1-=base_cost;
-			cout << "i " << (insert_als.at(j)).alignment_length() << " g " << g1 << endl;
-			gain_of_al += g1;
+			insert_gains.at(j) = g1;
+			if(g1>0) {
+				cout << "i " << (insert_als.at(j)).alignment_length() << " g " << g1 << endl;
+				gain_of_al += g1;
 
-			insert_als.at(j).print();
-			cout << endl;
+				insert_als.at(j).print();
+				cout << endl;
+			}
 
 		}
 		cout << " al " << i << " rem " << remove_als.size() << " insert " << insert_als.size() << " gain " << gain_of_al << endl;	
@@ -81,17 +91,19 @@ void initial_alignment_set<T>::compute_simple(overlap & o) {
 				pcs_rem++;
 			}	
 			for(size_t j=0; j<insert_als.size(); ++j) {
+				if(insert_gains.at(j)>0) {
 				o.insert_without_partial_overlap(insert_als.at(j));
 				pcs_ins++;
+				}
 			}
-
+// TODO
+			o.test_partial_overlap();
 			total_gain+=gain_of_al;
 
 		} else {
 			not_used++;
 		}
 
-	
 	
 	}
 	result_gain = total_gain;
@@ -103,6 +115,7 @@ void initial_alignment_set<T>::compute_simple(overlap & o) {
 
 
 compute_cc::compute_cc(const all_data & dat): als_on_reference(dat.numSequences()), last_pos(dat.numSequences(), 0) {
+	max_al_ref_length = 0;
 	for(size_t i=0; i<dat.numAlignments(); ++i) {
 		const pw_alignment * a = &(dat.getAlignment(i));
 		alignments.insert(a);
@@ -136,7 +149,7 @@ void compute_cc::add_on_mmaps(const pw_alignment * pwa) {
 
 void compute_cc::compute(vector<set< const pw_alignment *, compare_pw_alignment> > & ccs) {
 	set <const pw_alignment *, compare_pw_alignment> seen;
-	multimap<size_t , set<const pw_alignment *, compare_pw_alignment> > sorter;
+	multimap<size_t , set<const pw_alignment *, compare_pw_alignment> > sorter; // sorts ccs to give largest first
 	for(set<const pw_alignment *, compare_pw_alignment>::iterator it = alignments.begin(); it!=alignments.end(); ++it) {
 		const pw_alignment * al = *it;
 		set<const pw_alignment *, compare_pw_alignment>::iterator seenal = seen.find(al);
@@ -145,6 +158,7 @@ void compute_cc::compute(vector<set< const pw_alignment *, compare_pw_alignment>
 	//		cout << " getcc" << endl;
 			set<const pw_alignment *, compare_pw_alignment> cc;
 			get_cc(al, cc, seen);
+			cout << "FOUND CC size " << cc.size() << endl;
 			sorter.insert(make_pair(cc.size(), cc));
 		}
 	
@@ -197,7 +211,8 @@ void compute_cc::cc_step(size_t ref, size_t left, size_t right, set <const pw_al
 				if(aright >= left && aleft <= right) {
 					seen.insert(al);
 					cc.insert(al);
-//					cout << "ovlr " << cc.size() << " "  << seen.size() << endl;
+			//		cout << "ovlr " << cc.size() << " "  << seen.size() <<  " ref "<< ref << " : " << left << " " << right << " ovrlaps " << endl;
+			//		al->print();
 					cc_step(al->getreference2(), aleft, aright, cc, seen);
 				}
 				if(aleft < leftmost_point_of_al_on_ref ) {
@@ -209,7 +224,8 @@ void compute_cc::cc_step(size_t ref, size_t left, size_t right, set <const pw_al
 				if(aright >= left && aleft <= right) {
 					seen.insert(al);
 					cc.insert(al);
-//					cout << "ovlr " << cc.size() << " "  << seen.size() << endl;
+				//	cout << "ovlr " << cc.size() << " "  << seen.size() << " ref "<< ref << " : " << left << " " << right << " ovrlaps " << endl;
+				//	al->print();
 					cc_step(al->getreference1(), aleft, aright, cc, seen);
 				}
 				if(aleft < leftmost_point_of_al_on_ref ) {
@@ -370,5 +386,72 @@ template<typename tmodel>
 		}
 
 	}
+
+
+template<typename tmodel>
+void affpro_clusters<tmodel>::add_alignment(const pw_alignment *al) {
+
+	// Get identifiers for both parts of the pairwise alignment
+	stringstream sstr1;
+	size_t left1, right1;
+	al->get_lr1(left1, right1);
+	sstr1 << al->getreference1()<<":"<<left1;
+	stringstream sstr2;
+	size_t left2, right2;
+	al->get_lr2(left2, right2);
+	sstr2 << al->getreference2()<<":"<<left2;
+	string ref1name = sstr1.str();
+	string ref2name = sstr2.str();
+
+	// Get data indices for both alignment parts/ sequence pieces
+	size_t ref1idx = 0;
+	size_t ref2idx = 0;
+	map<string, size_t>::iterator find1 = sequence_pieces.find(ref1name);
+	map<string, size_t>::iterator find2 = sequence_pieces.find(ref2name);
+	if(find1 == sequence_pieces.end()) {
+		ref1idx = sequence_pieces.size();
+		sequence_pieces.insert(make_pair(ref1name, ref1idx));
+		sequence_names.push_back(ref1name);
+		sequence_lengths.push_back(right1 - left1 + 1);
+	} else {
+		ref1idx = find1->second;
+	}
+	if(find2 == sequence_pieces.end()) {
+		ref2idx = sequence_pieces.size();
+		sequence_pieces.insert(make_pair(ref2name, ref2idx));
+		sequence_names.push_back(ref2name);
+		sequence_lengths.push_back(right2 - left2 + 1);
+	} else {
+		ref2idx = find2->second;
+	}
+
+	// enlarge similarity matrix
+	size_t max = ref1idx;
+	if(ref2idx > max) {
+		max = ref2idx;
+	}
+	max++;
+	if(max > simmatrix.size()) {
+		for(size_t i=0; i<simmatrix.size(); ++i) {
+			simmatrix.at(i).resize(max, -HUGE_VAL);
+		}
+		simmatrix.resize(max, vector<double>(max, -HUGE_VAL));
+	}
+
+	double c1;
+	double c2;
+	double m1; 
+	double m2;
+	model.cost_function(*al, c1, c2, m1, m2);
+	// preferences
+	simmatrix.at(ref1idx).at(ref1idx) = -c1 - base_cost;
+	simmatrix.at(ref2idx).at(ref2idx) = -c2 - base_cost;
+	// similarity (i,j): i has exemplar j, this means modify j to i?
+	simmatrix.at(ref2idx).at(ref1idx) = -m2;
+	simmatrix.at(ref1idx).at(ref2idx) = -m1;
+
+
+}
+
 
 #endif

@@ -779,6 +779,8 @@ void overlap::remove_alignment(const pw_alignment * remove){
 			const pw_alignment * al = * it;
 			//cout << " x " << al << endl;
 			al->print();
+
+			cout << endl;
 		}
 
 }
@@ -1027,23 +1029,118 @@ size_t overlap::size() const {
 	return alignments.size();
 }
 		
-	splitpoints::splitpoints(const pw_alignment & p, const overlap & o, const all_data & d):overl(o), newal(p),data(d), split_points(d.numSequences()) {
+const set<pw_alignment*, compare_pw_alignment> & overlap::get_all() const {
+	return alignments;
+}
 
+
+// true if true partial overlap
+bool overlap::check_po(size_t l1, size_t r1, size_t l2, size_t r2) const {
+	if(r2 >= l1 && l2 <= r1) {
+		if(l1!=l2 || r1!=r2) {
+			return true;	
 		}
+	}
+	return false;
+}
 
-	splitpoints::~splitpoints(){}
+void overlap::test_partial_overlap() const {
 
-	void splitpoints::find_initial_split_points(size_t sequence, size_t left, size_t right) {
+	vector<const pw_alignment *> all;
+	for(set<pw_alignment *, compare_pw_alignment>::iterator it = alignments.begin(); it!=alignments.end(); ++it) {
+		const pw_alignment * al = *it;
+		all.push_back(al);
+	}
+
+	for(size_t i=0; i<all.size(); ++i) {
+		for(size_t j=i+1; j<all.size(); ++j) {
+			const pw_alignment * a = all.at(i);
+			const pw_alignment * b = all.at(j);
+			size_t al1, ar1, al2, ar2;
+			size_t bl1, br1, bl2, br2;
+			a->get_lr1(al1, ar1);
+			a->get_lr2(al2, ar2);
+			b->get_lr1(bl1, br1);
+			b->get_lr2(bl2, br2);
+			size_t aref1, aref2, bref1, bref2;
+			aref1 = a->getreference1();
+			aref2 = a->getreference2();
+			bref1 = b->getreference1();
+			bref2 = b->getreference2();
+			if(aref1 == bref1) {
+				if(check_po(al1, ar1, bl1, br1)) {
+					cout << "partial overlap error 1: " << endl;
+					a->print();
+					b->print();
+					exit(1);
+				}
+			}
+			
+			if(aref1 == bref2) {
+				if(check_po(al1, ar1, bl2, br2)) {
+					cout << "partial overlap error 2: " << endl;
+					a->print();
+					b->print();
+					exit(1);
+				}
+			}
+
+			if(aref2 == bref1) {
+				if(check_po(al2, ar2, bl1, br1)) {
+					cout << "partial overlap error 3: " << endl;
+					a->print();
+					b->print();
+					exit(1);
+				}
+			}
+
+			if(aref2 == bref2) {
+				if(check_po(al2, ar2, bl2, br2)) {
+					cout << "partial overlap error 4: " << endl;
+					a->print();
+					b->print();
+					exit(1);
+				}
+			}
+
+		
+		}
+	}
+
+
+}
+
+
+splitpoints::splitpoints(const pw_alignment & p, const overlap & o, const all_data & d):overl(o), newal(p),data(d), split_points(d.numSequences()) {
+
+}
+
+splitpoints::~splitpoints(){}
+
+void splitpoints::find_initial_split_points(size_t sequence, size_t left, size_t right) {
 		const multimap<size_t , pw_alignment *> & alignments_on_reference = overl.get_als_on_reference_const(sequence);
+//		cout << " seach for initial split points on " << sequence << " from " << left << endl;
+		//size_t count = 0;
 		for( multimap<size_t, pw_alignment *>::const_iterator it=alignments_on_reference.lower_bound(left);it!=alignments_on_reference.end(); ++it){
 			const pw_alignment * al = it->second;
-			bool canbreak = true;
 			
+//			cout << count++ <<" See " << endl;
+//			al->print();
+//			cout << endl;
+
+			// loop break condition. This special treatment is needed to avoid to-early break in case of both parts of al being on the same reference
+			size_t al_leftmost_leftbound = (size_t)-1;
+
 			if(al->getreference1() == sequence) {
 				size_t alleft;
 				size_t alright;
 				al->get_lr1(alleft, alright);
-				if(alleft > right) canbreak = false;
+				if(alleft < al_leftmost_leftbound) {
+					al_leftmost_leftbound = alleft;
+				}
+
+
+
 				if(alleft < left && left <= alright) {
 	//				cout<<"here1"<<endl;
 				//	cout<<"al: "<<endl;
@@ -1051,7 +1148,7 @@ size_t overlap::size() const {
 					insert_split_point(sequence, left);
 				}
 				if(alleft <= right && right < alright) {
-					cout<<"here2"<<endl;
+	//				cout<<"here2"<<endl;
 				//	cout<<"al: "<<endl;
 				//	al->print();
 					insert_split_point(sequence, right+1);
@@ -1074,9 +1171,9 @@ size_t overlap::size() const {
 
 				}
 				if(left < alright && alright < right) {
-					cout<<"here4"<<endl;
+		//			cout<<"here4"<<endl;
 				//	cout<<"al: "<<endl;
-					al->print();
+		//			al->print();
 				//	cout<<"newal: "<<endl;
 				//	newal.print();
 					insert_split_point(sequence, alright+1);
@@ -1089,7 +1186,12 @@ size_t overlap::size() const {
 				size_t alleft;
 				size_t alright;
 				al->get_lr2(alleft, alright);
-				if(alleft > right) canbreak = false;
+				if(alleft < al_leftmost_leftbound) {
+					al_leftmost_leftbound = alleft;
+				}
+
+
+
 				if(alleft < left && left <= alright) {
 				//	cout<<"here5"<<endl;
 				//	cout<<"al: "<<endl;
@@ -1101,12 +1203,12 @@ size_t overlap::size() const {
 				
 				}
 				if(alleft <= right && right < alright) {
-					cout<<"here6"<<endl;
+		//			cout<<"here6"<<endl;
 				//	al->print();
 					insert_split_point(sequence, right+1);
 				}
 				if(left < alleft && alleft < right) {
-					cout<<"here7"<<endl;
+		//			cout<<"here7"<<endl;
 				//	cout<<"al: "<<endl;
 				//	al->print();
 				//	cout<<"newal: "<<endl;
@@ -1114,9 +1216,9 @@ size_t overlap::size() const {
 					insert_split_point(sequence, alleft);
 				}
 				if(left < alright && alright < right) {
-					cout<<"here8"<<endl;
+		//			cout<<"here8"<<endl;
 				//	cout<<"al: "<<endl;
-					al->print();
+		//			al->print();
 				//	cout<<"newal: "<<endl;
 				//	newal.print();
 					insert_split_point(sequence, alright+1);
@@ -1125,7 +1227,13 @@ size_t overlap::size() const {
 			
 			}
 
-			if(canbreak) break;
+
+
+
+			if(al_leftmost_leftbound > right)  {
+		//		cout << "Break after See " << count << " al rightmost leftbound is " << al_leftmost_leftbound<<  endl;	
+				break;
+			}
 		}
 
 	}
@@ -1141,7 +1249,10 @@ size_t overlap::size() const {
 		size_t right2;
 		newal.get_lr1(left1, right1);
 		newal.get_lr2(left2, right2);
+
+//		cout << " Check ref 1 overlaps " << endl;
 		find_initial_split_points(newal.getreference1(), left1, right1);
+//		cout << " Check ref 2 overlaps " << endl;
 		find_initial_split_points(newal.getreference2(), left2, right2);
 	
 		if(newal.getreference1()==newal.getreference2()) {
@@ -1154,13 +1265,18 @@ size_t overlap::size() const {
 				insert_split_point(newal.getreference2(),right2+1);
 			}
 		}
+
+		insert_split_point(newal.getreference1(), left1);
+		insert_split_point(newal.getreference1(), right1+1);
+		insert_split_point(newal.getreference2(), left2);
+		insert_split_point(newal.getreference2(), right2+1);
 	
 }
 
 	void splitpoints::insert_split_point(size_t sequence, size_t position) {
 		pair<set<size_t>::iterator, bool> insertes = split_points.at(sequence).insert(position);
 		if(insertes.second) {
-		//	cout << " new split point " << sequence << " at " << position << endl;
+	//		cout << " new split point " << sequence << " at " << position << endl;
 		
 			size_t left1;
 			size_t right1;
@@ -1169,15 +1285,36 @@ size_t overlap::size() const {
 			size_t right2;
 			newal.get_lr2(left2, right2);
 
+
+
+
 			if(newal.getreference1()==sequence) {
 				if(left1<position && right1>=position) {
 					pw_alignment fp;
 					pw_alignment sp;
-					size_t spleft2;
-					size_t spright2;
 					newal.split(true, position, fp, sp);
-					sp.get_lr2(spleft2, spright2);
-					insert_split_point(newal.getreference2(), spleft2);
+
+				//	cout << "newal fp " << endl;
+				//	fp.print();
+				//	cout  << endl;
+				//	cout << "newal sp " << endl;
+				//	sp.print();
+				//	cout << endl;
+
+					if(newal.getbegin2() < newal.getend2()) {
+						size_t spleft2;
+						size_t spright2;
+						sp.get_lr2(spleft2, spright2);
+			//			cout << " try ins " << newal.getreference2() << " : " << spleft2 << endl;
+						insert_split_point(newal.getreference2(), spleft2);
+					} else {
+						size_t fpleft2;
+						size_t fpright2;
+						fp.get_lr2(fpleft2, fpright2);
+			//			cout << " try ins " << newal.getreference2() << " : " << fpleft2 << endl;
+						insert_split_point(newal.getreference2(), fpleft2);
+
+					}
 				}
 			}
 			if(newal.getreference2()==sequence) {
@@ -1185,32 +1322,64 @@ size_t overlap::size() const {
 				//	cout<<"HERE!!"<<endl;
 					pw_alignment fp;
 					pw_alignment sp;
-					size_t spleft1;
-					size_t spright1;
 					newal.split(false, position, fp, sp);
-					sp.get_lr1(spleft1, spright1);
-					insert_split_point(newal.getreference1(), spleft1);
+					
+			//		cout << "newal fp " << endl;
+			//		fp.print();
+			//		cout  << endl;
+			//		cout << "newal sp " << endl;
+			//		sp.print();
+			//		cout << endl;
+				
+					if(newal.getbegin1() < newal.getend1()) {	
+						size_t spleft1;
+						size_t spright1;
+						sp.get_lr1(spleft1, spright1);
+			//			cout << " try ins " << newal.getreference1() << " : " << spleft1 << endl;
+						insert_split_point(newal.getreference1(), spleft1);
+					} else {
+						size_t fpleft1;
+						size_t fpright1;
+						fp.get_lr1(fpleft1, fpright1);
+			//			cout << " try ins " << newal.getreference1() << " : " << fpleft1 << endl;
+						insert_split_point(newal.getreference1(), fpleft1);
+					
+					}
 				}
 			}
+
+
+
 
 
 			const multimap<size_t, pw_alignment *> & alonref = overl.get_als_on_reference_const(sequence);
 			for(multimap<size_t, pw_alignment *>::const_iterator it = alonref.lower_bound(position); it!=alonref.end(); ++it) {
 				const pw_alignment * al = it-> second;
+				
+				
+	//			cout << " in ins " << sequence << " : " << position << " see: " << endl;
+	//			al->print();
+	//			cout << endl;
+
+
 				if(al->getreference1()!=al->getreference2()) {
 					size_t alleft;
 					size_t alright;
 					al->get_lr_on_reference(sequence, alleft, alright);
 					if(alright < position) {
+			//			cout << " break " << endl;
 						break;
 					}
 					if(alleft == position) {
+			//			cout << " break " << endl;
 						break;
 					} 
 					if(alright+1== position) {
+			//			cout << " break " << endl;
 						break;
 					}
 					if(alleft>position){
+			//			cout << " break " << endl;
 						break;
 					}
 			//		al->print(); 
@@ -1228,12 +1397,28 @@ size_t overlap::size() const {
 					}*/
 				//	cout<<"al length: "<< al->alignment_length() <<endl;
 				//	if(al->alignment_length()>1){
+
 						al->split_on_reference(sequence, position, fp, sp);
-						if(sp.getreference1()==sequence) {
-							insert_split_point(sp.getreference2(), sp.getbegin2());
+					
+		//			cout << "PARTS " << endl;
+		//			fp.print();
+		//			cout << " SP " << endl;
+		//			sp.print();
+		//			cout << endl;
+					
+					if(sp.getreference1()==sequence) {
+							if(al->getbegin2() < al->getend2()) {
+								insert_split_point(sp.getreference2(), sp.getbegin2());
+							} else {
+								insert_split_point(sp.getreference2(), fp.getend2());
+							}
 						} else {
 						//	cout<<"Heya!!!"<<endl;
-							insert_split_point(sp.getreference1(), sp.getbegin1());
+							if(al->getbegin2() < al->getend2()) {
+								insert_split_point(sp.getreference1(), sp.getbegin1());
+							} else {
+								insert_split_point(sp.getreference1(), fp.getend1());
+							}
 						}
 					//}
 				} else {
@@ -1245,16 +1430,37 @@ size_t overlap::size() const {
 					size_t alright2;
 					al->get_lr2(alleft2, alright2);
 					if(position > alleft1 && position <= alright1) {
+		//				cout << "inone" << endl;
 						pw_alignment fp;
 						pw_alignment sp;
+						
+
+
 						al->split(true, position, fp, sp);
+						
+						
+		//			cout << "PARTS " << endl;
+		//			fp.print();
+		//			cout << " SP " << endl;
+		//				sp.print();
+		//				cout << endl;
+						
+						
 						size_t spleft2;
 						size_t spright2;
-						newal.get_lr1(spleft2, spright2);
-						insert_split_point(sp.getreference2(), spleft2);
+						sp.get_lr2(spleft2, spright2);
+						if(al->getbegin2() < al->getend2()) {
+			//				cout << " spleft2 " << spleft2 << endl;
+							insert_split_point(sp.getreference2(), spleft2);
+						} else {
+			//				cout << " fpgetend2 " << fp.getend2() << endl;
+							insert_split_point(fp.getreference2(), fp.getend2());
+
+						}
 					}
 											
 					if(position > alleft2 && position <= alright2) {
+			//			cout << "intwo" << endl;
 						pw_alignment fp;
 						pw_alignment sp;
 					/*	for(size_t col = 0; col < al->alignment_length(); col++) {
@@ -1270,12 +1476,24 @@ size_t overlap::size() const {
 					//	al->print();
 					//	cout<<"position: "<< position<<endl;
 							al->split(false, position, fp, sp);
+					
+			//		cout << "PARTS " << endl;
+			//		fp.print();
+			//		cout << " SP " << endl;
+			//		sp.print();
+			//		cout << endl;
+
+
 							data.alignment_fits_ref(&fp);
 							data.alignment_fits_ref(&sp);
 							size_t spleft1;
 							size_t spright1;
-							newal.get_lr1(spleft1, spright1);
-							insert_split_point(sp.getreference1(), spleft1);
+							sp.get_lr1(spleft1, spright1);
+							if(al->getbegin1() < al->getend1()) {
+								insert_split_point(sp.getreference1(), spleft1);
+							} else {
+								insert_split_point(sp.getreference1(), fp.getend1());
+							}
 					//	}
 					}
 				}
@@ -1288,29 +1506,49 @@ size_t overlap::size() const {
 
 
 	void splitpoints::split_all(set<const pw_alignment*,compare_pw_alignment> & remove_alignments, vector<pw_alignment> & insert_alignments ){
+	//	cout << " All split points " << endl;
+	//	for(size_t i=0; i<data.numSequences(); ++i) {
+	//		cout << "ref " << i << " ";
+	//		for(set<size_t>::iterator it = split_points.at(i).begin(); it!=split_points.at(i).end(); ++it) {
+	//			cout << " " << *it;
+	//		}
+	//		cout << endl;
+	//	}
+
+
 		pw_alignment p1;
 		pw_alignment p2;
 		for(size_t i = 0; i <data.numSequences();i++){
 			const multimap<size_t, pw_alignment *> & als_on_ref = overl.get_als_on_reference_const(i);
 			for(set<size_t>::iterator split = split_points.at(i).begin(); split!= split_points.at(i).end(); ++split){
+		//		cout << "SPLIT " << *split << endl;
 				for(multimap<size_t, pw_alignment*>::const_iterator it =als_on_ref.lower_bound(*split); it!=als_on_ref.end(); ++it){
 					pw_alignment * p = it-> second;
-					size_t pleft1;
-					size_t pright1;
-					size_t pleft2;
-					size_t pright2;
-					p->get_lr1(pleft1,pright1);
-					p->get_lr1(pleft2,pright2);
-					if( pleft1<*split && pright1>*split){
-						remove_alignments.insert(p);
-					//	cout<<"remove alignment1: "<<endl;
-					//	p->print();
+
+
+		//			p->print();
+		//			cout << endl;
+
+					if(p->getreference1() == i) {
+						size_t pleft1;
+						size_t pright1;
+						p->get_lr1(pleft1,pright1);
+						if( pleft1<*split && pright1>=*split){
+							remove_alignments.insert(p);
+			//				cout<<"remove alignment1: "<<endl;
+						//	p->print();
+						}
 					}
-					if( pleft2<*split && pright2>*split){
-					//	pw_alignment *np = new pw_alignment(*p);
-						remove_alignments.insert(p);
-					//	cout<<"remove alignment2: "<<endl;
-				//		p->print();
+					if(p->getreference2()==i) {
+						size_t pleft2;
+						size_t pright2;
+						p->get_lr2(pleft2,pright2);
+						if( pleft2<*split && pright2>=*split){
+							//	pw_alignment *np = new pw_alignment(*p);
+							remove_alignments.insert(p);
+			//				cout<<"remove alignment2: "<<endl;
+							//		p->print();
+						}
 					}
 				}		
 			}
@@ -1327,41 +1565,75 @@ size_t overlap::size() const {
 //		cout<<"size of split pieces"<<split_pieces.size()<<endl;
 		set<pw_alignment*,compare_pw_alignment> inserted_pieces;
 		for(size_t i = 0; i<split_pieces.size();i++) {
+#ifndef NDEBUG
 				if(!data.alignment_fits_ref(&split_pieces.at(i))) {
 					exit(1);
 				}
-			set<pw_alignment*,compare_pw_alignment>::const_iterator it = inserted_pieces.find(&(split_pieces.at(i)));
-			if (overl.checkAlignments(&split_pieces.at(i))){}
-			else if ( it != inserted_pieces.end()){}
-			else {
-				if(!onlyGapSample(&split_pieces.at(i))){	
-					insert_alignments.push_back(split_pieces.at(i));
-					inserted_pieces.insert(&split_pieces.at(i));
+#endif
+			if(!onlyGapSample(&split_pieces.at(i))){	
+				pw_alignment noendgaps;
+				split_pieces.at(i).remove_end_gaps(noendgaps);
+				set<pw_alignment*,compare_pw_alignment>::const_iterator it = inserted_pieces.find(&noendgaps);
+				if (overl.checkAlignments(&noendgaps)) {}
+				else if ( it != inserted_pieces.end()){}
+				else {
+					insert_alignments.push_back(noendgaps);
+				
+					pw_alignment * ipp = new pw_alignment(noendgaps); //&(insert_alignments.at(insert_alignments.size()-1));
+
+					inserted_pieces.insert(ipp);
 				}
 			}
 		}
-			
+		
+		for(set<pw_alignment*,compare_pw_alignment>::iterator it = inserted_pieces.begin(); it!=inserted_pieces.end(); ++it) {
+			delete *it;
+		}
 			
 	}
 	void splitpoints::splits(const pw_alignment * p,  vector<pw_alignment> & insert_alignments){
+	//	cout << "SPL" << endl;
+	//	p->print();
+	//	cout << endl;
+
+	//	cout << " split on " << p->getreference1() << endl;
+
 		pw_alignment p1;
 		pw_alignment p2;
 		size_t left1;
 		size_t right1;	
-		size_t left2;
-		size_t right2;
+//		size_t left2;
+//		size_t right2;
 		p->get_lr1(left1,right1);
-		p->get_lr1(left2,right2);
+//		p->get_lr2(left2,right2);
 		for(set<size_t>::iterator splitp = split_points.at(p->getreference1()).upper_bound(left1); splitp!= split_points.at(p->getreference1()).end(); splitp++){
 			if(right1>=*splitp){
+		//		cout << "sp " << *splitp << endl;
 				p->split(true,*splitp,p1,p2);
-				p = &p2;
-				if(!onlyGapSample(&p1)){	
-					insert_alignments.push_back(p1);
+				if(p->getbegin1() < p->getend1()) {
+					p = &p2;
+
+					//p1.print();
+					if(!onlyGapSample(&p1)){
+						insert_alignments.push_back(p1);
+					}
+				} else {
+					p = &p1;
+
+				//	p2.print();
+
+					if(!onlyGapSample(&p2)){	
+						insert_alignments.push_back(p2);
+					}
 				}
 			}
 			else break;
 		}
+
+	//	cout << " last part" << endl;
+	//	p->print();
+	//	cout << endl;
+
 		if(!onlyGapSample(p)){	
 			insert_alignments.push_back(*p);		
 		}
@@ -1469,8 +1741,8 @@ size_t overlap::size() const {
 	}
 
 	void model::cost_function(const pw_alignment& p, double & c1, double & c2, double & m1, double & m2) const {
-		cout << " cf " << endl;
-		p.print(); // TODO 
+//		cout << " cf " << endl;
+//		p.print(); // TODO 
 
 		vector<double> cost_on_sample(2,0);
 		vector<double> modify_cost(2,0);
@@ -1537,7 +1809,7 @@ size_t overlap::size() const {
 				the gain of using the alignment is: c2 - m1 
 
 		*/
-		cout << "in gain: create 2 " << c2 << " m1 " << m1 << endl; 
+//		cout << "in gain: create 2 " << c2 << " m1 " << m1 << endl; 
 
 		g1 = c2 - m1;
 		g2 = c1 - m2;

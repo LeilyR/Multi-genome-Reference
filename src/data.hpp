@@ -90,6 +90,7 @@ class all_data {
 };
 
 
+class compute_cc;
 
 class overlap{
 public:
@@ -110,7 +111,11 @@ public:
 	void test_multimaps()  ;
 	bool checkAlignments(pw_alignment* const p)const;
 
-	void connectedComponents(vector< set<pw_alignment, compare_pw_alignment> > & comps) const;
+	const set<pw_alignment*, compare_pw_alignment> & get_all() const;
+
+	void test_partial_overlap() const;
+	bool check_po(size_t l1, size_t r1, size_t l2, size_t r2) const;
+
 
 	size_t size() const;
 private:
