@@ -40,11 +40,10 @@ void initial_alignment_set<T>::compute_simple(overlap & o) {
 		alset remove_als;
 		vector<pw_alignment> insert_als;
 
-		// TODO
+//		// TODO
 //		cout << " splitpoints on: " << al << " at " << i <<  " size " <<sorted_original_als.size()<< endl; 
 //		al->print();
 //		cout << endl;	
-	
 //		o.print_all_alignment();
 
 

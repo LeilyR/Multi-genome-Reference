@@ -6,7 +6,7 @@
 #include <math.h>
 #include<ostream>
 #include<vector>
-#include "/ebio/abt6/lrabbani/Downloads/dlib/dlib/entropy_encoder/entropy_encoder_kernel_2.h"
+// #include "/ebio/abt6/lrabbani/Downloads/dlib/dlib/entropy_encoder/entropy_encoder_kernel_2.h"
 #include "pw_alignment.hpp"
 #include "data.hpp"
 #include "model.hpp"
@@ -14,7 +14,7 @@
 
 
 using namespace std;
-using namespace dlib;
+// using namespace dlib;
 
 
 #define TEST 0
@@ -207,7 +207,7 @@ int do_mc_model(int argc, char * argv[]) {
 	use_model m(data);
 	m.train();
 //	mc_model m(data);
-	entropy_encoder_kernel_2 k();
+//	entropy_encoder_kernel_2 k();
 //	m.markov_chain();
 //	m.markov_chain_alignment();
 	use_clustering clust(ol,data,m);
