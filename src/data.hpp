@@ -7,7 +7,7 @@
 #include <fstream>
 #include <cstdlib>
 #include <cassert>
-#include "/ebio/abt6/lrabbani/Downloads/dlib/dlib/entropy_encoder/entropy_encoder_kernel_2.h"
+//#include "/ebio/abt6/lrabbani/Downloads/dlib/dlib/entropy_encoder/entropy_encoder_kernel_2.h"
 #include <set>
 #include<map>
 #include <math.h> 
@@ -65,8 +65,10 @@ class all_data {
 		size_t numAcc() const;
 		bool alignment_fits_ref(const pw_alignment * al) const;
 		void print_ref(const pw_alignment * al)const;
-		vector<size_t> getAcc(string accName)const;//return the vector of all sequences for a certain acc.
+		const vector<size_t> & getAcc(size_t acc)const;//return the vector of all sequences for a certain acc.
 		size_t accNumber(size_t sequence_id);
+		const string get_acc(size_t acc)const; //get the accession number and return its name.
+		const size_t get_acc_name(string acc)const;
 
 	
 	private:
@@ -193,7 +195,7 @@ class counting_functor : public abstract_context_functor {
 	private:
 	all_data & data;
 	vector<vector<map<string, vector<double> > > >successive_modification;
-	vector<vector<map <string, double > > > total;			
+	vector<vector<map <string, double > > > total;	
 
 
 
@@ -228,12 +230,24 @@ class mc_model{
 		void computing_modification_twoToOne(const pw_alignment & p, abstract_context_functor & functor)const;
 		void cost_function( pw_alignment& p) const;
 		string print_modification_character(char enc)const;
+		const map<string, vector<double> > & getPattern(size_t acc)const;
+		const vector<double> & get_create_cost(size_t acc) const;
+		const vector<map<string, vector<double> > > & model_parameters()const;
+		void write_parameters();
+		vector<unsigned int> get_high_at_position(size_t seq_index, size_t position) const;
+		const map<string, vector<unsigned int> > & get_high(size_t acc)const;
+		void make_all_the_patterns();
+		void set_patterns();
+		void read_high();//change it to getHigh
 	private:
 	all_data & data;
 	vector<map<string, vector<double> > >sequence_successive_bases;
 	vector<vector<double> > create_cost;
 	vector<size_t> powersOfTwo;
 	vector<vector<map<string, vector<double> > > >mod_cost;
+	vector<map<string, vector<unsigned int> > > high;
+	map<string,vector<double> > all_the_patterns;
+		
 
 };
 

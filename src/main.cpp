@@ -6,15 +6,18 @@
 #include <math.h>
 #include<ostream>
 #include<vector>
-#include "/ebio/abt6/lrabbani/Downloads/dlib/dlib/entropy_encoder/entropy_encoder_kernel_2.h"
 #include "pw_alignment.hpp"
 #include "data.hpp"
 #include "model.hpp"
+#include "encoder.hpp"
+#define NO_MAKEFILE
+#include "dlib/entropy_encoder/entropy_encoder_kernel_1.h"
+#include "dlib/entropy_decoder/entropy_decoder_kernel_1.h"
+
 
 
 
 using namespace std;
-using namespace dlib;
 
 
 #define TEST 0
@@ -207,7 +210,7 @@ int do_mc_model(int argc, char * argv[]) {
 	use_model m(data);
 	m.train();
 //	mc_model m(data);
-	entropy_encoder_kernel_2 k();
+//	entropy_encoder_kernel_2 k();
 //	m.markov_chain();
 //	m.markov_chain_alignment();
 	use_clustering clust(ol,data,m);
@@ -358,6 +361,27 @@ size_t removed = 0;
 
 	return 0;
 }
+int do_mc_model_seq(int argc, char * argv[]){
+	string fastafile(argv[2]);
+	string maffile(argv[3]);
+	size_t num_threads = 1;
+	typedef mc_model use_model;
+
+//Reading data:(Use an empty maf file!)
+	all_data data(fastafile, maffile);
+	counting_functor functor(data);
+
+//Train all the sequences:
+	use_model m(data);
+	encoder en(data,m);
+	overlap ol(data);
+	m.train();
+//test
+	//en.arithmetic_encoding_seq();
+	en.arithmetic_decoding_seq();
+	
+	return 0;
+}
 
 
 #if !TEST
@@ -372,15 +396,19 @@ int main(int argc, char * argv[]) {
 
 	if(0==program.compare("fasta_prepare")) {
 		return do_fasta_prepare(argc, argv);
-	} else if(0==program.compare("model")) {
+	}
+	/*else if(0==program.compare("model"))
 		return do_mc_model(argc, argv);
+	*/
+	 
+	else{
+		return do_mc_model_seq(argc,argv);
 	}
-
-	else {
+	/*else {
 		usage();
-	}
+	}*/
 
-
+	
 	return 1;
 }
 

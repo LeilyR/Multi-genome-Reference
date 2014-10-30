@@ -5,7 +5,7 @@ CFLAGS = -Wall -fmessage-length=50 -fopenmp
 CXXFLAGS = -Wall -fmessage-length=50 -fopenmp -pedantic 
 #OPTFLAGS = -O3 -DNDEBUG
 OPTFLAGS = -O3 -DNDEBUG 
-DEBUGFLAGS = -g -O0 
+DEBUGFLAGS = -g -O0 -gdwarf-2 
 
 DEBUG = 1
 #OPT = 1
@@ -22,12 +22,12 @@ CXXFLAGS += -Wlong-long
 
 INCLUDEDIRS =
 INCLUDEARGS =
-LIBARGS =  apclusterunix64.so
+LIBARGS =  apclusterunix64.so -L../dlib_build -ldlib
 
 
 
 PROGS = graph
-OBJS = pw_alignment.o data.o
+OBJS = pw_alignment.o data.o encoder.o
 
 #model.o
 
@@ -42,9 +42,10 @@ pw_alignment.o: pw_alignment.cpp pw_alignment.hpp
 
 data.o: data.cpp pw_alignment.hpp data.hpp
 	$(CXX) -o data.o $(CXXFLAGS) $(INCLUDEARGS) -c data.cpp 
+encoder.o: encoder.cpp encoder.hpp
+	$(CXX) -o encoder.o $(CXXFLAGS) $(INCLUDEARGS) -c encoder.cpp
 
-
-#model.o: model.cpp pw_alignment.hpp data.hpp model.hpp
+model.o: model.cpp pw_alignment.hpp data.hpp model.hpp
 #	$(CXX) -o model.o $(CXXFLAGS) $(INCLUDEARGS) -c model.cpp
 
 clean:

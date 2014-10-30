@@ -301,8 +301,7 @@ void run() {
 	vector<string> sequence_names;
        	vector<size_t> sequence_lengths;	
 	vector<vector<double> > simmatrix;
-
-
+	map<string, char> cluster_centers;
 	void add_alignment(const pw_alignment *al);
 };
 

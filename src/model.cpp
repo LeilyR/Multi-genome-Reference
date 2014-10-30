@@ -204,7 +204,7 @@ void compute_cc::cc_step(size_t ref, size_t left, size_t right, set <const pw_al
 		set <const pw_alignment *, compare_pw_alignment>::iterator seenal = seen.find(al);
 		if(seenal == seen.end()) { // if current al not contained in any connected component
 //			cout << " not seen" << endl;
-			size_t aleft, aright;
+			size_t aleft, aright;	
 			size_t leftmost_point_of_al_on_ref = numeric_limits<size_t>::max(); 
 			if(al->getreference1()==ref) {
 				al->get_lr1(aleft, aright);
