@@ -2248,7 +2248,7 @@ void splitpoints::find_initial_split_points(size_t sequence, size_t left, size_t
 		}
 		outs.close();
 	}
-	void mc_model::make_all_alignments_patterns(){// ina bayad beshe be tool do bad sevomi context nist base
+	void mc_model::make_all_alignments_patterns(){
 		size_t level = 1;
 		string context; 
 		set<string>pattern;
