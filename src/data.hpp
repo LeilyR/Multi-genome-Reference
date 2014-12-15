@@ -68,7 +68,9 @@ class all_data {
 		const vector<size_t> & getAcc(size_t acc)const;//return the vector of all sequences for a certain acc.
 		size_t accNumber(size_t sequence_id);
 		const string get_acc(size_t acc)const; //get the accession number and return its name.
-		const size_t get_acc_name(string acc)const;
+		const size_t get_acc_id(string acc)const;
+		void set_accession(const string & acc);
+		size_t numOfAcc() const;
 
 	
 	private:
@@ -207,7 +209,13 @@ class adding_functor : public abstract_context_functor {
 
 };
 class encoding_functor : public abstract_context_functor {
-
+	public:
+	encoding_functor(all_data&);
+	virtual void see_context(size_t acc1, size_t acc2, size_t pos, string context, char last_char);	
+	const map<string, vector<double> > & get_alignment_context()const;
+	private:
+	all_data & data;
+	map<string, vector<double> > alignment_context;
 
 };
 class decoding_functor : public abstract_context_functor {
@@ -234,11 +242,17 @@ class mc_model{
 		const vector<double> & get_create_cost(size_t acc) const;
 		const vector<map<string, vector<double> > > & model_parameters()const;
 		void write_parameters();
+		void write_alignments_pattern();
 		vector<unsigned int> get_high_at_position(size_t seq_index, size_t position) const;
 		const map<string, vector<unsigned int> > & get_high(size_t acc)const;
 		void make_all_the_patterns();
-		void set_patterns();
-		void read_high();//change it to getHigh
+		void make_all_alignments_patterns();
+		void set_patterns(ifstream&);
+		void set_alignment_pattern(ifstream&);
+		string get_context(size_t position, size_t seq_id)const;
+		vector<size_t> get_powerOfTwo()const;
+		string get_firstPattern()const;
+		const map<string, vector<double> > & get_alignment_context(size_t al_id, size_t seq_id)const;
 	private:
 	all_data & data;
 	vector<map<string, vector<double> > >sequence_successive_bases;
@@ -247,6 +261,8 @@ class mc_model{
 	vector<vector<map<string, vector<double> > > >mod_cost;
 	vector<map<string, vector<unsigned int> > > high;
 	map<string,vector<double> > all_the_patterns;
+	map<string, vector<double> > all_alignment_patterns;
+	vector<vector<map<string , vector<unsigned int> > > >highValue;
 		
 
 };

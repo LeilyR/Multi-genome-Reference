@@ -377,8 +377,9 @@ int do_mc_model_seq(int argc, char * argv[]){
 	overlap ol(data);
 	m.train();
 //test
-	//en.arithmetic_encoding_seq();
-	en.arithmetic_decoding_seq();
+//	en.arithmetic_encoding_seq();
+//	en.arithmetic_decoding_seq();
+//	en.arithmetic_encoding_alignment();
 	
 	return 0;
 }
