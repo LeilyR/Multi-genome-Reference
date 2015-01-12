@@ -7,7 +7,6 @@
 #include <fstream>
 #include <cstdlib>
 #include <cassert>
-//#include "/ebio/abt6/lrabbani/Downloads/dlib/dlib/entropy_encoder/entropy_encoder_kernel_2.h"
 #include <set>
 #include<map>
 #include <math.h> 
@@ -62,7 +61,7 @@ class all_data {
 
 		size_t numSequences() const;
 		size_t numAlignments() const;
-		size_t numAcc() const;
+		const size_t numAcc() const;
 		bool alignment_fits_ref(const pw_alignment * al) const;
 		void print_ref(const pw_alignment * al)const;
 		const vector<size_t> & getAcc(size_t acc)const;//return the vector of all sequences for a certain acc.
@@ -174,7 +173,8 @@ private:
 	vector<vector<double> > cost_on_acc;
 	vector<vector<vector<vector<double> > > >modification;
 };
-
+#define Alignment_level 1
+#define Sequence_level 2
 #define NUM_DELETE 5
 #define NUM_KEEP 10
 
@@ -218,6 +218,17 @@ class encoding_functor : public abstract_context_functor {
 	map<string, vector<double> > alignment_context;
 
 };
+
+class clustering_functor : public abstract_context_functor{
+	public:
+	virtual void see_context(size_t acc1, size_t acc2, size_t pos, string context, char last_char);//computing_modification_oneToTwo is used to fill in the map of modification between center and its associated member.
+	//fek konam hamoon encoding_functor ok bashe, lazem nist ino benvisim
+
+	private:
+	map<string, vector<double> >modification;
+
+
+};
 class decoding_functor : public abstract_context_functor {
 
 
@@ -252,7 +263,11 @@ class mc_model{
 		string get_context(size_t position, size_t seq_id)const;
 		vector<size_t> get_powerOfTwo()const;
 		string get_firstPattern()const;
-		const map<string, vector<double> > & get_alignment_context(size_t al_id, size_t seq_id)const;
+		const map<string, vector<double> > & get_alignment_context(size_t al_id, size_t seq_id, encoding_functor & functor)const;
+		const map<string, vector<unsigned int> >& get_highValue(size_t acc1, size_t acc2)const;
+		void computing_modification_in_cluster(string center, string member)const;
+		const map<string, vector<double> > & get_cluster_member_context(pw_alignment & al, size_t center_id, encoding_functor & functor)const;
+		
 	private:
 	all_data & data;
 	vector<map<string, vector<double> > >sequence_successive_bases;

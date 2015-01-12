@@ -7,7 +7,7 @@
 #include <vector>
 
 #include "data.hpp"
-
+#include <cassert>
 
 extern "C" {
 #include "apcluster.h"
@@ -175,7 +175,7 @@ template<typename tmodel>
 class affpro_clusters {
 	public:
 
-	affpro_clusters(const overlap & ovlp, const tmodel & model, double base_cost): model(model), base_cost(base_cost) {
+	affpro_clusters(all_data & d,const overlap & ovlp, const tmodel & model, double base_cost): dat(d), model(model), base_cost(base_cost) {
 
 		const set<pw_alignment*, compare_pw_alignment> & als = ovlp.get_all();
 		for(set<pw_alignment*, compare_pw_alignment>::const_iterator it = als.begin(); it!=als.end(); ++it) {
@@ -185,15 +185,24 @@ class affpro_clusters {
 
 	}
 
-	affpro_clusters(const set<const pw_alignment *, compare_pw_alignment> & inset, const tmodel & model, double base_cost):model(model), base_cost(base_cost) {
+	affpro_clusters(all_data & d, const set<const pw_alignment *, compare_pw_alignment> & inset, const tmodel & model, double base_cost):dat(d), model(model), base_cost(base_cost) {
+		cout<<"inset size"<<inset.size()<<endl;	
+			cout<<"data1 ad in afp: "<< & dat << endl;	
 		for(set<const pw_alignment*, compare_pw_alignment>::iterator it = inset.begin(); it!=inset.end(); ++it) {
+			cout<<"data2 ad in afp: "<< & dat << endl;	
 			const pw_alignment * al = *it;
+		//	cout<<"alignment from inset: "<<endl;
+		//	al->print();
+			dat.numAcc();
+			cout<<"data3 ad in afp: "<< & dat << endl;	
 			add_alignment(al);
+			cout<<"data4 ad in afp: "<< & dat << endl;	
+
 		}
 	}
 
 
-void run() {
+void run(map<string, vector<string> > & cluster_result) {
 	// convert to c-style matrix
 	double * data = new double[simmatrix.size() * simmatrix.size()];
 	int * result = new int[simmatrix.size()];
@@ -256,10 +265,15 @@ void run() {
 
 	double totalccost = 0;
 	for(size_t i=0; i<simmatrix.size(); ++i) {
+	//	if(simmatrix.at(i).at(result[i])== -HUGE_VAL){
+	//		totalccost = i;
+	//	}else{
 		totalccost -= simmatrix.at(i).at(i);
+	//	}
 	}
 
 	double apcost = 0;
+	cout<<"size of simmatrix: "<<simmatrix.size()<<endl;
 	for(size_t i=0; i<simmatrix.size(); ++i) {
 		if(result[i]==-1) {
 			result[i] = i;
@@ -267,16 +281,34 @@ void run() {
 		if(i==result[i]) {
 			apcost-=simmatrix.at(i).at(i);
 		} else {
-			apcost-=simmatrix.at(i).at(result[i]);
+			if(simmatrix.at(i).at(result[i])== -HUGE_VAL){
+				result[i]=i;
+				apcost-=simmatrix.at(i).at(i);
+			}else{
+				apcost-=simmatrix.at(i).at(result[i]);
+			}
 		}
 	}
-	for(size_t i=0; i<simmatrix.size(); ++i) {
-		cout << sequence_names.at(i) << " res " << i << " is " << result[i] << " ( length " << sequence_lengths.at(i) << ")";
+	for(size_t i=0; i<simmatrix.size(); ++i) {//cluster center may happen whenever i == result[i]
+		cout << sequence_names.at(i) << " res " << i << " is " << result[i] << " ( length " << sequence_lengths.at(i) << ")"<<endl;
 
 		if(result[i]==i) {
 			cout << " " << simmatrix.at(i).at(i) << endl;
+			map<string, vector<string> >::iterator it=cluster_result.find(sequence_names.at(i));
+			cluster_result.insert(make_pair(sequence_names.at(i), vector<string>()));
+			it->second.push_back(sequence_names.at(i));
+
 		} else {
 			cout << " " << simmatrix.at(i).at(result[i]) << " : " << simmatrix.at(i).at(i) << endl;
+			//result[i]is associated one, add them to the map for each center
+			map<string, vector<string> >::iterator it=cluster_result.find(sequence_names.at(i));
+			if(it == cluster_result.end()){
+				cluster_result.insert(make_pair(sequence_names.at(i), vector<string>()));
+				it=cluster_result.find(sequence_names.at(i));
+			}
+				it->second.push_back(sequence_names.at(i));
+				it->second.push_back(sequence_names.at(result[i]));
+
 		}
 	}
 
@@ -287,13 +319,15 @@ void run() {
 	delete [] data;
 	delete [] result;
 
-
+//	cout<< "number of centers: " <<clusterCenter.size()<<endl;
 }
+	size_t get_sequence_length(size_t ref_idx)const; //ref_idx shows the reference that sequence belongs to. It could be either 0 or one.
+	
 
 
 // simil = neg distance, diagonale pref = neg cost
-
 	private:
+	all_data & dat;
 	const tmodel & model;
 	double base_cost;
 	// TODO do we need distances for all pairs of sequence pieces?

@@ -2,10 +2,10 @@
 
 CXX = g++
 CFLAGS = -Wall -fmessage-length=50 -fopenmp 
-CXXFLAGS = -Wall -fmessage-length=50 -fopenmp -pedantic 
+CXXFLAGS = -Wall -fmessage-length=50 -fopenmp -pedantic
 #OPTFLAGS = -O3 -DNDEBUG
 OPTFLAGS = -O3 -DNDEBUG 
-DEBUGFLAGS = -g -O0 -gdwarf-2 
+DEBUGFLAGS = -g3 -O0 
 
 DEBUG = 1
 #OPT = 1

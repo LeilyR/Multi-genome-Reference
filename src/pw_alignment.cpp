@@ -645,28 +645,26 @@ char pw_alignment::base_translate_back(bool bit1, bool bit2, bool bit3) {
 
 	void pw_alignment::print()const{
  
-//	cout << "al1 seq "<< getreference1() << " b " << getbegin1() << " e " << getend1() << endl;
-//	cout << "al2 seq "<< getreference2() << " b " << getbegin2() << " e " << getend2() << endl;
+	cout << "al1 seq "<< getreference1() << " b " << getbegin1() << " e " << getend1() << endl;
+	cout << "al2 seq "<< getreference2() << " b " << getbegin2() << " e " << getend2() << endl;
 
-		for(size_t col = 0; col < alignment_length(); col++) {
+
+	
+/*
+	for(size_t col = 0; col < alignment_length(); col++) {
+		if(col < 3 || (alignment_length() - col < 3)) {
+
 			char c1;
 			char c2;
 			alignment_col(col, c1, c2);
-			cout <<col <<"/t"<< c1<<"\t"<<c2<<endl;
-//	if(col>50) break;	
-
-//	if(alignment_length() < 80) {
-//	for(size_t col = 0; col < alignment_length(); col++) {
-//		char c1;
-//		char c2;
-//		alignment_col(col, c1, c2);
-//		cout <<col <<"\t"<< c1<<"\t"<<c2<<endl;
-//	if(col>50) break;	
-//	}
-
-//	}
+			cout <<col <<"\t"<< c1<<"\t"<<c2<<endl;
 		}
+
 	}
+
+*/	
+	
+}
 
 
 

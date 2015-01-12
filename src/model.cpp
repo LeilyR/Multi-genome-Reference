@@ -33,18 +33,17 @@ void initial_alignment_set<T>::compute_simple(overlap & o) {
 		common_model.gain_function(*(al), gain1, gain2);
 		gain1-=base_cost;
 		cout << endl<<"at alignment " << i << " length " << al->alignment_length() << " al base gain " << gain1 << endl;
-		al->print();
+		//al->print();
 		cout << endl;
 
 
 		alset remove_als;
 		vector<pw_alignment> insert_als;
 
-		// TODO
+//		// TODO
 //		cout << " splitpoints on: " << al << " at " << i <<  " size " <<sorted_original_als.size()<< endl; 
 //		al->print();
 //		cout << endl;	
-	
 //		o.print_all_alignment();
 
 
@@ -62,8 +61,8 @@ void initial_alignment_set<T>::compute_simple(overlap & o) {
 			cout << "r " << (*it)->alignment_length() << " g " << g1 << endl;
 			gain_of_al -= g1;
 
-			(*it)->print();
-			cout << endl;
+		//	(*it)->print();
+		//	cout << endl;
 
 		}	
 		for(size_t j=0; j<insert_als.size(); ++j) {
@@ -78,8 +77,8 @@ void initial_alignment_set<T>::compute_simple(overlap & o) {
 				cout << "i " << (insert_als.at(j)).alignment_length() << " g " << g1 << endl;
 				gain_of_al += g1;
 
-				insert_als.at(j).print();
-				cout << endl;
+			//	insert_als.at(j).print();
+			//	cout << endl;
 			}
 
 		}
@@ -128,6 +127,7 @@ compute_cc::compute_cc(const all_data & dat): als_on_reference(dat.numSequences(
 void compute_cc::add_on_mmaps(const pw_alignment * pwa) {
 	size_t ref1 = pwa->getreference1();
 	size_t ref2 = pwa->getreference2();
+	//cout << "INS " <<endl;
 
 	als_on_reference.at(ref1).insert(make_pair(pwa->getbegin1(), pwa));
 	als_on_reference.at(ref1).insert(make_pair(pwa->getend1(), pwa));
@@ -390,9 +390,9 @@ template<typename tmodel>
 
 template<typename tmodel>
 void affpro_clusters<tmodel>::add_alignment(const pw_alignment *al) {
-
 	// Get identifiers for both parts of the pairwise alignment
 	stringstream sstr1;
+	cout<<"data1 ad in add_al: "<< & dat << endl;	
 	size_t left1, right1;
 	al->get_lr1(left1, right1);
 	sstr1 << al->getreference1()<<":"<<left1;
@@ -424,7 +424,7 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment *al) {
 	} else {
 		ref2idx = find2->second;
 	}
-
+	cout<<"data2 ad in add_al: "<< & dat << endl;	
 	// enlarge similarity matrix
 	size_t max = ref1idx;
 	if(ref2idx > max) {
@@ -437,11 +437,14 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment *al) {
 		}
 		simmatrix.resize(max, vector<double>(max, -HUGE_VAL));
 	}
-
 	double c1;
 	double c2;
 	double m1; 
 	double m2;
+//	al->print();
+	cout<<"data3 ad in add_al: "<< & dat << endl;	
+	dat.numAcc();
+	cout << " dat adress " << & dat<< endl;
 	model.cost_function(*al, c1, c2, m1, m2);
 	// preferences
 	simmatrix.at(ref1idx).at(ref1idx) = -c1 - base_cost;
@@ -453,5 +456,9 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment *al) {
 
 }
 
+	template<typename tmodel>
+	size_t affpro_clusters<tmodel>::get_sequence_length(size_t ref_idx)const{	
+		return 	sequence_lengths.at(ref_idx);
+	}
 
 #endif
