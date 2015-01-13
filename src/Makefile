@@ -5,7 +5,7 @@ CFLAGS = -Wall -fmessage-length=50 -fopenmp
 CXXFLAGS = -Wall -fmessage-length=50 -fopenmp -pedantic
 #OPTFLAGS = -O3 -DNDEBUG
 OPTFLAGS = -O3 -DNDEBUG 
-DEBUGFLAGS = -g3 -O0 
+DEBUGFLAGS = -g3 -O0 -gdwarf-2 
 
 DEBUG = 1
 #OPT = 1

@@ -2174,7 +2174,7 @@ void splitpoints::find_initial_split_points(size_t sequence, size_t left, size_t
 					vector<unsigned int> low(NUM_DELETE+NUM_KEEP+10,0);
 					vector<unsigned int> high_value(NUM_DELETE+NUM_KEEP+10,0);
 					unsigned int l = 0;
-					unsigned int total = 0;
+				//	unsigned int total = 0;
 					size_t bit = 12;
 					string current_pattern	= it ->first;
                                 	highValue.at(i).at(j).insert(make_pair(current_pattern,vector<unsigned int>(NUM_DELETE+NUM_KEEP+10,0)));
@@ -2237,12 +2237,12 @@ void splitpoints::find_initial_split_points(size_t sequence, size_t left, size_t
 	}
 
 	void mc_model::cost_function(const pw_alignment& p, double & c1, double & c2, double & m1, double & m2)const {
-	//	p.print();
+		p.print();
 		cout<<"data address in cost function: "<< &data <<endl;
 		data.numAcc();
 		counting_functor f(data);
 	//	p.print();
-		size_t length = p.alignment_length();
+	//	size_t length = p.alignment_length();
 	//	cout<<"length: "<< length<<endl;
 		computing_modification_oneToTwo(p,f);
 		computing_modification_twoToOne(p,f);
@@ -2762,6 +2762,7 @@ void splitpoints::find_initial_split_points(size_t sequence, size_t left, size_t
 	void mc_model::computing_modification_oneToTwo(const pw_alignment & p, abstract_context_functor & functor)const{
 		string seq = "";
 		cout<<"data ad in computing mod: "<< & data << endl;
+		p.print();
 		size_t acc1 = data.accNumber(p.getreference1());
 		size_t acc2 = data.accNumber(p.getreference2());
 		size_t first_patterns = Alignment_level;
@@ -2858,7 +2859,7 @@ void splitpoints::find_initial_split_points(size_t sequence, size_t left, size_t
 						char q1chr;
 						char q2chr;
 						p.alignment_col(j, q1chr, q2chr);				
-						size_t q1 = dnastring::base_to_index(q1chr);
+					//	size_t q1 = dnastring::base_to_index(q1chr);
 						size_t q2 = dnastring::base_to_index(q2chr);
 						if(q2 == 5 ){
 							dlength +=1;
@@ -3006,7 +3007,7 @@ void splitpoints::find_initial_split_points(size_t sequence, size_t left, size_t
 						char q2chr;
 						p.alignment_col(j, q1chr, q2chr);				
 						size_t q1 = dnastring::base_to_index(q1chr);
-						size_t q2 = dnastring::base_to_index(q2chr);
+					//	size_t q2 = dnastring::base_to_index(q2chr);
 						if(q1 == 5 ){
 							dlength +=1;
 						}else {
@@ -3071,7 +3072,7 @@ void splitpoints::find_initial_split_points(size_t sequence, size_t left, size_t
 	const map<string, vector<double> > & mc_model::get_alignment_context(size_t al_id, size_t seq_id, encoding_functor & functor)const{
 		const pw_alignment & al = data.getAlignment(al_id);
 		size_t acc1 = data.accNumber(al.getreference1());
-		size_t acc2 = data.accNumber(al.getreference2());
+	//	size_t acc2 = data.accNumber(al.getreference2());
 		size_t accession = data.accNumber(seq_id);
 		if(accession == acc1){
 			computing_modification_oneToTwo(al, functor);			
@@ -3083,7 +3084,7 @@ void splitpoints::find_initial_split_points(size_t sequence, size_t left, size_t
 	}
 	const map<string, vector<double> > &mc_model::get_cluster_member_context(pw_alignment & al, size_t center_id, encoding_functor & functor)const{
 		size_t acc1 = data.accNumber(al.getreference1());
-		size_t acc2 = data.accNumber(al.getreference2());
+	//	size_t acc2 = data.accNumber(al.getreference2());
 		size_t accession = data.accNumber(center_id);
 		if(accession == acc1){
 			computing_modification_oneToTwo(al, functor);	

@@ -441,7 +441,7 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment *al) {
 	double c2;
 	double m1; 
 	double m2;
-//	al->print();
+	al->print();
 	cout<<"data3 ad in add_al: "<< & dat << endl;	
 	dat.numAcc();
 	cout << " dat adress " << & dat<< endl;

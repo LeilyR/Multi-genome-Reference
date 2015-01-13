@@ -173,7 +173,7 @@ int do_fasta_prepare(int argc, char * argv[]) {
 
 int do_mc_model(int argc, char * argv[]) {
 	typedef mc_model use_model;
-	typedef clustering<use_model> use_clustering;
+//	typedef clustering<use_model> use_clustering;
 	typedef initial_alignment_set<use_model> use_ias;
 	typedef affpro_clusters<use_model> use_affpro;
 	if(argc < 4) {
@@ -195,7 +195,6 @@ int do_mc_model(int argc, char * argv[]) {
 // Read all data
 	all_data data(fastafile, maffile);
 	overlap ol(data);
-//	counting_functor functor(data);
 //	encoding_functor functor1(data);
 
 
@@ -208,12 +207,17 @@ int do_mc_model(int argc, char * argv[]) {
 		cout << "Connected component "<< i << " contains " << ccs.at(i).size() << " alignments" << endl;
 	}*/
 // Train the model on all data
-	data.numAcc();
 	use_model m(data);
 	m.train();
-	data.numAcc();
+// Find connected components of alignments with some overlap
+/*	compute_cc cccs(data);
+	vector<set< const pw_alignment *, compare_pw_alignment> > ccs;
+	cccs.compute(ccs);*/
+//	counting_functor functor(data);
+//	encoder en(data,m);
+//	use_clustering clust(ol,data,m);
 	encoder en(data,m);
-	use_clustering clust(ol,data,m);
+
 
 	vector<overlap> cc_overlap(ccs.size(), overlap(data));
 	// base cost to use an alignment (information need for its adress)
@@ -222,7 +226,7 @@ int do_mc_model(int argc, char * argv[]) {
 // Select an initial alignment set for each connected component (in parallel)
 	map<string, vector<string> > global_results;//for each center returns all its cluster members
 	map<string, vector<pw_alignment> > alignments_in_a_cluster;//string ---> center of a cluster, vector ---> alignments with that center
-//#pragma omp parallel for num_threads(num_threads) schedule(dynamic)
+#pragma omp parallel for num_threads(num_threads) schedule(dynamic)
 	for(size_t i=0; i<ccs.size(); ++i) {
 		set< const pw_alignment *, compare_pw_alignment> & cc = ccs.at(i);
 		use_ias ias(data, cc, m, cluster_base_cost);
@@ -354,11 +358,11 @@ int do_mc_model(int argc, char * argv[]) {
 //	cout << "There are " << o.size() << " alignment parts without partial overlap" << endl;
 	
 //Data compression:
-	en.calculating_clusters_high(weight);
+//	en.calculating_clusters_high(weight);
 //	en.arithmetic_encoding_seq();
 //	en.arithmetic_decoding_seq();
-	en.arithmetic_encoding_alignment(membersOfCluster,alignments_in_a_cluster);
-	en.arithmetic_decoding_alignment();
+//	en.arithmetic_encoding_alignment(membersOfCluster,alignments_in_a_cluster);
+//	en.arithmetic_decoding_alignment();
 
 
 	return 0;
@@ -367,13 +371,13 @@ int do_mc_model_seq(int argc, char * argv[]){
 	string fastafile(argv[2]);
 	string maffile(argv[3]);
 //	size_t num_threads = 1;
-//	typedef clustering<use_model> use_clustering;
-//	typedef affpro_clusters<use_model> use_affpro;
 	typedef mc_model use_model;
+//	typedef initial_alignment_set<use_model> use_ias;
+//	typedef affpro_clusters<use_model> use_affpro;
 
 //Reading data:(Use an empty maf file!)
 	all_data data(fastafile, maffile);
-	counting_functor functor(data);
+//	counting_functor functor(data);
 //	encoding_functor functor1(data);
 
 
@@ -382,7 +386,10 @@ int do_mc_model_seq(int argc, char * argv[]){
 	encoder en(data,m);
 	overlap ol(data);
 	m.train();
-
+// Find connected components of alignments with some overlap
+	compute_cc cccs(data);
+	vector<set< const pw_alignment *, compare_pw_alignment> > ccs;
+	cccs.compute(ccs);
 //test
 	en.arithmetic_encoding_seq();
 	en.arithmetic_decoding_seq();
