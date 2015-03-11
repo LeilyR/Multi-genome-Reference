@@ -21,7 +21,7 @@ typedef  set<const pw_alignment*, compare_pw_alignment> alset;
 template<typename T>
 class initial_alignment_set {
 	public:
-	initial_alignment_set(const all_data & d, const T & a_model, double base_cost): data(d), common_model(a_model) {
+	initial_alignment_set(const all_data & d, const T & a_model, double base_cost,ofstream & outs): data(d), common_model(a_model) {
 		this->base_cost = base_cost;
 		multimap<double, const pw_alignment*> sorter;
 		double sumgain = 0;
@@ -29,10 +29,10 @@ class initial_alignment_set {
 			const pw_alignment * cur = &(data.getAlignment(i));
 	
 			double gain1, gain2;
-			common_model.gain_function(*cur, gain1, gain2);
+			common_model.gain_function(*cur, gain1, gain2,outs);
 			// TODO gain1 and gain2
 		//	if(gain2 > gain1) gain1 = gain2;
-			cout << " al " << i << " gain1 " << gain1 << endl;
+		//	cout << " al " << i << " gain1 " << gain1 << endl;
 			if(gain1-base_cost > 0.0) {
 				sorter.insert(make_pair(gain1, cur));
 			}
@@ -51,9 +51,9 @@ class initial_alignment_set {
 		}
 		max_gain = sumgain - sorter.size() * base_cost;
 		assert(pos == sorter.size());
-		cout << " " << sorter.size() << " input alignments, total gain: " << sumgain << " bit " << endl;
+	//	cout << " " << sorter.size() << " input alignments, total gain: " << sumgain << " bit " << endl;
 	}
-	initial_alignment_set(const all_data & d, const set< const pw_alignment *, compare_pw_alignment> & als, const T & a_model, double base_cost): data(d), common_model(a_model) {
+	initial_alignment_set(const all_data & d, const set< const pw_alignment *, compare_pw_alignment> & als, const T & a_model, double base_cost, ofstream & outs): data(d), common_model(a_model) {
 		this->base_cost = base_cost;
 		multimap<double, const pw_alignment*> sorter;
 		double sumgain = 0;
@@ -61,9 +61,9 @@ class initial_alignment_set {
 			const pw_alignment * cur = *it;
 	
 			double gain1, gain2;
-			common_model.gain_function(*cur, gain1, gain2);
+			common_model.gain_function(*cur, gain1, gain2,outs);
 		//	if(gain2 > gain1) gain1 = gain2;
-			cout << " al length " << cur->alignment_length() << " gain1 " << gain1 << " gain2 " << gain2 <<  endl;
+		//	cout << " al length " << cur->alignment_length() << " gain1 " << gain1 << " gain2 " << gain2 <<  endl;
 			if(gain1 - base_cost>0.0) {
 				sorter.insert(make_pair(gain1, cur));
 			}
@@ -79,13 +79,13 @@ class initial_alignment_set {
 		}
 		max_gain = sumgain - sorter.size() * base_cost;
 		assert(pos == sorter.size());
-		cout << " " << sorter.size() << " input alignments, total gain: " << sumgain << " bit " << endl;
+	//	cout << " " << sorter.size() << " input alignments, total gain: " << sumgain << " bit " << endl;
 	}
 
 	~initial_alignment_set() {}
 
-	void compute(overlap & o);
-	void compute_simple(overlap & o);
+	void compute(overlap & o, ofstream &);
+	void compute_simple(overlap & o,ofstream &);
 
 	double get_max_gain() const {
 		return max_gain;
@@ -175,28 +175,28 @@ template<typename tmodel>
 class affpro_clusters {
 	public:
 
-	affpro_clusters(all_data & d,const overlap & ovlp, const tmodel & model, double base_cost): dat(d), model(model), base_cost(base_cost) {
+	affpro_clusters(const overlap & ovlp, const tmodel & model, double base_cost,ofstream& outs):model(model), base_cost(base_cost) {
 
 		const set<pw_alignment*, compare_pw_alignment> & als = ovlp.get_all();
 		for(set<pw_alignment*, compare_pw_alignment>::const_iterator it = als.begin(); it!=als.end(); ++it) {
 			const pw_alignment * al = *it;
-			add_alignment(al);
+			add_alignment(al,outs);
 		}
 
 	}
 
-	affpro_clusters(all_data & d, const set<const pw_alignment *, compare_pw_alignment> & inset, const tmodel & model, double base_cost):dat(d), model(model), base_cost(base_cost) {
-		cout<<"inset size"<<inset.size()<<endl;	
-			cout<<"data1 ad in afp: "<< & dat << endl;	
+	affpro_clusters(const set<const pw_alignment *, compare_pw_alignment> & inset, const tmodel & model, double base_cost,ofstream & outs):model(model), base_cost(base_cost) {
+	//	cout<<"inset size"<<inset.size()<<endl;	
+		//	cout<<"data1 ad in afp: "<< & dat << endl;	
 		for(set<const pw_alignment*, compare_pw_alignment>::iterator it = inset.begin(); it!=inset.end(); ++it) {
-			cout<<"data2 ad in afp: "<< & dat << endl;	
+		//	cout<<"data2 ad in afp: "<< & dat << endl;	
 			const pw_alignment * al = *it;
 		//	cout<<"alignment from inset: "<<endl;
 		//	al->print();
-			dat.numAcc();
-			cout<<"data3 ad in afp: "<< & dat << endl;	
-			add_alignment(al);
-			cout<<"data4 ad in afp: "<< & dat << endl;	
+		//	dat.numAcc();
+		//	cout<<"data3 ad in afp: "<< & dat << endl;	
+			add_alignment(al,outs);
+		//	cout<<"data4 ad in afp: "<< & dat << endl;	
 
 		}
 	}
@@ -221,22 +221,22 @@ void run(map<string, vector<string> > & cluster_result) {
 	apoptions.maximum_iterations = 5000;
 	apoptions.nonoise = 1;
 	apoptions.progress=NULL; apoptions.progressf=NULL;
-	double netsim;
+	double netsim;	
 	int iter = apcluster32(data, NULL, NULL, simmatrix.size()*simmatrix.size(), result, &netsim, &apoptions);
-	cout << "iter " << iter << endl;
+//	cout << "iter " << iter << endl;
 	if(iter <= 0 || result[0]==-1) {
 		apoptions.converge_iterations = 10;
 		apoptions.maximum_iterations = 15000;
 		apoptions.lambda = 0.98;
 		iter = apcluster32(data, NULL, NULL, simmatrix.size()*simmatrix.size(), result, &netsim, &apoptions);
-		cout << "iter " << iter << endl;
+//		cout << "iter " << iter << endl;
 	}
 	if(iter <= 0 || result[0]==-1) {
 		apoptions.converge_iterations = 10;
 		apoptions.maximum_iterations = 15000;
 		apoptions.lambda = 0.995;
 		iter = apcluster32(data, NULL, NULL, simmatrix.size()*simmatrix.size(), result, &netsim, &apoptions);
-		cout << "iter " << iter << endl;
+	//	cout << "iter " << iter << endl;
 
 	}
 	} else {
@@ -273,7 +273,7 @@ void run(map<string, vector<string> > & cluster_result) {
 	}
 
 	double apcost = 0;
-	cout<<"size of simmatrix: "<<simmatrix.size()<<endl;
+//	cout<<"size of simmatrix: "<<simmatrix.size()<<endl;
 	for(size_t i=0; i<simmatrix.size(); ++i) {
 		if(result[i]==-1) {
 			result[i] = i;
@@ -290,16 +290,19 @@ void run(map<string, vector<string> > & cluster_result) {
 		}
 	}
 	for(size_t i=0; i<simmatrix.size(); ++i) {//cluster center may happen whenever i == result[i]
-		cout << sequence_names.at(i) << " res " << i << " is " << result[i] << " ( length " << sequence_lengths.at(i) << ")"<<endl;
+//		cout << sequence_names.at(i) << " res " << i << " is " << result[i] << " ( length " << sequence_lengths.at(i) << ")"<<endl;
 
 		if(result[i]==i) {
-			cout << " " << simmatrix.at(i).at(i) << endl;
+		//	cout << " " << simmatrix.at(i).at(i) << endl;
 			map<string, vector<string> >::iterator it=cluster_result.find(sequence_names.at(i));
-			cluster_result.insert(make_pair(sequence_names.at(i), vector<string>()));
+			if(it == cluster_result.end()){
+				cluster_result.insert(make_pair(sequence_names.at(i), vector<string>()));
+				it=cluster_result.find(sequence_names.at(i));
+			}
 			it->second.push_back(sequence_names.at(i));
 
 		} else {
-			cout << " " << simmatrix.at(i).at(result[i]) << " : " << simmatrix.at(i).at(i) << endl;
+		//	cout << " " << simmatrix.at(i).at(result[i]) << " : " << simmatrix.at(i).at(i) << endl;
 			//result[i]is associated one, add them to the map for each center
 			map<string, vector<string> >::iterator it=cluster_result.find(sequence_names.at(i));
 			if(it == cluster_result.end()){
@@ -314,11 +317,12 @@ void run(map<string, vector<string> > & cluster_result) {
 
 	double apgain = totalccost - apcost;
 
-	cout << "Total sequence cost " << totalccost << " ap clustering cost " << apcost << " gain: " << apgain << endl;
+//	cout << "Total sequence cost " << totalccost << " ap clustering cost " << apcost << " gain: " << apgain << endl;
 
 	delete [] data;
 	delete [] result;
-
+	data = NULL;
+	result = NULL;
 //	cout<< "number of centers: " <<clusterCenter.size()<<endl;
 }
 	size_t get_sequence_length(size_t ref_idx)const; //ref_idx shows the reference that sequence belongs to. It could be either 0 or one.
@@ -327,7 +331,7 @@ void run(map<string, vector<string> > & cluster_result) {
 
 // simil = neg distance, diagonale pref = neg cost
 	private:
-	all_data & dat;
+//	all_data & dat;
 	const tmodel & model;
 	double base_cost;
 	// TODO do we need distances for all pairs of sequence pieces?
@@ -336,7 +340,7 @@ void run(map<string, vector<string> > & cluster_result) {
        	vector<size_t> sequence_lengths;	
 	vector<vector<double> > simmatrix;
 	map<string, char> cluster_centers;
-	void add_alignment(const pw_alignment *al);
+	void add_alignment(const pw_alignment *al, ofstream &);
 };
 
 

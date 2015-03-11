@@ -27,7 +27,7 @@ LIBARGS =  apclusterunix64.so -L../dlib_build -ldlib
 
 
 PROGS = graph
-OBJS = pw_alignment.o data.o encoder.o
+OBJS = pw_alignment.o data.o encoder.o test.o
 
 #model.o
 
@@ -44,7 +44,8 @@ data.o: data.cpp pw_alignment.hpp data.hpp
 	$(CXX) -o data.o $(CXXFLAGS) $(INCLUDEARGS) -c data.cpp 
 encoder.o: encoder.cpp encoder.hpp
 	$(CXX) -o encoder.o $(CXXFLAGS) $(INCLUDEARGS) -c encoder.cpp
-
+test.o: test.cpp test.hpp
+	$(CXX) -o test.o $(CXXFLAGS) $(INCLUDEARGS) -c test.cpp
 model.o: model.cpp pw_alignment.hpp data.hpp model.hpp
 #	$(CXX) -o model.o $(CXXFLAGS) $(INCLUDEARGS) -c model.cpp
 

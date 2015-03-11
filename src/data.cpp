@@ -467,12 +467,13 @@ all_data::~all_data() {
 		return alignments.at(index);
 	}
 	const vector<size_t> & all_data::getAcc(size_t acc)const{
+		string accName;
 		for(map<string,size_t>::const_iterator it = accession_name.begin();it != accession_name.end(); it++){
 			if(it->second == acc){
-				string accName = it->first;
-				return acc_sequences.at(accName);
+				accName = it->first;
 			}else continue;
 		}
+		return acc_sequences.at(accName);		
 	}
 	size_t all_data::accNumber(size_t sequence_id){
 		return sequence_to_accession.at(sequence_id);
@@ -560,7 +561,8 @@ all_data::~all_data() {
 	bool al1fw = true;
 	bool al2fw = true;
 	size_t al1at = al->getbegin1();
-	size_t al2at = al->getbegin2();
+	
+size_t al2at = al->getbegin2();
 	if(al->getbegin1() > al->getend1()) {
 		al1fw = false;
 	}
@@ -710,12 +712,14 @@ all_data::~all_data() {
 	}
 
 
-	const string all_data::get_acc(size_t acc)const{
+	const string all_data::get_acc(size_t acc)const{	
+		string Accession;
 		for(map<string, size_t>::const_iterator it = accession_name.begin() ; it != accession_name.end();it++){
 			if(it->second == acc){
-				return it ->first;
+				Accession = it -> first;
 			}else continue;
 		}
+		return Accession;
 	}
 	const size_t all_data::get_acc_id(string acc)const{
 		map<string, size_t>::const_iterator it = accession_name.find(acc);
@@ -2069,8 +2073,7 @@ void splitpoints::find_initial_split_points(size_t sequence, size_t left, size_t
 			powersOfTwo.at(i) = powersOfTwo.at(i-1)*2;
 		
 		}
-		cout<<"data adrress in constructor: "<<& data<<endl;
-		data.numAcc();
+//		cout<<"data adrress in constructor: "<<& data<<endl;
 	}
 	mc_model::~mc_model(){}
 	void mc_model::markov_chain(){
@@ -2123,13 +2126,13 @@ void splitpoints::find_initial_split_points(size_t sequence, size_t left, size_t
 
 	}
 	
-	void mc_model::markov_chain_alignment(){
+	void mc_model::markov_chain_alignment(ofstream& outs){
 		counting_functor functor(data);
 		make_all_alignments_patterns();
 		for(size_t k = 0; k < data.numAlignments(); k++){
 			const pw_alignment & p = data.getAlignment(k);
-			computing_modification_oneToTwo(p,functor);
-			computing_modification_twoToOne(p,functor);
+			computing_modification_oneToTwo(p,functor,outs);
+			computing_modification_twoToOne(p,functor,outs);
 		}
 		functor.total_context();
 		for(size_t i = 0; i< data.numAcc();i++){
@@ -2220,14 +2223,14 @@ void splitpoints::find_initial_split_points(size_t sequence, size_t left, size_t
 		return highValue.at(acc1).at(acc2);
 
 	}
-	void mc_model::cost_function( pw_alignment& p) const {
+	void mc_model::cost_function( pw_alignment& p,ofstream & outs) const {
 		vector<double> cost_on_sample(2);
 		vector<double> modify_cost(2);
 		double c1;
 		double c2;
 		double m1;
 		double m2;
-		cost_function(p, c1, c2, m1, m2);
+		cost_function(p, c1, c2, m1, m2,outs);
 		cost_on_sample.at(0) = c1;
 		cost_on_sample.at(1) = c2;
 		modify_cost.at(0) = m1;
@@ -2236,16 +2239,16 @@ void splitpoints::find_initial_split_points(size_t sequence, size_t left, size_t
 		p.set_cost(cost_on_sample, modify_cost);
 	}
 
-	void mc_model::cost_function(const pw_alignment& p, double & c1, double & c2, double & m1, double & m2)const {
-		p.print();
-		cout<<"data address in cost function: "<< &data <<endl;
-		data.numAcc();
+	void mc_model::cost_function(const pw_alignment& p, double & c1, double & c2, double & m1, double & m2,ofstream & outs)const {
+	//	p.print();
+	//	cout<<"data address in cost function: "<< &data <<endl;
+	//	data.numAcc();
 		counting_functor f(data);
 	//	p.print();
 	//	size_t length = p.alignment_length();
 	//	cout<<"length: "<< length<<endl;
-		computing_modification_oneToTwo(p,f);
-		computing_modification_twoToOne(p,f);
+		computing_modification_oneToTwo(p,f,outs);
+		computing_modification_twoToOne(p,f,outs);
 		vector<double> cost_on_sample(2,0);
 		vector<double> modify_cost(2,0);
 		size_t acc1 = data.accNumber(p.getreference1());
@@ -2342,12 +2345,12 @@ void splitpoints::find_initial_split_points(size_t sequence, size_t left, size_t
 	//	cout<< "length: " << length<<endl;
 	//	cout<< "c1: " << c1 << " c2: "<< c2 << " m1: "<< m1<< " m2: "<< m2 <<endl;
 	}
-	void mc_model::gain_function(const pw_alignment& p, double & g1, double & g2)const {
+	void mc_model::gain_function(const pw_alignment& p, double & g1, double & g2,ofstream & outs)const {
 		double c1;
 		double c2;
 		double m1;
 		double m2;
-		cost_function(p, c1, c2, m1,m2);
+		cost_function(p, c1, c2, m1,m2,outs);
 
 	
 		g1 = c2 - m1;
@@ -2358,13 +2361,13 @@ void splitpoints::find_initial_split_points(size_t sequence, size_t left, size_t
 
 
 	}
-	void mc_model::write_parameters(){
+	void mc_model::write_parameters(ofstream & outs){
 		make_all_the_patterns();
-		ofstream outs("encode",std::ofstream::binary);
-		if(outs.is_open()){
+	//	ofstream outs("encode",std::ofstream::binary);
+	//	if(outs.is_open()){
 			for(size_t i = 0 ; i < data.numAcc(); i++){
 				outs << data.get_acc(i);
-			//	cout<<"acc: "<<data.get_acc(i)<<endl;
+				cout<<"acc: "<<data.get_acc(i)<<endl;
 				outs<< (char) 0;
 				for(map<string, vector<double> >::iterator it= all_the_patterns.begin(); it != all_the_patterns.end() ; it++){
 					string pattern = it ->first;
@@ -2417,12 +2420,15 @@ void splitpoints::find_initial_split_points(size_t sequence, size_t left, size_t
 						it1->second.at(j)=high_value.at(j);
 						int h = high_value.at(j);
 					//	cout<< "low1: "<<low.at(j)<<endl;
-					//	cout<< "high: "<<h<<endl;
+						if(it->first == "AC"){
+							cout<< "high: "<<h<<endl;
+						}
 						for(size_t m = 0; m < bit; m++){
 							bit_to_byte.push_back(h%2);
-						//	cout<< "h%2: "<< h%2<<endl;
+				//			cout<< "h%2: "<< h%2;
 							h = h/2;
 						}
+				//		cout<< " "<<endl;
 						assert(high_value.at(j)!=low.at(j));
 					}
 				//	total = it1->second.at(4);
@@ -2431,28 +2437,31 @@ void splitpoints::find_initial_split_points(size_t sequence, size_t left, size_t
 					for(size_t n =0; n < bit_to_byte.size()-8; n++){
 						unsigned char a = 0;
 						for(size_t m = n; m <n+8; m++){
-							a+= powersOfTwo.at(n-m+7)* bit_to_byte.at(m);
+							a+= powersOfTwo.at(m-n)* bit_to_byte.at(m);//ba m-n kar kard
 						}
 						n= n+7;
 						outs<< a;
-					//	cout<< "eight bits of high: "<<int(a)<<endl; 
+				//		cout<< "eight bits of high: "<<int(a); 
 					}
+				//	cout << " " << endl;
 				}
 			}
 			outs<<(char)8;
-		}
-		outs.close();
+		//}
+	//	outs.close();
 	}
-	void mc_model::write_alignments_pattern(){
-		ofstream outs("encode",std::ofstream::binary|std::ofstream::app);
+	void mc_model::write_alignments_pattern(ofstream & outs){
+	//	ofstream outs("encode",std::ofstream::binary);
+	//	ofstream outs("encode",std::ofstream::binary|std::ofstream::app);
 		size_t bit = 12;
-		if(outs.is_open()){//Per accession!
+	//	if(outs.is_open()){//Per accession!
 			for(size_t i = 0 ; i < data.numAcc(); i++){
 				for(size_t j =0; j < data.numAcc(); j++){
 					outs << data.get_acc(i);
 					outs<< (char) 0;
 					outs<< data.get_acc(j);
 					outs<< (char) 0;
+			//		cout<<"acc1 : " << data.get_acc(i) << " acc2: " << data.get_acc(j) << endl;
 					for(map<string, vector<unsigned int> >::iterator it= highValue.at(i).at(j).begin(); it != highValue.at(i).at(j).end(); it++){	
 						vector<bool> bit_to_byte(0);
 						for(size_t j = 0; j < NUM_DELETE+NUM_KEEP+10; j++){
@@ -2461,22 +2470,26 @@ void splitpoints::find_initial_split_points(size_t sequence, size_t left, size_t
 								bit_to_byte.push_back(h%2);
 								h = h/2;
 							}
-						}			
+						}
+					//	size_t counter =0;
+					//	cout<< "bit to byte: "<< bit_to_byte.size()<<endl;
 						for(size_t n =0; n < bit_to_byte.size()-8; n++){
 							unsigned char a = 0;
 							for(size_t m = n; m <n+8; m++){
-								a+= powersOfTwo.at(n-m+7)* bit_to_byte.at(m);
+								a+= powersOfTwo.at(m-n)* bit_to_byte.at(m);//ghadimish n-m-7
 							}
 							n= n+7;
+					//		counter = counter+1;
 							outs<< a;
-						}
+						}	
+					//	cout<< "counter: "<< counter << endl;
 					}
-					outs << (char) 0;
+				//	outs << (char) 0;
 				}				
 			}
 			outs<<(char) 8;
-		}
-		outs.close();
+	//	}
+	//	outs.close();
 	}
 	void mc_model::make_all_alignments_patterns(){
 		string context; 
@@ -2539,11 +2552,11 @@ void splitpoints::find_initial_split_points(size_t sequence, size_t left, size_t
 		cout<< "number: "<< number<<endl;*/ //number was 3050 for level 2.
 	
 	}
-	void mc_model::train(){
+	void mc_model::train(ofstream & outs){
 		markov_chain();
-		markov_chain_alignment();
-		write_parameters();
-	//	write_alignments_pattern();
+		markov_chain_alignment(outs);
+		write_parameters(outs);
+		write_alignments_pattern(outs);
 	}
 	
 	void mc_model::make_all_the_patterns(){
@@ -2603,33 +2616,112 @@ void splitpoints::find_initial_split_points(size_t sequence, size_t left, size_t
 			for(map<string,vector<unsigned int> >::iterator it= high.at(accession).begin(); it!= high.at(accession).end();it++){
 				vector<bool> binary_high_value(0);
 				size_t bound = (5*bit)/8;
+			//	cout<< "bound: " << bound << endl;
 				for(size_t j = 0 ; j < bound ; j++){ 
 					h=in.get();
-			//		cout<<"h: "<< int(h)<<endl;
+					size_t H = size_t(h); // should be a better solution!
+			//		cout<<"h: "<< size_t(h)<<endl;
 					for(size_t k = 0; k < 8 ; k++){
-						binary_high_value.push_back(h%2);
-						h = h/2;	
+						binary_high_value.push_back(H%2);
+				//		cout<< " "<< H%2 ;	
+						H = H/2;
 					}
+				//		cout << " " << endl;
 				}
+				size_t counter = 0;
 			//	cout<< "binary size= "<< binary_high_value.size()<<endl;
+			//	cout<< "size- 8 "<<  binary_high_value.size() -( binary_high_value.size()%bit)<<endl;
 				for(size_t i = 0; i < binary_high_value.size()-bit;i++){
 					unsigned int high_value = 0;					
 					for(size_t j =i; j < i+bit; j++){
-						high_value += binary_high_value.at(j)*powersOfTwo.at(i-j+bit-1);
+						high_value += binary_high_value.at(j)*powersOfTwo.at(j-i);
 					}
-					i=i+bit;
-					it -> second.push_back(high_value);
-				//	cout<<"high value in model class: "<< high_value<< " i: "<< i <<endl;
+					i=i+bit-1;
+					it -> second.at(counter)=high_value;
+					if(it->first == "AC"){
+						cout<< "high value of AC in set pattern: ";
+						cout<< high_value<<endl;
+					}
+			//		cout<<"high value in model class: "<< high_value << " at " << counter << " i " << i <<endl;
+			//		cout<< " "<<endl;
+					counter = counter + 1;
 				}
-			//	for(size_t i = 0; i < 5 ; i++){
-			//		cout<< "high at " << i << " is " << it->second.at(i)<<endl;
-			//	}
+			//	cout<< "counter: "<< counter << endl;
+			/*	unsigned int high_value = 0;
+				for(size_t j =  binary_high_value.size() -( binary_high_value.size()%bit) ; j <  binary_high_value.size(); j++){
+						high_value += binary_high_value.at(j)*powersOfTwo.at(j-binary_high_value.size()+( binary_high_value.size()%bound));					
+				}*/
+			//	it -> second.at(4)=powersOfTwo.at(bit); 
+			//	cout << "high at 4 "<< it->second.at(4)<<endl;
+			/*	for(size_t j =0; j < 5 ; j++){
+					cout<< "high from stream: " << it->second.at(j)<<endl;
+				}*/
 			}
 			c= in.get();	
 		}
 	//	cout<<"last c: "<< int(c)<<endl;
 	}
-	void mc_model::set_alignment_pattern(ifstream &){
+	void mc_model::set_alignment_pattern(ifstream & in){
+		make_all_alignments_patterns();
+		size_t bit = 12;
+		char c;
+		char h;
+		c= in.get();	
+		while(c != 8){
+			size_t accession1 = 0;
+			string acc1;
+			stringstream s1;
+			while(c != 0){
+				s1 << c;
+				c = in.get();
+			}
+			s1 >> acc1;
+			data.set_accession(acc1);//since in decoding we have no access to our fasta file we need to set accession names in data class
+			accession1 = data.get_acc_id(acc1);
+			size_t accession2 = 0;
+			string acc2;
+			stringstream s2;
+			c= in.get();
+			while(c != 0){
+				s2 << c;
+				c = in.get();
+			}
+			s2 >> acc2;
+			data.set_accession(acc2);
+			accession2 = data.get_acc_id(acc2);	
+			for(map<string,vector<double> >::const_iterator it= all_alignment_patterns.begin(); it!= all_alignment_patterns.end();it++){
+				string pattern = it ->first;
+			//	cout<<"acc1: "<<accession1 << " acc2 " << accession2<<endl;
+				highValue.at(accession1).at(accession2).insert(make_pair(pattern, vector<unsigned int>(NUM_KEEP+NUM_DELETE+10,0)));
+			}
+			for(map<string,vector<unsigned int> >::iterator it= highValue.at(accession1).at(accession2).begin(); it!= highValue.at(accession1).at(accession2).end();it++){
+				vector<bool> binary_high_value(0);
+				size_t bound = ((NUM_KEEP+NUM_DELETE+10)*bit)/8;
+				for(size_t j = 0 ; j < bound ; j++){ 
+					h=in.get();
+					size_t H = size_t(h);
+					for(size_t k = 0; k < 8 ; k++){
+						binary_high_value.push_back(H%2);
+						H = H/2;	
+					}
+				}
+				size_t counter =0;
+			//	cout<< "bit to byte 1: "<< binary_high_value.size() << endl;
+				for(size_t i = 0; i < (binary_high_value.size())-bit;i++){
+					unsigned int high_value = 0;					
+					for(size_t j =i; j < i+bit; j++){
+						high_value += binary_high_value.at(j)*powersOfTwo.at(j-i);//ghadimish i-j+bit-1
+					}
+					i=i+bit-1;
+					it -> second.at(counter)= high_value;//in ghalate!
+					counter = counter +1;
+				}
+		//		cout<< "counter: "<< counter<<endl;
+				it -> second.at(NUM_KEEP+NUM_DELETE+9)=powersOfTwo.at(bit); 
+		//		cout<< "size of high value: "<< it ->second.size() << endl;
+			}
+			c= in.get();	
+		}
 
 
 	}
@@ -2660,8 +2752,76 @@ void splitpoints::find_initial_split_points(size_t sequence, size_t left, size_t
 	//	for(size_t k =0; k< 5; k++){
 	//		cout<< "high at " << k << " is "<< it->second.at(k)<<endl;
 	//	}
+		if(current_pattern == "AC"){
+			cout<< "high at AC: ";
+			for(size_t j = 0; j < 5 ; j++){
+				cout<< it->second.at(j) <<endl;
+			}
+		}
 		return it->second;
 	}
+	vector<unsigned int> mc_model::get_center_high_at_position(size_t cent_ref, size_t cent_left, size_t position)const{
+		const dnastring & sequence = data.getSequence(cent_ref);
+	//	cout << " sequence " << seq_index << " length " << sequence.length() << endl;
+		size_t accession = data.accNumber(cent_ref);
+		stringstream context;
+		for(size_t j = Sequence_level; j>0; j--){
+			if(position < cent_left+j){
+				char chr = 'A';
+				context<<chr;
+			}else{
+				char chr = sequence.at(position-j);
+				context<<chr;
+			}
+		}
+		string current_pattern;
+		context >> current_pattern;
+	//	cout<<"current pattern: "<< current_pattern<<endl;					
+	/*	cout<<"current pattern in seq  "<< seq_index << " of accession " << accession <<endl;
+		for(size_t j=0; j< current_pattern.length(); j++){
+			cout<<current_pattern.at(j)<<endl;
+		}*/
+		map<string, vector<unsigned int> >::const_iterator it=high.at(accession).find(current_pattern);
+		assert(it!=high.at(accession).end());
+	//	cout << " sequence " << seq_index << " length " << sequence.length() << " " << current_pattern<<  endl;
+	//	cout<<"accession: "<< accession << endl;
+	//	for(size_t k =0; k< 5; k++){
+	//		cout<< "high at " << k << " is "<< it->second.at(k)<<endl;
+	//	}
+		return it->second;
+	}
+	vector<unsigned int> mc_model::get_reverse_center_high_at_position(size_t cent_ref, size_t cent_right, size_t position)const{
+		const dnastring & sequence = data.getSequence(cent_ref);
+	//	cout << " sequence " << seq_index << " length " << sequence.length() << endl;
+		size_t accession = data.accNumber(cent_ref);
+		stringstream context;
+		for(size_t j = Sequence_level; j>0; j--){
+			if(position > cent_right-j){
+				char chr = 'A';
+				context<<chr;
+			}else{
+				char chr= dnastring::complement(sequence.at(position+j));				
+			//	char chr = sequence.at(position+j);
+				context<<chr;
+			}
+		}
+		string current_pattern;
+		context >> current_pattern;
+	//	cout<<"current pattern: "<< current_pattern<<endl;					
+	/*	cout<<"current pattern in seq  "<< seq_index << " of accession " << accession <<endl;
+		for(size_t j=0; j< current_pattern.length(); j++){
+			cout<<current_pattern.at(j)<<endl;
+		}*/
+		map<string, vector<unsigned int> >::const_iterator it=high.at(accession).find(current_pattern);
+		assert(it!=high.at(accession).end());
+	//	cout << " sequence " << seq_index << " length " << sequence.length() << " " << current_pattern<<  endl;
+	//	cout<<"accession: "<< accession << endl;
+	//	for(size_t k =0; k< 5; k++){
+	//		cout<< "high at " << k << " is "<< it->second.at(k)<<endl;
+	//	}
+		return it->second;
+	}
+
 	vector<size_t> mc_model::get_powerOfTwo()const{
 		return powersOfTwo;
 	}		
@@ -2691,7 +2851,15 @@ void splitpoints::find_initial_split_points(size_t sequence, size_t left, size_t
 		}
 		return first_pattern;
 	}
-	
+	string mc_model::get_firstAlignmentPattern()const{
+		string first_pattern;
+		size_t firstPatterns = Alignment_level;
+		for(size_t j = 0; j < Alignment_level; j++){
+			firstPatterns --;
+			first_pattern+=modification_character(-1,-1,-1,firstPatterns);
+		}
+		return first_pattern;
+	}	
 	char mc_model::modification_character(int modify_base, int num_delete, int insert_base, int num_keep)const {
 		//return the enc
 		if(num_delete != -1){
@@ -2713,29 +2881,70 @@ void splitpoints::find_initial_split_points(size_t sequence, size_t left, size_t
 		assert (false);
 		return -1;
 	}
-		string mc_model::print_modification_character(char enc)const{
-			int modify_base = -1;
-			int num_delete =-1;
-			int insert_base = -1;
-			int num_keep = -1;
-			modification(enc, modify_base, num_delete, insert_base, num_keep);
-
-			stringstream s;
-			if(num_delete != -1){
-				s<< " a delete of length " <<  num_delete; 
-			}
-			if(num_keep != -1){
-				s<< " a keep of length" << num_keep;
-			}
-			if(modify_base != -1) {
-				s<< " a modification to " << dnastring::index_to_base(modify_base);
-			}
-			if(insert_base != -1){
-				s<< " a insertion at " << dnastring::index_to_base(insert_base);
-			}
-			return s.str();
+	string mc_model::print_modification_character(char enc)const{
+		int modify_base = -1;
+		int num_delete =-1;
+		int insert_base = -1;
+		int num_keep = -1;
+		modification(enc, modify_base, num_delete, insert_base, num_keep);
+		stringstream s;
+		if(num_delete != -1){
+			s<< " a delete of length " <<  num_delete; 
 		}
+		if(num_keep != -1){
+			s<< " a keep of length" << num_keep;
+		}
+		if(modify_base != -1) {
+			s<< " a modification to " << dnastring::index_to_base(modify_base);
+		}
+		if(insert_base != -1){
+			s<< " a insertion at " << dnastring::index_to_base(insert_base);
+		}
+		return s.str();
+	}
+	size_t mc_model::print_modification(char enc)const{
+		int modify_base = -1;
+		int num_delete =-1;
+		int insert_base = -1;
+		int num_keep = -1;
+		modification(enc, modify_base, num_delete, insert_base, num_keep);
+		size_t modification_type;
+		if(num_delete != -1){
+			 modification_type = NUM_DELETE+num_delete;
+		}
+		if(num_keep != -1){
+			modification_type = NUM_KEEP+num_keep;
+		}
+		if(modify_base != -1) {
+			modification_type = modify_base; 
+		}
+		if(insert_base != -1){
+			modification_type = insert_base + NUM_KEEP + NUM_DELETE + 5;
+		}
+		return modification_type;
 
+	}	
+	size_t mc_model::modification_length(char mod)const{
+		int modify_base = -1;
+		int num_delete =-1;
+		int insert_base = -1;
+		int num_keep = -1;
+		size_t length = 0;
+		modification(mod, modify_base, num_delete, insert_base, num_keep);
+		if(modify_base != -1){
+			length = 1;
+		}
+		if(insert_base != -1){
+			length = 1;
+		}
+		if(num_delete != -1){
+			length = num_delete;
+		}
+		if(num_keep != -1){
+			length = num_keep;
+		}
+		return length;
+	}
 	void mc_model::modification(char enc, int & modify_base, int & num_delete, int & insert_base, int & num_keep)const {
 		modify_base = -1;
 		num_delete =-1;
@@ -2744,25 +2953,24 @@ void splitpoints::find_initial_split_points(size_t sequence, size_t left, size_t
 
 		if(enc < 5) {
 			modify_base = enc;
-			return;
+			
 		}
 
 		if(enc < 5 + NUM_DELETE) {
 			num_delete = powersOfTwo.at(enc - 5);
-			return;
 		}
 		if (enc < 5 + NUM_DELETE + NUM_KEEP){
 			num_keep = powersOfTwo.at(enc-NUM_DELETE-5);
-			return;
 		}
 		if(enc< 5+ 5 + NUM_KEEP + NUM_DELETE){
 			insert_base = enc- 5 - NUM_KEEP - NUM_DELETE;
 		}
 	}
-	void mc_model::computing_modification_oneToTwo(const pw_alignment & p, abstract_context_functor & functor)const{
+	void mc_model::computing_modification_oneToTwo(const pw_alignment & p, abstract_context_functor & functor,ofstream & outs)const{
+		dlib::entropy_encoder_kernel_1 * enc = new dlib::entropy_encoder_kernel_1();
 		string seq = "";
-		cout<<"data ad in computing mod: "<< & data << endl;
-		p.print();
+	//	cout<<"data ad in computing mod: "<< & data << endl;
+	//	p.print();
 		size_t acc1 = data.accNumber(p.getreference1());
 		size_t acc2 = data.accNumber(p.getreference2());
 		size_t first_patterns = Alignment_level;
@@ -2833,7 +3041,7 @@ void splitpoints::find_initial_split_points(size_t sequence, size_t left, size_t
 		//		cout<< "size of seq: "<< seq.size()<<endl;
 		//		cout << "seq 2 " << int(seq2) << endl;
 		//		cout<< "recorded keep length: " << n+1 << endl;
-				functor. see_context(acc1,acc2,i,seq1,seq2);
+				functor. see_context(acc1,acc2,p,i,seq1,seq2, outs,*enc);
 		//		cout<<"n: "<< n << endl;
 			}else{
 				if((s1!=5) & (s2!=5)){
@@ -2843,14 +3051,14 @@ void splitpoints::find_initial_split_points(size_t sequence, size_t left, size_t
 					}*/
 					seq += modification_character(modify_base,num_delete,insert_base,num_keep);
 					seq2 = modification_character(s2,num_delete,insert_base,num_keep);
-					functor. see_context(acc1,acc2,i,seq1,seq2);
+					functor. see_context(acc1,acc2,p,i,seq1,seq2,outs,*enc);
 				//	cout<< "seq1" << seq1 <<endl;
 				}
 				if(s1 == 5){
 					insert_base = s2;
 					seq += modification_character(modify_base,num_delete,insert_base,num_keep);						
 					seq2 = modification_character(modify_base,num_delete,insert_base,num_keep);
-					functor. see_context(acc1,acc2,i,seq1,seq2);
+					functor. see_context(acc1,acc2,p,i,seq1,seq2,outs,*enc);
 			//		cout<< "seq1" << seq1 <<endl;						
 				}
 				if(s2 == 5){
@@ -2885,7 +3093,7 @@ void splitpoints::find_initial_split_points(size_t sequence, size_t left, size_t
 						}
 					}
 					seq2 = seq.at(seq.size()-1);
-					functor. see_context(acc1,acc2,i,seq1,seq2);
+					functor. see_context(acc1,acc2,p,i,seq1,seq2,outs,*enc);
 				}
 
 			}
@@ -2899,7 +3107,7 @@ void splitpoints::find_initial_split_points(size_t sequence, size_t left, size_t
 //			for(size_t h = 0 ; h < seq1.size(); h++){
 //				cout<< int(seq1.at(h))<<endl;
 //			}
-//			cout<<"last char: "<<int(seq2)<<endl;
+	//		cout<<"last char in mod function: "<<int(seq2)<<endl;
 //			cout<<"i+n: "<< i+n<<endl;
 			i=i+n;
 			//cout<<"n"<< n << endl;
@@ -2916,12 +3124,14 @@ void splitpoints::find_initial_split_points(size_t sequence, size_t left, size_t
 	//		cout<< int(seq.at(m))<<endl;
 	//	}
 	//	cout<< "one to two was done! " << endl;
+		functor.see_entire_context(acc1,acc2,seq);
+		delete enc;
 	}
 
 	
-	void mc_model::computing_modification_twoToOne(const pw_alignment & p, abstract_context_functor & functor)const{
+	void mc_model::computing_modification_twoToOne(const pw_alignment & p, abstract_context_functor & functor,ofstream & outs)const{
+		dlib::entropy_encoder_kernel_1 * enc = new dlib::entropy_encoder_kernel_1();
 		string seq = "";
-		seq[0]=0;
 		size_t acc1 = data.accNumber(p.getreference1());
 		size_t acc2 = data.accNumber(p.getreference2());
 		size_t first_patterns = Alignment_level;
@@ -2983,7 +3193,7 @@ void splitpoints::find_initial_split_points(size_t sequence, size_t left, size_t
 					}
 				}
 				seq2 = seq.at(seq.size()-1);
-				functor. see_context(acc2,acc1,i,seq1,seq2);
+				functor. see_context(acc2,acc1,p,i,seq1,seq2,outs,*enc);
 			}else{
 				if((s1!=5) & (s2!=5)){
 					modify_base = s2;
@@ -2992,13 +3202,13 @@ void splitpoints::find_initial_split_points(size_t sequence, size_t left, size_t
 					}*/
 					seq += modification_character(modify_base,num_delete,insert_base,num_keep);
 					seq2 = modification_character(s1,num_delete,insert_base,num_keep);
-					functor. see_context(acc2,acc1,i,seq1,seq2);
+					functor. see_context(acc2,acc1,p,i,seq1,seq2,outs,*enc);
 				}
 				if(s2 == 5){
 					insert_base = s1;
 					seq += modification_character(modify_base,num_delete,insert_base,num_keep);					
 					seq2 = modification_character(modify_base,num_delete,insert_base,num_keep);
-					functor. see_context(acc2,acc1,i,seq1,seq2);						
+					functor. see_context(acc2,acc1,p,i,seq1,seq2,outs,*enc);						
 				}
 				if(s1 == 5){
 					size_t dlength = 0;
@@ -3031,20 +3241,23 @@ void splitpoints::find_initial_split_points(size_t sequence, size_t left, size_t
 						}
 					}
 					seq2 = seq.at(seq.size()-1);
-					functor. see_context(acc2,acc1,i,seq1,seq2);
+					functor. see_context(acc2,acc1,p,i,seq1,seq2,outs,*enc);
 				}
 			}
 	/*		cout<< " context2 is "<<endl;
 			for(size_t h = 0 ; h < seq1.size(); h++){
 				cout<< int(seq1.at(h))<<endl;
-			}
-			cout<<"last char: "<<int(seq2)<<endl;*/
+			}*/
+		//	cout<<"last char in mod function: "<<int(seq2)<<endl;
 			i=i+n;
+		//	cout<< "i in modification : " << i << endl;
 		}		
 	/*	cout<<"encoded sequence from two to one is: "<<endl;
 		for(size_t m = 0; m < seq.size(); m ++){
 			cout<< int(seq.at(m))<<endl;
 		}*/
+		functor.see_entire_context(acc2,acc1,seq);
+		delete enc;
 	}
 	const map<string, vector<double> > & mc_model::getPattern(size_t acc)const{
 		return sequence_successive_bases.at(acc);
@@ -3070,7 +3283,7 @@ void splitpoints::find_initial_split_points(size_t sequence, size_t left, size_t
 
 	}
 	const map<string, vector<double> > & mc_model::get_alignment_context(size_t al_id, size_t seq_id, encoding_functor & functor)const{
-		const pw_alignment & al = data.getAlignment(al_id);
+	/*	const pw_alignment & al = data.getAlignment(al_id);
 		size_t acc1 = data.accNumber(al.getreference1());
 	//	size_t acc2 = data.accNumber(al.getreference2());
 		size_t accession = data.accNumber(seq_id);
@@ -3080,10 +3293,10 @@ void splitpoints::find_initial_split_points(size_t sequence, size_t left, size_t
 		}else{
 			computing_modification_twoToOne(al, functor);
 			return functor.get_alignment_context();
-		}
+		}*/
 	}
 	const map<string, vector<double> > &mc_model::get_cluster_member_context(pw_alignment & al, size_t center_id, encoding_functor & functor)const{
-		size_t acc1 = data.accNumber(al.getreference1());
+	/*	size_t acc1 = data.accNumber(al.getreference1());
 	//	size_t acc2 = data.accNumber(al.getreference2());
 		size_t accession = data.accNumber(center_id);
 		if(accession == acc1){
@@ -3092,8 +3305,18 @@ void splitpoints::find_initial_split_points(size_t sequence, size_t left, size_t
 		}else{
 			computing_modification_twoToOne(al, functor);
 			return functor.get_alignment_context();
+		}*/
+	}
+	void mc_model ::get_encoded_member(pw_alignment & al, size_t center_id, encoding_functor & functor,ofstream& outs)const{
+		size_t acc1 = data.accNumber(al.getreference1());
+		size_t accession = data.accNumber(center_id);
+		if(accession == acc1){
+			computing_modification_oneToTwo(al, functor,outs);	
+		}else{
+			computing_modification_twoToOne(al, functor,outs);
 		}
 	}
+
 	void mc_model::computing_modification_in_cluster(string center, string member)const{
 	// we should read their bases one by one find the modification pattern between them, information be gained from clustering class
 	// in main function call it over global results, but then it is not part of training! :|
@@ -3125,12 +3348,15 @@ void splitpoints::find_initial_split_points(size_t sequence, size_t left, size_t
 	abstract_context_functor::abstract_context_functor(){
 	
 	}
-	void abstract_context_functor::see_context(size_t acc1, size_t acc2, size_t pos, string context, char last_char){
+	void abstract_context_functor::see_context(size_t acc1, size_t acc2, const pw_alignment & p, size_t pos, string context, char last_char, ofstream& outs, dlib::entropy_encoder_kernel_1 & enc){
 		
+	}
+	void abstract_context_functor::see_entire_context(size_t acc1,size_t acc2, string entireContext){
+
 	}
 	counting_functor::counting_functor(all_data & d):data(d), successive_modification(d.numAcc(),vector<map<string, vector<double> > >(d.numAcc())),total(d.numAcc(),vector<map<string, double > >(d.numAcc())) {}
 
-	void counting_functor::see_context(size_t acc1, size_t acc2, size_t pos, string context, char last_char){
+	void counting_functor::see_context(size_t acc1, size_t acc2, const pw_alignment & p, size_t pos, string context, char last_char, ofstream & outs, dlib::entropy_encoder_kernel_1 & enc){
 	//	cout<< "accession 1: " << acc1 << " accession 2: " << acc2 << " size: " << pos << " last char: " << dnastring::base_to_index(last_char) << " " << int(last_char)<<endl;
 	//	cout<< "context is: "<< endl;
 	/*	for(size_t i = 0 ; i < context.size(); i++){
@@ -3178,15 +3404,41 @@ void splitpoints::find_initial_split_points(size_t sequence, size_t left, size_t
 	const map<string, vector<double> > & counting_functor::get_context(size_t acc1, size_t acc2)const{
 		return successive_modification.at(acc1).at(acc2);
 	}
-	encoding_functor::encoding_functor(all_data & d):data(d){}
+	encoding_functor::encoding_functor(all_data & d, mc_model * m, wrapper & wrap):data(d),model(m),wrappers(wrap){
+	}
 	
-	void encoding_functor::see_context(size_t acc1, size_t acc2, size_t pos, string context, char last_char){
-		alignment_context.insert(make_pair(context, vector<double>(NUM_DELETE+NUM_KEEP+10,1)));
-		map<string , vector<double> >::iterator it = alignment_context.find(context);
-		assert(it != alignment_context.end());
-		it ->second.at(last_char) ++;		
+	void encoding_functor::see_context(size_t acc1, size_t acc2,const pw_alignment & p, size_t pos, string context, char last_char, ofstream& outs,	dlib::entropy_encoder_kernel_1 & enc){//last_char is infact a pattern!
+		size_t bit = 13;
+		cout<< "al length is: "<< p.alignment_length() << "position: "<< pos <<endl;
+	//	ofstream outs("encode", std::ofstream::binary|std::ofstream::app);
+	//	if(outs.is_open()){
+			enc.set_stream(outs);
+			unsigned int total = model->get_powerOfTwo().at(bit)+20;
+			map<string, vector<unsigned int> >::const_iterator it1 = model->get_highValue(acc1,acc2).find(context);
+		//	size_t lastChar = model->print_modification(last_char);
+			vector<unsigned int> low(NUM_DELETE+NUM_KEEP+10,0);
+			vector<unsigned int> high(NUM_DELETE+NUM_KEEP+10,0);
+			for(size_t m = 0; m < it1->second.size(); m++){
+				if(m ==0){
+					low.at(m) = 0;
+				}else{
+				 	low.at(m) = high.at(m-1);
+				}
+				high.at(m) = it1->second.at(m);
+				if(m == NUM_DELETE+NUM_KEEP+10-1){
+					high.at(m)=  model->get_powerOfTwo().at(bit);
+				}
+			}
+			cout<< "ended char in al: "<< int(last_char)<<endl;
+			enc.encode(low.at(last_char),high.at(last_char),total);
+			wrappers.encode(low.at(last_char),high.at(last_char),total);
+	//	}
+	//	outs.close();
 	}
 
+	void encoding_functor::see_entire_context(size_t acc1, size_t acc2, string entireContext){
+		alignment_pattern = entireContext;
+	}
 	const map<string, vector<double> > & encoding_functor::get_alignment_context()const{
 		for(map<string, vector<double> >::const_iterator it = alignment_context.begin(); it !=alignment_context.end(); it++){
 		/*	for(size_t n =0; n < NUM_DELETE+NUM_KEEP+10; n++){
@@ -3195,3 +3447,29 @@ void splitpoints::find_initial_split_points(size_t sequence, size_t left, size_t
 		}
 		return alignment_context;
 	}
+	vector<string>  &  encoding_functor::get_alignment_context(pw_alignment & p)const{
+		vector<string>longName;
+	/*	pw_alignment * copy_p = new pw_alignment(p);
+		map<pw_alignment*, vector<string> >::const_iterator it = pattern.find(copy_p);
+		assert(it != pattern.end());
+		delete copy_p;
+		return it->second;*/
+		for(map<string , vector<double> >::const_iterator it = alignment_context.begin(); it!=alignment_context.end(); it++){
+			string context = it->first;
+			for(size_t i = 0; i < it->second.size();i++){
+				stringstream longname;
+				if(it->second.at(i)!=0){
+					longname << context << ":" << it->second.at(i);
+					longName.push_back(longname.str());
+				}
+				
+			}
+		}
+		cout<<"new longname: "<<endl;
+		for(size_t j =0; j < longName.size(); j++){
+			cout<< longName.at(j);
+		}
+		cout<< " " <<endl;
+		return longName;
+	}
+

@@ -742,4 +742,18 @@ bool compare_pw_alignment::operator()(const pw_alignment *const &a, const pw_ali
 	double pw_alignment::get_modify2() const {
 		return modify_costs.at(1);
 	}
+
+
+	wrapper::wrapper():encodeout("enc.txt"),decodeout("dec.txt"){
+	}
+	wrapper::~wrapper(){}
+	void wrapper::encode(unsigned int& low, unsigned int& high, unsigned int & total){
+		encodeout << "l"<< low << "h"<< high;
+	}
+	void wrapper::decode(unsigned int& low, unsigned int& high, unsigned int & total){
+		decodeout << "low : "<< low << " high: "<< high << " total: "<< total<<endl;
+	}
+
+
+
 	
