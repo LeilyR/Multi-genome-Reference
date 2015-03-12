@@ -65,9 +65,11 @@ class all_data {
 		bool alignment_fits_ref(const pw_alignment * al) const;
 		void print_ref(const pw_alignment * al)const;
 		const vector<size_t> & getAcc(size_t acc)const;//return the vector of all sequences for a certain acc.
-		size_t accNumber(size_t sequence_id);
+		size_t accNumber(size_t sequence_id) const;
 		const string get_acc(size_t acc)const; //get the accession number and return its name.
 		const size_t get_acc_id(string acc)const;
+		string get_seq_name(size_t s) const;
+		size_t get_seq_size(size_t s) const;
 		void set_accession(const string & acc);
 		size_t numOfAcc() const;
 

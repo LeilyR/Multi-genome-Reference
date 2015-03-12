@@ -616,13 +616,38 @@ char pw_alignment::base_translate_back(bool bit1, bool bit2, bool bit3) {
 	size_t pw_alignment::getbegin(size_t id)const{
 	return begins.at(id);
 }
-	size_t pw_alignment::getend(size_t id)const{
+size_t pw_alignment::getend(size_t id)const{
 	return ends.at(id);
 }
-	size_t pw_alignment::getreference(size_t id)const{
+
+size_t pw_alignment::getreference(size_t id)const{
 	return references.at(id);
 }
-	void pw_alignment::setbegin1(size_t begin1){
+
+string pw_alignment::get_al_ref1() const {
+	stringstream res;
+	for(size_t i=0; i<alignment_length(); ++i) {
+		char c1, c2;
+		alignment_col(i, c1, c2);
+		res << c1;
+	}
+	return res.str();
+}
+	
+string pw_alignment::get_al_ref2() const {
+	stringstream res;
+	for(size_t i=0; i<alignment_length(); ++i) {
+		char c1, c2;
+		alignment_col(i, c1, c2);
+		res << c2;
+	}
+	return res.str();
+}
+	
+
+
+
+void pw_alignment::setbegin1(size_t begin1){
 		begins.at(0) = begin1;
 }
 	void pw_alignment::setbegin2(size_t begin2){

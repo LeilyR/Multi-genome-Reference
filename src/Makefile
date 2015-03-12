@@ -42,10 +42,10 @@ pw_alignment.o: pw_alignment.cpp pw_alignment.hpp
 
 data.o: data.cpp pw_alignment.hpp data.hpp
 	$(CXX) -o data.o $(CXXFLAGS) $(INCLUDEARGS) -c data.cpp 
-encoder.o: encoder.cpp encoder.hpp
+encoder.o: encoder.cpp encoder.hpp data.hpp
 	$(CXX) -o encoder.o $(CXXFLAGS) $(INCLUDEARGS) -c encoder.cpp
 
-model.o: model.cpp pw_alignment.hpp data.hpp model.hpp
+#model.o: model.cpp pw_alignment.hpp data.hpp model.hpp
 #	$(CXX) -o model.o $(CXXFLAGS) $(INCLUDEARGS) -c model.cpp
 
 clean:

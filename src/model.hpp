@@ -295,19 +295,22 @@ void run(map<string, vector<string> > & cluster_result) {
 		if(result[i]==i) {
 			cout << " " << simmatrix.at(i).at(i) << endl;
 			map<string, vector<string> >::iterator it=cluster_result.find(sequence_names.at(i));
-			cluster_result.insert(make_pair(sequence_names.at(i), vector<string>()));
-			it->second.push_back(sequence_names.at(i));
+			if(it==cluster_result.end()) {
+				cluster_result.insert(make_pair(sequence_names.at(i), vector<string>()));
+			} else {
+				// it->second.push_back(sequence_names.at(i));
+			
+			}
 
 		} else {
 			cout << " " << simmatrix.at(i).at(result[i]) << " : " << simmatrix.at(i).at(i) << endl;
 			//result[i]is associated one, add them to the map for each center
-			map<string, vector<string> >::iterator it=cluster_result.find(sequence_names.at(i));
-			if(it == cluster_result.end()){
-				cluster_result.insert(make_pair(sequence_names.at(i), vector<string>()));
-				it=cluster_result.find(sequence_names.at(i));
+			map<string, vector<string> >::iterator it=cluster_result.find(sequence_names.at(result[i]));
+			if(it == cluster_result.end()) {
+				cluster_result.insert(make_pair(sequence_names.at(result[i]), vector<string>()));
+				it=cluster_result.find(sequence_names.at(result[i]));
 			}
-				it->second.push_back(sequence_names.at(i));
-				it->second.push_back(sequence_names.at(result[i]));
+			it->second.push_back(sequence_names.at(i));
 
 		}
 	}

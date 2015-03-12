@@ -15,6 +15,10 @@
 #include "dlib/entropy_decoder/entropy_decoder_kernel_1.h"
 
 
+#define VERSION "0.0.1" 
+#define NUMVERISON 0
+#define MIN_READ_VERSION 0
+
 
 
 using namespace std;
@@ -168,7 +172,287 @@ int do_fasta_prepare(int argc, char * argv[]) {
 
 	return 0;
 }
- 
+
+/*
+    src -- The name of one of the source sequences for the alignment. For sequences that are resident in a browser assembly, the form 'database.chromosome' allows automatic creation of links to other assemblies. Non-browser sequences are typically reference by the species name alone.
+    start -- The start of the aligning region in the source sequence. This is a zero-based number. If the strand field is '-' then this is the start relative to the reverse-complemented source sequence.
+    size -- The size of the aligning region in the source sequence. This number is equal to the number of non-dash characters in the alignment text field below.
+    strand -- Either '+' or '-'. If '-', then the alignment is to the reverse-complemented source.
+    srcSize -- The size of the entire source sequence, not just the parts involved in the alignment.
+    text -- The nucleotides (or amino acids) in the alignment and any insertions (dashes) as well.
+*/
+
+void write_maf_record(ostream & out, const string & src, size_t start, size_t size, char strand, size_t srcSize, const string & alignment_part) {
+	out << "s " << src << "\t" << start << "\t" << size << "\t" << strand << "\t" << srcSize << "\t" << alignment_part << endl;
+}
+
+
+/*
+	write half a pairwise alignment to a maf file 
+	(this write the s-line only)
+
+*/
+void write_maf_record(ostream & out, const all_data & data, const pw_alignment & al, size_t reference) {
+	assert(reference==0 || reference==1);
+	// get the requested half alignment
+	size_t print_seq;
+	size_t print_start;
+	size_t print_end;
+	string print_al;
+	if(reference==0) {
+		print_seq = al.getreference1();
+		print_start = al.getbegin1();
+		print_end = al.getend1();
+		print_al = al.get_al_ref1();
+	} else {
+		print_seq = al.getreference2();
+		print_start = al.getbegin2();
+		print_end = al.getend2();
+		print_al = al.get_al_ref2();
+	}
+	// translate reference sequence index number to corresponding long name (accession:contig)
+	size_t acc = data.accNumber(print_seq);
+	string accname = data.get_acc(acc);
+	string seqname = data.get_seq_name(print_seq);
+	stringstream write_longname;
+	write_longname << accname << ':' << seqname;
+	char strand = '+';
+	if(print_end < print_start) strand = '-';
+	size_t size = data.get_seq_size(print_seq);
+	write_maf_record(out, write_longname.str(), print_start, print_end, strand, size, print_al);
+	
+
+}
+
+/*
+	compute star phylogeny multiple sequence alignment
+	modifies input alignments by inserting gaps
+*/   
+
+void msa_star_alignment(const string & center, vector<pw_alignment> & alignments) {
+	vector<string> cparts;
+	strsep(center, ":", cparts);
+	size_t center_ref = atoi(cparts.at(0).c_str());
+	size_t center_left = atoi(cparts.at(1).c_str());
+	size_t center_length = 0; // length of the cluster center on its reference
+	vector<size_t> gaps_before;
+
+	for(size_t i=0; i<alignments.size(); ++i) {
+		size_t ref1 = alignments.at(i).getreference1();
+
+		size_t ref2 = alignments.at(i).getreference2();
+		size_t left1, right1, left2, right2;
+		alignments.at(i).get_lr1(left1, right1);
+		alignments.at(i).get_lr2(left2, right2);
+
+		cout << " al " << i << endl;
+		alignments.at(i).print();
+		cout << endl;
+		// find cluster center and make sure that each alignment goes to cluster center
+		// and all cluster centers are identical on the cluster center reference
+		// then find the minimal number of gaps before each cluster center reference position
+		if(ref1 == center_ref && left1 == center_left) {
+			if(center_length==0) {
+				center_length = right1 - left1 + 1;
+				gaps_before = vector<size_t>(center_length + 1, 0);
+			} else {
+				cout << " cl " << center_length << " l1 " << left1 << " r1 " << right1 << endl;
+				assert(center_length == right1 - left1 +1);
+			}
+			size_t center_ref_pos=0; // relative to cluster center start (even if cluster center is backwards, we count forwards) 
+			size_t gapcounter = 0;
+			// now go over alignment
+			for(size_t j=0; j<alignments.at(i).alignment_length(); ++j) {
+				char c1, c2;
+				alignments.at(i).alignment_col(j, c1, c2);
+				if(c1 == '-') {
+					gapcounter++;
+				} else {
+					if(gaps_before.at(center_ref_pos) < gapcounter) {
+						gaps_before.at(center_ref_pos) = gapcounter;
+					}	
+					gapcounter = 0;
+					center_ref_pos ++;
+				}		
+			}
+			// gaps at end of alignment
+			if(gaps_before.at(center_ref_pos) < gapcounter) {
+				gaps_before.at(center_ref_pos) = gapcounter;
+			}
+		
+		} else {
+			assert(ref2 == center_ref && left2 == center_left);
+			if(center_length==0) {
+				center_length = right2 - left2 + 1;
+				gaps_before = vector<size_t>(center_length + 1, 0);
+			} else {
+				cout << " cl " << center_length << " l2 " << left2 << " r2 " << right2 << endl;
+
+				assert(center_length == right2 - left2 +1);
+			}
+			size_t center_ref_pos=0; // relative to cluster center start (even if cluster center is backwards, we count forwards) 
+			size_t gapcounter = 0;
+			for(size_t j=0; j<alignments.at(i).alignment_length(); ++j) {
+				char c1, c2;
+				alignments.at(i).alignment_col(j, c1, c2);
+				if(c2 == '-') {
+					gapcounter++;
+				} else {
+					if(gaps_before.at(center_ref_pos) < gapcounter) {
+						gaps_before.at(center_ref_pos) = gapcounter;
+					}	
+					gapcounter = 0;
+					center_ref_pos ++;
+				}
+			}
+			// gaps at end of alignment
+			if(gaps_before.at(center_ref_pos) < gapcounter) {
+				gaps_before.at(center_ref_pos) = gapcounter;
+			}
+		} // if ref	
+	} // for i 
+
+
+	// now we have inserted a lot of gaps in to gaps_before
+	// all that gaps are inserted into all alignments to create a multiple alignment where all sequences have the same length
+	for(size_t i=0; i<alignments.size(); ++i) {
+		size_t ref1 = alignments.at(i).getreference1();
+		size_t ref2 = alignments.at(i).getreference2();
+		size_t left1, right1, left2, right2;
+		alignments.at(i).get_lr1(left1, right1);
+		alignments.at(i).get_lr2(left2, right2);
+
+		// for writing new al strings
+		stringstream centerref_al;
+		stringstream otherref_al;
+
+		if(ref1 == center_ref && left1 == center_left) {
+					
+			size_t center_ref_pos=0; // we are before that position relative to cluster center start (even if cluster center is backwards, we count forwards) 
+			size_t gapcounter = 0; // how many gaps did we already see on cluster center ref
+			// now go over alignment
+			for(size_t j=0; j<alignments.at(i).alignment_length(); ++j) {
+				char c1, c2;
+				alignments.at(i).alignment_col(j, c1, c2);
+				if(c1 == '-') {
+					gapcounter++;
+					centerref_al << c1;
+					otherref_al << c2;
+				} else {
+					// add gaps before next center ref symbol
+					for(size_t k=gapcounter; k<gaps_before.at(center_ref_pos); k++) {
+						centerref_al << '-';
+						otherref_al << '-';
+					}
+					centerref_al << c1;
+					otherref_al << c2;
+					gapcounter = 0;
+					center_ref_pos ++;
+				}
+			}
+			for(size_t k=gapcounter; k<gaps_before.at(center_ref_pos); k++) {
+				centerref_al << '-';
+				otherref_al << '-';
+			}
+			pw_alignment newal(centerref_al.str(), otherref_al.str(), 
+					alignments.at(i).getbegin1(), alignments.at(i).getbegin2(),
+					alignments.at(i).getend1(), alignments.at(i).getend2(),
+					alignments.at(i).getreference1(), alignments.at(i).getreference2());
+			alignments.at(i) = newal;
+
+		} else {
+			assert(ref2 == center_ref && left2 == center_left);
+		
+			size_t center_ref_pos=0; // relative to cluster center start (even if cluster center is backwards, we count forwards) 
+			size_t gapcounter = 0;
+			for(size_t j=0; j<alignments.at(i).alignment_length(); ++j) {
+				char c1, c2;
+				alignments.at(i).alignment_col(j, c1, c2);
+				if(c2 == '-') {
+					gapcounter++;
+					centerref_al << c2;
+					otherref_al << c1;
+				} else {
+					// add gaps before next center ref symbol
+					for(size_t k=gapcounter; k<gaps_before.at(center_ref_pos); k++) {
+						centerref_al << '-';
+						otherref_al << '-';
+					}
+					centerref_al << c1;
+					otherref_al << c2;
+					gapcounter = 0;
+					center_ref_pos ++;
+				}
+			
+			}
+			for(size_t k=gapcounter; k<gaps_before.at(center_ref_pos); k++) {
+				centerref_al << '-';
+				otherref_al << '-';
+			}
+			// swap alignment, cluster center is now on reference 1
+			pw_alignment newal(centerref_al.str(), otherref_al.str(), 
+					alignments.at(i).getbegin2(), alignments.at(i).getbegin1(),
+					alignments.at(i).getend2(), alignments.at(i).getend1(),
+					alignments.at(i).getreference2(), alignments.at(i).getreference1());
+			alignments.at(i) = newal;
+		} // else: center on ref 2 of al i
+	} // for alignments
+
+// test code
+	size_t length = 0;
+	for(size_t i=0; i<alignments.size(); ++i) {
+		if(length == 0) {
+			length = alignments.at(i).alignment_length();
+		}
+		assert(length == alignments.at(i).alignment_length());
+	}
+
+}
+
+
+	/*
+		write the graph as multiple alignment data structure	
+	*/
+
+void write_graph_maf(const string & graphout, const map<string, vector<pw_alignment> > & cluster_result_al, const all_data & data) {
+	
+	ofstream gout(graphout.c_str());
+	gout << "##maf version=1 scoring=probability" << endl;
+	gout << "# graph version " << VERSION << endl;
+	// TODO add more metadata
+	gout << "# Coordinates are 0-based.  For - strand matches, coordinates" << endl;
+	gout << "# in the reverse complement of the 2nd sequence are used." << endl;
+	gout << "#" << endl;
+	gout << "# name start alnSize strand seqSize alignment" << endl;
+	gout << "#" << endl;
+	size_t cluster_number = 0; 
+	for(map<string, vector<pw_alignment> >::const_iterator it = cluster_result_al.begin(); it!=cluster_result_al.end(); ++it) {
+		string center = it->first;
+		vector<pw_alignment> als = it->second;
+		cout << "Center: "<< center << " als " << als.size() << endl;
+		msa_star_alignment(center, als);
+		if(als.size()>0) {
+			gout << "# cluster " << cluster_number << endl;
+			gout << "a score=1" << endl; // TODO
+
+		
+
+			write_maf_record(gout, data, als.at(0), 0);
+			for(size_t i=0; i<als.size(); ++i) {
+				write_maf_record(gout, data, als.at(i), 1);
+			}	
+			cluster_number++;
+		}
+	}
+
+	gout.close();
+
+
+
+
+
+}
+
 
 
 int do_mc_model(int argc, char * argv[]) {
@@ -176,20 +460,22 @@ int do_mc_model(int argc, char * argv[]) {
 //	typedef clustering<use_model> use_clustering;
 	typedef initial_alignment_set<use_model> use_ias;
 	typedef affpro_clusters<use_model> use_affpro;
-	if(argc < 4) {
+	if(argc < 5) {
 		usage();
 		cerr << "Program: model" << endl;
 		cerr << "Parameters:" << endl;
 		cerr << "* fasta file from fasta_prepare" << endl;
 		cerr << "* maf file containing alignments of sequences contained in the fasta file" << endl;
+		cerr << "* output maf file for the graph" << endl;
 		cerr << "* number of threads to use (optional, default 10)" << endl;
 	}
 
 	string fastafile(argv[2]);
 	string maffile(argv[3]);
+	string graphout(argv[4]);
 	size_t num_threads = 1;
-	if(argc == 5) {
-		num_threads = atoi(argv[4]);
+	if(argc == 6) {
+		num_threads = atoi(argv[5]);
 	}
 	
 // Read all data
@@ -224,6 +510,7 @@ int do_mc_model(int argc, char * argv[]) {
 	double cluster_base_cost = log2(data.numAlignments());
 	cout << " base cost " << cluster_base_cost << endl;
 // Select an initial alignment set for each connected component (in parallel)
+	// TODO put the next two into a single data structure
 	map<string, vector<string> > global_results;//for each center returns all its cluster members
 	map<string, vector<pw_alignment> > alignments_in_a_cluster;//string ---> center of a cluster, vector ---> alignments with that center
 #pragma omp parallel for num_threads(num_threads) schedule(dynamic)
@@ -311,11 +598,10 @@ int do_mc_model(int argc, char * argv[]) {
 		}
 		cout << endl;
 
+	// TODO better separation of the different applications of our program: create/read model, compress/decompress sequences, create graph
+	// write graph result in maf format
+	write_graph_maf(graphout, alignments_in_a_cluster, data);
 
-
-		
-	
-				
 	/*	for(set< const pw_alignment *, compare_pw_alignment>::iterator it=cc.begin();it!=cc.end();it++ ){
 			const pw_alignment *al = *it;
 			size_t index = al ->getreference1();

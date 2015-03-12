@@ -474,7 +474,7 @@ all_data::~all_data() {
 			}else continue;
 		}
 	}
-	size_t all_data::accNumber(size_t sequence_id){
+	size_t all_data::accNumber(size_t sequence_id) const {
 		return sequence_to_accession.at(sequence_id);
 	}
 
@@ -721,6 +721,15 @@ all_data::~all_data() {
 		map<string, size_t>::const_iterator it = accession_name.find(acc);
 		return it->second;
 	}
+
+
+string all_data::get_seq_name(size_t s) const {
+	return sequence_names.at(s);
+}
+
+size_t all_data::get_seq_size(size_t s) const {
+	return sequences.at(s).length();
+}
 
 	overlap::overlap(const all_data & d): data(d), als_on_reference(d.numSequences()){
 
