@@ -2,6 +2,7 @@
 #define PW_ALIGNMENT_HPP
 
 #include <vector>
+#include <fstream>
 #include <iostream>
 #include <sstream>
 #include <string>
@@ -83,6 +84,18 @@ class pw_alignment {
 class compare_pw_alignment {
 	public:
 	bool operator()(const pw_alignment *const &a, const pw_alignment *const &b) const ;
+};
+
+class wrapper{
+	public:
+		wrapper();
+		~wrapper();
+		void encode(unsigned int&, unsigned int &, unsigned int&);
+		void decode(unsigned int &, unsigned int &, unsigned int&);
+
+	private:
+		ofstream encodeout;
+		ofstream decodeout;
 };
 		
 #endif 

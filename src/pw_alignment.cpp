@@ -670,7 +670,7 @@ void pw_alignment::setbegin1(size_t begin1){
 
 	void pw_alignment::print()const{
  
-	cout << "al1 seq "<< getreference1() << " b " << getbegin1() << " e " << getend1() << endl;
+	cout << "al1 seq "<< getreference1() << " b " << getbegin1() << " e " << getend1() <<  " l "  << alignment_length() << endl;
 	cout << "al2 seq "<< getreference2() << " b " << getbegin2() << " e " << getend2() << endl;
 
 
@@ -767,4 +767,18 @@ bool compare_pw_alignment::operator()(const pw_alignment *const &a, const pw_ali
 	double pw_alignment::get_modify2() const {
 		return modify_costs.at(1);
 	}
+
+
+	wrapper::wrapper():encodeout("enc.txt"),decodeout("dec.txt"){
+	}
+	wrapper::~wrapper(){}
+	void wrapper::encode(unsigned int& low, unsigned int& high, unsigned int & total){
+		encodeout << "l"<< low << "h"<< high;
+	}
+	void wrapper::decode(unsigned int& low, unsigned int& high, unsigned int & total){
+		decodeout << "low : "<< low << " high: "<< high << " total: "<< total<<endl;
+	}
+
+
+
 	
