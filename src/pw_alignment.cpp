@@ -747,7 +747,7 @@ bool compare_pw_alignment::operator()(const pw_alignment *const &a, const pw_ali
 	wrapper::wrapper():encodeout("enc.txt"),decodeout("dec.txt"){
 	}
 	wrapper::~wrapper(){}
-	void wrapper::encode(unsigned int& low, unsigned int& high, unsigned int & total){
+	void wrapper::encode(unsigned int& low, unsigned int& high, unsigned int & total){	
 		encodeout << "l"<< low << "h"<< high;
 	}
 	void wrapper::decode(unsigned int& low, unsigned int& high, unsigned int & total){

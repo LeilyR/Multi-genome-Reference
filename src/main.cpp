@@ -214,7 +214,7 @@ ofstream outs("encode",std::ofstream::binary);
 //	encoder en(data,m);
 //	use_clustering clust(ol,data,m);
 	encoder en(data,m,wrap);
-	test_encoder test(m);
+	test_encoder test;
 
 
 	vector<overlap> cc_overlap(ccs.size(), overlap(data));// vase in ke vase har connected component i yek overlap lazem darim ke dar natije bishtar az yeki overlap mikhaim vase hamin ol o estefade nakaradim
@@ -383,15 +383,50 @@ ofstream outs("encode",std::ofstream::binary);
 /*	for(map<string,unsigned int>::iterator it=weight.begin();it !=weight.end();it++){
 		cout<<"weight cent: "<< it ->first <<endl;
 	}*/
-	map<string, string> membersOfCluster;//first string represents an associated sequence of a cluster while the second string shows the center. 
-	for(map<string, vector<string> >::iterator it= global_results.begin(); it !=global_results.end(); it++){
+	map<string, vector<string> >membersOfCluster;//first string represents center and vector of strings are associated members(It can be removed and replaced by global result!)
+/*	for(map<string, vector<string> >::iterator it= global_results.begin(); it !=global_results.end(); it++){
 		for(size_t i =0; i < it->second.size();i++){
-			//if(it->second.at(i) != it->first){
 			membersOfCluster.insert(make_pair(it->second.at(i),it->first));
-			//}
 		}
 	}
-
+	set<string> intermediate;
+	for(map<string, vector<string> >::iterator it = global_results.begin(); it!=global_results.end();it++){
+		if(it->second.size()==1){
+			intermediate.insert(it->first);
+		}
+	}
+	for(set<string>::iterator it = intermediate.begin();it !=intermediate.end();it++){
+		string cent = *it;
+		map<string, string>::iterator it1 = membersOfCluster.find(cent);
+		membersOfCluster.erase(it1);				
+	}*/ 
+//Replaced by:
+	for(map<string, vector<pw_alignment> >::iterator it = alignments_in_a_cluster.begin();it != alignments_in_a_cluster.end();it++){
+		map<string, vector<string> >::iterator it1 = membersOfCluster.find(it->first);
+		for(size_t j =0; j < it->second.size();j++){
+			size_t left_1; 
+			size_t left_2;
+			size_t right_1;
+			size_t right_2;
+			size_t ref1;
+			size_t ref2;
+			pw_alignment p = it->second.at(j);
+			p.get_lr1(left_1,right_1);
+			p.get_lr2(left_2,right_2);
+			ref1 = p.getreference1();
+			ref2 = p.getreference2();
+			if(it1 == membersOfCluster.end()){
+				membersOfCluster.insert(make_pair(it->first,vector<string>()));
+				it1 = membersOfCluster.find(it->first);
+			}
+			stringstream sample1;
+			stringstream sample2;
+			sample1 << ref1 << ":" << left_1;
+			sample2 << ref2 << ":" << left_2;
+			it1->second.push_back(sample1.str());
+			it1->second.push_back(sample2.str());
+		}
+	}
 //	c.calculate_similarity();
 //	c.update_values();
 //	c.update_clusters();

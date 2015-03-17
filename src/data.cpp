@@ -2368,7 +2368,7 @@ void splitpoints::find_initial_split_points(size_t sequence, size_t left, size_t
 			for(size_t i = 0 ; i < data.numAcc(); i++){
 				outs << data.get_acc(i);
 				cout<<"acc: "<<data.get_acc(i)<<endl;
-				outs<< (char) 0;
+				outs<< (char)0;
 				for(map<string, vector<double> >::iterator it= all_the_patterns.begin(); it != all_the_patterns.end() ; it++){
 					string pattern = it ->first;
 					map<string,vector<double> >::iterator it1=sequence_successive_bases.at(i).find(pattern);
@@ -2420,9 +2420,9 @@ void splitpoints::find_initial_split_points(size_t sequence, size_t left, size_t
 						it1->second.at(j)=high_value.at(j);
 						int h = high_value.at(j);
 					//	cout<< "low1: "<<low.at(j)<<endl;
-						if(it->first == "AC"){
+					/*	if(it->first == "AC"){
 							cout<< "high: "<<h<<endl;
-						}
+						}*/
 						for(size_t m = 0; m < bit; m++){
 							bit_to_byte.push_back(h%2);
 				//			cout<< "h%2: "<< h%2;
@@ -2476,7 +2476,7 @@ void splitpoints::find_initial_split_points(size_t sequence, size_t left, size_t
 						for(size_t n =0; n < bit_to_byte.size()-8; n++){
 							unsigned char a = 0;
 							for(size_t m = n; m <n+8; m++){
-								a+= powersOfTwo.at(m-n)* bit_to_byte.at(m);//ghadimish n-m-7
+								a+= powersOfTwo.at(m-n)* bit_to_byte.at(m);
 							}
 							n= n+7;
 					//		counter = counter+1;
@@ -2495,7 +2495,7 @@ void splitpoints::find_initial_split_points(size_t sequence, size_t left, size_t
 		string context; 
 		set<string>pattern;
 		for(size_t i = 0 ; i < Alignment_level ; i++){
-			context += "0";
+			context += (char)0;
 		}
 		pattern.insert(context);
 		for(size_t i =0; i < Alignment_level; i++){
@@ -2752,12 +2752,12 @@ void splitpoints::find_initial_split_points(size_t sequence, size_t left, size_t
 	//	for(size_t k =0; k< 5; k++){
 	//		cout<< "high at " << k << " is "<< it->second.at(k)<<endl;
 	//	}
-		if(current_pattern == "AC"){
+	/*	if(current_pattern == "AC"){
 			cout<< "high at AC: ";
 			for(size_t j = 0; j < 5 ; j++){
 				cout<< it->second.at(j) <<endl;
 			}
-		}
+		}*/
 		return it->second;
 	}
 	vector<unsigned int> mc_model::get_center_high_at_position(size_t cent_ref, size_t cent_left, size_t position)const{
@@ -3409,13 +3409,13 @@ void splitpoints::find_initial_split_points(size_t sequence, size_t left, size_t
 	
 	void encoding_functor::see_context(size_t acc1, size_t acc2,const pw_alignment & p, size_t pos, string context, char last_char, ofstream& outs,	dlib::entropy_encoder_kernel_1 & enc){//last_char is infact a pattern!
 		size_t bit = 13;
-		cout<< "al length is: "<< p.alignment_length() << "position: "<< pos <<endl;
+	//	cout<< "al length is: "<< p.alignment_length() << "position: "<< pos <<endl;
 	//	ofstream outs("encode", std::ofstream::binary|std::ofstream::app);
 	//	if(outs.is_open()){
 			enc.set_stream(outs);
 			unsigned int total = model->get_powerOfTwo().at(bit)+20;
-			map<string, vector<unsigned int> >::const_iterator it1 = model->get_highValue(acc1,acc2).find(context);
-		//	size_t lastChar = model->print_modification(last_char);
+			map<string, vector<unsigned int> >::const_iterator it1 = model->get_highValue(acc1,acc2).find(context);// if modification is from acc2 to acc1 the order is already exchanged. So this is true
+			size_t lastChar = model->print_modification(last_char);
 			vector<unsigned int> low(NUM_DELETE+NUM_KEEP+10,0);
 			vector<unsigned int> high(NUM_DELETE+NUM_KEEP+10,0);
 			for(size_t m = 0; m < it1->second.size(); m++){
@@ -3429,7 +3429,9 @@ void splitpoints::find_initial_split_points(size_t sequence, size_t left, size_t
 					high.at(m)=  model->get_powerOfTwo().at(bit);
 				}
 			}
+			cout<< "last char: "<< lastChar << endl;
 			cout<< "ended char in al: "<< int(last_char)<<endl;
+			cout<< "low: "<< low.at(last_char) << " high : "<< high.at(last_char) << endl;
 			enc.encode(low.at(last_char),high.at(last_char),total);
 			wrappers.encode(low.at(last_char),high.at(last_char),total);
 	//	}
