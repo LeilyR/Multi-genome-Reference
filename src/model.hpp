@@ -169,7 +169,12 @@ class clustering {
 	
 };
 
+/*
+	TODO 
+	can the clustering result become better if we estimate modification costs of those pairs which have no direct pairwise alignment
 
+
+*/
 
 template<typename tmodel>
 class affpro_clusters {
@@ -278,7 +283,8 @@ void run(map<string, vector<string> > & cluster_result) {
 		if(result[i]==-1) {
 			result[i] = i;
 		}
-		if(i==result[i]) {
+		assert(result[i]>= 0);
+		if(i==(size_t)result[i]) {
 			apcost-=simmatrix.at(i).at(i);
 		} else {
 			if(simmatrix.at(i).at(result[i])== -HUGE_VAL){
@@ -292,30 +298,31 @@ void run(map<string, vector<string> > & cluster_result) {
 	for(size_t i=0; i<simmatrix.size(); ++i) {//cluster center may happen whenever i == result[i]
 //		cout << sequence_names.at(i) << " res " << i << " is " << result[i] << " ( length " << sequence_lengths.at(i) << ")"<<endl;
 
-		if(result[i]==i) {
+		if( (size_t)result[i]==i) {
 		//	cout << " " << simmatrix.at(i).at(i) << endl;
 			map<string, vector<string> >::iterator it=cluster_result.find(sequence_names.at(i));
-			if(it == cluster_result.end()){
+			if(it==cluster_result.end()) {
 				cluster_result.insert(make_pair(sequence_names.at(i), vector<string>()));
-				it=cluster_result.find(sequence_names.at(i));
+			} else {
+				// it->second.push_back(sequence_names.at(i));
+			
 			}
-			it->second.push_back(sequence_names.at(i));
+
 
 		} else {
 		//	cout << " " << simmatrix.at(i).at(result[i]) << " : " << simmatrix.at(i).at(i) << endl;
 			//result[i]is associated one, add them to the map for each center
-			map<string, vector<string> >::iterator it=cluster_result.find(sequence_names.at(i));
-			if(it == cluster_result.end()){
-				cluster_result.insert(make_pair(sequence_names.at(i), vector<string>()));
-				it=cluster_result.find(sequence_names.at(i));
+			map<string, vector<string> >::iterator it=cluster_result.find(sequence_names.at(result[i]));
+			if(it == cluster_result.end()) {
+				cluster_result.insert(make_pair(sequence_names.at(result[i]), vector<string>()));
+				it=cluster_result.find(sequence_names.at(result[i]));
 			}
-				it->second.push_back(sequence_names.at(i));
-				it->second.push_back(sequence_names.at(result[i]));
+			it->second.push_back(sequence_names.at(i));
 
 		}
 	}
 
-	double apgain = totalccost - apcost;
+	// double apgain = totalccost - apcost;
 
 //	cout << "Total sequence cost " << totalccost << " ap clustering cost " << apcost << " gain: " << apgain << endl;
 

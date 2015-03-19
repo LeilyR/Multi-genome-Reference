@@ -4,6 +4,7 @@
 #include <vector>
 #include <fstream>
 #include <iostream>
+#include <sstream>
 #include <string>
 #include <map>
 #include <math.h> 
@@ -40,6 +41,9 @@ class pw_alignment {
 	size_t getbegin(size_t id)const;
 	size_t getend(size_t id)const;
 	size_t getreference(size_t id)const;
+
+	string get_al_ref1() const;
+	string get_al_ref2() const;
 	
 	void setbegin1(size_t begin1);
 	void setbegin2(size_t begin2);

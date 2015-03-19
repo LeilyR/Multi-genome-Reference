@@ -67,9 +67,11 @@ class all_data {
 		bool alignment_fits_ref(const pw_alignment * al) const;
 		void print_ref(const pw_alignment * al)const;
 		const vector<size_t> & getAcc(size_t acc)const;//return the vector of all sequences for a certain acc.
-		size_t accNumber(size_t sequence_id);
+		size_t accNumber(size_t sequence_id) const;
 		const string get_acc(size_t acc)const; //get the accession number and return its name.
 		const size_t get_acc_id(string acc)const;
+		string get_seq_name(size_t s) const;
+		size_t get_seq_size(size_t s) const;
 		void set_accession(const string & acc);
 		size_t numOfAcc() const;
 
@@ -119,7 +121,9 @@ public:
 	const set<pw_alignment*, compare_pw_alignment> & get_all() const;
 
 	void test_partial_overlap() const;
-	bool check_po(size_t l1, size_t r1, size_t l2, size_t r2) const;
+	static void test_partial_overlap_set(set< const pw_alignment *, compare_pw_alignment> & als);
+	static void test_partial_overlap_vec(vector< const pw_alignment *> & als);
+	static bool check_po(size_t l1, size_t r1, size_t l2, size_t r2);
 
 
 	size_t size() const;
@@ -197,6 +201,7 @@ class counting_functor : public abstract_context_functor {
 	const map<string, vector<double> > & get_context(size_t acc1, size_t acc2)const;
 	void total_context();
 	double get_total(size_t acc1, size_t acc2, string context)const;
+	void create_context(size_t acc1, size_t acc2, string context);
 	private:
 	all_data & data;
 	vector<vector<map<string, vector<double> > > >successive_modification;
@@ -208,6 +213,20 @@ class counting_functor : public abstract_context_functor {
 };
 class mc_model;
 
+class cost_functor : public abstract_context_functor {
+	public:
+	cost_functor(all_data &, const vector<vector<map<string, vector<double> > > >&);
+	virtual void see_context(size_t acc1, size_t acc2, const pw_alignment & p, size_t pos, string context, char last_char,ofstream&, dlib::entropy_encoder_kernel_1 & );
+	double get_modify(const pw_alignment & p, size_t acc1, size_t acc2)const;
+	private:
+	vector<vector< map<string, vector<double> > > >  modification; 
+	all_data & data;
+	double modify1;
+	double modify2;	
+
+};
+
+
 class adding_functor : public abstract_context_functor {
 	public:
 
@@ -218,7 +237,7 @@ class encoding_functor : public abstract_context_functor {
 	virtual void see_context(size_t acc1, size_t acc2,const pw_alignment& p, size_t pos, string context, char last_char,ofstream&, dlib::entropy_encoder_kernel_1 & );	
 	virtual void see_entire_context(size_t acc1, size_t acc2, string entireContext);
 	const map<string, vector<double> > & get_alignment_context()const;
-	vector<string> & get_alignment_context(pw_alignment& p)const;
+//	vector<string> & get_alignment_context(pw_alignment& p)const;
 	private:
 	all_data & data;
 	mc_model * model;	
@@ -249,6 +268,7 @@ class mc_model{
 		~mc_model();	
 		void markov_chain();
 		void markov_chain_alignment(ofstream&);
+		const vector<vector<map <string, vector<double> > > >& get_mod_cost()const;
 		void cost_function(const pw_alignment& p, double & c1, double & c2, double & m1, double & m2,ofstream&)const ;
 		void gain_function(const pw_alignment& p, double & g1, double & g2,ofstream&)const ;
 		void train(ofstream &);
@@ -279,7 +299,7 @@ class mc_model{
 		const map<string, vector<unsigned int> >& get_highValue(size_t acc1, size_t acc2)const;
 		void computing_modification_in_cluster(string center, string member)const;
 		const map<string, vector<double> > & get_cluster_member_context(pw_alignment & al, size_t center_id, encoding_functor & functor)const;
-		size_t print_modification(char enc)const;
+	//	void print_modification(char enc)const;
 		size_t modification_length(char mod)const;
 		void get_encoded_member(pw_alignment & al, size_t center_id, encoding_functor & functor,ofstream&)const;
 	private:
@@ -287,10 +307,11 @@ class mc_model{
 	vector<map<string, vector<double> > >sequence_successive_bases;
 	vector<vector<double> > create_cost;
 	vector<size_t> powersOfTwo;
-	vector<vector<map<string, vector<double> > > >mod_cost;
+	vector<vector<map<string, vector<double> > > >mod_cost; // alignment modificaton information cost
 	vector<map<string, vector<unsigned int> > > high;//sequences patterns
-	map<string,vector<double> > all_the_patterns;
-	map<string, vector<double> > all_alignment_patterns;
+	map<string,vector<double> > all_the_patterns; // TODO vector<double> part is wrong (independent of accession)
+
+	set<string> all_alignment_patterns; // all possible alignment patterns
 	vector<vector<map<string , vector<unsigned int> > > >highValue;//alignments patterns
 		
 

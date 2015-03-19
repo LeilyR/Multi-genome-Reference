@@ -58,7 +58,7 @@ void initial_alignment_set<T>::compute_simple(overlap & o,ofstream & outs) {
 			common_model.gain_function(*(*it), g1, g2,outs);
 		//	if(g2<g1) g1 = g2;
 			g1-=base_cost;
-		//	cout << "r " << (*it)->alignment_length() << " g " << g1 << endl;
+	//		cout << "r " << (*it)->alignment_length() << " g " << g1 << endl;
 			gain_of_al -= g1;
 
 		//	(*it)->print();
@@ -74,7 +74,7 @@ void initial_alignment_set<T>::compute_simple(overlap & o,ofstream & outs) {
 			g1-=base_cost;
 			insert_gains.at(j) = g1;
 			if(g1>0) {
-			//	cout << "i " << (insert_als.at(j)).alignment_length() << " g " << g1 << endl;
+		//		cout << "i " << (insert_als.at(j)).alignment_length() << " g " << g1 << endl;
 				gain_of_al += g1;
 
 			//	insert_als.at(j).print();
@@ -127,8 +127,11 @@ compute_cc::compute_cc(const all_data & dat): als_on_reference(dat.numSequences(
 void compute_cc::add_on_mmaps(const pw_alignment * pwa) {
 	size_t ref1 = pwa->getreference1();
 	size_t ref2 = pwa->getreference2();
-	//cout << "INS " <<endl;
-
+/*	
+	cout << "INS " <<endl;
+	pwa->print();
+	cout << endl;	
+*/
 	als_on_reference.at(ref1).insert(make_pair(pwa->getbegin1(), pwa));
 	als_on_reference.at(ref1).insert(make_pair(pwa->getend1(), pwa));
 	als_on_reference.at(ref2).insert(make_pair(pwa->getbegin2(), pwa));
@@ -158,7 +161,7 @@ void compute_cc::compute(vector<set< const pw_alignment *, compare_pw_alignment>
 	//		cout << " getcc" << endl;
 			set<const pw_alignment *, compare_pw_alignment> cc;
 			get_cc(al, cc, seen);
-	//		cout << "FOUND CC size " << cc.size() << endl;
+//			cout << "FOUND CC size " << cc.size() << endl;
 			sorter.insert(make_pair(cc.size(), cc));
 		}
 	
@@ -182,21 +185,27 @@ void compute_cc::get_cc(const pw_alignment * al, set <const pw_alignment *, comp
 
 void compute_cc::cc_step(size_t ref, size_t left, size_t right, set <const pw_alignment *, compare_pw_alignment> & cc, set <const pw_alignment *, compare_pw_alignment>  & seen ) {
 	// search bounds (where could other alignments which overlap with the current one start or end)
-	size_t leftbound = left;
-	if(left > max_al_ref_length) {
-		leftbound = left - max_al_ref_length;
+	// leftbound: all alignments starting at leftbound or ealier either have the end in the search interval or no overlap with the search interval
+	multimap<size_t, const pw_alignment *>::iterator searchbegin;
+	multimap<size_t, const pw_alignment *>::iterator searchend;
+	if(right > max_al_ref_length) {
+		size_t leftbound = right - max_al_ref_length;
+		searchbegin = als_on_reference.at(ref).upper_bound(leftbound);
 	} else {
-		leftbound = 0;
-	}
-	size_t rightbound = right;
-	if(right + max_al_ref_length < last_pos.at(ref)) {
-		rightbound = right + max_al_ref_length;
-	} else {
-		rightbound = last_pos.at(ref);
+		searchbegin = als_on_reference.at(ref).begin();
 	}
 
-//	cout << " on ref " << ref << " lb " << leftbound << " rb " << rightbound << " l " << left << " r " << right << endl;
-	for(multimap<size_t, const pw_alignment *>::iterator it = als_on_reference.at(ref).upper_bound(leftbound); it!=als_on_reference.at(ref).end(); ++it) {
+	// rightbound: all alignments ending at rightbound or later either have their start in the search interval or no overlap with the search interval
+	if(left + max_al_ref_length < last_pos.at(ref)) {
+		size_t rightbound = left + max_al_ref_length;
+		searchend = als_on_reference.at(ref).lower_bound(rightbound);
+		searchend++; // make end exclusive
+
+	} else {
+		searchend = als_on_reference.at(ref).end();
+	}
+
+	for(multimap<size_t, const pw_alignment *>::iterator it = searchbegin; it!=searchend; ++it) {
 		const pw_alignment * al = it->second;
 
 
@@ -205,7 +214,7 @@ void compute_cc::cc_step(size_t ref, size_t left, size_t right, set <const pw_al
 		if(seenal == seen.end()) { // if current al not contained in any connected component
 //			cout << " not seen" << endl;
 			size_t aleft, aright;	
-			size_t leftmost_point_of_al_on_ref = numeric_limits<size_t>::max(); 
+	//		size_t leftmost_point_of_al_on_ref = numeric_limits<size_t>::max(); 
 			if(al->getreference1()==ref) {
 				al->get_lr1(aleft, aright);
 				if(aright >= left && aleft <= right) {
@@ -213,11 +222,12 @@ void compute_cc::cc_step(size_t ref, size_t left, size_t right, set <const pw_al
 					cc.insert(al);
 			//		cout << "ovlr " << cc.size() << " "  << seen.size() <<  " ref "<< ref << " : " << left << " " << right << " ovrlaps " << endl;
 			//		al->print();
+					al->get_lr2(aleft, aright);
 					cc_step(al->getreference2(), aleft, aright, cc, seen);
 				}
-				if(aleft < leftmost_point_of_al_on_ref ) {
-					 leftmost_point_of_al_on_ref = aleft;
-				}
+		//		if(aleft < leftmost_point_of_al_on_ref ) {
+		//			 leftmost_point_of_al_on_ref = aleft;
+		//		}
 			}
 			if(al->getreference2()==ref) {
 				al->get_lr2(aleft, aright);
@@ -226,16 +236,17 @@ void compute_cc::cc_step(size_t ref, size_t left, size_t right, set <const pw_al
 					cc.insert(al);
 				//	cout << "ovlr " << cc.size() << " "  << seen.size() << " ref "<< ref << " : " << left << " " << right << " ovrlaps " << endl;
 				//	al->print();
+					al->get_lr1(aleft, aright);
 					cc_step(al->getreference1(), aleft, aright, cc, seen);
 				}
-				if(aleft < leftmost_point_of_al_on_ref ) {
-					 leftmost_point_of_al_on_ref = aleft;
-				}
+		//		if(aleft < leftmost_point_of_al_on_ref ) {
+		//			 leftmost_point_of_al_on_ref = aleft;
+		//		}
 
 			}
-			if(leftmost_point_of_al_on_ref > rightbound) {
-				break;
-			}
+		//	if(leftmost_point_of_al_on_ref > rightbound) {
+		//		break;
+		//	}
 		}
 	}
 	
