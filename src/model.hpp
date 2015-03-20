@@ -105,6 +105,93 @@ class initial_alignment_set {
 
 
 
+/*
+template<typename T>
+class initial_alignment_set_bb {
+	public:
+	initial_alignment_set(const all_data & d, const T & a_model, double base_cost,ofstream & outs): data(d), common_model(a_model) {
+		this->base_cost = base_cost;
+		multimap<double, const pw_alignment*> sorter;
+		double sumgain = 0;
+		for(size_t i=0; i<data.numAlignments(); ++i) {
+			const pw_alignment * cur = &(data.getAlignment(i));
+	
+			double gain1, gain2;
+			common_model.gain_function(*cur, gain1, gain2,outs);
+			// TODO gain1 and gain2
+		//	if(gain2 > gain1) gain1 = gain2;
+		//	cout << " al " << i << " gain1 " << gain1 << endl;
+			if(gain1-base_cost > 0.0) {
+				sorter.insert(make_pair(gain1, cur));
+			}
+			sumgain+=gain1;
+		}
+
+		sorted_original_als = vector<const pw_alignment*>(sorter.size(), NULL);
+		size_t pos = 0;
+		for(multimap<double, const pw_alignment*>::reverse_iterator rit = sorter.rbegin(); rit!=sorter.rend(); ++rit) {
+			const pw_alignment * alit = rit->second;
+		//	cout << " ral " << alit << endl;
+		//	alit.print();
+			cout << endl;
+			sorted_original_als.at(pos) = alit;
+			pos++;
+		}
+		max_gain = sumgain - sorter.size() * base_cost;
+		assert(pos == sorter.size());
+	//	cout << " " << sorter.size() << " input alignments, total gain: " << sumgain << " bit " << endl;
+	}
+	initial_alignment_set(const all_data & d, const set< const pw_alignment *, compare_pw_alignment> & als, const T & a_model, double base_cost, ofstream & outs): data(d), common_model(a_model) {
+		this->base_cost = base_cost;
+		multimap<double, const pw_alignment*> sorter;
+		double sumgain = 0;
+		for(set< const pw_alignment *, compare_pw_alignment>::iterator it = als.begin(); it!=als.end(); ++it) {
+			const pw_alignment * cur = *it;
+	
+			double gain1, gain2;
+			common_model.gain_function(*cur, gain1, gain2,outs);
+		//	if(gain2 > gain1) gain1 = gain2;
+		//	cout << " al length " << cur->alignment_length() << " gain1 " << gain1 << " gain2 " << gain2 <<  endl;
+			if(gain1 - base_cost>0.0) {
+				sorter.insert(make_pair(gain1, cur));
+			}
+			sumgain+=gain1;
+		}
+
+		sorted_original_als = vector<const pw_alignment *>(sorter.size(), NULL);
+		size_t pos = 0;
+		for(multimap<double, const pw_alignment*>::reverse_iterator rit = sorter.rbegin(); rit!=sorter.rend(); ++rit) {
+			const pw_alignment * alit = rit->second;
+			sorted_original_als.at(pos) = alit;
+			pos++;
+		}
+		max_gain = sumgain - sorter.size() * base_cost;
+		assert(pos == sorter.size());
+	//	cout << " " << sorter.size() << " input alignments, total gain: " << sumgain << " bit " << endl;
+	}
+
+	~initial_alignment_set() {}
+
+	void compute(overlap & o, ofstream &);
+	void compute_simple(overlap & o,ofstream &);
+
+	double get_max_gain() const {
+		return max_gain;
+	}
+	double get_result_gain() const {
+		return result_gain;
+	}
+
+	private:
+	const all_data & data;
+	const T & common_model;
+	vector<const pw_alignment*> sorted_original_als; // highest gain first
+	double base_cost;
+	double max_gain;
+	double result_gain;
+};
+
+*/
 
 class compute_cc {
 	public:
@@ -142,6 +229,7 @@ class compute_cc {
 	size_t max_al_ref_length;
 
 	void add_on_mmaps(const pw_alignment * pwa);
+	void remove_on_mmaps(const pw_alignment * al);
 	void get_cc(const pw_alignment * al, set <const pw_alignment *, compare_pw_alignment> & cc, set <const pw_alignment *, compare_pw_alignment> & seen);
 	void cc_step(size_t ref, size_t left, size_t right, set <const pw_alignment *, compare_pw_alignment> & cc, set <const pw_alignment *, compare_pw_alignment> & seen );
 

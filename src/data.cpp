@@ -3526,7 +3526,7 @@ void counting_functor::total_context(){
 
 double counting_functor::get_total(size_t acc1, size_t acc2, string context)const{
 	map<string, double>::const_iterator it = total.at(acc1).at(acc2).find(context);
-	cout << " a " << acc1 << " " << acc2 << " : " << total.at(acc1).at(acc2).size() << endl;
+//	cout << " a " << acc1 << " " << acc2 << " : " << total.at(acc1).at(acc2).size() << endl;
 	assert(it!=total.at(acc1).at(acc2).end());
 	return it->second;
 }

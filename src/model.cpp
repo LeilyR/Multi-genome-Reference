@@ -150,18 +150,62 @@ void compute_cc::add_on_mmaps(const pw_alignment * pwa) {
 }
 
 
+void compute_cc::remove_on_mmaps(const pw_alignment * al) {
+	size_t ref1 = al->getreference1();
+	size_t left, right;
+	al->get_lr1(left, right);
+
+	pair<multimap<size_t, const pw_alignment *>::iterator, multimap<size_t, const pw_alignment*>::iterator > l1 = 
+		als_on_reference.at(ref1).equal_range(left);
+	for(multimap<size_t, const pw_alignment*>::iterator it = l1.first; it!=l1.second; ++it) {
+		if(it->second == al) {
+			als_on_reference.at(ref1).erase(it);
+			break;
+		}	
+	}
+	pair<multimap<size_t, const pw_alignment *>::iterator, multimap<size_t, const pw_alignment*>::iterator  > r1 = 
+		als_on_reference.at(ref1).equal_range(left);
+	for(multimap<size_t, const pw_alignment*>::iterator it = r1.first; it!=r1.second; ++it) {
+		if(it->second == al) {
+			als_on_reference.at(ref1).erase(it);
+			break;
+		}	
+	}
+
+	size_t ref2 = al->getreference2();
+	al->get_lr2(left, right);
+	pair<multimap<size_t, const pw_alignment *>::iterator, multimap<size_t, const pw_alignment*>::iterator  > l2 = 
+		als_on_reference.at(ref2).equal_range(left);
+	for(multimap<size_t, const pw_alignment*>::iterator it = l2.first; it!=l2.second; ++it) {
+		if(it->second == al) {
+			als_on_reference.at(ref2).erase(it);
+			break;
+		}	
+	}
+	pair<multimap<size_t, const pw_alignment *>::iterator, multimap<size_t, const pw_alignment*>::iterator  > r2 = 
+		als_on_reference.at(ref2).equal_range(left);
+	for(multimap<size_t, const pw_alignment*>::iterator it = r2.first; it!=r2.second; ++it) {
+		if(it->second == al) {
+			als_on_reference.at(ref2).erase(it);
+			break;
+		}	
+	}
+
+}
+
+
 void compute_cc::compute(vector<set< const pw_alignment *, compare_pw_alignment> > & ccs) {
 	set <const pw_alignment *, compare_pw_alignment> seen;
 	multimap<size_t , set<const pw_alignment *, compare_pw_alignment> > sorter; // sorts ccs to give largest first
 	for(set<const pw_alignment *, compare_pw_alignment>::iterator it = alignments.begin(); it!=alignments.end(); ++it) {
 		const pw_alignment * al = *it;
 		set<const pw_alignment *, compare_pw_alignment>::iterator seenal = seen.find(al);
-	//	cout << " seen " << seen.size() << endl;
+		cout << " seen " << seen.size() << endl;
 		if(seenal == seen.end()) {
-	//		cout << " getcc" << endl;
+			cout << " getcc" << endl;
 			set<const pw_alignment *, compare_pw_alignment> cc;
 			get_cc(al, cc, seen);
-//			cout << "FOUND CC size " << cc.size() << endl;
+			cout << "FOUND CC size " << cc.size() << endl;
 			sorter.insert(make_pair(cc.size(), cc));
 		}
 	
@@ -183,9 +227,14 @@ void compute_cc::get_cc(const pw_alignment * al, set <const pw_alignment *, comp
 	cc_step(al->getreference2(), left, right, cc, seen);
 }
 
+
+
+
+// TODO further improvements to this function are possible if we store intervals on the references in which all alignments were already processed
 void compute_cc::cc_step(size_t ref, size_t left, size_t right, set <const pw_alignment *, compare_pw_alignment> & cc, set <const pw_alignment *, compare_pw_alignment>  & seen ) {
 	// search bounds (where could other alignments which overlap with the current one start or end)
 	// leftbound: all alignments starting at leftbound or ealier either have the end in the search interval or no overlap with the search interval
+	cout << " cc step " << ref << " fr " << left << " to " << right << " seen is " << seen.size() << " we are on " << alignments.size() << " alignments" <<  endl; 
 	multimap<size_t, const pw_alignment *>::iterator searchbegin;
 	multimap<size_t, const pw_alignment *>::iterator searchend;
 	if(right > max_al_ref_length) {
@@ -205,6 +254,13 @@ void compute_cc::cc_step(size_t ref, size_t left, size_t right, set <const pw_al
 		searchend = als_on_reference.at(ref).end();
 	}
 
+	set <const pw_alignment *, compare_pw_alignment> seen1;
+	set <const pw_alignment *, compare_pw_alignment> seen2;
+
+
+	// search for overlap first, then do all recursive calls after overlapping alignments have been put to seen 
+	// this reduces the maximal recursion level
+	size_t numseen = 0;
 	for(multimap<size_t, const pw_alignment *>::iterator it = searchbegin; it!=searchend; ++it) {
 		const pw_alignment * al = it->second;
 
@@ -219,11 +275,12 @@ void compute_cc::cc_step(size_t ref, size_t left, size_t right, set <const pw_al
 				al->get_lr1(aleft, aright);
 				if(aright >= left && aleft <= right) {
 					seen.insert(al);
+					seen1.insert(al);
 					cc.insert(al);
 			//		cout << "ovlr " << cc.size() << " "  << seen.size() <<  " ref "<< ref << " : " << left << " " << right << " ovrlaps " << endl;
 			//		al->print();
-					al->get_lr2(aleft, aright);
-					cc_step(al->getreference2(), aleft, aright, cc, seen);
+				//	al->get_lr2(aleft, aright);
+				//	cc_step(al->getreference2(), aleft, aright, cc, seen);
 				}
 		//		if(aleft < leftmost_point_of_al_on_ref ) {
 		//			 leftmost_point_of_al_on_ref = aleft;
@@ -233,11 +290,12 @@ void compute_cc::cc_step(size_t ref, size_t left, size_t right, set <const pw_al
 				al->get_lr2(aleft, aright);
 				if(aright >= left && aleft <= right) {
 					seen.insert(al);
+					seen2.insert(al);
 					cc.insert(al);
 				//	cout << "ovlr " << cc.size() << " "  << seen.size() << " ref "<< ref << " : " << left << " " << right << " ovrlaps " << endl;
 				//	al->print();
-					al->get_lr1(aleft, aright);
-					cc_step(al->getreference1(), aleft, aright, cc, seen);
+				//	al->get_lr1(aleft, aright);
+				//	cc_step(al->getreference1(), aleft, aright, cc, seen);
 				}
 		//		if(aleft < leftmost_point_of_al_on_ref ) {
 		//			 leftmost_point_of_al_on_ref = aleft;
@@ -247,9 +305,40 @@ void compute_cc::cc_step(size_t ref, size_t left, size_t right, set <const pw_al
 		//	if(leftmost_point_of_al_on_ref > rightbound) {
 		//		break;
 		//	}
+		} else {
+			numseen++;
 		}
 	}
-	
+	cout << " found overlap with " << seen1.size() << " and " << seen2.size() << " alignments, already seen before: " << numseen << endl;
+
+
+	// now remove all seen alignments to be faster
+
+	for(set<const pw_alignment *>::iterator it = seen1.begin(); it!=seen1.end(); ++it) {
+		remove_on_mmaps(*it);
+	}
+	for(set<const pw_alignment *>::iterator it = seen2.begin(); it!=seen2.end(); ++it) {
+		remove_on_mmaps(*it);
+	}
+
+	size_t debugsum = 0;
+	for(size_t i=0; i<als_on_reference.size(); ++i) {
+		debugsum+=als_on_reference.at(i).size();
+	}
+	cout << " mmaps length " <<debugsum << endl;
+
+	for(set<const pw_alignment *>::iterator it = seen1.begin(); it!=seen1.end(); ++it) {
+		const pw_alignment * al = *it;
+		size_t aleft, aright;	
+		al->get_lr2(aleft, aright);
+		cc_step(al->getreference2(), aleft, aright, cc, seen);
+	} 	
+	for(set<const pw_alignment *>::iterator it = seen2.begin(); it!=seen2.end(); ++it) {
+		const pw_alignment * al = *it;
+		size_t aleft, aright;	
+		al->get_lr1(aleft, aright);
+		cc_step(al->getreference1(), aleft, aright, cc, seen);
+	} 	
 	
 }
 
