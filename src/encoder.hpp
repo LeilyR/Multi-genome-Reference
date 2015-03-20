@@ -39,8 +39,8 @@ class encoder{
 	void set_center_from_stream (ifstream &);
 	void arithmetic_encoding_centId(map<string, vector<pw_alignment> > &, ofstream &);
 	void arithmetic_decoding_centId(ifstream&, dlib::entropy_decoder_kernel_1&);
-	void arithmetic_encoding_centers(map<string, vector<pw_alignment> > &,ofstream &);
-	void arithmetic_decoding_centers(ifstream &);
+	void arithmetic_encoding_centers(map<string, vector<pw_alignment> > &,	dlib::entropy_encoder_kernel_1 &,ofstream &);
+	void arithmetic_decoding_centers(ifstream &,dlib::entropy_decoder_kernel_1 & );
 	void add_partition_high_to_stream(ofstream & );
 	void set_partition_high_from_stream(ifstream&);
 	private:

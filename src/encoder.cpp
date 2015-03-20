@@ -146,9 +146,9 @@
 	}
 	void encoder::calculate_high_in_partition(map<string, unsigned int> & weight, map<string,vector<pw_alignment> > & alignmentsOfClusters){
 		partition_centers(alignmentsOfClusters, weight);
-		unsigned int h = 0;
 		cout<<"partition size: "<< partition.size() <<endl;
 		for(size_t i = 0; i < partition.size(); i ++){
+			unsigned int h = 0;
 			map<string, vector<unsigned int> > high;
 			map<size_t , vector<string> >::iterator it = partition.find(i);
 			assert(it != partition.end());
@@ -345,11 +345,10 @@
 		save.open("values.txt");
 		calculate_high_in_partition(weight,alignmentOfCluster);
 		encoding_functor functor(data,&model,wrappers);//enc o bezar inja va az jahay ezafe pakesh kon!!
-		arithmetic_encoding_centers(alignmentOfCluster,outs);
+		arithmetic_encoding_centers(alignmentOfCluster,*enc,outs);
 		string first_pattern = model.get_firstPattern();
 		size_t bit = 13;
-		unsigned int total = 8212;
-//		unsigned int total = model.get_powerOfTwo().at(bit)+20;
+		unsigned int total = model.get_powerOfTwo().at(bit)+20;
 	//	for(size_t i = 0; i< data.numAcc(); i++){
 			size_t i = 1;
 			size_t k = 0;
@@ -543,7 +542,7 @@
 	}
 	void encoder::arithmetic_decoding_alignment(ifstream& in){
 		dlib::entropy_decoder_kernel_1  dec;
-		arithmetic_decoding_centers(in);
+		arithmetic_decoding_centers(in,dec);
 		cout<<"decoding the center has been done!"<<endl;
 		size_t bit = 13;
 		size_t base = 0;
@@ -551,10 +550,8 @@
 		string first_al_pattern = model.get_firstAlignmentPattern();
 		dec.set_stream(in);
 		unsigned int target;
-		unsigned int total = 8212;
-	//	unsigned int total = model.get_powerOfTwo().at(bit)+20;
-		size_t flag = 8192;
-	//	size_t flag = model.get_powerOfTwo().at(bit);	//8192
+		unsigned int total = model.get_powerOfTwo().at(bit)+20;
+		size_t flag = model.get_powerOfTwo().at(bit);	//8192
 		size_t i = 1; //Accession number
 		size_t seq_id = 0; //Sequence number
 		string pattern;
@@ -1055,15 +1052,15 @@
 			cout<<"acc set in the map: "<<it->first<<endl;
 		}*/
 	}
-	void encoder::arithmetic_encoding_centers(map<string, vector<pw_alignment> > & alignmentOfCluster,ofstream & outs){// after partitioning the clusters (New one!)
+	void encoder::arithmetic_encoding_centers(map<string, vector<pw_alignment> > & alignmentOfCluster,dlib::entropy_encoder_kernel_1 & enc, ofstream & outs){// after partitioning the clusters (New one!)
 	//	arithmetic_encoding_centId(alignmentOfCluster,outs);
-		add_center_to_stream(outs);
+		add_center_to_stream(outs);//center id, its acc and high
 		add_partition_high_to_stream(outs);
 		setOfAlignments(alignmentOfCluster);
-		size_t bit = 12;
+		size_t bit = 13;
 		unsigned int t = model.get_powerOfTwo().at(bit) + 10;
-		dlib::entropy_encoder_kernel_1 * enc = new dlib::entropy_encoder_kernel_1();
-		enc->set_stream(outs);
+	//	dlib::entropy_encoder_kernel_1 * enc = new dlib::entropy_encoder_kernel_1();
+		enc.set_stream(outs);
 	//	cout<< "size of  cluster_high_partition: "<<  cluster_high_partition.size()<<endl;
 		for(size_t i = 0 ; i < cluster_high_partition.size(); i++){
 		//	for(size_t j = 0 ; j < data.numAcc(); j++)
@@ -1087,7 +1084,7 @@
 				p->get_lr2(left2,right2);
 			//	cout<< "id of cent in enc: " << center <<endl;
 				if(cent_ref == p->getreference1()&& cent_left == left1){
-				//	cout<< "encoded center: "<< it->first << " its al length: "<< p->alignment_length()<< " right1: " << right1 << "left1: " << left1 <<endl;
+					cout<< "encoded center1: "<< it->first << " its al length: "<< p->alignment_length()<<endl;
 					if(p->getbegin1() < p->getend1()){//Encode the sequence itself
 						cent_right = p->getend1();
 						for(size_t k = cent_left; k < cent_right+1;k++){
@@ -1101,7 +1098,7 @@
 							if(base == 4){
 								h=  model.get_powerOfTwo().at(bit);
 							}
-							enc-> encode(l,h,t);
+							enc. encode(l,h,t);
 						//	cout << "l: " << l << " h: "<< h << " base: " << base << endl;
 						}
 					//	cout<<"cent length1: "<< cent_right - cent_left << endl;
@@ -1121,14 +1118,14 @@
 							if(com_base == 4){
 								h=  model.get_powerOfTwo().at(bit);
 							}
-							enc->encode(l,h,t);
+							enc.encode(l,h,t);
 						//	cout << "l: " << l << " h: "<< h << " base: " << base << endl;
 						}
 					//	cout<<"cent length2: "<< cent_right - cent_left << endl;
 					}
 				}
 				if(cent_ref == p->getreference2()&& cent_left == left2){
-					cout<< "encoded center: "<< it->first << " its al length: "<< p->alignment_length()<<endl;				
+					cout<< "encoded center2: "<< it->first << " its al length: "<< p->alignment_length()<<endl;				
 					if(p->getbegin2()<p->getend2()){//Encode the sequence itself
 						cent_right = p->getend2();
 						for(size_t k = cent_left; k < cent_right+1;k++){
@@ -1142,7 +1139,7 @@
 							if(base == 4){
 								h=  model.get_powerOfTwo().at(bit);
 							}
-							enc->encode(l,h,t);
+							enc.encode(l,h,t);
 					//		cout << "l: " << l << " h: "<< h << " base: " << base << endl;
 						}
 					//	cout<<"cent length3: "<< cent_right - cent_left << endl;
@@ -1162,7 +1159,7 @@
 							if(com_base == 4){
 								h=  model.get_powerOfTwo().at(bit);
 							}
-							enc->encode(l,h,t);
+							enc.encode(l,h,t);
 						//	cout << "l: " << l << " h: "<< h << " base: " << base << endl;
 						}
 					//	cout<<"cent length4: "<< cent_right - cent_left << endl;
@@ -1172,15 +1169,15 @@
 				unsigned int l1	= model.get_powerOfTwo().at(bit);
 				unsigned int h1 = model.get_powerOfTwo().at(bit)+5;					
 				unsigned int t1 = model.get_powerOfTwo().at(bit)+10;
-				enc->encode(l1,h1,t1); 
+				enc.encode(l1,h1,t1); 
 			}
 			unsigned int l1	= model.get_powerOfTwo().at(bit)+5;
 			unsigned int h1 = model.get_powerOfTwo().at(bit)+10;					
 			unsigned int t1 = model.get_powerOfTwo().at(bit)+10;
-			enc->encode(l1,h1,t1); 
+			enc.encode(l1,h1,t1); 
 		//	cout<< "partition: " << i <<endl;
 		}
-		delete enc; 
+	//	delete enc; 
 	//	cout<<"end of cent encoding!"<<endl;
 	}
 	void encoder::arithmetic_enc_centers(map<string, vector<pw_alignment> > & alignmentOfCluster,ofstream & outs){//first sort them by accession! (Old one!)
@@ -1429,7 +1426,7 @@
 	const map<string, vector<unsigned int> >& encoder:: get_center_high() const{
 		return cluster_high;
 	}
-	void encoder::arithmetic_decoding_centers(ifstream & in){// After partitioning the cluster! (new one!)
+	void encoder::arithmetic_decoding_centers(ifstream & in, dlib::entropy_decoder_kernel_1 & dec){// After partitioning the cluster! (new one!)
 		ofstream save1;
 		save1.open("decode.txt");
 	//	arithmetic_decoding_centId(in,dec);
@@ -1437,9 +1434,9 @@
 		model.set_alignment_pattern(in);
 		set_center_from_stream(in);
 		set_partition_high_from_stream(in);
-		size_t bit =12;
+		size_t bit =13;
 		size_t acc = 0;
-		dlib::entropy_decoder_kernel_1 dec;
+	//	dlib::entropy_decoder_kernel_1 dec;
 		dec.set_stream(in);	
 		string first_pattern = model.get_firstPattern();
 		unsigned int target;
@@ -1453,8 +1450,8 @@
 				numCenter = numCenter +1 ;
 			}
 		}
-	//	cout<< "partition size: "<<cluster_high_partition.size()<<endl;
-	//	cout << " numbe of centers: "<< numCenter <<endl;
+		cout<< "partition size: "<<cluster_high_partition.size()<<endl;
+		cout << " numbe of centers: "<< numCenter <<endl;
 		while(counter < cluster_high_partition.size()){
 			size_t m = 0;			
 			vector<string> centerOfAPartition;

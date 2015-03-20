@@ -3598,8 +3598,8 @@ double counting_functor::get_total(size_t acc1, size_t acc2, string context)cons
 	//	ofstream outs("encode", std::ofstream::binary|std::ofstream::app);
 	//	if(outs.is_open()){
 			enc.set_stream(outs);
-			unsigned int total = 8212;
-	//		unsigned int total = model->get_powerOfTwo().at(bit)+20;
+	//		unsigned int total = 8212;
+			unsigned int total = model->get_powerOfTwo().at(bit)+20;
 			map<string, vector<unsigned int> >::const_iterator it1 = model->get_highValue(acc1,acc2).find(context);// if modification is from acc2 to acc1 the order is already exchanged. So this is true
 			vector<unsigned int> low(NUM_DELETE+NUM_KEEP+10,0);
 			vector<unsigned int> high(NUM_DELETE+NUM_KEEP+10,0);
