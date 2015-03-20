@@ -370,7 +370,7 @@ all_data::all_data(string fasta_all_sequences, string maf_all_alignments) {
 						size_t tmp = start2;
 						start2 = seqlength2 - start2 -1;
 						incl_end2 = seqlength2 - tmp - size2;
-						for(size_t j=0; j<al1.length(); ++j) {
+						for(size_t j=0; j<al2.length(); ++j) {
 							al2.at(j) = dnastring::complement(al2.at(j));
 						}
 					}
@@ -2295,12 +2295,16 @@ const map<string, vector<unsigned int> > & mc_model::get_highValue(size_t acc1, 
 
 		p.set_cost(cost_on_sample, modify_cost);
 	}
+	const vector<vector< map<string, vector<double> > > > &mc_model::get_mod_cost()const{
+		return mod_cost;
+
+	}
 
 	void mc_model::cost_function(const pw_alignment& p, double & c1, double & c2, double & m1, double & m2,ofstream & outs)const {
 	//	p.print();
 	//	cout<<"data address in cost function: "<< &data <<endl;
 	//	data.numAcc();
-		counting_functor f(data);
+		cost_functor f(data,mod_cost);
 	//	p.print();
 	//	size_t length = p.alignment_length();
 	//	cout<<"length: "<< length<<endl;
@@ -2334,13 +2338,13 @@ const map<string, vector<unsigned int> > & mc_model::get_highValue(size_t acc1, 
 				//	cout<<"rchr: "<<r1chr<<endl;	
 				}
 			}
-		string seq1;
-		context1>>seq1;
-	//	cout<<"seq1: " << seq1<<endl;
-		map <string, vector<double> >::const_iterator it= sequence_successive_bases.at(acc1).find(seq1);
-		assert(it != sequence_successive_bases.at(acc1).end());//az inja jelo tar nemire!
-	//	cout<<"sequence successive at "<< s1 << " is "<<it->second.at(s1)<<endl;
-		cost_on_sample.at(0) += it->second.at(s1);
+			string seq1;
+			context1>>seq1;
+		//	cout<<"seq1: " << seq1<<endl;
+			map <string, vector<double> >::const_iterator it= sequence_successive_bases.at(acc1).find(seq1);
+			assert(it != sequence_successive_bases.at(acc1).end());
+		//	cout<<"sequence successive at "<< s1 << " is "<<it->second.at(s1)<<endl;
+			cost_on_sample.at(0) += it->second.at(s1);
 		}	
 	//	cout<<"cost: "<<cost_on_sample.at(0)<<endl;	
 		for(size_t i = left2; i<right2; i++){
@@ -2360,10 +2364,11 @@ const map<string, vector<unsigned int> > & mc_model::get_highValue(size_t acc1, 
 			context2>>seq2;
 			map <string, vector<double> >::const_iterator it1= sequence_successive_bases.at(acc2).find(seq2);
 			assert(it1 != sequence_successive_bases.at(acc2).end());
+		//	cout<<"sequence successive at "<< s2 << " is "<<it1->second.at(s2)<<endl;
 			cost_on_sample.at(1) += it1->second.at(s2);
 		}	
 	//	cout<<"cost: "<<cost_on_sample.at(1)<<endl;										
-		for(map <string, vector<double> >::const_iterator it= f.get_context(acc1,acc2).begin();it!=f.get_context(acc1,acc2).end();it++){
+	/*	for(map <string, vector<double> >::const_iterator it= f.get_context(acc1,acc2).begin();it!=f.get_context(acc1,acc2).end();it++){
 			string seq1 = it->first;
 			const vector<double> & base = f.get_context(acc1,acc2).at(seq1);
 			map <string, vector<double> >::const_iterator it1= mod_cost.at(acc1).at(acc2).find(seq1);
@@ -2379,7 +2384,7 @@ const map<string, vector<unsigned int> > & mc_model::get_highValue(size_t acc1, 
 			for(size_t k = 0; k< (NUM_DELETE+NUM_KEEP+10);k++){
 				modify_cost.at(0) +=(base.at(k)-1)*(it1->second.at(k));
 			}
-		/*	cout<< " context is "<<endl;
+			cout<< " context is "<<endl;
 			for(size_t i = 0 ; i < seq1.size(); i++){
 				cout<< int(seq1.at(i))<<endl;
 			}
@@ -2387,15 +2392,15 @@ const map<string, vector<unsigned int> > & mc_model::get_highValue(size_t acc1, 
 			for(size_t a= 0; a< base.size();a++){
 				cout<< "base at "<< a << " which is " << print_modification_character(a)<<" is "<<base.at(a)<<endl;
 				cout<< "modification cost of it is "<< -log2(base.at(a)/f.get_total(acc1,acc2,seq1))<<endl;
-			}*/	
+			}	
 
 		}
 		for(map <string, vector<double> >::const_iterator it= f.get_context(acc2,acc1).begin();it!=f.get_context(acc2,acc1).end();it++){
 			string seq1 = it->first;
-		/*	cout<< " context2 is "<<endl;
+			cout<< " context2 is "<<endl;
 			for(size_t i = 0 ; i < seq1.size(); i++){
 				cout<< int(seq1.at(i))<<endl;
-			}*/
+			}
 			const vector<double> & base = f.get_context(acc2,acc1).at(seq1);
 			map <string, vector<double> >::const_iterator it1= mod_cost.at(acc2).at(acc1).find(seq1);
 			assert(it1!=mod_cost.at(acc2).at(acc1).end());
@@ -2403,12 +2408,14 @@ const map<string, vector<unsigned int> > & mc_model::get_highValue(size_t acc1, 
 				modify_cost.at(1) +=(base.at(k)-1)*(it1->second.at(k));
 			}
 		//	cout<<"Modification cost on the second ref: " << modify_cost.at(1) << endl;			
-		}
+		}*/
 
 		c1 = cost_on_sample.at(0);
 		c2 = cost_on_sample.at(1);
-		m1 = modify_cost.at(0);
-		m2 = modify_cost.at(1);
+//		m1 = modify_cost.at(0);
+//		m2 = modify_cost.at(1);
+		m1 = f.get_modify(p,acc1,acc2);
+		m2 = f.get_modify(p,acc2,acc1);
 	//	cout<< "length: " << length<<endl;
 	//	cout<< "c1: " << c1 << " c2: "<< c2 << " m1: "<< m1<< " m2: "<< m2 <<endl;
 	}
@@ -2423,8 +2430,8 @@ const map<string, vector<unsigned int> > & mc_model::get_highValue(size_t acc1, 
 		g1 = c2 - m1;
 		g2 = c1 - m2;
 
-	//	cout << " gain function c2 " << c2 << " m1 " << m1 << " gain1 " << g1 << endl; 
-	//	cout << " gain function c1 " << c1 << " m2 " << m2 << " gain2 " << g2 << endl; 
+//		cout << " gain function c2 " << c2 << " m1 " << m1 << " gain1 " << g1 << endl; 
+//		cout << " gain function c1 " << c1 << " m2 " << m2 << " gain2 " << g2 << endl; 
 
 
 	}
@@ -2435,7 +2442,7 @@ const map<string, vector<unsigned int> > & mc_model::get_highValue(size_t acc1, 
 			for(size_t i = 0 ; i < data.numAcc(); i++){
 				outs << data.get_acc(i);
 				cout<<"acc: "<<data.get_acc(i)<<endl;
-				outs<< (char) 0;
+				outs<< (char)0;
 				for(map<string, vector<double> >::iterator it= all_the_patterns.begin(); it != all_the_patterns.end() ; it++){
 					string pattern = it ->first;
 					map<string,vector<double> >::iterator it1=sequence_successive_bases.at(i).find(pattern);
@@ -2487,9 +2494,9 @@ const map<string, vector<unsigned int> > & mc_model::get_highValue(size_t acc1, 
 						it1->second.at(j)=high_value.at(j);
 						int h = high_value.at(j);
 					//	cout<< "low1: "<<low.at(j)<<endl;
-						if(it->first == "AC"){
+					/*	if(it->first == "AC"){
 							cout<< "high: "<<h<<endl;
-						}
+						}*/
 						for(size_t m = 0; m < bit; m++){
 							bit_to_byte.push_back(h%2);
 				//			cout<< "h%2: "<< h%2;
@@ -2504,7 +2511,7 @@ const map<string, vector<unsigned int> > & mc_model::get_highValue(size_t acc1, 
 					for(size_t n =0; n < bit_to_byte.size()-8; n++){
 						unsigned char a = 0;
 						for(size_t m = n; m <n+8; m++){
-							a+= powersOfTwo.at(m-n)* bit_to_byte.at(m);//ba m-n kar kard
+							a+= powersOfTwo.at(m-n)* bit_to_byte.at(m);
 						}
 						n= n+7;
 						outs<< a;
@@ -2543,7 +2550,7 @@ const map<string, vector<unsigned int> > & mc_model::get_highValue(size_t acc1, 
 						for(size_t n =0; n < bit_to_byte.size()-8; n++){
 							unsigned char a = 0;
 							for(size_t m = n; m <n+8; m++){
-								a+= powersOfTwo.at(m-n)* bit_to_byte.at(m);//ghadimish n-m-7
+								a+= powersOfTwo.at(m-n)* bit_to_byte.at(m);
 							}
 							n= n+7;
 					//		counter = counter+1;
@@ -2558,7 +2565,6 @@ const map<string, vector<unsigned int> > & mc_model::get_highValue(size_t acc1, 
 	//	}
 	//	outs.close();
 	}
-
 /*
 	Modification instructions:
 	5 - single base modification (incl N)
@@ -2735,10 +2741,10 @@ void mc_model::make_all_alignments_patterns(){
 					}
 					i=i+bit-1;
 					it -> second.at(counter)=high_value;
-					if(it->first == "AC"){
-						cout<< "high value of AC in set pattern: ";
-						cout<< high_value<<endl;
-					}
+				//	if(it->first == "AC"){
+				//		cout<< "high value of AC in set pattern: ";
+				//		cout<< high_value<<endl;
+				//	}
 			//		cout<<"high value in model class: "<< high_value << " at " << counter << " i " << i <<endl;
 			//		cout<< " "<<endl;
 					counter = counter + 1;
@@ -2807,10 +2813,10 @@ void mc_model::make_all_alignments_patterns(){
 				for(size_t i = 0; i < (binary_high_value.size())-bit;i++){
 					unsigned int high_value = 0;					
 					for(size_t j =i; j < i+bit; j++){
-						high_value += binary_high_value.at(j)*powersOfTwo.at(j-i);//ghadimish i-j+bit-1
+						high_value += binary_high_value.at(j)*powersOfTwo.at(j-i);
 					}
 					i=i+bit-1;
-					it -> second.at(counter)= high_value;//in ghalate!
+					it -> second.at(counter)= high_value;
 					counter = counter +1;
 				}
 		//		cout<< "counter: "<< counter<<endl;
@@ -2849,12 +2855,12 @@ void mc_model::make_all_alignments_patterns(){
 	//	for(size_t k =0; k< 5; k++){
 	//		cout<< "high at " << k << " is "<< it->second.at(k)<<endl;
 	//	}
-		if(current_pattern == "AC"){
+	/*	if(current_pattern == "AC"){
 			cout<< "high at AC: ";
 			for(size_t j = 0; j < 5 ; j++){
 				cout<< it->second.at(j) <<endl;
 			}
-		}
+		}*/
 		return it->second;
 	}
 	vector<unsigned int> mc_model::get_center_high_at_position(size_t cent_ref, size_t cent_left, size_t position)const{
@@ -3165,12 +3171,12 @@ void mc_model::make_all_alignments_patterns(){
 		//		cout<<"n: "<< n << endl;
 			}else{
 				if((s1!=5) & (s2!=5)){
-					modify_base = s1;
+					modify_base = s2;
 				/*	if(i<51){
 						cout<<"modification at "<< i << " is  "<<s1 <<endl;
 					}*/
 					seq += modification_character(modify_base,num_delete,insert_base,num_keep);
-					seq2 = modification_character(s2,num_delete,insert_base,num_keep);
+					seq2 = modification_character(modify_base,num_delete,insert_base,num_keep);
 					functor. see_context(acc1,acc2,p,i,seq1,seq2,outs,*enc);
 				//	cout<< "seq1" << seq1 <<endl;
 				}
@@ -3269,6 +3275,7 @@ void mc_model::make_all_alignments_patterns(){
 			char seq2;
 			for(size_t w = Alignment_level; w>0 ;w--){
 				seq1.at(Alignment_level-w)=seq.at(seq.size()-w);
+			//	cout<< "seq at size - w: " << seq.at(seq.size()-w)<<endl;
 			}
 			char s1chr;
 			char s2chr;
@@ -3316,12 +3323,12 @@ void mc_model::make_all_alignments_patterns(){
 				functor. see_context(acc2,acc1,p,i,seq1,seq2,outs,*enc);
 			}else{
 				if((s1!=5) & (s2!=5)){
-					modify_base = s2;
+					modify_base = s1;
 				/*	if(i<51){
 						cout<<"modification at "<< i << " is  "<<s2 <<endl;
 					}*/
 					seq += modification_character(modify_base,num_delete,insert_base,num_keep);
-					seq2 = modification_character(s1,num_delete,insert_base,num_keep);
+					seq2 = modification_character(modify_base,num_delete,insert_base,num_keep);
 					functor. see_context(acc2,acc1,p,i,seq1,seq2,outs,*enc);
 				}
 				if(s2 == 5){
@@ -3372,8 +3379,8 @@ void mc_model::make_all_alignments_patterns(){
 			i=i+n;
 		//	cout<< "i in modification : " << i << endl;
 		}		
-	/*	cout<<"encoded sequence from two to one is: "<<endl;
-		for(size_t m = 0; m < seq.size(); m ++){
+	//	cout<<"encoded sequence from two to one is: "<<endl;
+	/*	for(size_t m = 0; m < seq.size(); m ++){
 			cout<< int(seq.at(m))<<endl;
 		}*/
 		functor.see_entire_context(acc2,acc1,seq);
@@ -3435,6 +3442,7 @@ void mc_model::make_all_alignments_patterns(){
 		size_t acc1 = data.accNumber(al.getreference1());
 		size_t accession = data.accNumber(center_id);
 		if(accession == acc1){
+			cout<< "center is on acc1"<<endl;
 			computing_modification_oneToTwo(al, functor,outs);	
 		}else{
 			computing_modification_twoToOne(al, functor,outs);
@@ -3535,28 +3543,64 @@ double counting_functor::get_total(size_t acc1, size_t acc2, string context)cons
 /*
 	initialize context counting with 1
 */   	
-void counting_functor::create_context(size_t acc1, size_t acc2, string context) {
-	map<string, vector<double> >::iterator it = successive_modification.at(acc1).at(acc2).find(context);
-	if(it==successive_modification.at(acc1).at(acc2).end()) {
-		successive_modification.at(acc1).at(acc2).insert(make_pair(context, vector<double>(NUM_DELETE+NUM_KEEP+10, 1)));
+	void counting_functor::create_context(size_t acc1, size_t acc2, string context) {
+		map<string, vector<double> >::iterator it = successive_modification.at(acc1).at(acc2).find(context);
+		if(it==successive_modification.at(acc1).at(acc2).end()) {
+			successive_modification.at(acc1).at(acc2).insert(make_pair(context, vector<double>(NUM_DELETE+NUM_KEEP+10, 1)));
+		}
 	}
-}
 	
-	const map<string, vector<double> > & counting_functor::get_context(size_t acc1, size_t acc2)const{
+	const  map<string, vector<double> > & counting_functor::get_context(size_t acc1, size_t acc2)const{
 		return successive_modification.at(acc1).at(acc2);
+	}
+
+	cost_functor::cost_functor(all_data & d, const vector<vector<map<string, vector<double> > > > & mod_cost):data(d){
+		modify1 = 0;
+		modify2 = 0;		
+		modification = mod_cost;
+	}
+	void cost_functor::see_context(size_t acc1, size_t acc2, const pw_alignment & p, size_t pos, string context, char last_char, ofstream & outs, dlib::entropy_encoder_kernel_1 & enc){
+		size_t ref1 = p.getreference1();
+		size_t ref2 = p.getreference2();
+		size_t accession1 = data.accNumber(ref1);
+		size_t accession2 = data.accNumber(ref2);
+		if(acc1 == accession1){//if acc1 is the first accession
+			map<string, vector<double> >::const_iterator it = modification.at(acc1).at(acc2).find(context);
+		//	cout<< "modification cost at "<< pos << " is "<< it->second.at(last_char)<<endl;
+			modify1 +=it->second.at(last_char);
+		}
+		if(acc1 == accession2){
+			map<string, vector<double> >::const_iterator it = modification.at(acc1).at(acc2).find(context);
+		//	cout<< "modification cost at "<< pos << " is "<< it->second.at(last_char)<<endl;
+			modify2 +=it->second.at(last_char);
+		}
+	}
+	double cost_functor::get_modify(const pw_alignment & p,size_t acc1, size_t acc2)const{
+		double modify;
+		size_t ref1 = p.getreference1();
+		size_t ref2 = p.getreference2();
+		size_t accession1 = data.accNumber(ref1);
+		size_t accession2 = data.accNumber(ref2);
+		if(acc1 == accession1){
+			modify = modify1; 
+		}
+		if(acc1 == accession2){
+			modify = modify2;
+		}
+		return modify;
 	}
 	encoding_functor::encoding_functor(all_data & d, mc_model * m, wrapper & wrap):data(d),model(m),wrappers(wrap){
 	}
 	
 	void encoding_functor::see_context(size_t acc1, size_t acc2,const pw_alignment & p, size_t pos, string context, char last_char, ofstream& outs,	dlib::entropy_encoder_kernel_1 & enc){//last_char is infact a pattern!
 		size_t bit = 13;
-		cout<< "al length is: "<< p.alignment_length() << "position: "<< pos <<endl;
+	//	cout<< "al length is: "<< p.alignment_length() << "position: "<< pos <<endl;
 	//	ofstream outs("encode", std::ofstream::binary|std::ofstream::app);
 	//	if(outs.is_open()){
 			enc.set_stream(outs);
-			unsigned int total = model->get_powerOfTwo().at(bit)+20;
-			map<string, vector<unsigned int> >::const_iterator it1 = model->get_highValue(acc1,acc2).find(context);
-		//	size_t lastChar = model->print_modification(last_char);
+			unsigned int total = 8212;
+	//		unsigned int total = model->get_powerOfTwo().at(bit)+20;
+			map<string, vector<unsigned int> >::const_iterator it1 = model->get_highValue(acc1,acc2).find(context);// if modification is from acc2 to acc1 the order is already exchanged. So this is true
 			vector<unsigned int> low(NUM_DELETE+NUM_KEEP+10,0);
 			vector<unsigned int> high(NUM_DELETE+NUM_KEEP+10,0);
 			for(size_t m = 0; m < it1->second.size(); m++){
@@ -3570,7 +3614,12 @@ void counting_functor::create_context(size_t acc1, size_t acc2, string context) 
 					high.at(m)=  model->get_powerOfTwo().at(bit);
 				}
 			}
-			cout<< "ended char in al: "<< int(last_char)<<endl;
+			cout<< "context: ";
+			for(size_t i =0; i < context.size(); i++){
+				cout<< int(context.at(i));
+			}
+			cout<< " " <<endl;
+			cout << " ended char in al: "<< int(last_char)<<endl;
 			enc.encode(low.at(last_char),high.at(last_char),total);
 			wrappers.encode(low.at(last_char),high.at(last_char),total);
 	//	}

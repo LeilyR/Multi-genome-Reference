@@ -668,28 +668,18 @@ void pw_alignment::setbegin1(size_t begin1){
 		references.at(1)=ref2;
 }
 
-	void pw_alignment::print()const{
- 
-	cout << "al1 seq "<< getreference1() << " b " << getbegin1() << " e " << getend1() <<  " l "  << alignment_length() << endl;
-	cout << "al2 seq "<< getreference2() << " b " << getbegin2() << " e " << getend2() << endl;
-
-
-	
-/*
-	for(size_t col = 0; col < alignment_length(); col++) {
-		if(col < 3 || (alignment_length() - col < 3)) {
-
-			char c1;
-			char c2;
-			alignment_col(col, c1, c2);
-			cout <<col <<"\t"<< c1<<"\t"<<c2<<endl;
+	void pw_alignment::print()const{ 
+		cout << "al1 seq "<< getreference1() << " b " << getbegin1() << " e " << getend1() <<  " l "  << alignment_length() << endl;
+		cout << "al2 seq "<< getreference2() << " b " << getbegin2() << " e " << getend2() << endl;
+		for(size_t col = 0; col < alignment_length(); col++) {
+		//	if(col < 3 || (alignment_length() - col < 3)) {
+				char c1;
+				char c2;
+				alignment_col(col, c1, c2);
+				cout <<col <<"\t"<< c1<<"\t"<<c2<<endl;
+		//	}
 		}
-
 	}
-
-*/	
-	
-}
 
 
 
@@ -772,7 +762,7 @@ bool compare_pw_alignment::operator()(const pw_alignment *const &a, const pw_ali
 	wrapper::wrapper():encodeout("enc.txt"),decodeout("dec.txt"){
 	}
 	wrapper::~wrapper(){}
-	void wrapper::encode(unsigned int& low, unsigned int& high, unsigned int & total){
+	void wrapper::encode(unsigned int& low, unsigned int& high, unsigned int & total){	
 		encodeout << "l"<< low << "h"<< high;
 	}
 	void wrapper::decode(unsigned int& low, unsigned int& high, unsigned int & total){

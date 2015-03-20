@@ -58,7 +58,7 @@ void initial_alignment_set<T>::compute_simple(overlap & o,ofstream & outs) {
 			common_model.gain_function(*(*it), g1, g2,outs);
 		//	if(g2<g1) g1 = g2;
 			g1-=base_cost;
-		//	cout << "r " << (*it)->alignment_length() << " g " << g1 << endl;
+	//		cout << "r " << (*it)->alignment_length() << " g " << g1 << endl;
 			gain_of_al -= g1;
 
 		//	(*it)->print();
@@ -74,7 +74,7 @@ void initial_alignment_set<T>::compute_simple(overlap & o,ofstream & outs) {
 			g1-=base_cost;
 			insert_gains.at(j) = g1;
 			if(g1>0) {
-			//	cout << "i " << (insert_als.at(j)).alignment_length() << " g " << g1 << endl;
+		//		cout << "i " << (insert_als.at(j)).alignment_length() << " g " << g1 << endl;
 				gain_of_al += g1;
 
 			//	insert_als.at(j).print();

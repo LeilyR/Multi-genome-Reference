@@ -211,10 +211,21 @@ class counting_functor : public abstract_context_functor {
 
 
 };
-
-
-
 class mc_model;
+
+class cost_functor : public abstract_context_functor {
+	public:
+	cost_functor(all_data &, const vector<vector<map<string, vector<double> > > >&);
+	virtual void see_context(size_t acc1, size_t acc2, const pw_alignment & p, size_t pos, string context, char last_char,ofstream&, dlib::entropy_encoder_kernel_1 & );
+	double get_modify(const pw_alignment & p, size_t acc1, size_t acc2)const;
+	private:
+	vector<vector< map<string, vector<double> > > >  modification; 
+	all_data & data;
+	double modify1;
+	double modify2;	
+
+};
+
 
 class adding_functor : public abstract_context_functor {
 	public:
@@ -257,6 +268,7 @@ class mc_model{
 		~mc_model();	
 		void markov_chain();
 		void markov_chain_alignment(ofstream&);
+		const vector<vector<map <string, vector<double> > > >& get_mod_cost()const;
 		void cost_function(const pw_alignment& p, double & c1, double & c2, double & m1, double & m2,ofstream&)const ;
 		void gain_function(const pw_alignment& p, double & g1, double & g2,ofstream&)const ;
 		void train(ofstream &);

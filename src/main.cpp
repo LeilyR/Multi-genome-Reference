@@ -10,7 +10,7 @@
 #include "data.hpp"
 #include "model.hpp"
 #include "encoder.hpp"
-// #include "test.hpp"
+#include "test.hpp"
 #define NO_MAKEFILE
 #include "dlib/entropy_encoder/entropy_encoder_kernel_1.h"
 #include "dlib/entropy_decoder/entropy_decoder_kernel_1.h"
@@ -246,9 +246,9 @@ void msa_star_alignment(const string & center, vector<pw_alignment> & alignments
 		alignments.at(i).get_lr1(left1, right1);
 		alignments.at(i).get_lr2(left2, right2);
 
-		cout << " al " << i << endl;
-		alignments.at(i).print();
-		cout << endl;
+	//	cout << " al " << i << endl;
+	//	alignments.at(i).print();
+	//	cout << endl;
 		// find cluster center and make sure that each alignment goes to cluster center
 		// and all cluster centers are identical on the cluster center reference
 		// then find the minimal number of gaps before each cluster center reference position
@@ -506,10 +506,8 @@ ofstream outs("encode",std::ofstream::binary);
 //	encoder en(data,m);
 //	use_clustering clust(ol,data,m);
 	encoder en(data,m,wrap);
-//	test_encoder test(m);
-
-
-	vector<overlap> cc_overlap(ccs.size(), overlap(data));// vase in ke vase har connected component i yek overlap lazem darim ke dar natije bishtar az yeki overlap mikhaim vase hamin ol o estefade nakaradim
+	test_encoder test;
+	vector<overlap> cc_overlap(ccs.size(), overlap(data));// An overlap class object is needed for each connected component, thus we cannot use ol
 	// base cost to use an alignment (information need for its adress)
 	double cluster_base_cost = log2(data.numAlignments());
 //	cout << " base cost " << cluster_base_cost << endl;
@@ -535,7 +533,7 @@ ofstream outs("encode",std::ofstream::binary);
 	for(size_t i=0; i<ccs.size(); ++i) {
 #pragma omp critical(print)
 {
-		cout << " on initial CC " << i << " size " << ccs.at(i).size() << endl;
+//		cout << " on initial CC " << i << " size " << ccs.at(i).size() << endl;
 }
 		clock_t ias_time_local = clock();
 		set< const pw_alignment *, compare_pw_alignment> & cc = ccs.at(i);
@@ -569,7 +567,7 @@ ofstream outs("encode",std::ofstream::binary);
 		vector<string> all_centers;
 		for(size_t j=0; j<cc_cluster_in.size(); ++j) {
 
-		//	cout << " run affpro on " << cc_cluster_in.at(j).size()<<endl;
+			cout << " run affpro on " << cc_cluster_in.at(j).size()<<endl;
 		//	data.numAcc();
 
 			/*
@@ -623,6 +621,12 @@ ofstream outs("encode",std::ofstream::binary);
 				// look at all input alignments and determine which cluster it belongs to
 				for(set<const pw_alignment*, compare_pw_alignment>::iterator it2 = cc_cluster_in.at(j).begin(); it2!=cc_cluster_in.at(j).end(); ++it2){
 					const pw_alignment * al = *it2;
+			//		cout<< "alignment in cc cluster in at " << j << endl;
+			//		al->print();
+			//		double g1;
+			//		double g2;
+			//		m.gain_function(*al,g1,g2,outs);
+			//		cout<< "g1: "<<g1 << " g2: "<< g2 <<endl;
 					size_t ref1 = al->getreference1();
 					size_t ref2 = al->getreference2();
 					size_t left1;
@@ -715,7 +719,7 @@ ofstream outs("encode",std::ofstream::binary);
 		}*/
 #pragma omp critical(print) 
 {
-		cout << " initial CC " << i << " done " << endl << flush;
+	//	cout << " initial CC " << i << " done " << endl << flush;
 }
 	} // for connected components
 
@@ -724,7 +728,7 @@ ofstream outs("encode",std::ofstream::binary);
 	clock_t graph_ma_time = clock();
 	// TODO better separation of the different applications of our program: create/read model, compress/decompress sequences, create graph
 	// write graph result in maf format
-	write_graph_maf(graphout, alignments_in_a_cluster, data);
+	write_graph_maf(graphout, alignments_in_a_cluster, data);//includes clusters with no associated member.
 	graph_ma_time = clock() - graph_ma_time;
 
 	clock_t arithmetic_encoding_time = clock();
@@ -746,17 +750,17 @@ ofstream outs("encode",std::ofstream::binary);
 	//Defining weights of global clustering results! 
 	map<string, unsigned int>weight;
 	size_t max_bit = 8;	
-	size_t members = 0;//Returns the largest cluster
+	size_t max_members = 0;//Returns the largest cluster
 	for(map<string, vector<string> >::iterator it=global_results.begin(); it !=global_results.end(); it++){	
-        	if(it->second.size()> members){		
-			members = it->second.size();
+        	if(it->second.size()> max_members){		
+			max_members = it->second.size();
 		}
 		
 	}
 	
 	for(map<string, vector<string> >::iterator it=global_results.begin(); it !=global_results.end(); it++){
 		string cluster = it ->first;
-	//	cout<< "global result size: "<< it->second.size() << endl;
+//		cout<< "global result size: "<< it->second.size() << endl;
 		map<string, vector<pw_alignment> >::iterator cent = alignments_in_a_cluster.find(cluster);
 //		if(it->second.size() !=1){
 		if(cent != alignments_in_a_cluster.end()){//Removing the centers with no associated member
@@ -765,24 +769,72 @@ ofstream outs("encode",std::ofstream::binary);
 				weight.insert(make_pair(cluster,0));
 				it1 = weight.find(cluster);
 			}
-			it1->second = (unsigned int)(it->second.size()*((m.get_powerOfTwo().at(max_bit)-1)/(double)members));
+			it1->second = (unsigned int)(it->second.size()*((m.get_powerOfTwo().at(max_bit)-1)/(double)max_members));
 			if(it1 ->second == 0){
 				it1->second = 1;
 			}
 		}else continue;
 	}
-
-/*	for(map<string,unsigned int>::iterator it=weight.begin();it !=weight.end();it++){
-		cout<<"weight cent: "<< it ->first <<endl;
-	}*/
-	map<string, string> membersOfCluster;//first string represents an associated sequence of a cluster while the second string shows the center. 
-	for(map<string, vector<string> >::iterator it= global_results.begin(); it !=global_results.end(); it++){
-		for(size_t i =0; i < it->second.size();i++){
-			//if(it->second.at(i) != it->first){
-			membersOfCluster.insert(make_pair(it->second.at(i),it->first));
-			//}
+	size_t no_al = 0;
+	for(map<string, vector<string> >::iterator it=global_results.begin();it !=global_results.end();it++){
+			no_al += it->second.size();
+	}
+//	cout<<"no of clustered alignments: "<< no_al <<endl;	
+	map<string, vector<string> >membersOfCluster;//first string represents center and vector of strings are associated members
+	for(map<string, vector<pw_alignment> >::iterator it = alignments_in_a_cluster.begin();it != alignments_in_a_cluster.end();it++){
+		map<string, vector<string> >::iterator it1 = membersOfCluster.find(it->first);
+		for(size_t j =0; j < it->second.size();j++){
+			size_t left_1; 
+			size_t left_2;
+			size_t right_1;
+			size_t right_2;
+			size_t ref1;
+			size_t ref2;
+			pw_alignment p = it->second.at(j);
+			p.get_lr1(left_1,right_1);
+			p.get_lr2(left_2,right_2);
+			ref1 = p.getreference1();
+			ref2 = p.getreference2();
+			if(it1 == membersOfCluster.end()){
+				membersOfCluster.insert(make_pair(it->first,vector<string>()));
+				it1 = membersOfCluster.find(it->first);
+			}
+			stringstream sample1;
+			stringstream sample2;
+			sample1 << ref1 << ":" << left_1;
+			sample2 << ref2 << ":" << left_2;
+			it1->second.push_back(sample1.str());
+			it1->second.push_back(sample2.str());
 		}
 	}
+	map<string, string>member_of_cluster;// first string is a associated one and the second one is a center
+	for(map<string, vector<pw_alignment> >::iterator it = alignments_in_a_cluster.begin();it != alignments_in_a_cluster.end();it++){
+		for(size_t j =0; j < it->second.size();j++){
+			size_t left_1; 
+			size_t left_2;
+			size_t right_1;
+			size_t right_2;
+			size_t ref1;
+			size_t ref2;
+			pw_alignment p = it->second.at(j);
+			p.get_lr1(left_1,right_1);
+			p.get_lr2(left_2,right_2);
+			ref1 = p.getreference1();
+			ref2 = p.getreference2();
+			stringstream sample1;
+			stringstream sample2;
+			sample1 << ref1 << ":" << left_1;
+			sample2 << ref2 << ":" << left_2;
+			if(sample1.str() != it->first){
+				member_of_cluster.insert(make_pair(sample1.str(),it->first));
+			}else{
+				member_of_cluster.insert(make_pair(sample2.str(), it->first));
+			}
+		}
+		member_of_cluster.insert(make_pair(it->first, it->first));		
+	}
+	cout<< "size of memeber_of_cluster is : "<< member_of_cluster.size()<<endl;
+
 
 //	c.calculate_similarity();
 //	c.update_values();
@@ -800,15 +852,44 @@ ofstream outs("encode",std::ofstream::binary);
 //						cout<< " "<< endl;
 
 //	}
+/*	for(size_t i = 0 ; i < data.numAlignments(); i++){
+		const pw_alignment & p = data.getAlignment(i);
+		if(p.getreference1() == 1 && p.getreference2() == 25){
+			p.print();
+			double g1;
+			double g2;
+			double c1;
+			double c2;
+			double m1;
+			double m2;
+			m.cost_function(p,c1,c2,m1,m2,outs);
+			cout << "m1: "<< m1 << " m2: "<< m2<< " c1: "<< c1<< " c2: "<< c2 << endl;
+			m.gain_function(p,g1,g2,outs);
+			cout<< "g1: "<<g1 << " g2: "<< g2 <<endl;
+		}
+		if (p.getreference1() == 25&&p.getreference2()==1){
+			p.print();
+			double g1;
+			double g2;
+			double c1;
+			double c2;
+			double m1;
+			double m2;
+			m.cost_function(p,c1,c2,m1,m2,outs);
+			cout << "m1: "<< m1 << " m2: "<< m2<< " c1: "<< c1<< " c2: "<< c2 << endl;
+			m.gain_function(p,g1,g2,outs);
+			cout<< "g1: "<<g1 << " g2: "<< g2 <<endl;
+		}
+	}*/
 //Data compression:
 	cout<< "weight size: "<< weight.size()<<endl;
 //	en.arithmetic_encoding_seq(outs);
-//	en.arithmetic_encoding_alignment(weight,membersOfCluster,alignments_in_a_cluster,outs);
-//	test.encode();
+	en.arithmetic_encoding_alignment(weight,member_of_cluster,alignments_in_a_cluster,outs);
+	test.encode();
 	outs.close();
-//	test.decode();
-//	ifstream in("encode",std::ifstream::binary);
-//	en.arithmetic_decoding_alignment(in);
+	test.decode();
+	ifstream in("encode",std::ifstream::binary);
+	en.arithmetic_decoding_alignment(in);
 //	en.arithmetic_decoding_seq();
 	arithmetic_encoding_time = clock() - arithmetic_encoding_time;
 
