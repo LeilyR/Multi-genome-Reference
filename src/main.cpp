@@ -10,7 +10,6 @@
 #include "data.hpp"
 #include "model.hpp"
 #include "encoder.hpp"
-#include "test.hpp"
 #define NO_MAKEFILE
 #include "dlib/entropy_encoder/entropy_encoder_kernel_1.h"
 #include "dlib/entropy_decoder/entropy_decoder_kernel_1.h"
@@ -506,7 +505,6 @@ ofstream outs("encode",std::ofstream::binary);
 //	encoder en(data,m);
 //	use_clustering clust(ol,data,m);
 	encoder en(data,m,wrap);
-	test_encoder test;
 	vector<overlap> cc_overlap(ccs.size(), overlap(data));// An overlap class object is needed for each connected component, thus we cannot use ol
 	// base cost to use an alignment (information need for its adress)
 	double cluster_base_cost = log2(data.numAlignments());
@@ -885,9 +883,7 @@ ofstream outs("encode",std::ofstream::binary);
 	cout<< "weight size: "<< weight.size()<<endl;
 //	en.arithmetic_encoding_seq(outs);
 	en.arithmetic_encoding_alignment(weight,member_of_cluster,alignments_in_a_cluster,outs);
-	test.encode();
 	outs.close();
-	test.decode();
 	ifstream in("encode",std::ifstream::binary);
 	en.arithmetic_decoding_alignment(in);
 //	en.arithmetic_decoding_seq();

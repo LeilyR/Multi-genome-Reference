@@ -104,7 +104,6 @@ public:
 	overlap(const all_data&);
 	overlap(const overlap & o);
 	~overlap();
-	void split_partial_overlap(const pw_alignment * new_alignment, set<const pw_alignment*, compare_pw_alignment> & remove_alignments, vector<pw_alignment> & insert_alignments, size_t level) const;
 	void insert_without_partial_overlap(const pw_alignment & p);
 	void remove_alignment(const pw_alignment  *remove);
 

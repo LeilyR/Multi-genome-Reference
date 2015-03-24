@@ -427,8 +427,6 @@ all_data::all_data(string fasta_all_sequences, string maf_all_alignments) {
 					
 					}
 
-					
-				
 				}
 			
 			
@@ -553,7 +551,7 @@ all_data::~all_data() {
 }
 
 
-	bool all_data::alignment_fits_ref(const pw_alignment * al) const {
+bool all_data::alignment_fits_ref(const pw_alignment * al) const {
 	const dnastring & ref1 = getSequence(al->getreference1());
 	const dnastring & ref2 = getSequence(al->getreference2());
 	bool gapOnSample1 = true;
@@ -562,7 +560,7 @@ all_data::~all_data() {
 	bool al2fw = true;
 	size_t al1at = al->getbegin1();
 	
-size_t al2at = al->getbegin2();
+	size_t al2at = al->getbegin2();
 	if(al->getbegin1() > al->getend1()) {
 		al1fw = false;
 	}
@@ -668,7 +666,7 @@ size_t al2at = al->getbegin2();
 }
 
 
-	void all_data::print_ref(const pw_alignment * al)const{
+void all_data::print_ref(const pw_alignment * al)const{
 		const dnastring & ref1 = getSequence(al->getreference1());
 		const dnastring & ref2 = getSequence(al->getreference2());
 		size_t al1at = al->getbegin1();
@@ -712,19 +710,20 @@ size_t al2at = al->getbegin2();
 	}
 
 
-	const string all_data::get_acc(size_t acc)const{	
-		string Accession;
-		for(map<string, size_t>::const_iterator it = accession_name.begin() ; it != accession_name.end();it++){
-			if(it->second == acc){
-				Accession = it -> first;
-			}else continue;
-		}
-		return Accession;
+const string all_data::get_acc(size_t acc)const{	
+	string Accession;
+	for(map<string, size_t>::const_iterator it = accession_name.begin() ; it != accession_name.end();it++){
+		if(it->second == acc){
+			Accession = it -> first;
+		}else continue;
 	}
-	const size_t all_data::get_acc_id(string acc)const{
-		map<string, size_t>::const_iterator it = accession_name.find(acc);
-		return it->second;
-	}
+	return Accession;
+}
+
+const size_t all_data::get_acc_id(string acc)const{
+	map<string, size_t>::const_iterator it = accession_name.find(acc);
+	return it->second;
+}
 
 
 string all_data::get_seq_name(size_t s) const {
@@ -735,11 +734,11 @@ size_t all_data::get_seq_size(size_t s) const {
 	return sequences.at(s).length();
 }
 
-	overlap::overlap(const all_data & d): data(d), als_on_reference(d.numSequences()){
+overlap::overlap(const all_data & d): data(d), als_on_reference(d.numSequences()){
 
 }
 
-	overlap::overlap(const overlap & o): data(o.data), als_on_reference(o.data.numSequences()){}
+overlap::overlap(const overlap & o): data(o.data), als_on_reference(o.data.numSequences()){}
 
 
 	
@@ -793,7 +792,7 @@ void overlap::remove_alignment(const pw_alignment * remove){
 	//delete remove;
 }
 
-	void overlap::test_all() const {
+void overlap::test_all() const {
 
 	for(set<pw_alignment*, compare_pw_alignment>::iterator it = alignments.begin(); it!=alignments.end(); ++it) {
 		pw_alignment * al = *it;
@@ -806,25 +805,22 @@ void overlap::remove_alignment(const pw_alignment * remove){
 		
 	
 	}
-
-
 }
 
 
 
 
-	void overlap::print_all_alignment() const {
-		for(set<pw_alignment*, compare_pw_alignment>::const_iterator it = alignments.begin(); it!=alignments.end(); ++it ) {
-			const pw_alignment * al = * it;
-			//cout << " x " << al << endl;
-			al->print();
-
-			cout << endl;
-		}
+void overlap::print_all_alignment() const {
+	for(set<pw_alignment*, compare_pw_alignment>::const_iterator it = alignments.begin(); it!=alignments.end(); ++it ) {
+		const pw_alignment * al = * it;
+		//cout << " x " << al << endl;
+		al->print();
+		cout << endl;
+	}
 
 }
 
-	void overlap::test_multimaps() {
+void overlap::test_multimaps() {
 
 		for(set<pw_alignment*, compare_pw_alignment>::const_iterator it = alignments.begin(); it!=alignments.end(); ++it ) {
 			const pw_alignment * remove = * it;
@@ -881,12 +877,12 @@ void overlap::remove_alignment(const pw_alignment * remove){
 
 		}
 		
-	}
+}
 
 
 
 	
-	void overlap::insert_without_partial_overlap(const pw_alignment & p){
+void overlap::insert_without_partial_overlap(const pw_alignment & p){
 	pw_alignment * np = new pw_alignment(p);
 	//cout << " insert " << np << endl;
 	assert(alignments.find(np) == alignments.end());
@@ -911,7 +907,7 @@ void overlap::remove_alignment(const pw_alignment * remove){
 }
 
 
-	const pw_alignment * overlap::get_al_at_left_end(size_t ref1, size_t ref2, size_t left1, size_t left2) const {
+const pw_alignment * overlap::get_al_at_left_end(size_t ref1, size_t ref2, size_t left1, size_t left2) const {
 		const multimap<size_t, pw_alignment *> & r1map = als_on_reference.at(ref1);
 		pair<multimap<size_t, pw_alignment *>::const_iterator,multimap<size_t, pw_alignment *>::const_iterator> eqr = r1map.equal_range(left1);
 		for( multimap<size_t, pw_alignment *>::const_iterator it = eqr.first; it!= eqr.second; ++it) {
@@ -940,16 +936,16 @@ void overlap::remove_alignment(const pw_alignment * remove){
 			}
 		}
 		return NULL;
-	}
+}
 
-	multimap<size_t, pw_alignment*> &  overlap::get_als_on_reference(size_t sequence)  {
-		return als_on_reference.at(sequence);
-	}
-	const multimap<size_t, pw_alignment*> &  overlap::get_als_on_reference_const(size_t sequence) const {
-		return als_on_reference.at(sequence);
-	}
+multimap<size_t, pw_alignment*> &  overlap::get_als_on_reference(size_t sequence)  {
+	return als_on_reference.at(sequence);
+}
+const multimap<size_t, pw_alignment*> &  overlap::get_als_on_reference_const(size_t sequence) const {
+	return als_on_reference.at(sequence);
+}
 
-	void overlap::test_all_part()const{
+void overlap::test_all_part()const{
 	
 	/*set < const pw_alignment*, compare_pw_alignment> alignment_parts;
 		
@@ -1005,36 +1001,37 @@ void overlap::remove_alignment(const pw_alignment * remove){
 		cout<< " Small parts don't cover the original one!"<<endl;
 		exit(1);
 		}*/
-	}
-	void overlap::test_overlap()const{
-		for(set<pw_alignment*, compare_pw_alignment>::iterator it1 = alignments.begin(); it1!=alignments.end(); ++it1){	
-			pw_alignment * al1 = *it1;
-			size_t l1ref1 = al1->getbegin1();
-			size_t r1ref1 = al1->getend1();
-			size_t l1ref2 = al1->getbegin2();
-			size_t r1ref2 = al1->getend2();
-			if(l1ref1>r1ref1){
+}
+
+void overlap::test_overlap()const{
+	for(set<pw_alignment*, compare_pw_alignment>::iterator it1 = alignments.begin(); it1!=alignments.end(); ++it1){	
+		pw_alignment * al1 = *it1;
+		size_t l1ref1 = al1->getbegin1();
+		size_t r1ref1 = al1->getend1();
+		size_t l1ref2 = al1->getbegin2();
+		size_t r1ref2 = al1->getend2();
+		if(l1ref1>r1ref1){
 			l1ref1 = al1->getend1();
 			r1ref1 = al1->getbegin1();		
-			}
-			if(l1ref2>r1ref2){
+		}
+		if(l1ref2>r1ref2){
 			l1ref2 = al1->getend2();
 			r1ref2 = al1->getbegin2();		
-			}
-			for(set<pw_alignment*, compare_pw_alignment>::iterator it2 = alignments.begin(); it2!=alignments.end(); ++it2){
-				pw_alignment * al2 = *it2;
-				size_t l2ref1 = al2->getbegin1();
-				size_t r2ref1 = al2->getend1();
-				size_t l2ref2 = al2->getbegin2();
-				size_t r2ref2 = al2->getend2();
-				if(l2ref1>r2ref1){
+		}
+		for(set<pw_alignment*, compare_pw_alignment>::iterator it2 = alignments.begin(); it2!=alignments.end(); ++it2){
+			pw_alignment * al2 = *it2;
+			size_t l2ref1 = al2->getbegin1();
+			size_t r2ref1 = al2->getend1();
+			size_t l2ref2 = al2->getbegin2();
+			size_t r2ref2 = al2->getend2();
+			if(l2ref1>r2ref1){
 				l2ref1 = al2->getend1();
 				r2ref1 = al2->getbegin1();		
-				}
-				if(l2ref2>r2ref2){
+			}
+			if(l2ref2>r2ref2){
 				l2ref2 = al2->getend2();
 				r2ref2 = al2->getbegin2();		
-				}
+			}
 			if ((l1ref1 < l2ref1 && l2ref1 < r1ref1) || (l1ref1 < l2ref1 && r2ref1 < r2ref1)){
 				cout<< "There are some overlap!"<<endl;
 				exit(1);
@@ -1051,11 +1048,12 @@ void overlap::remove_alignment(const pw_alignment * remove){
 		}
 	}	
 }
-	bool overlap::checkAlignments(pw_alignment* const p)const{
-		set<pw_alignment*,compare_pw_alignment>::iterator it=alignments.find(p);
-		if(it !=alignments.end()) return true;	
-		else return false;	
-	}
+	
+bool overlap::checkAlignments(pw_alignment* const p)const{
+	set<pw_alignment*,compare_pw_alignment>::iterator it=alignments.find(p);
+	if(it !=alignments.end()) return true;	
+	else return false;	
+}
 	
 
 
