@@ -430,7 +430,7 @@ void write_graph_maf(const string & graphout, const map<string, vector<pw_alignm
 	for(map<string, vector<pw_alignment> >::const_iterator it = cluster_result_al.begin(); it!=cluster_result_al.end(); ++it) {
 		string center = it->first;
 		vector<pw_alignment> als = it->second;
-		cout << "Center: "<< center << " als " << als.size() << endl;
+	//	cout << "Center: "<< center << " als " << als.size() << endl;
 		msa_star_alignment(center, als);
 		if(als.size()>0) {
 			gout << "# cluster " << cluster_number << endl;
@@ -479,7 +479,7 @@ int do_mc_model(int argc, char * argv[]) {
 	if(argc == 6) {
 		num_threads = atoi(argv[5]);
 	}
-ofstream outs("test1",std::ofstream::binary);
+ofstream outs("encode",std::ofstream::binary);
 // Read all data
 	all_data data(fastafile, maffile);
 	overlap ol(data);
@@ -567,7 +567,7 @@ ofstream outs("test1",std::ofstream::binary);
 		vector<string> all_centers;
 		for(size_t j=0; j<cc_cluster_in.size(); ++j) {
 
-			cout << " run affpro on " << cc_cluster_in.at(j).size()<<endl;
+		//	cout << " run affpro on " << cc_cluster_in.at(j).size()<<endl;
 		//	data.numAcc();
 
 			/*
@@ -645,7 +645,6 @@ ofstream outs("test1",std::ofstream::binary);
 								it1->second.push_back(*al);
 							}else continue;
 						}
-						it1->second.push_back(*al);
 					}else if(ref2 == ref && left2 == left){
 							for(size_t k = 0; k < it->second.size();k++){
 								vector<string> member_parts;
@@ -656,7 +655,6 @@ ofstream outs("test1",std::ofstream::binary);
 									it1->second.push_back(*al);
 								}else continue;
 							}
-						it1->second.push_back(*al);					
 					}else continue;
 				} // for cluster_in set
 			}
@@ -888,11 +886,11 @@ ofstream outs("test1",std::ofstream::binary);
 //	en.arithmetic_encoding_seq(outs);
 //	en.calculate_high_in_partition(weight,alignments_in_a_cluster);
 //	en.arithmetic_encoding_centers(alignemnts_in_a_cluster,outs);
-	en.arithmetic_encoding_alignment(weight,member_of_cluster,alignments_in_a_cluster,outs);
-//	test.encode();
+	en.arithmetic_encoding_alignment(weight,membersOfCluster,alignments_in_a_cluster,outs);
+	test.encode();
 	outs.close();
-//	test.decode();
-	ifstream in("test1",std::ifstream::binary);
+	test.decode();
+	ifstream in("encode",std::ifstream::binary);
 	en.arithmetic_decoding_alignment(in);
 //	en.arithmetic_decoding_seq();
 	arithmetic_encoding_time = clock() - arithmetic_encoding_time;

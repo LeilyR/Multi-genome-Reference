@@ -737,61 +737,58 @@ size_t all_data::get_seq_size(size_t s) const {
 
 	overlap::overlap(const all_data & d): data(d), als_on_reference(d.numSequences()){
 
-}
+	}
 
 	overlap::overlap(const overlap & o): data(o.data), als_on_reference(o.data.numSequences()){}
 
 
 	
-overlap::~overlap(){
-	for(set<pw_alignment*, compare_pw_alignment>::iterator it = alignments.begin(); it!=alignments.end(); ++it) {
-		delete *it;
-	}
-}
-
-void overlap::remove_alignment(const pw_alignment * remove){
-	pair< multimap<size_t, pw_alignment*>::iterator, multimap<size_t, pw_alignment*>::iterator > eqrb1 =
-	als_on_reference.at(remove->getreference1()).equal_range(remove->getbegin1());
-	for(multimap<size_t, pw_alignment*>::iterator it = eqrb1.first; it!=eqrb1.second; ++it) {
-		if ( it->second == remove ) {
-			als_on_reference.at(remove->getreference1()).erase(it);
-			break;
-		}		
-	}
-	pair< multimap<size_t, pw_alignment*>::iterator, multimap<size_t, pw_alignment*>::iterator > eqre1 =
-	als_on_reference.at(remove->getreference1()).equal_range(remove->getend1());
-	for(multimap<size_t, pw_alignment*>::iterator it = eqre1.first; it!=eqre1.second; ++it) {
-		if ( (it->second) == remove ) {
-			als_on_reference.at(remove->getreference1()).erase(it);
-			break;
-		}		
+	overlap::~overlap(){
+		for(set<pw_alignment*, compare_pw_alignment>::iterator it = alignments.begin(); it!=alignments.end(); ++it) {
+			delete *it;
+		}
 	}
 
-	pair< multimap<size_t, pw_alignment*>::iterator, multimap<size_t, pw_alignment*>::iterator > eqrb2 =
-	als_on_reference.at(remove->getreference2()).equal_range(remove->getbegin2());
-	for(multimap<size_t, pw_alignment*>::iterator it = eqrb2.first; it!=eqrb2.second; ++it) {
-		if ( (it->second) == remove ) {
-			als_on_reference.at(remove->getreference2()).erase(it);
-			break;
-		}		
+	void overlap::remove_alignment(const pw_alignment * remove){
+		pair< multimap<size_t, pw_alignment*>::iterator, multimap<size_t, pw_alignment*>::iterator > eqrb1 =
+		als_on_reference.at(remove->getreference1()).equal_range(remove->getbegin1());
+		for(multimap<size_t, pw_alignment*>::iterator it = eqrb1.first; it!=eqrb1.second; ++it) {
+			if ( it->second == remove ) {
+				als_on_reference.at(remove->getreference1()).erase(it);
+				break;
+			}		
+		}
+		pair< multimap<size_t, pw_alignment*>::iterator, multimap<size_t, pw_alignment*>::iterator > eqre1 =
+		als_on_reference.at(remove->getreference1()).equal_range(remove->getend1());
+		for(multimap<size_t, pw_alignment*>::iterator it = eqre1.first; it!=eqre1.second; ++it) {
+			if ( (it->second) == remove ) {
+				als_on_reference.at(remove->getreference1()).erase(it);
+				break;
+			}		
+		}
+		pair< multimap<size_t, pw_alignment*>::iterator, multimap<size_t, pw_alignment*>::iterator > eqrb2 =
+		als_on_reference.at(remove->getreference2()).equal_range(remove->getbegin2());
+		for(multimap<size_t, pw_alignment*>::iterator it = eqrb2.first; it!=eqrb2.second; ++it) {
+			if ( (it->second) == remove ) {
+				als_on_reference.at(remove->getreference2()).erase(it);
+				break;
+			}		
+		}
+		pair< multimap<size_t, pw_alignment*>::iterator, multimap<size_t, pw_alignment*>::iterator > eqre2 =
+		als_on_reference.at(remove->getreference2()).equal_range(remove->getend2());
+		for(multimap<size_t, pw_alignment*>::iterator it = eqre2.first; it!=eqre2.second; ++it) {
+			if ( (it->second) == remove ) {
+				als_on_reference.at(remove->getreference2()).erase(it);
+				break;
+			}		
+		}
+		pw_alignment * rem = const_cast<pw_alignment *>(remove);
+		set<pw_alignment*, compare_pw_alignment>::iterator findr = alignments.find(rem);
+	//	remove->print();
+		assert(findr!=alignments.end());
+		alignments.erase(findr);
+		//delete remove;
 	}
-
-	pair< multimap<size_t, pw_alignment*>::iterator, multimap<size_t, pw_alignment*>::iterator > eqre2 =
-	als_on_reference.at(remove->getreference2()).equal_range(remove->getend2());
-	for(multimap<size_t, pw_alignment*>::iterator it = eqre2.first; it!=eqre2.second; ++it) {
-		if ( (it->second) == remove ) {
-			als_on_reference.at(remove->getreference2()).erase(it);
-			break;
-		}		
-	}
-
-	pw_alignment * rem = const_cast<pw_alignment *>(remove);
-	set<pw_alignment*, compare_pw_alignment>::iterator findr = alignments.find(rem);
-//	remove->print();
-	assert(findr!=alignments.end());
-	alignments.erase(findr);
-	//delete remove;
-}
 
 	void overlap::test_all() const {
 
@@ -3093,7 +3090,6 @@ void mc_model::make_all_alignments_patterns(){
 // this function should get a better name. It applies the functor on each position in the alignment
 	void mc_model::computing_modification_oneToTwo(const pw_alignment & p, abstract_context_functor & functor,ofstream & outs)const{
 		// TODO new entropy encoder makes no sense here
-		dlib::entropy_encoder_kernel_1 * enc = new dlib::entropy_encoder_kernel_1();
 		string seq = "";
 	//	cout<<"data ad in computing mod: "<< & data << endl;
 	//	p.print();
@@ -3167,7 +3163,7 @@ void mc_model::make_all_alignments_patterns(){
 		//		cout<< "size of seq: "<< seq.size()<<endl;
 		//		cout << "seq 2 " << int(seq2) << endl;
 		//		cout<< "recorded keep length: " << n+1 << endl;
-				functor. see_context(acc1,acc2,p,i,seq1,seq2, outs,*enc);
+				functor. see_context(acc1,acc2,p,i,seq1,seq2, outs);
 		//		cout<<"n: "<< n << endl;
 			}else{
 				if((s1!=5) & (s2!=5)){
@@ -3177,14 +3173,14 @@ void mc_model::make_all_alignments_patterns(){
 					}*/
 					seq += modification_character(modify_base,num_delete,insert_base,num_keep);
 					seq2 = modification_character(modify_base,num_delete,insert_base,num_keep);
-					functor. see_context(acc1,acc2,p,i,seq1,seq2,outs,*enc);
+					functor. see_context(acc1,acc2,p,i,seq1,seq2,outs);
 				//	cout<< "seq1" << seq1 <<endl;
 				}
 				if(s1 == 5){
 					insert_base = s2;
 					seq += modification_character(modify_base,num_delete,insert_base,num_keep);						
 					seq2 = modification_character(modify_base,num_delete,insert_base,num_keep);
-					functor. see_context(acc1,acc2,p,i,seq1,seq2,outs,*enc);
+					functor. see_context(acc1,acc2,p,i,seq1,seq2,outs);
 			//		cout<< "seq1" << seq1 <<endl;						
 				}
 				if(s2 == 5){
@@ -3219,7 +3215,7 @@ void mc_model::make_all_alignments_patterns(){
 						}
 					}
 					seq2 = seq.at(seq.size()-1);
-					functor. see_context(acc1,acc2,p,i,seq1,seq2,outs,*enc);
+					functor. see_context(acc1,acc2,p,i,seq1,seq2,outs);
 				}
 
 			}
@@ -3251,12 +3247,10 @@ void mc_model::make_all_alignments_patterns(){
 	//	}
 	//	cout<< "one to two was done! " << endl;
 		functor.see_entire_context(acc1,acc2,seq);
-		delete enc;
 	}
 
 	
 	void mc_model::computing_modification_twoToOne(const pw_alignment & p, abstract_context_functor & functor,ofstream & outs)const{
-		dlib::entropy_encoder_kernel_1 * enc = new dlib::entropy_encoder_kernel_1();
 		string seq = "";
 		size_t acc1 = data.accNumber(p.getreference1());
 		size_t acc2 = data.accNumber(p.getreference2());
@@ -3320,7 +3314,7 @@ void mc_model::make_all_alignments_patterns(){
 					}
 				}
 				seq2 = seq.at(seq.size()-1);
-				functor. see_context(acc2,acc1,p,i,seq1,seq2,outs,*enc);
+				functor. see_context(acc2,acc1,p,i,seq1,seq2,outs);
 			}else{
 				if((s1!=5) & (s2!=5)){
 					modify_base = s1;
@@ -3329,13 +3323,13 @@ void mc_model::make_all_alignments_patterns(){
 					}*/
 					seq += modification_character(modify_base,num_delete,insert_base,num_keep);
 					seq2 = modification_character(modify_base,num_delete,insert_base,num_keep);
-					functor. see_context(acc2,acc1,p,i,seq1,seq2,outs,*enc);
+					functor. see_context(acc2,acc1,p,i,seq1,seq2,outs);
 				}
 				if(s2 == 5){
 					insert_base = s1;
 					seq += modification_character(modify_base,num_delete,insert_base,num_keep);					
 					seq2 = modification_character(modify_base,num_delete,insert_base,num_keep);
-					functor. see_context(acc2,acc1,p,i,seq1,seq2,outs,*enc);						
+					functor. see_context(acc2,acc1,p,i,seq1,seq2,outs);						
 				}
 				if(s1 == 5){
 					size_t dlength = 0;
@@ -3368,7 +3362,7 @@ void mc_model::make_all_alignments_patterns(){
 						}
 					}
 					seq2 = seq.at(seq.size()-1);
-					functor. see_context(acc2,acc1,p,i,seq1,seq2,outs,*enc);
+					functor. see_context(acc2,acc1,p,i,seq1,seq2,outs);
 				}
 			}
 	/*		cout<< " context2 is "<<endl;
@@ -3384,7 +3378,6 @@ void mc_model::make_all_alignments_patterns(){
 			cout<< int(seq.at(m))<<endl;
 		}*/
 		functor.see_entire_context(acc2,acc1,seq);
-		delete enc;
 	}
 	const map<string, vector<double> > & mc_model::getPattern(size_t acc)const{
 		return sequence_successive_bases.at(acc);
@@ -3480,7 +3473,7 @@ void mc_model::make_all_alignments_patterns(){
 	abstract_context_functor::abstract_context_functor(){
 	
 	}
-	void abstract_context_functor::see_context(size_t acc1, size_t acc2, const pw_alignment & p, size_t pos, string context, char last_char, ofstream& outs, dlib::entropy_encoder_kernel_1 & enc){
+	void abstract_context_functor::see_context(size_t acc1, size_t acc2, const pw_alignment & p, size_t pos, string context, char last_char, ofstream& outs){
 		
 	}
 	void abstract_context_functor::see_entire_context(size_t acc1,size_t acc2, string entireContext){
@@ -3488,7 +3481,7 @@ void mc_model::make_all_alignments_patterns(){
 	}
 	counting_functor::counting_functor(all_data & d):data(d), successive_modification(d.numAcc(),vector<map<string, vector<double> > >(d.numAcc())),total(d.numAcc(),vector<map<string, double > >(d.numAcc())) {}
 // TODO why do we use double for counting?
-	void counting_functor::see_context(size_t acc1, size_t acc2, const pw_alignment & p, size_t pos, string context, char last_char, ofstream & outs, dlib::entropy_encoder_kernel_1 & enc){
+	void counting_functor::see_context(size_t acc1, size_t acc2, const pw_alignment & p, size_t pos, string context, char last_char, ofstream & outs){
 	//	cout<< "accession 1: " << acc1 << " accession 2: " << acc2 << " size: " << pos << " last char: " << dnastring::base_to_index(last_char) << " " << int(last_char)<<endl;
 	//	cout<< "context is: "<< endl;
 	/*	for(size_t i = 0 ; i < context.size(); i++){
@@ -3559,7 +3552,7 @@ double counting_functor::get_total(size_t acc1, size_t acc2, string context)cons
 		modify2 = 0;		
 		modification = mod_cost;
 	}
-	void cost_functor::see_context(size_t acc1, size_t acc2, const pw_alignment & p, size_t pos, string context, char last_char, ofstream & outs, dlib::entropy_encoder_kernel_1 & enc){
+	void cost_functor::see_context(size_t acc1, size_t acc2, const pw_alignment & p, size_t pos, string context, char last_char, ofstream & outs){
 		size_t ref1 = p.getreference1();
 		size_t ref2 = p.getreference2();
 		size_t accession1 = data.accNumber(ref1);
@@ -3592,38 +3585,34 @@ double counting_functor::get_total(size_t acc1, size_t acc2, string context)cons
 	encoding_functor::encoding_functor(all_data & d, mc_model * m, wrapper & wrap):data(d),model(m),wrappers(wrap){
 	}
 	
-	void encoding_functor::see_context(size_t acc1, size_t acc2,const pw_alignment & p, size_t pos, string context, char last_char, ofstream& outs,	dlib::entropy_encoder_kernel_1 & enc){//last_char is infact a pattern!
+	void encoding_functor::see_context(size_t acc1, size_t acc2,const pw_alignment & p, size_t pos, string context, char last_char, ofstream& outs){//last_char is infact a pattern!
 		size_t bit = 13;
-	//	cout<< "al length is: "<< p.alignment_length() << "position: "<< pos <<endl;
-	//	ofstream outs("encode", std::ofstream::binary|std::ofstream::app);
-	//	if(outs.is_open()){
-			enc.set_stream(outs);
-	//		unsigned int total = 8212;
-			unsigned int total = model->get_powerOfTwo().at(bit)+20;
-			map<string, vector<unsigned int> >::const_iterator it1 = model->get_highValue(acc1,acc2).find(context);// if modification is from acc2 to acc1 the order is already exchanged. So this is true
-			vector<unsigned int> low(NUM_DELETE+NUM_KEEP+10,0);
-			vector<unsigned int> high(NUM_DELETE+NUM_KEEP+10,0);
-			for(size_t m = 0; m < it1->second.size(); m++){
-				if(m ==0){
-					low.at(m) = 0;
-				}else{
-				 	low.at(m) = high.at(m-1);
-				}
-				high.at(m) = it1->second.at(m);
-				if(m == NUM_DELETE+NUM_KEEP+10-1){
-					high.at(m)=  model->get_powerOfTwo().at(bit);
-				}
+		dlib::entropy_encoder_kernel_1 * enc = new dlib::entropy_encoder_kernel_1();
+		enc->set_stream(outs);
+		unsigned int total = model->get_powerOfTwo().at(bit)+20;
+		map<string, vector<unsigned int> >::const_iterator it1 = model->get_highValue(acc1,acc2).find(context);// if modification is from acc2 to acc1 the order is already exchanged. So this is true
+		vector<unsigned int> low(NUM_DELETE+NUM_KEEP+10,0);
+		vector<unsigned int> high(NUM_DELETE+NUM_KEEP+10,0);
+		for(size_t m = 0; m < it1->second.size(); m++){
+			if(m ==0){
+				low.at(m) = 0;
+			}else{
+			 	low.at(m) = high.at(m-1);
 			}
-			cout<< "context: ";
-			for(size_t i =0; i < context.size(); i++){
-				cout<< int(context.at(i));
+			high.at(m) = it1->second.at(m);
+			if(m == NUM_DELETE+NUM_KEEP+10-1){
+				high.at(m)=  model->get_powerOfTwo().at(bit);
 			}
-			cout<< " " <<endl;
-			cout << " ended char in al: "<< int(last_char)<<endl;
-			enc.encode(low.at(last_char),high.at(last_char),total);
-			wrappers.encode(low.at(last_char),high.at(last_char),total);
-	//	}
-	//	outs.close();
+		}
+		cout<< "context: ";
+		for(size_t i =0; i < context.size(); i++){
+			cout<< int(context.at(i));
+		}
+		cout<< " " <<endl;
+		cout << " ended char in al: "<< int(last_char)<<endl;
+		enc->encode(low.at(last_char),high.at(last_char),total);
+		wrappers.encode(low.at(last_char),high.at(last_char),total);
+		delete enc;
 	}
 
 

@@ -187,7 +187,7 @@ private:
 class abstract_context_functor {
 	public:
 	abstract_context_functor();
-	virtual void see_context(size_t acc1, size_t acc2,const pw_alignment& p, size_t pos, string context, char last_char,ofstream &,	dlib::entropy_encoder_kernel_1 & );
+	virtual void see_context(size_t acc1, size_t acc2,const pw_alignment& p, size_t pos, string context, char last_char,ofstream &);
 	virtual void see_entire_context(size_t acc1, size_t acc2, string entireContext);
 	
 
@@ -197,7 +197,7 @@ class abstract_context_functor {
 class counting_functor : public abstract_context_functor {
 	public:
 	counting_functor(all_data &);
-	virtual void see_context(size_t acc1, size_t acc2, const pw_alignment & p, size_t pos, string context, char last_char,ofstream&, dlib::entropy_encoder_kernel_1 & );
+	virtual void see_context(size_t acc1, size_t acc2, const pw_alignment & p, size_t pos, string context, char last_char,ofstream&);
 	const map<string, vector<double> > & get_context(size_t acc1, size_t acc2)const;
 	void total_context();
 	double get_total(size_t acc1, size_t acc2, string context)const;
@@ -216,7 +216,7 @@ class mc_model;
 class cost_functor : public abstract_context_functor {
 	public:
 	cost_functor(all_data &, const vector<vector<map<string, vector<double> > > >&);
-	virtual void see_context(size_t acc1, size_t acc2, const pw_alignment & p, size_t pos, string context, char last_char,ofstream&, dlib::entropy_encoder_kernel_1 & );
+	virtual void see_context(size_t acc1, size_t acc2, const pw_alignment & p, size_t pos, string context, char last_char,ofstream& );
 	double get_modify(const pw_alignment & p, size_t acc1, size_t acc2)const;
 	private:
 	vector<vector< map<string, vector<double> > > >  modification; 
@@ -234,7 +234,7 @@ class adding_functor : public abstract_context_functor {
 class encoding_functor : public abstract_context_functor {
 	public:
 	encoding_functor(all_data& , mc_model*, wrapper &);
-	virtual void see_context(size_t acc1, size_t acc2,const pw_alignment& p, size_t pos, string context, char last_char,ofstream&, dlib::entropy_encoder_kernel_1 & );	
+	virtual void see_context(size_t acc1, size_t acc2,const pw_alignment& p, size_t pos, string context, char last_char,ofstream&);	
 	virtual void see_entire_context(size_t acc1, size_t acc2, string entireContext);
 	const map<string, vector<double> > & get_alignment_context()const;
 //	vector<string> & get_alignment_context(pw_alignment& p)const;
@@ -249,7 +249,7 @@ class encoding_functor : public abstract_context_functor {
 
 class clustering_functor : public abstract_context_functor{
 	public:
-	virtual void see_context(size_t acc1, size_t acc2, const pw_alignment& p, size_t pos, string context, char last_char, ofstream &, dlib::entropy_encoder_kernel_1 &);//computing_modification_oneToTwo is used to fill in the map of modification between center and its associated member.
+	virtual void see_context(size_t acc1, size_t acc2, const pw_alignment& p, size_t pos, string context, char last_char, ofstream &);//computing_modification_oneToTwo is used to fill in the map of modification between center and its associated member.
 	//fek konam hamoon encoding_functor ok bashe, lazem nist ino benvisim
 
 	private:

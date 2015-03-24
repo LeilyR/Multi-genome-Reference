@@ -763,7 +763,7 @@ bool compare_pw_alignment::operator()(const pw_alignment *const &a, const pw_ali
 	}
 	wrapper::~wrapper(){}
 	void wrapper::encode(unsigned int& low, unsigned int& high, unsigned int & total){	
-		encodeout << "low: "<< low << " high: "<< high << " total: " << total << endl;
+		encodeout << "l"<< low << "h"<< high;
 	}
 	void wrapper::decode(unsigned int& low, unsigned int& high, unsigned int & total){
 		decodeout << "low : "<< low << " high: "<< high << " total: "<< total<<endl;
