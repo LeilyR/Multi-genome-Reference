@@ -343,9 +343,9 @@ all_data::all_data(string fasta_all_sequences, string maf_all_alignments) {
 						size_t tmp = start1;
 						start1 = seqlength1 - start1 -1;
 						incl_end1 = seqlength1 - tmp - size1;
-						for(size_t j=0; j<al1.length(); ++j) {
-							al1.at(j) = dnastring::complement(al1.at(j));
-						}
+					//	for(size_t j=0; j<al1.length(); ++j) {
+					//		al1.at(j) = dnastring::complement(al1.at(j));
+					//	}
 					}
 
 
@@ -370,9 +370,9 @@ all_data::all_data(string fasta_all_sequences, string maf_all_alignments) {
 						size_t tmp = start2;
 						start2 = seqlength2 - start2 -1;
 						incl_end2 = seqlength2 - tmp - size2;
-						for(size_t j=0; j<al2.length(); ++j) {
-							al2.at(j) = dnastring::complement(al2.at(j));
-						}
+					//	for(size_t j=0; j<al2.length(); ++j) {
+					//		al2.at(j) = dnastring::complement(al2.at(j));
+					//	}
 					}
 					
 					// both al parts not identical	
@@ -586,6 +586,8 @@ size_t al2at = al->getbegin2();
 				al1at++;
 			} else {
 				al1at--;
+				rchar =  dnastring::complement(rchar);
+
 			}
 		//	cout << " is " << rchar << endl;
 			if(rchar != al1char) {
@@ -602,6 +604,8 @@ size_t al2at = al->getbegin2();
 				al2at++;
 			} else {
 				al2at--;
+				rchar =  dnastring::complement(rchar);
+
 			}
 		//	cout << " is " << rchar << endl;
 			if(rchar != al2char) {

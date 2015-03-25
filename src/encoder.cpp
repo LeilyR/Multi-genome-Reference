@@ -342,7 +342,7 @@
 			c=in.get();
 		}
 	}
-	void encoder::arithmetic_encoding_alignment(map<string, unsigned int> & weight, map<string, vector<string> > & cluster_members, map<string, vector<pw_alignment> > & alignmentOfCluster, ofstream & outs){
+	void encoder::arithmetic_encoding_alignment(map<string, unsigned int> & weight, map<string, string > & cluster_members, map<string, vector<pw_alignment> > & alignmentOfCluster, ofstream & outs){
 		dlib::entropy_encoder_kernel_1 * enc = new dlib::entropy_encoder_kernel_1();
 		enc -> set_stream(outs);
 		ofstream save;
@@ -390,17 +390,17 @@
 							cout<< "we are at ref1"<<endl;
 							stringstream member;
 							member << sequenceId << ":" << n;
-						//	map<string, string>::iterator cl = cluster_members.find(member.str());
-						//	string center = cl->second;
-							for(map<string,vector<string> >::iterator cl = cluster_members.begin(); cl !=cluster_members.end();cl++){//change cluster memeber to associated/center
-								for(size_t j = 0; j < cl->second.size(); j++){
-									string member = cl ->second.at(j);
-									vector<string> member_parts;
-									strsep(member, ":" , member_parts);
-									unsigned int ref = atoi(member_parts.at(0).c_str());
-									unsigned int left = atoi(member_parts.at(1).c_str());
-									if(ref == sequenceId && left == n){
-										string center = cl->first;
+							map<string, string>::iterator cl = cluster_members.find(member.str());
+							string center = cl->second;
+						//	for(map<string,vector<string> >::iterator cl = cluster_members.begin(); cl !=cluster_members.end();cl++){
+						//		for(size_t j = 0; j < cl->second.size(); j++){
+						//			string member = cl ->second.at(j);
+						//			vector<string> member_parts;
+						//			strsep(member, ":" , member_parts);
+						//			unsigned int ref = atoi(member_parts.at(0).c_str());
+						//			unsigned int left = atoi(member_parts.at(1).c_str());
+						//			if(ref == sequenceId && left == n){
+						//				string center = cl->first;
 										cout<< "center1: "<< center << endl;
 										vector<string> center_parts;
 										strsep(center, ":" , center_parts);
@@ -442,10 +442,10 @@
 										enc-> encode(l2,h2,total);
 										save << "low: "<< l2 << " high: "<< h2 << endl;
 										wrappers.encode(l2,h2,total);
-										break;
-									}else continue;
-								}
-							}
+									//	break;
+								//	}else continue;
+							//	}
+						//	}
 							n = right_1;
 							cout << " n: " << n << endl;							
 						}
@@ -453,17 +453,17 @@
 							cout<< "we are at ref2"<<endl;
 							stringstream member;
 							member << sequenceId << ":" << n;
-					//		map<string, string>::iterator cl = cluster_members.find(member.str());
-					//		string center = cl->second;
-							for(map<string,vector<string> >::iterator cl = cluster_members.begin(); cl !=cluster_members.end();cl++){
-								for(size_t j = 0; j < cl->second.size();j++){
-									string member = cl ->second.at(j);
-									vector<string> member_parts;
-									strsep(member, ":" , member_parts);
-									unsigned int ref = atoi(member_parts.at(0).c_str());
-									unsigned int left = atoi(member_parts.at(1).c_str());
-									if(ref == sequenceId && left == n){
-										string center = cl->first;
+							map<string, string>::iterator cl = cluster_members.find(member.str());
+							string center = cl->second;
+					//		for(map<string,vector<string> >::iterator cl = cluster_members.begin(); cl !=cluster_members.end();cl++){
+					//			for(size_t j = 0; j < cl->second.size();j++){
+					//				string member = cl ->second.at(j);
+					//				vector<string> member_parts;
+					//				strsep(member, ":" , member_parts);
+					//				unsigned int ref = atoi(member_parts.at(0).c_str());
+					//				unsigned int left = atoi(member_parts.at(1).c_str());
+					//				if(ref == sequenceId && left == n){
+					//					string center = cl->first;
 										cout<< "center2: "<< center << endl;
 										vector<string> center_parts;
 										strsep(center, ":" , center_parts);
@@ -507,10 +507,10 @@
 										enc-> encode(l2,h2,total);
 										save << "low: "<< l2 << " high: "<< h2 << endl;
 										wrappers.encode(l2,h2,total);
-										break;
-									}else continue;
-								}
-							}
+									//	break;
+								//	}else continue;
+							//	}
+						//	}
 							n = right_2;	
 							cout << " n: " << n << endl;
 						}
