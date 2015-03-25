@@ -58,6 +58,62 @@
 			i = i + 1;
 		}
 	}
+	void test_encoder::compare(){
+		ifstream read;	
+		char c;
+		vector<unsigned int>low_dec;
+		vector<unsigned int>high_dec;
+		read.open("dec.txt");
+		while(read.good()){
+			c = read.get();
+			unsigned int l;
+			read >> l;
+			low_dec.push_back(l);
+			c = read.get();
+			unsigned int h;
+			read >> h;
+			high_dec.push_back(h);
+		}
+		read.close();
+		char h;
+		ifstream read1;
+		read1.open("enc.txt");
+		while(read1.good()){
+			h = read1.get();
+			unsigned int l;
+			read1 >> l;
+			low.push_back(l);
+			h = read1.get();
+			unsigned int h;
+			read1 >> h;
+			high.push_back(h);
+		}
+		
+		for(size_t i =0 ; i < high.size();i++){
+			cout << "high: " << high.at(i) << endl;
+		}
+		for(size_t i = 0; i < low_dec.size(); i++){
+			if(low.at(i)!=low_dec.at(i)){
+				cout<< "low values at " << i << " are different" <<endl;
+				break;
+			}
+			if(high.at(i)!=high_dec.at(i)){
+				cout<< "high values at " << i << " are different"<<endl;
+				cout<< "high at "<< i << " are " << high.at(i) << " and "<< high_dec.at(i)<<endl;
+				break;
+			}
+
+
+		}
+
+		
+
+
+
+
+
+
+	}
 #endif
 
 

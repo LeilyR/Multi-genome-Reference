@@ -590,6 +590,8 @@ bool all_data::alignment_fits_ref(const pw_alignment * al) const {
 				al1at++;
 			} else {
 				al1at--;
+				rchar =  dnastring::complement(rchar);
+
 			}
 		//	cout << " is " << rchar << endl;
 			if(rchar != al1char) {
@@ -606,6 +608,8 @@ bool all_data::alignment_fits_ref(const pw_alignment * al) const {
 				al2at++;
 			} else {
 				al2at--;
+				rchar =  dnastring::complement(rchar);
+
 			}
 		//	cout << " is " << rchar << endl;
 			if(rchar != al2char) {

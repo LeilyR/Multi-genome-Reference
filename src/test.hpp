@@ -19,6 +19,7 @@
 		~test_encoder();
 		void encode();
 		void decode();
+		void compare();
 		private:
 		vector<unsigned int>low;
 		vector<unsigned int>high;

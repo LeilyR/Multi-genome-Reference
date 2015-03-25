@@ -852,10 +852,18 @@ ofstream outs("encode",std::ofstream::binary);
 //						cout<< " "<< endl;
 
 //	}
-/*	for(size_t i = 0 ; i < data.numAlignments(); i++){
+	for(size_t i = 0 ; i < data.numAlignments(); i++){
 		const pw_alignment & p = data.getAlignment(i);
-		if(p.getreference1() == 1 && p.getreference2() == 25){
-			p.print();
+		size_t left1;
+		size_t left2;
+		size_t right1;
+		size_t right2;
+		p.get_lr1(left1,right1);
+		p.get_lr2(left2,right2);
+		if(p.getreference1() == 1 && p.getreference2() == 25 && left2 == 70424){
+			cout<< "left is 70424 and ref 2 is 25"<<endl;
+			cout<< "left 1 is " << left1 << endl;
+		//	p.print();
 			double g1;
 			double g2;
 			double c1;
@@ -867,8 +875,10 @@ ofstream outs("encode",std::ofstream::binary);
 			m.gain_function(p,g1,g2,outs);
 			cout<< "g1: "<<g1 << " g2: "<< g2 <<endl;
 		}
-		if (p.getreference1() == 25&&p.getreference2()==1){
-			p.print();
+		if (p.getreference1() == 25&&p.getreference2()==1&&left1 == 70424){
+			cout<< "left is 70424 and ref 1 is 25"<<endl;
+			cout<< "left 2 is " << left2 << endl;
+		//	p.print();
 			double g1;
 			double g2;
 			double c1;
@@ -880,19 +890,20 @@ ofstream outs("encode",std::ofstream::binary);
 			m.gain_function(p,g1,g2,outs);
 			cout<< "g1: "<<g1 << " g2: "<< g2 <<endl;
 		}
-	}*/
+	}
 //Data compression:
 	cout<< "weight size: "<< weight.size()<<endl;
 //	en.arithmetic_encoding_seq(outs);
 //	en.calculate_high_in_partition(weight,alignments_in_a_cluster);
 //	en.arithmetic_encoding_centers(alignemnts_in_a_cluster,outs);
-	en.arithmetic_encoding_alignment(weight,membersOfCluster,alignments_in_a_cluster,outs);
+	en.arithmetic_encoding_alignment(weight,member_of_cluster,alignments_in_a_cluster,outs);
 	outs.close();
 
 
 
 	ifstream in("encode",std::ifstream::binary);
 	en.arithmetic_decoding_alignment(in);
+//	test.compare();
 //	en.arithmetic_decoding_seq();
 	arithmetic_encoding_time = clock() - arithmetic_encoding_time;
 
