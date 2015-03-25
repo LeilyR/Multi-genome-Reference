@@ -15,6 +15,8 @@
 #include "dlib/entropy_decoder/entropy_decoder_kernel_1.h"
 
 
+
+
 #define VERSION "0.0.1" 
 #define NUMVERISON 0
 #define MIN_READ_VERSION 0
@@ -429,7 +431,7 @@ void write_graph_maf(const string & graphout, const map<string, vector<pw_alignm
 	for(map<string, vector<pw_alignment> >::const_iterator it = cluster_result_al.begin(); it!=cluster_result_al.end(); ++it) {
 		string center = it->first;
 		vector<pw_alignment> als = it->second;
-		cout << "Center: "<< center << " als " << als.size() << endl;
+	//	cout << "Center: "<< center << " als " << als.size() << endl;
 		msa_star_alignment(center, als);
 		if(als.size()>0) {
 			gout << "# cluster " << cluster_number << endl;
@@ -565,7 +567,7 @@ ofstream outs("encode",std::ofstream::binary);
 		vector<string> all_centers;
 		for(size_t j=0; j<cc_cluster_in.size(); ++j) {
 
-			cout << " run affpro on " << cc_cluster_in.at(j).size()<<endl;
+		//	cout << " run affpro on " << cc_cluster_in.at(j).size()<<endl;
 		//	data.numAcc();
 
 			/*
@@ -652,7 +654,7 @@ ofstream outs("encode",std::ofstream::binary);
 								if(ref1 == mem_ref && left1 == mem_left){
 									it1->second.push_back(*al);
 								}else continue;
-							}					
+							}
 					}else continue;
 				} // for cluster_in set
 			}
@@ -715,10 +717,10 @@ ofstream outs("encode",std::ofstream::binary);
 			size_t index = al ->getreference1();
 
 		}*/
-#pragma omp critical(print) 
-{
+//#pragma omp critical(print) 
+//{
 	//	cout << " initial CC " << i << " done " << endl << flush;
-}
+//}
 	} // for connected components
 
 
@@ -805,7 +807,7 @@ ofstream outs("encode",std::ofstream::binary);
 			it1->second.push_back(sample2.str());
 		}
 	}
-	map<string, string>member_of_cluster;// first string is a associated one and the second one is a center
+	map<string, string>member_of_cluster;// first string is a associated one and the second one is its center
 	for(map<string, vector<pw_alignment> >::iterator it = alignments_in_a_cluster.begin();it != alignments_in_a_cluster.end();it++){
 		for(size_t j =0; j < it->second.size();j++){
 			size_t left_1; 
@@ -882,8 +884,13 @@ ofstream outs("encode",std::ofstream::binary);
 //Data compression:
 	cout<< "weight size: "<< weight.size()<<endl;
 //	en.arithmetic_encoding_seq(outs);
-	en.arithmetic_encoding_alignment(weight,member_of_cluster,alignments_in_a_cluster,outs);
+//	en.calculate_high_in_partition(weight,alignments_in_a_cluster);
+//	en.arithmetic_encoding_centers(alignemnts_in_a_cluster,outs);
+	en.arithmetic_encoding_alignment(weight,membersOfCluster,alignments_in_a_cluster,outs);
 	outs.close();
+
+
+
 	ifstream in("encode",std::ifstream::binary);
 	en.arithmetic_decoding_alignment(in);
 //	en.arithmetic_decoding_seq();
