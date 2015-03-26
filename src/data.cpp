@@ -1819,7 +1819,7 @@ void splitpoints::find_initial_split_points(size_t sequence, size_t left, size_t
 		for(size_t i = 0; i<split_pieces.size();i++) {
 #ifndef NDEBUG
 				if(!data.alignment_fits_ref(&split_pieces.at(i))) {
-					cout<<"fails here!"<<endl;
+				//	cout<<"fails here!"<<endl;
 					exit(1);
 				}
 #endif
@@ -1880,17 +1880,17 @@ void splitpoints::find_initial_split_points(size_t sequence, size_t left, size_t
 #if SPLITPRINT
 					p1.print();
 #endif
-					if(!onlyGapSample(&p1)){
+					if(!onlyGapSample(&p1) && p1.alignment_length() >1 &&p1.getbegin1()!=p1.getend1() && p1.getbegin2()!=p1.getend2()) {
 						insert_alignments.push_back(p1);
 					}
-				} else {
+				} else if(p->getbegin1() > p->getend1()) {
 					p = &p1;
 
 #if SPLITPRINT
 					p2.print();
 #endif
-					
-					if(!onlyGapSample(&p2)){	
+
+					if(!onlyGapSample(&p2) && p2.alignment_length()>1 && p2.getbegin1()!=p2.getend1() && p2.getbegin2()!=p2.getend2() ){	
 						insert_alignments.push_back(p2);
 					}
 					
@@ -1905,7 +1905,7 @@ void splitpoints::find_initial_split_points(size_t sequence, size_t left, size_t
 		cout << endl;
 #endif
 
-		if(!onlyGapSample(p)){	
+		if(!onlyGapSample(p)&& p->alignment_length()>1 && p->getbegin1()!=p->getend1() && p->getbegin2()!=p->getend2() ){	
 			insert_alignments.push_back(*p);		
 		}
 	}

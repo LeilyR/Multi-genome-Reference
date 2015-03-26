@@ -896,7 +896,7 @@ ofstream outs("encode",std::ofstream::binary);
 //	en.arithmetic_encoding_seq(outs);
 //	en.calculate_high_in_partition(weight,alignments_in_a_cluster);
 //	en.arithmetic_encoding_centers(alignemnts_in_a_cluster,outs);
-	en.arithmetic_encoding_alignment(weight,member_of_cluster,alignments_in_a_cluster,outs);
+	en.arithmetic_encoding_alignment(weight,membersOfCluster,alignments_in_a_cluster,outs);
 	outs.close();
 
 

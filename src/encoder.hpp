@@ -19,7 +19,7 @@ class encoder{
 	void arithmetic_encoding_seq(ofstream&);
 	void arithmetic_decoding_seq_test(int t);
 	void calculating_clusters_high(map<string, unsigned int> & weight);
-	void arithmetic_encoding_alignment(map<string, unsigned int> & weight, map<string, string > & cluster_members, map<string, vector<pw_alignment> > & alignmentOfCluster,ofstream&);
+	void arithmetic_encoding_alignment(map<string, unsigned int> & weight, map<string, vector<string> > & cluster_members, map<string, vector<pw_alignment> > & alignmentOfCluster,ofstream&);
 	void arithmetic_decoding_alignment(ifstream&);
 	void arithmetic_enc_centers(map<string, vector<pw_alignment> > & alignmentOfCluster, ofstream &);
 	void arithmetic_dec_centers(ifstream&, dlib::entropy_decoder_kernel_1&);
