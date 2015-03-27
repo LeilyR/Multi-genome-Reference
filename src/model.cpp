@@ -3,10 +3,133 @@
 #ifndef MODEL_CPP
 #define MODEL_CPP
 
+
+// TODO why does ias need an output stream (the gain function should also not need one)
 template<typename T>
 void initial_alignment_set<T>::compute(overlap & o, ofstream & outs) {
 
-	compute_simple(o,outs);
+	compute_simple_lazy_splits(o,outs);
+
+}
+
+/*
+
+insert al recursively
+each insert operation causes the removal of some alignments from overlap
+then we split al and the removed alignments (without induced splits)
+the gain of all new pieces with positive gain - the gain of all removed pieces is an upper bound of 
+the information gain of inserting al. If this upper bound is positive we continue and try to recursively insert all pieces
+Afterwards, we have to compute the actual gain. If it is negative we undo the local recursive insert operation
+TODO remove outs
+*/
+template<typename T>
+void initial_alignment_set<T>::lazy_split_insert_step(pw_alignment * al, vector<pw_alignment> & inserted_alignments, vector<pw_alignment> & removed_alignments, double & local_gain, ofstream & outs) {
+// start with computing gain of al
+	double gain1;
+	double gain2;
+	common_model.gain_function(*(al), gain1, gain2,outs);
+	double av_al_gain = (gain1 + gain2) / 2 - base_cost;
+
+
+
+
+}
+
+
+
+template<typename T>
+void initial_alignment_set<T>::compute_simple_lazy_splits(overlap & o,ofstream & outs) {
+	size_t used = 0;
+	size_t not_used = 0;
+	double total_gain = 0;
+	size_t pcs_ins = 0;
+	size_t pcs_rem = 0;
+	for (size_t i=0; i<sorted_original_als.size(); ++i) {
+		const pw_alignment * al = sorted_original_als.at(i);
+		double gain_of_al = 0;
+
+		// TODO remove
+		double gain1, gain2;
+		common_model.gain_function(*(al), gain1, gain2,outs);
+		gain1-=base_cost;
+//		cout << endl<<"at alignment " << i << " length " << al->alignment_length() << " al base gain " << gain1 << endl;
+		//al->print();
+		cout << endl;
+
+
+		alset remove_als;
+		vector<pw_alignment> insert_als;
+
+//		// TODO
+//		cout << " splitpoints on: " << al << " at " << i <<  " size " <<sorted_original_als.size()<< endl; 
+//		al->print();
+//		cout << endl;	
+//		o.print_all_alignment();
+
+
+		splitpoints spl(*al, o, data);
+		spl.nonrecursive_splits();
+		spl.split_all(remove_als, insert_als);
+		vector<double> insert_gains(insert_als.size(), 0);
+
+		for(alset::const_iterator it = remove_als.begin(); it!=remove_als.end(); ++it) {
+			double g1;
+			double g2;
+			common_model.gain_function(*(*it), g1, g2,outs);
+		//	if(g2<g1) g1 = g2;
+			g1-=base_cost;
+	//		cout << "r " << (*it)->alignment_length() << " g " << g1 << endl;
+			gain_of_al -= g1;
+
+		//	(*it)->print();
+		//	cout << endl;
+
+		}	
+		for(size_t j=0; j<insert_als.size(); ++j) {
+			
+			double g1;
+			double g2;
+			common_model.gain_function(insert_als.at(j), g1, g2,outs);
+		//	if(g1<g2) g1 = g2;
+			g1-=base_cost;
+			insert_gains.at(j) = g1;
+			if(g1>0) {
+		//		cout << "i " << (insert_als.at(j)).alignment_length() << " g " << g1 << endl;
+				gain_of_al += g1;
+
+			//	insert_als.at(j).print();
+			//	cout << endl;
+			}
+
+		}
+//		cout << " al " << i << " rem " << remove_als.size() << " insert " << insert_als.size() << " gain " << gain_of_al << endl;	
+		if(gain_of_al>=0) {
+			used++;
+			for(alset::const_iterator it = remove_als.begin(); it!=remove_als.end(); ++it) {
+				o.remove_alignment(*it);
+				pcs_rem++;
+			}	
+			for(size_t j=0; j<insert_als.size(); ++j) {
+				if(insert_gains.at(j)>0) {
+				o.insert_without_partial_overlap(insert_als.at(j));
+				pcs_ins++;
+				}
+			}
+// TODO
+			o.test_partial_overlap();
+			total_gain+=gain_of_al;
+
+		} else {
+			not_used++;
+		}
+
+	
+	}
+	result_gain = total_gain;
+//	cout << "Used " << used << " alignments with total gain " << total_gain << " not used: " << not_used << endl;
+//	cout << "pieces removed: " << pcs_rem << " pieces inserted: " << pcs_ins << endl;
+
+
 
 }
 
@@ -48,7 +171,7 @@ void initial_alignment_set<T>::compute_simple(overlap & o,ofstream & outs) {
 
 
 		splitpoints spl(*al, o, data);
-		spl.find_initial_split_point();
+		spl.recursive_splits();
 		spl.split_all(remove_als, insert_als);
 		vector<double> insert_gains(insert_als.size(), 0);
 
@@ -341,13 +464,13 @@ void compute_cc::cc_step(size_t ref, size_t left, size_t right, set <const pw_al
 	} 	
 	
 }
-
+/*
 template<typename tmodel>
 clustering<tmodel>::clustering(overlap & o, all_data & d,tmodel & m):overl(o),data(d),model(m),als_on_ref(data.numSequences()),gain(data.numSequences(),vector<vector<double> >(data.numSequences(),vector<double>(500000,0))),ava(data.numSequences(),vector<vector<double> >(data.numSequences(),vector<double>(500000,0))),res(data.numSequences(),vector<vector<double> >(data.numSequences(),vector<double>(500000,0))){
 	/*	for(size_t i=0; i<data.numAlignments(); ++i) {
 			const pw_alignment * a = &(data.getAlignment(i));
 			alignments.insert(a);
-		}*/
+		}*
 
 	}
 template<typename tmodel>
@@ -361,7 +484,7 @@ void clustering<tmodel>::als_on_reference(const pw_alignment * p) {
 	als_on_ref.at(ref1).insert(make_pair(p->getbegin1(), p));
 	als_on_ref.at(ref1).insert(make_pair(p->getend1(), p));
 	als_on_ref.at(ref2).insert(make_pair(p->getbegin2(), p));
-	als_on_ref.at(ref2).insert(make_pair(p->getend2(), p));*/
+	als_on_ref.at(ref2).insert(make_pair(p->getend2(), p));*
 
 	}
 
@@ -450,7 +573,7 @@ template<typename tmodel>
 				}
 
 			}
-		}*/
+		}*
 		
 	}
 
@@ -486,6 +609,9 @@ template<typename tmodel>
 		}
 
 	}
+
+*/
+
 
 
 template<typename tmodel>

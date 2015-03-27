@@ -480,7 +480,7 @@ int do_mc_model(int argc, char * argv[]) {
 	if(argc == 6) {
 		num_threads = atoi(argv[5]);
 	}
-ofstream outs("encode",std::ofstream::binary);
+	ofstream outs("encode",std::ofstream::binary);
 // Read all data
 	all_data data(fastafile, maffile);
 	overlap ol(data);
@@ -893,16 +893,13 @@ ofstream outs("encode",std::ofstream::binary);
 	}
 //Data compression:
 	cout<< "weight size: "<< weight.size()<<endl;
-//	en.arithmetic_encoding_seq(outs);
-//	en.calculate_high_in_partition(weight,alignments_in_a_cluster);
-//	en.arithmetic_encoding_centers(alignemnts_in_a_cluster,outs);
-	en.arithmetic_encoding_alignment(weight,member_of_cluster,alignments_in_a_cluster,outs);
+//	en.arithmetic_encoding_alignment(weight,member_of_cluster,alignments_in_a_cluster,outs);
 	outs.close();
 
 
 
 	ifstream in("encode",std::ifstream::binary);
-	en.arithmetic_decoding_alignment(in);
+//	en.arithmetic_decoding_alignment(in);
 //	test.compare();
 //	en.arithmetic_decoding_seq();
 	arithmetic_encoding_time = clock() - arithmetic_encoding_time;

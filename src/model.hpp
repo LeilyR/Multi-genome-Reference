@@ -86,6 +86,7 @@ class initial_alignment_set {
 
 	void compute(overlap & o, ofstream &);
 	void compute_simple(overlap & o,ofstream &);
+	void compute_simple_lazy_splits(overlap & o,ofstream &);
 
 	double get_max_gain() const {
 		return max_gain;
