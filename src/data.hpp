@@ -239,7 +239,7 @@ class adding_functor : public abstract_context_functor {
 };
 class encoding_functor : public abstract_context_functor {
 	public:
-	encoding_functor(all_data& , mc_model*, wrapper &);
+	encoding_functor(all_data& , mc_model*, wrapper &, dlib::entropy_encoder_kernel_1 &);
 	virtual void see_context(size_t acc1, size_t acc2,const pw_alignment& p, size_t pos, string context, char last_char,ofstream&);	
 	virtual void see_entire_context(size_t acc1, size_t acc2, string entireContext);
 	const map<string, vector<double> > & get_alignment_context()const;
@@ -248,6 +248,7 @@ class encoding_functor : public abstract_context_functor {
 	all_data & data;
 	mc_model * model;	
 	wrapper& wrappers;
+	dlib::entropy_encoder_kernel_1 & enc;
 	string alignment_pattern;//shayadam behtar bashe ye vector of string tarif konam
 	map<string, vector<double> > alignment_context;
 
@@ -291,7 +292,7 @@ class mc_model{
 		void write_alignments_pattern(ofstream&);
 		vector<unsigned int> get_high_at_position(size_t seq_index, size_t position) const;
 		vector<unsigned int> get_center_high_at_position(size_t cent_ref, size_t cent_left, size_t position)const;
-		vector<unsigned int> get_reverse_center_high_at_position(size_t cent_ref, size_t cent_right, size_t position)const;
+		vector<unsigned int> get_reverse_center_high_at_position(size_t cent_ref, size_t cent_left, size_t position)const;
 		const map<string, vector<unsigned int> > & get_high(size_t acc)const;
 		void make_all_the_patterns();
 		void make_all_alignments_patterns();
@@ -307,7 +308,7 @@ class mc_model{
 		const map<string, vector<double> > & get_cluster_member_context(pw_alignment & al, size_t center_id, encoding_functor & functor)const;
 	//	void print_modification(char enc)const;
 		size_t modification_length(char mod)const;
-		void get_encoded_member(pw_alignment & al, size_t center_id, encoding_functor & functor,ofstream&)const;
+		void get_encoded_member(pw_alignment & al, size_t center_ref, size_t center_left, encoding_functor & functor,ofstream&)const;
 	private:
 	all_data & data;
 	vector<map<string, vector<double> > >sequence_successive_bases;

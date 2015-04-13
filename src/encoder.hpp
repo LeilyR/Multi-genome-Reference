@@ -19,8 +19,8 @@ class encoder{
 	void arithmetic_encoding_seq(ofstream&);
 	void arithmetic_decoding_seq_test(int t);
 	void calculating_clusters_high(map<string, unsigned int> & weight);
-	void arithmetic_encoding_alignment(map<string, unsigned int> & weight, map<string, vector<string> > & cluster_members, map<string, vector<pw_alignment> > & alignmentOfCluster,ofstream&);
-	void arithmetic_decoding_alignment(ifstream&);
+	void arithmetic_encoding_alignment(map<string, unsigned int> & weight, map<string, string> & cluster_members, map<string, vector<pw_alignment> > & alignmentOfCluster,ofstream&,dlib::entropy_encoder_kernel_1 &);
+	void arithmetic_decoding_alignment(ifstream&,dlib::entropy_decoder_kernel_1&);
 	void arithmetic_enc_centers(map<string, vector<pw_alignment> > & alignmentOfCluster, ofstream &);
 	void arithmetic_dec_centers(ifstream&, dlib::entropy_decoder_kernel_1&);
 	void encoding_seq_test();
@@ -39,10 +39,16 @@ class encoder{
 	void set_center_from_stream (ifstream &);
 	void arithmetic_encoding_centId(map<string, vector<pw_alignment> > &, ofstream &);
 	void arithmetic_decoding_centId(ifstream&, dlib::entropy_decoder_kernel_1&);
-	void arithmetic_encoding_centers(map<string, vector<pw_alignment> > &,ofstream &);
-	void arithmetic_decoding_centers(ifstream &);
+	void arithmetic_encoding_centers(map<string, vector<pw_alignment> > &,ofstream &,dlib::entropy_encoder_kernel_1 & );
+	void arithmetic_decoding_centers(ifstream &,dlib::entropy_decoder_kernel_1 &);
 	void add_partition_high_to_stream(ofstream & );
 	void set_partition_high_from_stream(ifstream&);
+	void test_al_encoding(map<string, unsigned int> & , map<string, string > & , map<string, vector<pw_alignment> > & ,ofstream &, dlib::entropy_encoder_kernel_1 &);
+	void test_al_decoding(ifstream &, dlib::entropy_decoder_kernel_1 &);
+	void test_al_decoding( string center,size_t part);
+	void write_to_stream(map<string, vector<pw_alignment> > & ,ofstream &);
+	void read_from_stream(ifstream&);
+	string associatedMember(string & , size_t&, size_t&);
 	private:
 	all_data & data;
 	mc_model & model;

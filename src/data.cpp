@@ -2051,8 +2051,8 @@ void splitpoints::find_initial_split_points(size_t sequence, size_t left, size_t
 			cost_on_sample.at(1)=cost_on_sample.at(1)+ create_cost.at(1).at(j);			
 //			cout<<"creat cost of "<< dnastring::index_to_base(j)<<"  on reference2 is "<<  al_base_number.at(1).at(j)*sequence_cost.at(1).at(j)<<endl;
 		}
-//			cout<<"creat cost of the alignment on sample 1: "<< cost_on_sample.at(0);
-//			cout<<"creat cost of the alignment on sample 2: "<< cost_on_sample.at(1);	
+		//	cout<<"creat cost of the alignment on sample 1: "<< cost_on_sample.at(0);
+		//	cout<<"creat cost of the alignment on sample 2: "<< cost_on_sample.at(1);	
 		
 		for(size_t j=0; j<6; j++){	
 			for (size_t k= 0; k<6; k++){
@@ -2067,7 +2067,9 @@ void splitpoints::find_initial_split_points(size_t sequence, size_t left, size_t
 		c2 = cost_on_sample.at(1);
 		m1 = modify_cost.at(0);
 		m2 = modify_cost.at(1);
-//		cout << " create 2 " << c2 << " m1 " << m1 << endl; 
+		cout << " create 2 " << c2 << " m1 " << m1 << endl; 
+		cout << " create 1 " << c1 << " m2 " << m2 << endl; 
+
 
 	}
 	void model::gain_function(const pw_alignment& p, double & g1, double & g2) const {
@@ -2424,6 +2426,8 @@ const map<string, vector<unsigned int> > & mc_model::get_highValue(size_t acc1, 
 //		m2 = modify_cost.at(1);
 		m1 = f.get_modify(p,acc1,acc2);
 		m2 = f.get_modify(p,acc2,acc1);
+	//	cout << " c2 " << c2 << " m1 " << m1 << endl; 
+	//	cout << " c1 " << c1 << " m2 " << m2 << endl; 
 	//	cout<< "length: " << length<<endl;
 	//	cout<< "c1: " << c1 << " c2: "<< c2 << " m1: "<< m1<< " m2: "<< m2 <<endl;
 	}
@@ -2852,9 +2856,11 @@ void mc_model::make_all_alignments_patterns(){
 		}
 		string current_pattern;
 		context >> current_pattern;
-	/*	cout<<"current pattern in seq  "<< seq_index << " of accession " << accession <<endl;
-		for(size_t j=0; j< current_pattern.length(); j++){
-			cout<<current_pattern.at(j)<<endl;
+/*		if(position ==112060){
+			cout<<"current pattern in seq  "<< seq_index << " of accession " << accession <<endl;
+			for(size_t j=0; j< current_pattern.length(); j++){
+				cout<<current_pattern.at(j)<<endl;
+			}
 		}*/
 		map<string, vector<unsigned int> >::const_iterator it=high.at(accession).find(current_pattern);
 		assert(it!=high.at(accession).end());
@@ -2863,12 +2869,12 @@ void mc_model::make_all_alignments_patterns(){
 	//	for(size_t k =0; k< 5; k++){
 	//		cout<< "high at " << k << " is "<< it->second.at(k)<<endl;
 	//	}
-	/*	if(current_pattern == "AC"){
-			cout<< "high at AC: ";
-			for(size_t j = 0; j < 5 ; j++){
-				cout<< it->second.at(j) <<endl;
-			}
-		}*/
+	//	if(current_pattern == "GA"){
+	//		cout<< "high at GA: ";
+	//		for(size_t j = 0; j < 5 ; j++){
+	//			cout<< it->second.at(j) <<endl;
+	//		}
+	//	}
 		return it->second;
 	}
 	vector<unsigned int> mc_model::get_center_high_at_position(size_t cent_ref, size_t cent_left, size_t position)const{
@@ -2901,18 +2907,19 @@ void mc_model::make_all_alignments_patterns(){
 	//	}
 		return it->second;
 	}
-	vector<unsigned int> mc_model::get_reverse_center_high_at_position(size_t cent_ref, size_t cent_right, size_t position)const{
+	vector<unsigned int> mc_model::get_reverse_center_high_at_position(size_t cent_ref, size_t cent_left, size_t position)const{
 		const dnastring & sequence = data.getSequence(cent_ref);
 	//	cout << " sequence " << seq_index << " length " << sequence.length() << endl;
 		size_t accession = data.accNumber(cent_ref);
 		stringstream context;
 		for(size_t j = Sequence_level; j>0; j--){
-			if(position > cent_right-j){
+		//	if(position > cent_right-j){
+			if(position < cent_left+j){
 				char chr = 'A';
 				context<<chr;
 			}else{
-				char chr= dnastring::complement(sequence.at(position+j));				
-			//	char chr = sequence.at(position+j);
+			//	char chr= dnastring::complement(sequence.at(position+j));				
+				char chr = sequence.at(position-j);
 				context<<chr;
 			}
 		}
@@ -3060,7 +3067,7 @@ void mc_model::make_all_alignments_patterns(){
 			length = 1;
 		}
 		if(insert_base != -1){
-			length = 1;
+			length = 0;
 		}
 		if(num_delete != -1){
 			length = num_delete;
@@ -3104,6 +3111,11 @@ void mc_model::make_all_alignments_patterns(){
 		string seq = "";
 	//	cout<<"data ad in computing mod: "<< & data << endl;
 	//	p.print();
+		size_t left_1; 
+		size_t left_2;
+		size_t right_1;
+		size_t right_2;
+		p.get_lr1(left_1,right_1);
 		size_t acc1 = data.accNumber(p.getreference1());
 		size_t acc2 = data.accNumber(p.getreference2());
 		size_t first_patterns = Alignment_level;
@@ -3129,11 +3141,27 @@ void mc_model::make_all_alignments_patterns(){
 			char s2chr;
 			size_t s1;
 			size_t s2;
+			char s1nchr;
+			char s2nchr;
+			size_t s1n;
+			size_t s2n;
 			p.alignment_col(i, s1chr, s2chr);				
 			s1 = dnastring::base_to_index(s1chr);
 			s2 = dnastring::base_to_index(s2chr);
-			seq1.at(Alignment_level)=s1;
+			for(size_t j =i; j < p.alignment_length(); j++){
+				p.alignment_col(j, s1nchr, s2nchr);				
+				s1n = dnastring::base_to_index(s1nchr);
+				s2n = dnastring::base_to_index(s2nchr);
+				if(s1n == 5){
+				
+				}else break;	
+			}
+		//	if(p.getreference1() == 28 &&left_1 == 176557){
+		//		cout<<"using s1n! " << s1n <<endl;
+		//	}
+			seq1.at(Alignment_level)=s1n;
 			if(s1 == s2){
+			//	cout<< "keep at "<< i <<endl;
 				size_t klength = 0;
 				for(size_t j = i; j<p.alignment_length(); j++){
 					char q1chr;
@@ -3158,10 +3186,10 @@ void mc_model::make_all_alignments_patterns(){
 				//	cout<<"Long keep"<<endl;
 					seq+=modification_character(modify_base,num_delete,insert_base,num_keep);
 				}else{
-					for (size_t m = (NUM_KEEP-1); m > 0; m--){
+					for (size_t m = NUM_KEEP; m > 0; m--){
 				//	for (size_t m = powersOfTwo.size()-1; m >= 0; m--)
-						if((klength & powersOfTwo.at(m)) != 0){
-							num_keep=m;
+						if((klength & powersOfTwo.at(m-1)) != 0){
+							num_keep=m-1;
 						//	cout<<"m: "<<m <<endl;
 							n= powersOfTwo.at(num_keep)-1;
 							seq += modification_character(modify_base,num_delete,insert_base,num_keep);
@@ -3215,10 +3243,11 @@ void mc_model::make_all_alignments_patterns(){
 						n= powersOfTwo.at(num_delete)-1;
 						seq+=modification_character(modify_base,num_delete,insert_base,num_keep);
 					}else{
-						for(size_t m = (NUM_DELETE-1); m > 0; m--){
+						for(size_t m = NUM_DELETE; m > 0; m--){
+					//	cout<< "m in delete1: "<< m << endl;
 //						for (size_t m = powersOfTwo.size()-1;m>=0;m--)
-							if((dlength & powersOfTwo.at(m)) != 0){
-								num_delete = m;
+							if((dlength & powersOfTwo.at(m-1)) != 0){
+								num_delete = m-1;
 								n= powersOfTwo.at(num_delete)-1;
 								seq += modification_character(modify_base,num_delete,insert_base,num_keep);		
 								break;
@@ -3266,6 +3295,14 @@ void mc_model::make_all_alignments_patterns(){
 		size_t acc1 = data.accNumber(p.getreference1());
 		size_t acc2 = data.accNumber(p.getreference2());
 		size_t first_patterns = Alignment_level;
+	/*	if(p.getreference2()==28&&p.getreference1()==0 && p.getbegin2()==176557){
+			cout << "forward"<<endl;
+			p.print();
+		}
+		if(p.getreference2()==28&&p.getreference1()==0 && p.getend2()==176557){
+			cout << "reverse"<<endl;
+			p.print();
+		}*/
 		for(size_t j = 0; j < Alignment_level; j++){
 			first_patterns --;
 			seq+=modification_character(-1,-1,-1,first_patterns);
@@ -3289,7 +3326,21 @@ void mc_model::make_all_alignments_patterns(){
 			p.alignment_col(i, s1chr, s2chr);				
 			s1 = dnastring::base_to_index(s1chr);
 			s2 = dnastring::base_to_index(s2chr);
-			seq1.at(Alignment_level)=s2;
+			char s1nchr;
+			char s2nchr;
+			size_t s2n;
+			if(s2 == 5){
+			//	if(p.getreference2()==28&&p.getreference1()==0){cout<< "i " << i << " s2 " << s2 << endl;}
+				for(size_t j =i; j < p.alignment_length(); j++){
+					p.alignment_col(j, s1nchr, s2nchr);				
+					s2n = dnastring::base_to_index(s2nchr);
+					if(s2n != 5){
+						seq1.at(Alignment_level)=s2n;
+						break;
+					}else continue;
+				}
+			}else seq1.at(Alignment_level)=s2;
+	//		cout<<"using s2n! " << s2n <<endl;
 			if(s1 == s2){
 				size_t klength = 0;
 				for(size_t j = i; j<p.alignment_length(); j++){
@@ -3314,10 +3365,11 @@ void mc_model::make_all_alignments_patterns(){
 					n=powersOfTwo.at(num_keep)-1;
 					seq+=modification_character(modify_base,num_delete,insert_base,num_keep);
 				}else{
-					for(size_t m = NUM_KEEP-1; m > 0; m--){
+					for(size_t m = NUM_KEEP; m > 0; m--){
+				//	cout<<"m: "<<m <<endl;
 //					for (size_t m =powersOfTwo.size()-1; m>= 0; m--)
-						if((klength & powersOfTwo.at(m)) != 0){
-							num_keep=m;
+						if((klength & powersOfTwo.at(m-1)) != 0){
+							num_keep=m-1;
 							n=powersOfTwo.at(num_keep)-1;						
 							seq += modification_character(modify_base,num_delete,insert_base,num_keep);
 							break;
@@ -3356,6 +3408,7 @@ void mc_model::make_all_alignments_patterns(){
 							break;
 						}
 					}
+				//	cout<< "dlength: " << dlength << endl;
 					if(dlength > powersOfTwo.at(NUM_DELETE-1)){
 //					if(dlength > powersOfTwo.at(powersOfTwo.size()-1))
 //						num_delete= powersOfTwo.size()-1;
@@ -3363,12 +3416,14 @@ void mc_model::make_all_alignments_patterns(){
 						n = powersOfTwo.at(num_delete)-1;
 						seq+=modification_character(modify_base,num_delete,insert_base,num_keep);
 					}else{
-						for(size_t m = NUM_DELETE -1 ; m > 0; m--){
+						for(size_t m = NUM_DELETE ; m > 0; m--){
 //						for (size_t m = powersOfTwo.size()-1; m>0; m--)
-							if((dlength & powersOfTwo.at(m)) != 0){
-								num_delete = m;
+						//	cout<< "m in delete2: "<< m << endl;
+							if((dlength & powersOfTwo.at(m-1)) != 0){
+								num_delete = m-1;
 								n = powersOfTwo.at(num_delete)-1;
-								seq += modification_character(modify_base,num_delete,insert_base,num_keep);			
+								seq += modification_character(modify_base,num_delete,insert_base,num_keep);
+								break;			
 							}
 						}
 					}
@@ -3442,13 +3497,23 @@ void mc_model::make_all_alignments_patterns(){
 		const map<string, vector<double> > & res = *((const map<string, vector<double> >*) NULL);
 		return res;
 	}
-	void mc_model ::get_encoded_member(pw_alignment & al, size_t center_id, encoding_functor & functor,ofstream& outs)const{
+	void mc_model ::get_encoded_member(pw_alignment & al,size_t center_ref,size_t center_left, encoding_functor & functor,ofstream& outs)const{
 		size_t acc1 = data.accNumber(al.getreference1());
-		size_t accession = data.accNumber(center_id);
-		if(accession == acc1){
-			cout<< "center is on acc1"<<endl;
+		size_t accession = data.accNumber(center_ref);
+		size_t left_1; 
+		size_t left_2;
+		size_t right_1;
+		size_t right_2;
+		cout<< "al length: "<< al.alignment_length()<<endl;
+		al.get_lr1(left_1,right_1);
+		al.get_lr2(left_2,right_2);
+		cout<< " left1: "<< left_1 << " left2: "<<left_2<< "center left: "<< center_left << endl;
+		cout << "center accession: "<< accession << " accession1: "<< acc1 << endl;
+		if(al.getreference1()==center_ref && left_1 == center_left){
+			cout<< "center is on ref1"<<endl;
 			computing_modification_oneToTwo(al, functor,outs);	
 		}else{
+			cout<< "center is on ref2"<<endl;
 			computing_modification_twoToOne(al, functor,outs);
 		}
 	}
@@ -3593,13 +3658,13 @@ double counting_functor::get_total(size_t acc1, size_t acc2, string context)cons
 		}
 		return modify;
 	}
-	encoding_functor::encoding_functor(all_data & d, mc_model * m, wrapper & wrap):data(d),model(m),wrappers(wrap){
+	encoding_functor::encoding_functor(all_data & d, mc_model * m, wrapper & wrap, 	dlib::entropy_encoder_kernel_1 & encode ):data(d),model(m),wrappers(wrap),enc(encode){
 	}
 	
 	void encoding_functor::see_context(size_t acc1, size_t acc2,const pw_alignment & p, size_t pos, string context, char last_char, ofstream& outs){//last_char is infact a pattern!
 		size_t bit = 13;
-		dlib::entropy_encoder_kernel_1 * enc = new dlib::entropy_encoder_kernel_1();
-		enc->set_stream(outs);
+	//	dlib::entropy_encoder_kernel_1 * enc = new dlib::entropy_encoder_kernel_1();
+	//	enc->set_stream(outs);
 		unsigned int total = model->get_powerOfTwo().at(bit)+20;
 		map<string, vector<unsigned int> >::const_iterator it1 = model->get_highValue(acc1,acc2).find(context);// if modification is from acc2 to acc1 the order is already exchanged. So this is true
 		vector<unsigned int> low(NUM_DELETE+NUM_KEEP+10,0);
@@ -3615,15 +3680,24 @@ double counting_functor::get_total(size_t acc1, size_t acc2, string context)cons
 				high.at(m)=  model->get_powerOfTwo().at(bit);
 			}
 		}
-		cout<< "context: ";
+	//	for(size_t h =0; h < NUM_DELETE+NUM_KEEP+10; h++){
+		//	cout<< "high values: " << high.at(h)<<endl;
+	//	}
+		cout<< "context at " << pos << " is: ";
 		for(size_t i =0; i < context.size(); i++){
-			cout<< int(context.at(i));
+			cout<<int(context.at(i));
+			int con = int(context.at(i));
+			wrappers.context(pos,con);
 		}
 		cout<< " " <<endl;
-		cout << " ended char in al: "<< int(last_char)<<endl;
-		enc->encode(low.at(last_char),high.at(last_char),total);
+	//	cout<< "actual acc1 " << data.accNumber(p.getreference1())  << " actual acc2 " << data.accNumber(p.getreference2()) <<endl;
+	//	cout << "encoding form acc: " << acc1 << " to acc: "<< acc2 << endl;
+	//	cout<< "center acc should be: " << acc1 << endl;
+	//	cout << " ended char in al: "<< int(last_char)<<endl;
+	//	cout<< "encoded low: "<< low.at(last_char)<<" encoded high: "<< high.at(last_char)<<endl;
+		enc.encode(low.at(last_char),high.at(last_char),total);
 		wrappers.encode(low.at(last_char),high.at(last_char),total);
-		delete enc;
+	//	delete enc;
 	}
 
 

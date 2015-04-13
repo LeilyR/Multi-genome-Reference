@@ -10,6 +10,7 @@
 #include "data.hpp"
 #include "model.hpp"
 #include "encoder.hpp"
+#include "test.hpp"
 #define NO_MAKEFILE
 #include "dlib/entropy_encoder/entropy_encoder_kernel_1.h"
 #include "dlib/entropy_decoder/entropy_decoder_kernel_1.h"
@@ -456,7 +457,7 @@ void write_graph_maf(const string & graphout, const map<string, vector<pw_alignm
 }
 
 
-int do_mc_model(int argc, char * argv[]) {
+int do_mc_model(int argc, char * argv[]) {//mco bardar
 	typedef mc_model use_model;
 //	typedef clustering<use_model> use_clustering;
 	typedef initial_alignment_set<use_model> use_ias;
@@ -485,6 +486,7 @@ ofstream outs("encode",std::ofstream::binary);
 	all_data data(fastafile, maffile);
 	overlap ol(data);
 	wrapper wrap;
+	test_encoder test;
 
 	read_data_time = clock() - read_data_time;
 //	encoding_functor functor1(data);
@@ -503,6 +505,32 @@ ofstream outs("encode",std::ofstream::binary);
 // Train the model on all data
 	use_model m(data);
 	m.train(outs);
+//	double sum = 0;
+//	double c1;
+//	double c2;
+//	double m1;
+//	double m2;
+//	size_t len=0;
+/*	for(size_t i =0; i <  data.numSequences(); i++){
+		const dnastring & sequence = data.getSequence(i);
+		size_t length = sequence.length();
+		len +=length;
+	}*/
+/*	cout<<"length: " << len << endl;
+	for(size_t i = 0 ; i< data.numAlignments() ; i++){
+		const pw_alignment & p = data.getAlignment(i);
+		size_t ref1 = p.getreference1();
+		size_t ref2 = p.getreference2();
+		const dnastring & sequence1 = data.getSequence(ref1);
+		const dnastring & sequence2 = data.getSequence(ref2);
+		size_t length1 = sequence1.length();
+		size_t length2 = sequence2.length();
+		m.cost_function(p, c1,c2,m1,m2,outs);
+		sum +=c1+c2;
+		len +=length1 + length2;
+	}
+	cout<< "sum is "<<sum <<endl;
+	cout<< "len times two: "<< len*2 <<endl;*/
 //	counting_functor functor(data);
 //	encoder en(data,m);
 //	use_clustering clust(ol,data,m);
@@ -852,7 +880,7 @@ ofstream outs("encode",std::ofstream::binary);
 //						cout<< " "<< endl;
 
 //	}
-	for(size_t i = 0 ; i < data.numAlignments(); i++){
+/*	for(size_t i = 0 ; i < data.numAlignments(); i++){
 		const pw_alignment & p = data.getAlignment(i);
 		size_t left1;
 		size_t left2;
@@ -890,21 +918,32 @@ ofstream outs("encode",std::ofstream::binary);
 			m.gain_function(p,g1,g2,outs);
 			cout<< "g1: "<<g1 << " g2: "<< g2 <<endl;
 		}
-	}
+	}*/
 //Data compression:
 	cout<< "weight size: "<< weight.size()<<endl;
+//	en.write_to_stream(alignments_in_a_cluster,outs);
+	ofstream al_encode("align_encode",std::ofstream::binary);
+	dlib::entropy_encoder_kernel_1 * enc = new dlib::entropy_encoder_kernel_1();
 //	en.arithmetic_encoding_seq(outs);
 //	en.calculate_high_in_partition(weight,alignments_in_a_cluster);
-//	en.arithmetic_encoding_centers(alignemnts_in_a_cluster,outs);
-	en.arithmetic_encoding_alignment(weight,membersOfCluster,alignments_in_a_cluster,outs);
+//	en.arithmetic_encoding_centers(alignments_in_a_cluster,outs);
+//	en.arithmetic_encoding_alignment(weight,member_of_cluster,alignments_in_a_cluster,outs,*enc);
+	en.test_al_encoding(weight,member_of_cluster,alignments_in_a_cluster,outs,*enc);
+	delete enc;
 	outs.close();
+//	test.encode();
 
 
 
+//	test.decode();
 	ifstream in("encode",std::ifstream::binary);
-	en.arithmetic_decoding_alignment(in);
+//	en.read_from_stream(in);
+	dlib::entropy_decoder_kernel_1  dec;
+//	en.arithmetic_decoding_alignment(in,dec);
 //	test.compare();
-//	en.arithmetic_decoding_seq();
+//	en.arithmetic_decoding_centers(in);
+	en.test_al_decoding(in,dec);
+	test.compare();
 	arithmetic_encoding_time = clock() - arithmetic_encoding_time;
 
 	cout << "Clustering summary: " << endl;
@@ -926,33 +965,53 @@ ofstream outs("encode",std::ofstream::binary);
 
 	return 0;
 }
-int do_mc_model_seq(int argc, char * argv[]){
+int do_model_seq(int argc, char * argv[]){//mc o bardashtam
+	typedef model use_model;
+	if(argc < 5) {
+		usage();
+		cerr << "Program: model" << endl;
+		cerr << "Parameters:" << endl;
+		cerr << "* fasta file from fasta_prepare" << endl;
+		cerr << "* maf file containing alignments of sequences contained in the fasta file" << endl;
+		cerr << "* output maf file for the graph" << endl;
+		cerr << "* number of threads to use (optional, default 10)" << endl;
+	}
 	string fastafile(argv[2]);
 	string maffile(argv[3]);
-//	size_t num_threads = 1;
-	typedef mc_model use_model;
-//	typedef initial_alignment_set<use_model> use_ias;
-//	typedef affpro_clusters<use_model> use_affpro;
+	string graphout(argv[4]);
+	size_t num_threads = 1;
+	if(argc == 6) {
+		num_threads = atoi(argv[5]);
+	}
 
-//Reading data:(Use an empty maf file!)
+//Reading data:
 	all_data data(fastafile, maffile);
-	wrapper wrapp;
+	overlap ol(data);
+//	wrapper wrapp;
 //	counting_functor functor(data);
 //	encoding_functor functor1(data);
 
-ofstream outs("encode",std::ofstream::binary);
+//ofstream outs("encode",std::ofstream::binary);
 //Train all the sequences:
 	use_model m(data);
-	encoder en(data,m,wrapp);
-	overlap ol(data);
-	m.train(outs);
+//	encoder en(data,m,wrapp);
+	m.train();//outs o ham bardashtam
+	double sum = 0;
+	double g1;
+	double g2;
+	for(size_t i = 0 ; i< data.numAlignments() ; i++){
+		const pw_alignment & p = data.getAlignment(i);
+		m.gain_function(p, g1,g2);
+		sum +=g1+g2;
+	}
+	cout<< "sum is "<<sum <<endl;
 // Find connected components of alignments with some overlap
-	compute_cc cccs(data);
-	vector<set< const pw_alignment *, compare_pw_alignment> > ccs;
-	cccs.compute(ccs);
+//	compute_cc cccs(data);
+//	vector<set< const pw_alignment *, compare_pw_alignment> > ccs;
+//	cccs.compute(ccs);
 //test
-	en.arithmetic_encoding_seq(outs);
-	en.arithmetic_decoding_seq();
+//	en.arithmetic_encoding_seq(outs);
+//	en.arithmetic_decoding_seq();
 //	en.arithmetic_encoding_alignment();
 	
 	return 0;
@@ -976,8 +1035,8 @@ int main(int argc, char * argv[]) {
 		return do_mc_model(argc, argv);
 	
 	 
-/*	else{
-		return do_mc_model_seq(argc,argv);
+/*	else if(0==program.compare("model")){
+		return do_model_seq(argc,argv);
 	}*/
 	else {
 		usage();

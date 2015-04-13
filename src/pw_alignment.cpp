@@ -759,24 +759,26 @@ bool compare_pw_alignment::operator()(const pw_alignment *const &a, const pw_ali
 	}
 
 
-	wrapper::wrapper():encodeout("enc.txt"),decodeout("dec.txt"){
+	wrapper::wrapper():encodeout("enc.txt"),decodeout("dec.txt"),al_encode("al_encode.txt"),al_decode("al_decode.txt"){
 	}
 	wrapper::~wrapper(){}
 	void wrapper::encode(unsigned int& low, unsigned int& high, unsigned int & total){
-		ofstream encoding;
-		encoding.open("encoding.txt");
 		encodeout << "l"<< low << "h"<< high;
-		encoding << "l"<< low << "h"<< high;
+		al_encode << " low: "<< low << " high: "<< high <<endl;
 
 	}
 	void wrapper::decode(unsigned int& low, unsigned int& high, unsigned int & total){
-		ofstream decoding;
-		decoding.open("decoding.txt");
 		decodeout << "l"<< low << "h"<< high;
-		decoding << "l"<< low << "h"<< high;
+		al_decode << " low: "<< low << " high: "<< high <<endl;
 
 	}
+	void wrapper::context(size_t & pos , int & context){
+		al_encode << "position: " << pos << " context: " <<  context <<endl;
 
+	}
+	void wrapper::decodeContext(size_t & pos, int & context){
+		al_decode << "position: " << pos << " context: " <<  context <<endl;
+	}
 
 
 	

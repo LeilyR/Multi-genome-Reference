@@ -92,10 +92,14 @@ class wrapper{
 		~wrapper();
 		void encode(unsigned int&, unsigned int &, unsigned int&);
 		void decode(unsigned int &, unsigned int &, unsigned int&);
-
+		void context(size_t &, int &);
+		void decodeContext(size_t &, int &);
+		
 	private:
 		ofstream encodeout;
 		ofstream decodeout;
+		ofstream al_encode;
+		ofstream al_decode;
 };
 		
 #endif 

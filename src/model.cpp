@@ -200,12 +200,12 @@ void compute_cc::compute(vector<set< const pw_alignment *, compare_pw_alignment>
 	for(set<const pw_alignment *, compare_pw_alignment>::iterator it = alignments.begin(); it!=alignments.end(); ++it) {
 		const pw_alignment * al = *it;
 		set<const pw_alignment *, compare_pw_alignment>::iterator seenal = seen.find(al);
-		cout << " seen " << seen.size() << endl;
+	//	cout << " seen " << seen.size() << endl;
 		if(seenal == seen.end()) {
-			cout << " getcc" << endl;
+	//		cout << " getcc" << endl;
 			set<const pw_alignment *, compare_pw_alignment> cc;
 			get_cc(al, cc, seen);
-			cout << "FOUND CC size " << cc.size() << endl;
+	//		cout << "FOUND CC size " << cc.size() << endl;
 			sorter.insert(make_pair(cc.size(), cc));
 		}
 	
@@ -234,7 +234,7 @@ void compute_cc::get_cc(const pw_alignment * al, set <const pw_alignment *, comp
 void compute_cc::cc_step(size_t ref, size_t left, size_t right, set <const pw_alignment *, compare_pw_alignment> & cc, set <const pw_alignment *, compare_pw_alignment>  & seen ) {
 	// search bounds (where could other alignments which overlap with the current one start or end)
 	// leftbound: all alignments starting at leftbound or ealier either have the end in the search interval or no overlap with the search interval
-	cout << " cc step " << ref << " fr " << left << " to " << right << " seen is " << seen.size() << " we are on " << alignments.size() << " alignments" <<  endl; 
+//	cout << " cc step " << ref << " fr " << left << " to " << right << " seen is " << seen.size() << " we are on " << alignments.size() << " alignments" <<  endl; 
 	multimap<size_t, const pw_alignment *>::iterator searchbegin;
 	multimap<size_t, const pw_alignment *>::iterator searchend;
 	if(right > max_al_ref_length) {
@@ -309,7 +309,7 @@ void compute_cc::cc_step(size_t ref, size_t left, size_t right, set <const pw_al
 			numseen++;
 		}
 	}
-	cout << " found overlap with " << seen1.size() << " and " << seen2.size() << " alignments, already seen before: " << numseen << endl;
+//	cout << " found overlap with " << seen1.size() << " and " << seen2.size() << " alignments, already seen before: " << numseen << endl;
 
 
 	// now remove all seen alignments to be faster
@@ -325,7 +325,7 @@ void compute_cc::cc_step(size_t ref, size_t left, size_t right, set <const pw_al
 	for(size_t i=0; i<als_on_reference.size(); ++i) {
 		debugsum+=als_on_reference.at(i).size();
 	}
-	cout << " mmaps length " <<debugsum << endl;
+//	cout << " mmaps length " <<debugsum << endl;
 
 	for(set<const pw_alignment *>::iterator it = seen1.begin(); it!=seen1.end(); ++it) {
 		const pw_alignment * al = *it;
