@@ -104,7 +104,9 @@ public:
 	overlap(const all_data&);
 	overlap(const overlap & o);
 	~overlap();
-	void insert_without_partial_overlap(const pw_alignment & p);
+	// insert p into overlap data structure, return pointer to inserted alignment
+	pw_alignment * insert_without_partial_overlap(const pw_alignment & p);
+	// This function removes an alignment with adress identity to remove from overlap, then deletes remove
 	void remove_alignment(const pw_alignment  *remove);
 
 	void test_all() const;

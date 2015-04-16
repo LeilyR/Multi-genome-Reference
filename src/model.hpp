@@ -87,6 +87,7 @@ class initial_alignment_set {
 	void compute(overlap & o, ofstream &);
 	void compute_simple(overlap & o,ofstream &);
 	void compute_simple_lazy_splits(overlap & o,ofstream &);
+	void lazy_split_insert_step(overlap & ovrlp, size_t level, pw_alignment * al, vector<pw_alignment> & inserted_alignments, vector<pw_alignment*> & removed_alignments, double & local_gain, ofstream & outs);
 
 	double get_max_gain() const {
 		return max_gain;

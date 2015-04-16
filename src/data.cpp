@@ -796,7 +796,7 @@ overlap::overlap(const overlap & o): data(o.data), als_on_reference(o.data.numSe
 	//	remove->print();
 		assert(findr!=alignments.end());
 		alignments.erase(findr);
-		//delete remove;
+		delete remove;
 	}
 
 
@@ -890,7 +890,7 @@ void overlap::test_multimaps() {
 
 
 	
-void overlap::insert_without_partial_overlap(const pw_alignment & p){
+pw_alignment * overlap::insert_without_partial_overlap(const pw_alignment & p){
 	pw_alignment * np = new pw_alignment(p);
 	//cout << " insert " << np << endl;
 	assert(alignments.find(np) == alignments.end());
@@ -912,6 +912,8 @@ void overlap::insert_without_partial_overlap(const pw_alignment & p){
 		alignment_on_reference1.insert(begin1);
 	pair<size_t,  pw_alignment *> end1(np->getend1(),np);
 		alignment_on_reference1.insert(end1);
+
+	return np;
 }
 
 
@@ -2002,6 +2004,7 @@ void splitpoints::insert_split_point(size_t sequence, size_t position) {
 		for(size_t i = 0; i<split_pieces.size();i++) {
 #ifndef NDEBUG
 				if(!data.alignment_fits_ref(&split_pieces.at(i))) {
+				//	cout<<"fails here!"<<endl;
 					exit(1);
 				}
 #endif
@@ -2062,7 +2065,7 @@ void splitpoints::insert_split_point(size_t sequence, size_t position) {
 #if SPLITPRINT
 					p1.print();
 #endif
-					if(!onlyGapSample(&p1) && p1.getbegin1()!=p1.getend1() && p1.getbegin2()!=p1.getend2()) {
+					if(!onlyGapSample(&p1) && p1.alignment_length() >1 &&p1.getbegin1()!=p1.getend1() && p1.getbegin2()!=p1.getend2()) {
 						insert_alignments.push_back(p1);
 					}
 				} else if(p->getbegin1() > p->getend1()) {
@@ -2072,9 +2075,10 @@ void splitpoints::insert_split_point(size_t sequence, size_t position) {
 					p2.print();
 #endif
 
-					if(!onlyGapSample(&p2) && p2.alignment_length() && p2.getbegin1()!=p2.getend1() && p2.getbegin2()!=p2.getend2() ){	
+					if(!onlyGapSample(&p2) && p2.alignment_length()>1 && p2.getbegin1()!=p2.getend1() && p2.getbegin2()!=p2.getend2() ){	
 						insert_alignments.push_back(p2);
 					}
+					
 				}
 			}
 			else break;
@@ -2086,7 +2090,7 @@ void splitpoints::insert_split_point(size_t sequence, size_t position) {
 		cout << endl;
 #endif
 
-		if(!onlyGapSample(p)){	
+		if(!onlyGapSample(p)&& p->alignment_length()>1 && p->getbegin1()!=p->getend1() && p->getbegin2()!=p->getend2() ){	
 			insert_alignments.push_back(*p);		
 		}
 	}

@@ -185,7 +185,7 @@ int do_fasta_prepare(int argc, char * argv[]) {
 */
 
 void write_maf_record(ostream & out, const string & src, size_t start, size_t size, char strand, size_t srcSize, const string & alignment_part) {
-	out << "s " << src << "\t" << start << "\t" << size << "\t" << strand << "\t" << srcSize << "\t" << alignment_part << endl;
+	out << "s " << src << " " << start << " " << size << " " << strand << " " << srcSize << " " << alignment_part << endl;
 }
 
 
@@ -201,6 +201,7 @@ void write_maf_record(ostream & out, const all_data & data, const pw_alignment &
 	size_t print_start;
 	size_t print_end;
 	string print_al;
+	// TODO print size not end
 	if(reference==0) {
 		print_seq = al.getreference1();
 		print_start = al.getbegin1();
@@ -219,9 +220,17 @@ void write_maf_record(ostream & out, const all_data & data, const pw_alignment &
 	stringstream write_longname;
 	write_longname << accname << ':' << seqname;
 	char strand = '+';
-	if(print_end < print_start) strand = '-';
 	size_t size = data.get_seq_size(print_seq);
-	write_maf_record(out, write_longname.str(), print_start, print_end, strand, size, print_al);
+	size_t al_on_ref_size = print_end - print_start + 1;
+	if(print_end < print_start) {
+		al_on_ref_size = print_start - print_end + 1;
+		strand = '-';
+		print_start = size - print_start -1;
+
+
+		
+	} 
+	write_maf_record(out, write_longname.str(), print_start, al_on_ref_size, strand, size, print_al);
 	
 
 }
