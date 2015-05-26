@@ -2601,9 +2601,10 @@ const map<string, vector<unsigned int> > & mc_model::get_highValue(size_t acc1, 
 		size_t right2;
 		p.get_lr1(left1,right1);
 		p.get_lr2(left2,right2);
-		//cout<<"left: "<<left1<<"right: "<<right1<<endl;
+		cout<<"left: "<<left1<<"right: "<<right1<<endl;
 		for(size_t i = left1; i< right1; i++){
 			s1chr = data.getSequence(p.getreference1()).at(i);
+			cout<<"check point!"<<endl;
 			size_t s1 = dnastring::base_to_index(s1chr);
 			stringstream context1;
 			for (size_t j = Sequence_level; j>0; j--){
@@ -2613,15 +2614,15 @@ const map<string, vector<unsigned int> > & mc_model::get_highValue(size_t acc1, 
 				}else{
 					char r1chr = data.getSequence(p.getreference1()).at(i-j);
 					context1 << r1chr;
-				//	cout<<"rchr: "<<r1chr<<endl;	
+					cout<<"rchr: "<<r1chr<< i <<endl;
 				}
 			}
 			string seq1;
 			context1>>seq1;
-		//	cout<<"seq1: " << seq1<<endl;
+			cout<<"seq1: " << seq1<<endl;
 			map <string, vector<double> >::const_iterator it= sequence_successive_bases.at(acc1).find(seq1);
 			assert(it != sequence_successive_bases.at(acc1).end());
-		//	cout<<"sequence successive at "<< s1 << " is "<<it->second.at(s1)<<endl;
+			cout<<"sequence successive at "<< s1 << " is "<<it->second.at(s1)<<endl;
 			cost_on_sample.at(0) += it->second.at(s1);
 		}	
 	//	cout<<"cost: "<<cost_on_sample.at(0)<<endl;	
