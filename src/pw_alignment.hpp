@@ -2,7 +2,9 @@
 #define PW_ALIGNMENT_HPP
 
 #include <vector>
+#include <fstream>
 #include <iostream>
+#include <sstream>
 #include <string>
 #include <map>
 #include <math.h> 
@@ -39,6 +41,9 @@ class pw_alignment {
 	size_t getbegin(size_t id)const;
 	size_t getend(size_t id)const;
 	size_t getreference(size_t id)const;
+
+	string get_al_ref1() const;
+	string get_al_ref2() const;
 	
 	void setbegin1(size_t begin1);
 	void setbegin2(size_t begin2);
@@ -63,6 +68,10 @@ class pw_alignment {
 	double get_modify1() const;
 	double get_modify2() const;
 
+	bool operator < (const pw_alignment& p)const // Marion : I had this function -> compare pw_alignment
+		{
+			return (getbegin2() < p.getbegin2());
+		}
 	private:
 	vector<vector<bool> > samples;
 	vector<size_t> begins;
@@ -79,6 +88,18 @@ class pw_alignment {
 class compare_pw_alignment {
 	public:
 	bool operator()(const pw_alignment *const &a, const pw_alignment *const &b) const ;
+};
+
+class wrapper{
+	public:
+		wrapper();
+		~wrapper();
+		void encode(unsigned int&, unsigned int &, unsigned int&);
+		void decode(unsigned int &, unsigned int &, unsigned int&);
+
+	private:
+		ofstream encodeout;
+		ofstream decodeout;
 };
 		
 #endif 

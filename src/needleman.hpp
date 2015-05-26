@@ -12,10 +12,10 @@
 #include <vector>
 #include <algorithm>
 
-int** runNeedleman(std::string ref, std::string read);
+void runNeedleman(std::string ref, std::string read, int typeOfAlignment);
 void printMatrix(int** matrix, int sizeRef, int sizeRead);
-void traceback(int** matrix,std::string ref, std::string read);
-
+void traceback(int** matrix,std::string ref, std::string read, int typeOfAlignment);
+int lastLargestIndex( int arr[], int size );
 
 
 

@@ -9,17 +9,17 @@
 
 // -------------------------------------------Functions
 //Graph::Vertex::Vertex(){}
-Graph::Vertex::Vertex(std::string name){
-	idVertex = name;
+Graph::Vertex::Vertex(int id){
+	idVertex = id;
 	visited = false;
 	previous = -1;
-	costScore = 0; // initialize at none ? or -1 ?
+	costScore = 0.0; // initialize at none ? or -1 ?
 	distance = std::numeric_limits<double>::infinity();
 }
 //Graph::Vertex::Vertex(Graph::Vertex const& v){}
 //Graph::Vertex::~Vertex(){}
 // -------------------------------------------Get
-const std::string& Graph::Vertex::getIdVertex()const{return idVertex;}
+const int& Graph::Vertex::getIdVertex()const{return idVertex;}
 
 //-------------
 //Split a string
@@ -40,33 +40,33 @@ std::vector<std::string> split(const std::string &s, char delim) {
 
 
 //--------------------------------------------------------- Set and Get
-void Graph::Vertex::setStartToStart(const std::string& v){
+void Graph::Vertex::setStartToStart(const int& v){
 	startToStart.push_back(v);
 }
 
-void Graph::Vertex::setStartToEnd(const std::string& v){
+void Graph::Vertex::setStartToEnd(const int& v){
 	startToEnd.push_back(v);
 }
 
-void Graph::Vertex::setEndToStart(const std::string& v){
+void Graph::Vertex::setEndToStart(const int& v){
 	endToStart.push_back(v);
 }
 
-void Graph::Vertex::setEndToEnd(const std::string& v){
+void Graph::Vertex::setEndToEnd(const int& v){
 	endToEnd.push_back(v);
 }
-void Graph::Vertex::setCostScore(const int& score){
+void Graph::Vertex::setCostScore(const double& score){
 	costScore = score;
 }
-void Graph::Vertex::setDistance(const int& d){
+void Graph::Vertex::setDistance(const double& d){
 	distance = d;
 }
-const std::vector<std::string>& Graph::Vertex::getStartToStart(){return startToStart;}
-const std::vector<std::string>& Graph::Vertex::getStartToEnd(){return startToEnd;}
-const std::vector<std::string>& Graph::Vertex::getEndToStart(){return endToStart;}
-const std::vector<std::string>& Graph::Vertex::getEndToEnd(){return endToEnd;}
-const int& Graph::Vertex::getCostScore(){return costScore;}
-const int& Graph::Vertex::getDistance(){return distance;}
+const std::vector<int>& Graph::Vertex::getStartToStart(){return startToStart;}
+const std::vector<int>& Graph::Vertex::getStartToEnd(){return startToEnd;}
+const std::vector<int>& Graph::Vertex::getEndToStart(){return endToStart;}
+const std::vector<int>& Graph::Vertex::getEndToEnd(){return endToEnd;}
+const double& Graph::Vertex::getCostScore(){return costScore;}
+const double& Graph::Vertex::getDistance(){return distance;}
 
 // ---------------------------
 // 		Graph
@@ -78,11 +78,10 @@ const int& Graph::Vertex::getDistance(){return distance;}
 //Graph::Graph(Graph const& g){}
 
 //Graph::~Graph(){}
-const std::map<std::string,Graph::Vertex>& Graph::getVertices()const{return vertices;}
-
-void Graph::setScore(const std::string& name, const double& score){
+const std::map<int,Graph::Vertex>& Graph::getVertices()const{return vertices;}
+void Graph::setScore(const int& name, const double& score){
 	//vertices.begin()->second.setCostScore(score);
-	std::map<std::string,Graph::Vertex>::iterator it = vertices.find(name);
+	std::map<int,Graph::Vertex>::iterator it = vertices.find(name);
 	it->second.setCostScore(score);
 	//std::pair<std::string,Graph::Vertex> tmp = vertices[i];
 
@@ -112,7 +111,8 @@ void Graph::readDotFile(std::string file){
 			else{
 				size_t pos = line.find("->");
 				if(pos != std::string::npos){
-					std::string origin, destination, arrow, headbox, tailbox;
+					int origin,destination;
+					std::string arrow, headbox, tailbox;
 					std::istringstream iss(line);
 					iss >> origin >> arrow >>destination >> headbox >> tailbox;
 
@@ -147,26 +147,26 @@ void Graph::readDotFile(std::string file){
 }
 
 void Graph::addVertex(Graph::Vertex v){
-	vertices.insert(std::pair<std::string,Graph::Vertex>(v.getIdVertex(), v));
+	vertices.insert(std::pair<int,Graph::Vertex>(v.getIdVertex(), v));
 }
 
-void Graph::addEdge(int typeOfEdge,std::string name1, std::string name2){ // create nodes and add edges
+void Graph::addEdge(int typeOfEdge,int id1, int id2){ // create nodes and add edges
 
-	std::map<std::string,Graph::Vertex>::iterator it = vertices.find(name1);
+	std::map<int,Graph::Vertex>::iterator it = vertices.find(id1);
 	if(it == vertices.end()){ // If vertex does not exist
-		Graph::Vertex v1= Graph::Vertex(name1);
+		Graph::Vertex v1= Graph::Vertex(id1);
 		switch(typeOfEdge){
 			case 1 :
-				v1.setStartToStart(name2);
+				v1.setStartToStart(id2);
 				break;
 			case 2 :
-				v1.setStartToEnd(name2);
+				v1.setStartToEnd(id2);
 				break;
 			case 3 :
-				v1.setEndToStart(name2);
+				v1.setEndToStart(id2);
 				break;
 			case 4 :
-				v1.setEndToEnd(name2);
+				v1.setEndToEnd(id2);
 				break;
 		}
 		addVertex(v1);
@@ -174,21 +174,21 @@ void Graph::addEdge(int typeOfEdge,std::string name1, std::string name2){ // cre
 	else{ // if exist, update
 		switch(typeOfEdge){
 			case 1 :
-				it->second.setStartToStart(name2);
+				it->second.setStartToStart(id2);
 				break;
 			case 2 :
-				it->second.setStartToEnd(name2);
+				it->second.setStartToEnd(id2);
 				break;
 			case 3 :
-				it->second.setEndToStart(name2);
+				it->second.setEndToStart(id2);
 				break;
 			case 4 :
-				it->second.setEndToEnd(name2);
+				it->second.setEndToEnd(id2);
 				break;
 		}
 	}
-	if(vertices.find(name2)== vertices.end()){ // if v2 does not exist, creation, else do nothing
-		Graph::Vertex v2 = Graph::Vertex(name2);
+	if(vertices.find(id2)== vertices.end()){ // if v2 does not exist, creation, else do nothing
+		Graph::Vertex v2 = Graph::Vertex(id2);
 		addVertex(v2);
 	}
 }
@@ -202,7 +202,7 @@ std::ostream& operator<<(std::ostream &os, Graph & g)
 void Graph::printGraph(std::ostream &os){
 	os << "There is " << vertices.size() << " nodes" << std::endl;
 
-	for (std::map<std::string,Graph::Vertex>::iterator it=vertices.begin(); it!=vertices.end(); ++it)
+	for (std::map<int,Graph::Vertex>::iterator it=vertices.begin(); it!=vertices.end(); ++it)
 		(it->second).printVertex(os) ;
 }
 
@@ -244,22 +244,23 @@ void Graph::Vertex::printVertex(std::ostream &os)const{
 bool operator== ( const Graph::Vertex &v1, const Graph::Vertex &v2){
         return v1.getIdVertex() == v2.getIdVertex();
 }
-void Graph::updateDistance(Graph::Vertex v1, Graph::Vertex v2, std::map<std::string,int>& minScore, std::map<std::string,std::string>& previous){
+
+//void Graph::updateDistance(Graph::Vertex v1, Graph::Vertex v2, std::map<std::string,int>& minScore, std::map<std::string,std::string>& previous){
 	/*if(minScore[v2.getIdVertex()] < minScore[v1.getIdVertex()]+ v2.getCostScore()){
 					minScore[v2.getIdVertex()] = minScore[v1.getIdVertex()]+ v2.getCostScore();
 					previous.insert(std::pair<std::string,std::string>(v2.getIdVertex(), v1.getIdVertex()));
 
 			}
 		*/
-}
+//}
 
-void Graph::dijkstra(std::string start,std::string end){
+void Graph::dijkstra(int start,int end){
 	//Init
 	std::vector<Graph::Vertex> notVisited;
-	std::map<std::string,std::string> previous;
+	std::map<int,int> previous;
 	std::vector<Graph::Vertex> neighbor;
-    for( std::map<std::string,Graph::Vertex>::iterator it = vertices.begin(); it != vertices.end(); ++it ) {
-	    	previous.insert(std::pair<std::string,std::string>(it->first,"na")); // pair <node, previous>
+    for( std::map<int,Graph::Vertex>::iterator it = vertices.begin(); it != vertices.end(); ++it ) {
+	    	previous.insert(std::pair<int,int>(it->first,-1)); // pair <node, previous>
 	}
 	//initialisation depending to the start
 	notVisited.push_back(vertices.find(start)->second);
@@ -272,8 +273,8 @@ void Graph::dijkstra(std::string start,std::string end){
 		}
 		else {
 			neighbor.clear();
-			std::vector<std::string> tmpneighbor = notVisited.begin()->getEndToStart(); // I need to sort neighbor to find the next one with the smaller cost
-			for(std::vector<std::string>::iterator itt2 =tmpneighbor.begin(); itt2 != tmpneighbor.end(); ++itt2 ){
+			std::vector<int> tmpneighbor = notVisited.begin()->getEndToStart(); // I need to sort neighbor to find the next one with the smaller cost
+			for(std::vector<int>::iterator itt2 =tmpneighbor.begin(); itt2 != tmpneighbor.end(); ++itt2 ){
 				neighbor.push_back(vertices.find(*itt2)->second);
 				if (notVisited.begin()->getIdVertex()==start){ //first run, so we need to update distance of neighbor
 					neighbor.back().setDistance(neighbor.back().getCostScore()); //set the distance to the costScore of the node
@@ -299,14 +300,15 @@ void Graph::dijkstra(std::string start,std::string end){
 		}
 		notVisited.erase(notVisited.begin());
 	}
-	if (previous[end] == "na"){
-		std::cout << "no path "<< std::endl;
+	if (previous[end] == -1){
+		std::cout << "not reachable "<< "start :"<< start << " end "<< end<< std::endl;
 		exit(1);
+
 	}
 	else{
 	// Find Path :
-	std::vector<std::string> path;
-	std::string node = end;
+	std::vector<int> path;
+	int node = end;
 	path.insert(path.begin(),node); // add end at the path
 	while(node != start){
 		path.insert(path.begin(),previous[node]);
@@ -314,13 +316,12 @@ void Graph::dijkstra(std::string start,std::string end){
 	}
 	// print Path
 	std::cout << "path ";
-	std::copy(path.begin(), path.end(), std::ostream_iterator<std::string>(std::cout, " "));
+	std::copy(path.begin(), path.end(), std::ostream_iterator<int>(std::cout, " "));
 	}
 }
 
 void Graph::readAlignment(std::string fastaFile, std::string samFile){
 	all_data data(fastaFile,samFile);
-	//all_data data("/ebio/abt6_projects7/small_projects/mdubarry/Documents/SampleProgram/bin/output/tmpOut.fasta", "/ebio/abt6_projects7/small_projects/mdubarry/Documents/SampleProgram/bin/output/referenceRead.sam");
 		// Train the model on all data
 		typedef mc_model use_model;
 		use_model m(data);
@@ -328,39 +329,37 @@ void Graph::readAlignment(std::string fastaFile, std::string samFile){
 		ofstream outs("encode",std::ofstream::binary);
 		m.train(outs);
 		std::cout << "nombre alignment "<< data.numAlignments()<<std::endl;
-		for(size_t i = 0 ; i < data.numAlignments(); i++){
-			const pw_alignment & p = data.getAlignment(i);
-			//std::cout << p.getbegin(0)<< " +++ "<< p.getbegin(1) << std::endl;
-			//std::cout << p.getend(0) << " ++ " << p.getend(1) << std::endl;
+		vector<pw_alignment> pp = data.getAlignments(); // copy of vector of pw_alignments, not good !!
+		std::sort(pp.begin(),pp.end());
+		for(int itP =0; itP < pp.size(); ++itP){
+			std::cout << pp[itP].getbegin1()<<" id "<<pp[itP].getreference1() << " +++ "<< pp[itP].getbegin2()<< " id "<<pp[itP].getreference2() << std::endl;
 			double c1;
 			double c2;
 			double m1;
 			double m2;
+			//m.cost_function(pp[itP],c1,c2,m1,m2,outs);//TODO It does not work with more than one pw_alignment :$
+			//Error : terminate called after throwing an instance of 'std::out_of_range'
+			 //			what():  vector<bool>::_M_range_check
 
-			m.cost_function(p,c1,c2,m1,m2,outs);
-			//cout << data.get_seq_name(p.getreference1())<< " c1 : "<< c1 << " m1 : "<< m1 << endl;
-			//cout << data.get_seq_name(p.getreference2())<< " c2 : "<< c2 << " m2 : "<< m2 << endl;
-			//char buffer[50];
-
-			//sprintf(buffer,"%d",(i+1));
-			//std::string name = buffer;
-			//TODO pour verifier si il y a gap/overlap trier les alignments suivant leur place sur read
-		/*	if ((i+1) < data.numAlignments()){ // compare locus of 2 alignments
-				const pw_alignment & p2 = data.getAlignment(i+1);
-				std::cout <<"i "<<i <<" data.numAlignments "<< data.numAlignments()<<" " <<p.getend(0) <<" " << p2.getbegin(0) << std::endl;
-				if(p.getend(0) >= p2.getbegin(0))
-					std::cout << " overlap ! " << data.get_seq_name(p.getreference1()) << " " << data.get_seq_name(p2.getreference1()) << std::endl;
-				else if(p.getend(0)+1 < p2.getbegin(0))
-					std::cout << " gap ! " << data.get_seq_name(p.getreference1()) << " " << data.get_seq_name(p2.getreference1()) << std::endl;
+			//Verify that the 5' end of the read fit to the graph
+			if(pp[0].getbegin2() != 0)
+				std::cout << "pb start of the read does not fit" <<std::endl; //call needleman option 2, how to get previous nodes ?
+			//TODO look at all possibility. How to do that ? with a Queue ? If overlap, I take one and put the other which overlap in a queue and I look at them later ?
+			// Or Segment/interval tree ?
+			// verify if there is overlap or gap
+			if ((itP+1) < pp.size()){ // compare locus of 2 alignments
+				if(pp[itP].getend2() >= pp[itP+1].getbegin2()) // overlap so I should add to a queue one of them
+					std::cout << " overlap ! pp[itP].getend2() " << pp[itP].getend2()<< " blop "<<pp[itP].getbegin2()<<" pp[itP+1].getbegin2() "<< pp[itP+1].getbegin2() << " "<<data.get_seq_name(pp[itP].getreference1()) << " " << data.get_seq_name(pp[itP+1].getreference1()) << std::endl;
+				else if(pp[itP].getend2()+1 < pp[itP+1].getbegin2()){
+					std::cout << " gap ! pp[itP].getend2() "<< pp[itP].getend2()<<" blop "<<pp[itP].getbegin2() <<" pp[itP+1].getbegin2() " <<pp[itP+1].getbegin2()<< data.get_seq_name(pp[itP].getreference1()) << " " << data.get_seq_name(pp[itP+1].getreference1()) << std::endl;
+					// take the gap sequence of the read, take the node after pp[itP] that is different from pp[itP+1]
+					// call needleman option 1
+					// verify that the new node and pp[itP+1] are reachable
+				}
 				else
-
+					std::cout << "everything fine  ! pp[itP].getend2() "<< pp[itP].getend2()<<" blop "<<pp[itP].getbegin2() <<" pp[itP+1].getbegin2() " <<pp[itP+1].getbegin2()<< data.get_seq_name(pp[itP].getreference1()) << " " << data.get_seq_name(pp[itP+1].getreference1()) << std::endl;
+					//dijkstra(pp[itP].getreference1(),pp[itP+1].getreference1());
 			}
-		 */
-			std::cout << "everything fine in locus "<< std::endl;
 		}
-}
-/*
-void Graph::buildNewGraph(){
 
 }
-*/

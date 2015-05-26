@@ -69,6 +69,7 @@ class all_data {
 
 		const dnastring & getSequence(size_t index) const;
 		const pw_alignment & getAlignment(size_t index) const;
+		const vector<pw_alignment>& getAlignments()const; // Attention : I had a function to get the vector of alignments
 	//	const multimap<size_t, size_t> & getAlOnRefMap(size_t seq_idx) const;
 
 		size_t numSequences() const;

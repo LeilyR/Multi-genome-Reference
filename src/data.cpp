@@ -301,93 +301,102 @@ all_data::all_data(string fasta_all_sequences, string samFile) {
 
 	// READ SAM FILE ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 	bool verbose = true;
-  if(verbose) cout << "readAlignment sam file"<<endl;
+	  if(verbose) cout << "readAlignment sam file"<<endl;
 
-  SamFile samIn;
-  samIn.OpenForRead(samFile.c_str());
+	  SamFile samIn;
+	  samIn.OpenForRead(samFile.c_str());
 
-  // Read the sam header.
-  SamFileHeader samHeader;
-  samIn.ReadHeader(samHeader);
- 
-  SamRecord samRecord;
-  Cigar* tmpCigar;
-  string alRefSeq, alReadSeq;
-  int skip_alt = 0;
-  int skip_self = 0;
-  //GenomeSequence myRefSeq("/ebio/abt6_projects7/small_projects/mdubarry/Documents/SampleProgram/bin/output/tmpOut.fasta");
-  GenomeSequence myRefSeq(fasta_all_sequences.c_str());
-  while(samIn.ReadRecord(samHeader, samRecord))
-  {
-    // Achtung : sam file considere the file reference as an uniq sequence even if there is differentes sequences in reference, so the position are concatenate.
-    //e.g. if I take the first base of the second sequence from my reference.fasta, it will not return 1 but lengthOfTheSequence1 + 1 !
-    
-    // For each Record do :
-    tmpCigar = samRecord.getCigarInfo(); //Pointer to Cigar object
-    const char* currentSeq = samRecord.getSequence();
-    int myStartOfReadOnRefIndex = myRefSeq.getGenomePosition(samRecord.getReferenceName(),samRecord.get1BasedPosition()); // Select the start on the good sequence in the fasta File
-    if (verbose) cout<<myStartOfReadOnRefIndex<<" getReferenceName "<<samRecord.getReferenceName()<<" get1BasedPosition "<< samRecord.get1BasedPosition() <<" myRefSeq.sequenceLength " <<myRefSeq.sequenceLength() 
-      << " getAlignmentLength "<< samRecord.getAlignmentLength() << " getReadLength " << samRecord.getReadLength()<< endl;
-    //std::cout << "reverse ? " << SamFlag::isReverse(samRecord.getFlag()) << std::endl;
+	  // Read the sam header.
+	  SamFileHeader samHeader;
+	  samIn.ReadHeader(samHeader);
 
-    // Loop through the read and determine the difference with the reference
-	int prevRef = -1;
-	for(int index = 0; index < samRecord.getReadLength(); index++)
-	{
-		int refOffset = tmpCigar->getRefOffset(index);
-		if(refOffset == Cigar::INDEX_NA)
-		{
-			// No reference base, meaning it is not in the reference, so add missing
-			alRefSeq += '-';
-			alReadSeq += currentSeq[index];
+	  SamRecord samRecord;
+	  Cigar* tmpCigar;
+	  string alRefSeq, alReadSeq;
+	  int skip_alt = 0;
+	  int skip_self = 0;
+	  //GenomeSequence myRefSeq("/ebio/abt6_projects7/small_projects/mdubarry/Documents/SampleProgram/bin/output/tmpOut.fasta");
+	  GenomeSequence myRefSeq(fasta_all_sequences.c_str());
+	  while(samIn.ReadRecord(samHeader, samRecord))
+	  {
+		// Achtung : sam file considere the file reference as an uniq sequence even if there are differentes sequences in reference, so the position are concatenate.
+		//e.g. if I take the first base of the second sequence from my reference.fasta, it will not return 1 but lengthOfTheSequence1 + 1 !
+
+		// For each Record do :
+		tmpCigar = samRecord.getCigarInfo(); //Pointer to Cigar object
+		const char* currentSeq = samRecord.getSequence();
+		int myStartOfReadOnRefIndex = myRefSeq.getGenomePosition(samRecord.getReferenceName(),samRecord.get1BasedPosition()); // Select the start on the good sequence in the fasta File
+		if(myStartOfReadOnRefIndex == -1){
+			std::cerr << "Error with the reference "<< samRecord.getReferenceName() << std::endl;
+			exit(1);
 		}
-		else
+		if (verbose) cout<<myStartOfReadOnRefIndex<<" getReferenceName "<<samRecord.getReferenceName()<<" get1BasedPosition "<< samRecord.get1BasedPosition() <<" myRefSeq.sequenceLength " <<myRefSeq.sequenceLength()
+		  << " getAlignmentLength "<< samRecord.getAlignmentLength() << " getReadLength " << samRecord.getReadLength()<< " getNumBeginClips "<< tmpCigar->getNumBeginClips()<< endl;
+		if(verbose) std::cout <<"flag "<<samRecord.getFlag() <<" reverse ? " << SamFlag::isReverse(samRecord.getFlag()) << std::endl;
+
+		// Loop through the read and determine the difference with the reference
+		int prevRef = -1;
+		for(int index = 0; index < samRecord.getReadLength(); index++)
 		{
-			// While the reference offset is not 1 more than the previous, it means
-			// there is a deletion/N, so add missing to the read, and add the reference bases.
-			while(refOffset != ++prevRef)
+			int refOffset = tmpCigar->getRefOffset(index);
+			if(refOffset == Cigar::INDEX_NA)
 			{
-				alReadSeq += '-';
-				alRefSeq += myRefSeq[myStartOfReadOnRefIndex + prevRef];
-
+				// No reference base, meaning it is not in the reference, so add missing
+				alRefSeq += '-';
+				alReadSeq += currentSeq[index];
 			}
-			//now we are at a spot in both the reference and the read, so add it.
-			alReadSeq += currentSeq[index];
-			alRefSeq += myRefSeq[myStartOfReadOnRefIndex + refOffset];
+			else
+			{
+				// While the reference offset is not 1 more than the previous, it means
+				// there is a deletion/N, so add missing to the read, and add the reference bases.
+				while(refOffset != ++prevRef)
+				{
+					alReadSeq += '-';
+					alRefSeq += myRefSeq[myStartOfReadOnRefIndex + prevRef];
+
+				}
+				//now we are at a spot in both the reference and the read, so add it.
+				alReadSeq += currentSeq[index];
+				alRefSeq += myRefSeq[myStartOfReadOnRefIndex + refOffset];
+			}
 		}
-    }
-    if(verbose)  std::cout << "\n" << alRefSeq <<"\n" << alReadSeq  <<std::endl;
-    int myEndReadOnRefIndex =  myRefSeq.getGenomePosition(samRecord.getReferenceName(),samRecord.get1BasedAlignmentEnd()) + 1 ;
-    if(verbose) cout << "reference start "<< myStartOfReadOnRefIndex << " end " << myEndReadOnRefIndex <<endl;
+		if(verbose)  std::cout << "\n" << alRefSeq <<"\n" << alReadSeq  <<std::endl;
+		int myEndReadOnRefIndex =  myRefSeq.getGenomePosition(samRecord.getReferenceName(),samRecord.get1BasedAlignmentEnd()) + 1 ;
+		if(verbose) cout << "reference start "<< myStartOfReadOnRefIndex << " end " << myEndReadOnRefIndex <<endl;
 
-    // Reference
-    string acc1;
-    string name1;
-    name_split(samRecord.getReferenceName(), acc1, name1);
-    size_t start1 = samRecord.get1BasedPosition() - 1 ;
-    size_t incl_end1 = start1 + tmpCigar->getExpectedQueryBaseCount() - 1 ; // change to sequence partial length
-    map<string, size_t>::iterator findseq1 = longname2seqidx.find(samRecord.getReferenceName()); 
-	if(findseq1==longname2seqidx.end()) {
-		cerr << "Error: unknown sequence:* " << samRecord.getReferenceName() << endl;
-		exit(1);
-	}
-	size_t idx1 = findseq1->second;
+		// Reference
+		string acc1;
+		string name1;
+		name_split(samRecord.getReferenceName(), acc1, name1);
+		size_t start1 = samRecord.get1BasedPosition() - 1 ;
+		size_t incl_end1 = start1 + tmpCigar->getExpectedQueryBaseCount() - 1 ; // change to sequence partial length
+		map<string, size_t>::iterator findseq1 = longname2seqidx.find(samRecord.getReferenceName());
+		if(findseq1==longname2seqidx.end()) {
+			cerr << "Error: unknown sequence: " << samRecord.getReferenceName() << endl;
+			exit(1);
+		}
+		size_t idx1 = findseq1->second;
 
-	// Read 
-	string acc2;
-	string name2;
-	name_split(samRecord.getReadName(), acc2, name2);
-	size_t start2 = 1;   // Always 1 ? Because we align the read on the reference ?????
-	size_t incl_end2 = start2 + samRecord.getReadLength() - 1 ;
+		// Read
+		string acc2;
+		string name2;
+		name_split(samRecord.getReadName(), acc2, name2);
+		size_t start2;
+		if(tmpCigar->getNumBeginClips()==0)
+			start2 = 0;
+		else
+			start2 = tmpCigar->getNumBeginClips()+1; // getNumbeginClips give the number of clip and the read start at the next one ( so +1)
 
-	// In Sam file : Reverse and Forward ??
-	string tmpString = samRecord.getReadName();
-	map<string, size_t>::iterator findseq2 = longname2seqidx.find((tmpString));
-	if(findseq2==longname2seqidx.end()) {
-		cerr << "Error: unknown sequence: " << samRecord.getReadName() << endl;
-		exit(1);
-	}
-	size_t idx2 = findseq2->second;
+		size_t incl_end2 = start2 + samRecord.getReadLength() -1;//TODO -1 ?
+
+		// In Sam file : Reverse and Forward ??
+		string tmpString = samRecord.getReadName();
+		map<string, size_t>::iterator findseq2 = longname2seqidx.find((tmpString));
+		if(findseq2==longname2seqidx.end()) {
+			cerr << "Error: unknown sequence: " << samRecord.getReadName() << endl;
+			exit(1);
+		}
+		size_t idx2 = findseq2->second;
 
 
     
@@ -536,6 +545,9 @@ all_data::~all_data() {
 
 	const pw_alignment & all_data::getAlignment(size_t index) const {
 		return alignments.at(index);
+	}
+	const vector<pw_alignment>& all_data::getAlignments()const{
+		return alignments;
 	}
 	const vector<size_t> & all_data::getAcc(size_t acc)const{
 		string accName;

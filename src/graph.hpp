@@ -28,64 +28,64 @@ private:
 
 	public:
 		//Vertex();
-		Vertex(std::string name);
+		Vertex(int idVertex);
 		//Vertex(Vertex const& v);
 		//~Vertex();
-		const std::string& getIdVertex()const;
+		const int& getIdVertex()const;
 		friend std::ostream& operator<<(std::ostream &os, Vertex const& v);
 		void printVertex(std::ostream &os)const;
-		void setStartToStart(const std::string& name);
-		void setStartToEnd(const std::string& name);
-		void setEndToStart(const std::string& name);
-		void setEndToEnd(const std::string& name);
-		void setCostScore(const int& score); //TODO double
-		void setDistance(const int& distance);
-		const std::vector<std::string>& getStartToStart();
-		const std::vector<std::string>& getStartToEnd();
-		const std::vector<std::string>& getEndToStart();
-		const std::vector<std::string>& getEndToEnd();
+		void setStartToStart(const int& id);
+		void setStartToEnd(const int& id);
+		void setEndToStart(const int& id);
+		void setEndToEnd(const int& id);
+		void setCostScore(const double& score);
+		void setDistance(const double& distance);
+		const std::vector<int>& getStartToStart();
+		const std::vector<int>& getStartToEnd();
+		const std::vector<int>& getEndToStart();
+		const std::vector<int>& getEndToEnd();
 
-		const int& getCostScore();
-		const int& getDistance();
+		const double& getCostScore();
+		const double& getDistance();
 		bool operator < (const Graph::Vertex& v)const
 				    {
 				        return (distance < v.distance);
 				    }
 
 	private:
-		std::string idVertex;
+		int idVertex;
+		std::string name;
 		bool visited;
 		std::string previous;
 		int costScore;
 		int distance;
-		std::vector<std::string> startToStart;
-		std::vector<std::string> startToEnd;
-		std::vector<std::string> endToStart;
-		std::vector<std::string> endToEnd;
+		std::vector<int> startToStart;
+		std::vector<int> startToEnd;
+		std::vector<int> endToStart;
+		std::vector<int> endToEnd;
 
 	};
 
 public:
 	//Graph();
-	void readDotFile(std::string dotFile); // Graph from a dot file -> Transform to constructor ?
 	//Graph(Graph const& g);
 	//~Graph();
+	void readDotFile(std::string dotFile); // Graph from a dot file -> Transform to constructor ?
 	void addVertex(Vertex v);
-	void addEdge(int typeOfEdge,std::string name1, std::string name2);
-	const std::map<std::string,Vertex>& getVertices()const;
-	void setScore(const std::string& name, const double& score);
+	void addEdge(int typeOfEdge,int id1, int id2);
+	const std::map<int,Vertex>& getVertices()const;
+	void setScore(const int& id, const double& score);
 	friend std::ostream& operator<<(std::ostream &os, Graph & g);
 	friend std::ostream& operator<<(std::ostream &os, Vertex const& v);
 	void printGraph(std::ostream &os);
-	void updateDistance(Vertex v1, Vertex v2, std::map<std::string,int>& maxScore,std::map<std::string,std::string>& previous);
-	void dijkstra(std::string start,std::string end);
+	//void updateDistance(Vertex v1, Vertex v2, std::map<std::string,int>& maxScore,std::map<std::string,std::string>& previous);
+	void dijkstra(int start,int end);
 	void readAlignment(std::string fastaFile, std::string samFile);
-	void buildNewGraph();
 	friend bool operator== ( const Vertex &v1, const Vertex &v2);
 
 
 private:
-	std::map<std::string,Vertex> vertices;
+	std::map<int,Vertex> vertices;
 };
 
 #endif // GRAPH_HPP
