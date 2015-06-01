@@ -671,6 +671,7 @@ void pw_alignment::setbegin1(size_t begin1){
 	void pw_alignment::print()const{ 
 		cout << "al1 seq "<< getreference1() << " b " << getbegin1() << " e " << getend1() <<  " l "  << alignment_length() << endl;
 		cout << "al2 seq "<< getreference2() << " b " << getbegin2() << " e " << getend2() << endl;
+		/*
 		for(size_t col = 0; col < alignment_length(); col++) {
 		//	if(col < 3 || (alignment_length() - col < 3)) {
 				char c1;
@@ -679,6 +680,7 @@ void pw_alignment::setbegin1(size_t begin1){
 				cout <<col <<"\t"<< c1<<"\t"<<c2<<endl;
 		//	}
 		}
+		*/
 	}
 
 

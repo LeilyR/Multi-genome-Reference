@@ -106,8 +106,10 @@ public:
 	~overlap();
 	// insert p into overlap data structure, return pointer to inserted alignment
 	pw_alignment * insert_without_partial_overlap(const pw_alignment & p);
+	void insert_without_partial_overlap_p(pw_alignment * p);
 	// This function removes an alignment with adress identity to remove from overlap, then deletes remove
 	void remove_alignment(const pw_alignment  *remove);
+	void remove_alignment_nodelete(const pw_alignment * remove);
 
 	void test_all() const;
 	void test_all_part()const;// Change it later to check all those pieces with gap in one sample. Put them all in a set and check if the only missed parts of coverage are those parts.

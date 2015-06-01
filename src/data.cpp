@@ -758,7 +758,7 @@ overlap::overlap(const overlap & o): data(o.data), als_on_reference(o.data.numSe
 		}
 	}
 
-	void overlap::remove_alignment(const pw_alignment * remove){
+	void overlap::remove_alignment_nodelete(const pw_alignment * remove){
 		pair< multimap<size_t, pw_alignment*>::iterator, multimap<size_t, pw_alignment*>::iterator > eqrb1 =
 		als_on_reference.at(remove->getreference1()).equal_range(remove->getbegin1());
 		for(multimap<size_t, pw_alignment*>::iterator it = eqrb1.first; it!=eqrb1.second; ++it) {
@@ -796,6 +796,10 @@ overlap::overlap(const overlap & o): data(o.data), als_on_reference(o.data.numSe
 	//	remove->print();
 		assert(findr!=alignments.end());
 		alignments.erase(findr);
+
+	}
+	void overlap::remove_alignment(const pw_alignment * remove){
+		remove_alignment_nodelete(remove);
 		delete remove;
 	}
 
@@ -889,9 +893,8 @@ void overlap::test_multimaps() {
 
 
 
-	
-pw_alignment * overlap::insert_without_partial_overlap(const pw_alignment & p){
-	pw_alignment * np = new pw_alignment(p);
+void overlap::insert_without_partial_overlap_p(pw_alignment * np){
+
 	//cout << " insert " << np << endl;
 	assert(alignments.find(np) == alignments.end());
 	alignments.insert(np);
@@ -912,6 +915,12 @@ pw_alignment * overlap::insert_without_partial_overlap(const pw_alignment & p){
 		alignment_on_reference1.insert(begin1);
 	pair<size_t,  pw_alignment *> end1(np->getend1(),np);
 		alignment_on_reference1.insert(end1);
+
+}
+	
+pw_alignment * overlap::insert_without_partial_overlap(const pw_alignment & p){
+	pw_alignment * np = new pw_alignment(p);
+	insert_without_partial_overlap_p(np);
 
 	return np;
 }
@@ -1123,6 +1132,7 @@ void overlap::test_partial_overlap_vec(vector< const pw_alignment *> & all) {
 					cout << "partial overlap error 1: " << endl;
 					a->print();
 					b->print();
+					throw 0;
 					exit(1);
 				}
 			}
@@ -1132,6 +1142,7 @@ void overlap::test_partial_overlap_vec(vector< const pw_alignment *> & all) {
 					cout << "partial overlap error 2: " << endl;
 					a->print();
 					b->print();
+					throw 0;
 					exit(1);
 				}
 			}
@@ -1141,6 +1152,7 @@ void overlap::test_partial_overlap_vec(vector< const pw_alignment *> & all) {
 					cout << "partial overlap error 3: " << endl;
 					a->print();
 					b->print();
+					throw 0;
 					exit(1);
 				}
 			}
@@ -1150,6 +1162,7 @@ void overlap::test_partial_overlap_vec(vector< const pw_alignment *> & all) {
 					cout << "partial overlap error 4: " << endl;
 					a->print();
 					b->print();
+					throw 0;
 					exit(1);
 				}
 			}
@@ -1174,9 +1187,19 @@ void overlap::test_partial_overlap() const {
 
 }
 
-#define SPLITPRINT 1
+#define SPLITPRINT 0
 
 splitpoints::splitpoints(const pw_alignment & p, const overlap & o, const all_data & d):overl(o), newal(p),data(d), split_points(d.numSequences()) {
+
+#if SPLITPRINT
+	cout << "RUN SPLITPOINTS ON " << endl;
+	o.print_all_alignment();
+
+	cout << " split with " << endl;
+	p.print();
+	cout << " end " << endl;
+
+#endif
 
 }
 

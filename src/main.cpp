@@ -861,6 +861,8 @@ int do_mc_model(int argc, char * argv[]) {
 //						cout<< " "<< endl;
 
 //	}
+
+	/*
 	for(size_t i = 0 ; i < data.numAlignments(); i++){
 		const pw_alignment & p = data.getAlignment(i);
 		size_t left1;
@@ -900,6 +902,8 @@ int do_mc_model(int argc, char * argv[]) {
 			cout<< "g1: "<<g1 << " g2: "<< g2 <<endl;
 		}
 	}
+
+	*/
 //Data compression:
 	cout<< "weight size: "<< weight.size()<<endl;
 //	en.arithmetic_encoding_alignment(weight,member_of_cluster,alignments_in_a_cluster,outs);
