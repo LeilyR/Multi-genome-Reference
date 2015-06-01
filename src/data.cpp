@@ -300,7 +300,10 @@ all_data::all_data(string fasta_all_sequences, string samFile) {
 	}
 
 	// READ SAM FILE ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-	bool verbose = true;
+	/* Achtung
+	 * Library libStatGen creates an output -bs.umfa : if already exist can have some conflict, need to remove it before rerunning this code
+	 */
+	bool verbose = false;
 	  if(verbose) cout << "readAlignment sam file"<<endl;
 
 	  SamFile samIn;
@@ -316,7 +319,9 @@ all_data::all_data(string fasta_all_sequences, string samFile) {
 	  int skip_alt = 0;
 	  int skip_self = 0;
 	  //GenomeSequence myRefSeq("/ebio/abt6_projects7/small_projects/mdubarry/Documents/SampleProgram/bin/output/tmpOut.fasta");
+
 	  GenomeSequence myRefSeq(fasta_all_sequences.c_str());
+	  myRefSeq.setDebugFlag(1);
 	  while(samIn.ReadRecord(samHeader, samRecord))
 	  {
 		// Achtung : sam file considere the file reference as an uniq sequence even if there are differentes sequences in reference, so the position are concatenate.
@@ -325,11 +330,13 @@ all_data::all_data(string fasta_all_sequences, string samFile) {
 		// For each Record do :
 		tmpCigar = samRecord.getCigarInfo(); //Pointer to Cigar object
 		const char* currentSeq = samRecord.getSequence();
+
 		int myStartOfReadOnRefIndex = myRefSeq.getGenomePosition(samRecord.getReferenceName(),samRecord.get1BasedPosition()); // Select the start on the good sequence in the fasta File
 		if(myStartOfReadOnRefIndex == -1){
-			std::cerr << "Error with the reference "<< samRecord.getReferenceName() << std::endl;
+			std::cerr << "Error with the reference " <<samRecord.get1BasedPosition()<<" " <<samRecord.getReferenceName() << std::endl;
 			exit(1);
 		}
+
 		if (verbose) cout<<myStartOfReadOnRefIndex<<" getReferenceName "<<samRecord.getReferenceName()<<" get1BasedPosition "<< samRecord.get1BasedPosition() <<" myRefSeq.sequenceLength " <<myRefSeq.sequenceLength()
 		  << " getAlignmentLength "<< samRecord.getAlignmentLength() << " getReadLength " << samRecord.getReadLength()<< " getNumBeginClips "<< tmpCigar->getNumBeginClips()<< endl;
 		if(verbose) std::cout <<"flag "<<samRecord.getFlag() <<" reverse ? " << SamFlag::isReverse(samRecord.getFlag()) << std::endl;
@@ -361,15 +368,15 @@ all_data::all_data(string fasta_all_sequences, string samFile) {
 			}
 		}
 		if(verbose)  std::cout << "\n" << alRefSeq <<"\n" << alReadSeq  <<std::endl;
-		int myEndReadOnRefIndex =  myRefSeq.getGenomePosition(samRecord.getReferenceName(),samRecord.get1BasedAlignmentEnd()) + 1 ;
-		if(verbose) cout << "reference start "<< myStartOfReadOnRefIndex << " end " << myEndReadOnRefIndex <<endl;
+		//int myEndReadOnRefIndex =  myRefSeq.getGenomePosition(samRecord.getReferenceName(),samRecord.get1BasedAlignmentEnd()) + 1 ;
+		//if(verbose) cout << "reference start "<< myStartOfReadOnRefIndex << " end " << myEndReadOnRefIndex <<endl;
 
 		// Reference
 		string acc1;
 		string name1;
 		name_split(samRecord.getReferenceName(), acc1, name1);
 		size_t start1 = samRecord.get1BasedPosition() - 1 ;
-		size_t incl_end1 = start1 + tmpCigar->getExpectedQueryBaseCount() - 1 ; // change to sequence partial length
+		size_t incl_end1 = start1 + tmpCigar->getExpectedReferenceBaseCount() - 1 ;
 		map<string, size_t>::iterator findseq1 = longname2seqidx.find(samRecord.getReferenceName());
 		if(findseq1==longname2seqidx.end()) {
 			cerr << "Error: unknown sequence: " << samRecord.getReferenceName() << endl;
@@ -546,8 +553,11 @@ all_data::~all_data() {
 	const pw_alignment & all_data::getAlignment(size_t index) const {
 		return alignments.at(index);
 	}
-	const vector<pw_alignment>& all_data::getAlignments()const{
+	const vector<pw_alignment>& all_data::getAlignments()const{ // Attention : I create this function
 		return alignments;
+	}
+	void all_data::add_pw_alignment(const pw_alignment& p){ //Attention : I create this function
+		alignments.push_back(p);
 	}
 	const vector<size_t> & all_data::getAcc(size_t acc)const{
 		string accName;
@@ -2367,7 +2377,7 @@ void splitpoints::insert_split_point(size_t sequence, size_t position) {
 	}
 
 mc_model::mc_model(all_data & d):data(d), sequence_successive_bases(d.numAcc()), create_cost(d.numAcc(),vector<double>(5,1)),mod_cost(d.numAcc(),vector<map<string, vector<double> > >(d.numAcc())),high(d.numAcc()),highValue(d.numAcc(),vector<map<string, vector<unsigned int> > >(d.numAcc())){
-	cout << "mc_model "<<endl;
+	//cout << "mc_model "<<endl;
 	size_t numberOfPowers = 32;
 //	size_t numberOfPowers = NUM_DELETE;
 	if(NUM_KEEP>numberOfPowers) {
@@ -2601,10 +2611,9 @@ const map<string, vector<unsigned int> > & mc_model::get_highValue(size_t acc1, 
 		size_t right2;
 		p.get_lr1(left1,right1);
 		p.get_lr2(left2,right2);
-		cout<<"left: "<<left1<<"right: "<<right1<<endl;
+		//cout<<"left: "<<left1<<"right: "<<right1<<endl;
 		for(size_t i = left1; i< right1; i++){
 			s1chr = data.getSequence(p.getreference1()).at(i);
-			cout<<"check point!"<<endl;
 			size_t s1 = dnastring::base_to_index(s1chr);
 			stringstream context1;
 			for (size_t j = Sequence_level; j>0; j--){
@@ -2614,15 +2623,15 @@ const map<string, vector<unsigned int> > & mc_model::get_highValue(size_t acc1, 
 				}else{
 					char r1chr = data.getSequence(p.getreference1()).at(i-j);
 					context1 << r1chr;
-					cout<<"rchr: "<<r1chr<< i <<endl;
+					//cout<<"rchr: "<<r1chr<< i <<endl;
 				}
 			}
 			string seq1;
 			context1>>seq1;
-			cout<<"seq1: " << seq1<<endl;
+			//cout<<"seq1: " << seq1<<endl;
 			map <string, vector<double> >::const_iterator it= sequence_successive_bases.at(acc1).find(seq1);
 			assert(it != sequence_successive_bases.at(acc1).end());
-			cout<<"sequence successive at "<< s1 << " is "<<it->second.at(s1)<<endl;
+			//cout<<"sequence successive at "<< s1 << " is "<<it->second.at(s1)<<endl;
 			cost_on_sample.at(0) += it->second.at(s1);
 		}	
 	//	cout<<"cost: "<<cost_on_sample.at(0)<<endl;	
@@ -2720,7 +2729,7 @@ const map<string, vector<unsigned int> > & mc_model::get_highValue(size_t acc1, 
 	//	if(outs.is_open()){
 			for(size_t i = 0 ; i < data.numAcc(); i++){
 				outs << data.get_acc(i);
-				cout<<"acc: "<<data.get_acc(i)<<endl;
+				//cout<<"acc: "<<data.get_acc(i)<<endl;
 				outs<< (char)0;
 				for(map<string, vector<double> >::iterator it= all_the_patterns.begin(); it != all_the_patterns.end() ; it++){
 					string pattern = it ->first;
@@ -3850,7 +3859,7 @@ double counting_functor::get_total(size_t acc1, size_t acc2, string context)cons
 		}
 	}
 	double cost_functor::get_modify(const pw_alignment & p,size_t acc1, size_t acc2)const{
-		double modify;
+		double modify= 0.0; // Attention : I change the init, before : double modify;
 		size_t ref1 = p.getreference1();
 		size_t ref2 = p.getreference2();
 		size_t accession1 = data.accNumber(ref1);

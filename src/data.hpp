@@ -71,7 +71,7 @@ class all_data {
 		const pw_alignment & getAlignment(size_t index) const;
 		const vector<pw_alignment>& getAlignments()const; // Attention : I had a function to get the vector of alignments
 	//	const multimap<size_t, size_t> & getAlOnRefMap(size_t seq_idx) const;
-
+		void add_pw_alignment(const pw_alignment& p);
 		size_t numSequences() const;
 		size_t numAlignments() const;
 		const size_t numAcc() const;
