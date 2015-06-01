@@ -46,6 +46,7 @@
 		dec.set_stream(in);
 		while(i < low.size()){
 			target = dec.get_target(total);
+			cout<< "target: "<< target << endl;
 			if(low.at(i) <= target && high.at(i) > target){
 				cout<< "base in test: " << i <<"low: " << low.at(i) << "high: " << high .at(i)<< endl;
 				dec.decode(low.at(i),high.at(i));
@@ -89,9 +90,10 @@
 			high.push_back(h);
 		}
 		
-		for(size_t i =0 ; i < high.size();i++){
-			cout << "high: " << high.at(i) << endl;
-		}
+	/*	for(size_t i =0 ; i < high.size();i++){
+			cout << "high at " << i << " is " << high.at(i) << endl;
+		}*/
+	//	cout<< "low_dec size: "<< low_dec.size()<< endl;
 		for(size_t i = 0; i < low_dec.size(); i++){
 			if(low.at(i)!=low_dec.at(i)){
 				cout<< "low values at " << i << " are different" <<endl;
