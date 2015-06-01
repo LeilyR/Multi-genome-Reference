@@ -28,13 +28,14 @@ class initial_alignment_set {
 	
 			double gain1, gain2;
 			common_model.gain_function(*cur, gain1, gain2,outs);
+			double vgain = (gain1+gain2)/2 - base_cost;
 			// TODO gain1 and gain2
 		//	if(gain2 > gain1) gain1 = gain2;
 		//	cout << " al " << i << " gain1 " << gain1 << endl;
-			if(gain1-base_cost > 0.0) {
-				sorter.insert(make_pair(gain1, cur));
+			if(vgain > 0.0) {
+				sorter.insert(make_pair(vgain, cur));
 			}
-			sumgain+=gain1;
+			sumgain+=vgain;
 		}
 
 		sorted_original_als = vector<const pw_alignment*>(sorter.size(), NULL);
@@ -47,7 +48,7 @@ class initial_alignment_set {
 			sorted_original_als.at(pos) = alit;
 			pos++;
 		}
-		max_gain = sumgain - sorter.size() * base_cost;
+		max_gain = sumgain;
 		assert(pos == sorter.size());
 	//	cout << " " << sorter.size() << " input alignments, total gain: " << sumgain << " bit " << endl;
 	}
@@ -60,12 +61,13 @@ class initial_alignment_set {
 	
 			double gain1, gain2;
 			common_model.gain_function(*cur, gain1, gain2,outs);
+			double vgain = (gain1+gain2)/2 - base_cost;
 		//	if(gain2 > gain1) gain1 = gain2;
 		//	cout << " al length " << cur->alignment_length() << " gain1 " << gain1 << " gain2 " << gain2 <<  endl;
-			if(gain1 - base_cost>0.0) {
-				sorter.insert(make_pair(gain1, cur));
+			if(vgain>0.0) {
+				sorter.insert(make_pair(vgain, cur));
 			}
-			sumgain+=gain1;
+			sumgain+=vgain;
 		}
 
 		sorted_original_als = vector<const pw_alignment *>(sorter.size(), NULL);
@@ -75,7 +77,7 @@ class initial_alignment_set {
 			sorted_original_als.at(pos) = alit;
 			pos++;
 		}
-		max_gain = sumgain - sorter.size() * base_cost;
+		max_gain = sumgain;
 		assert(pos == sorter.size());
 	//	cout << " " << sorter.size() << " input alignments, total gain: " << sumgain << " bit " << endl;
 	}
@@ -84,6 +86,8 @@ class initial_alignment_set {
 
 	void compute(overlap & o, ofstream &);
 	void compute_simple(overlap & o,ofstream &);
+	void compute_simple_lazy_splits(overlap & o,ofstream &);
+	void lazy_split_insert_step(overlap & ovrlp, size_t level, const pw_alignment * al, vector<const pw_alignment*> & inserted_alignments, vector<const pw_alignment*> & removed_alignments, double & local_gain, ofstream & outs);
 
 	double get_max_gain() const {
 		return max_gain;

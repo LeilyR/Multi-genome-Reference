@@ -758,7 +758,7 @@ overlap::overlap(const overlap & o): data(o.data), als_on_reference(o.data.numSe
 		}
 	}
 
-	void overlap::remove_alignment(const pw_alignment * remove){
+	void overlap::remove_alignment_nodelete(const pw_alignment * remove){
 		pair< multimap<size_t, pw_alignment*>::iterator, multimap<size_t, pw_alignment*>::iterator > eqrb1 =
 		als_on_reference.at(remove->getreference1()).equal_range(remove->getbegin1());
 		for(multimap<size_t, pw_alignment*>::iterator it = eqrb1.first; it!=eqrb1.second; ++it) {
@@ -796,7 +796,11 @@ overlap::overlap(const overlap & o): data(o.data), als_on_reference(o.data.numSe
 	//	remove->print();
 		assert(findr!=alignments.end());
 		alignments.erase(findr);
-		//delete remove;
+
+	}
+	void overlap::remove_alignment(const pw_alignment * remove){
+		remove_alignment_nodelete(remove);
+		delete remove;
 	}
 
 
@@ -889,9 +893,8 @@ void overlap::test_multimaps() {
 
 
 
-	
-void overlap::insert_without_partial_overlap(const pw_alignment & p){
-	pw_alignment * np = new pw_alignment(p);
+void overlap::insert_without_partial_overlap_p(pw_alignment * np){
+
 	//cout << " insert " << np << endl;
 	assert(alignments.find(np) == alignments.end());
 	alignments.insert(np);
@@ -912,6 +915,14 @@ void overlap::insert_without_partial_overlap(const pw_alignment & p){
 		alignment_on_reference1.insert(begin1);
 	pair<size_t,  pw_alignment *> end1(np->getend1(),np);
 		alignment_on_reference1.insert(end1);
+
+}
+	
+pw_alignment * overlap::insert_without_partial_overlap(const pw_alignment & p){
+	pw_alignment * np = new pw_alignment(p);
+	insert_without_partial_overlap_p(np);
+
+	return np;
 }
 
 
@@ -1121,6 +1132,7 @@ void overlap::test_partial_overlap_vec(vector< const pw_alignment *> & all) {
 					cout << "partial overlap error 1: " << endl;
 					a->print();
 					b->print();
+					throw 0;
 					exit(1);
 				}
 			}
@@ -1130,6 +1142,7 @@ void overlap::test_partial_overlap_vec(vector< const pw_alignment *> & all) {
 					cout << "partial overlap error 2: " << endl;
 					a->print();
 					b->print();
+					throw 0;
 					exit(1);
 				}
 			}
@@ -1139,6 +1152,7 @@ void overlap::test_partial_overlap_vec(vector< const pw_alignment *> & all) {
 					cout << "partial overlap error 3: " << endl;
 					a->print();
 					b->print();
+					throw 0;
 					exit(1);
 				}
 			}
@@ -1148,6 +1162,7 @@ void overlap::test_partial_overlap_vec(vector< const pw_alignment *> & all) {
 					cout << "partial overlap error 4: " << endl;
 					a->print();
 					b->print();
+					throw 0;
 					exit(1);
 				}
 			}
@@ -1176,9 +1191,149 @@ void overlap::test_partial_overlap() const {
 
 splitpoints::splitpoints(const pw_alignment & p, const overlap & o, const all_data & d):overl(o), newal(p),data(d), split_points(d.numSequences()) {
 
+#if SPLITPRINT
+	cout << "RUN SPLITPOINTS ON " << endl;
+	o.print_all_alignment();
+
+	cout << " split with " << endl;
+	p.print();
+	cout << " end " << endl;
+
+#endif
+
 }
 
-splitpoints::~splitpoints(){}
+splitpoints::~splitpoints() {}
+
+void splitpoints::find_initial_split_points_nonrecursive(size_t sequence, size_t left, size_t right) {
+		const multimap<size_t , pw_alignment *> & alignments_on_reference = overl.get_als_on_reference_const(sequence);
+
+#if SPLITPRINT		
+		cout << " seach for initial split points on " << sequence << " from " << left << endl;
+		size_t count = 0;
+#endif
+
+		for( multimap<size_t, pw_alignment *>::const_iterator it=alignments_on_reference.lower_bound(left);it!=alignments_on_reference.end(); ++it){
+			const pw_alignment * al = it->second;
+			
+#if SPLITPRINT
+			cout << count++ <<" See " << endl;
+			al->print();
+			cout << endl;
+#endif
+
+			// loop break condition. This special treatment is needed to avoid to-early break in case of both parts of al being on the same reference
+			size_t al_leftmost_leftbound = (size_t)-1;
+
+			if(al->getreference1() == sequence) {
+				size_t alleft;
+				size_t alright;
+				al->get_lr1(alleft, alright);
+				if(alleft < al_leftmost_leftbound) {
+					al_leftmost_leftbound = alleft;
+				}
+
+
+
+				if(alleft < left && left <= alright) {
+	//				cout<<"here1"<<endl;
+				//	cout<<"al: "<<endl;
+				//	al->print();
+					insert_split_point_nonrecursive(sequence, left);
+				}
+				if(alleft <= right && right < alright) {
+	//				cout<<"here2"<<endl;
+				//	cout<<"al: "<<endl;
+				//	al->print();
+					insert_split_point_nonrecursive(sequence, right+1);
+
+				}
+				if(left < alleft && alleft < right) {
+	//				cout<<"here3"<<endl;
+	//				cout<<"al: "<<endl;
+				/*	for(size_t col = 0; col < al->alignment_length(); col++) {
+						char c1;
+						char c2;
+						al->alignment_col(col, c1, c2);
+						cout <<col <<"\t"<< c1<<"\t"<<c2<<endl;
+					}*/
+
+				//	al->print();
+				//	cout<<"newal: "<<endl;
+				//	newal.print();
+					insert_split_point_nonrecursive(sequence, alleft);
+
+				}
+				if(left < alright && alright < right) {
+		//			cout<<"here4"<<endl;
+				//	cout<<"al: "<<endl;
+		//			al->print();
+				//	cout<<"newal: "<<endl;
+				//	newal.print();
+					insert_split_point_nonrecursive(sequence, alright+1);
+					
+				}
+
+			}
+		
+			if(al->getreference2() == sequence) {
+				size_t alleft;
+				size_t alright;
+				al->get_lr2(alleft, alright);
+				if(alleft < al_leftmost_leftbound) {
+					al_leftmost_leftbound = alleft;
+				}
+
+
+
+				if(alleft < left && left <= alright) {
+				//	cout<<"here5"<<endl;
+				//	cout<<"al: "<<endl;
+				//	al->print();
+				//	cout<<"newal: "<<endl;
+				//	newal.print();
+
+					insert_split_point_nonrecursive(sequence, left);
+				
+				}
+				if(alleft <= right && right < alright) {
+		//			cout<<"here6"<<endl;
+				//	al->print();
+					insert_split_point_nonrecursive(sequence, right+1);
+				}
+				if(left < alleft && alleft < right) {
+		//			cout<<"here7"<<endl;
+				//	cout<<"al: "<<endl;
+				//	al->print();
+				//	cout<<"newal: "<<endl;
+				//	newal.print();
+					insert_split_point_nonrecursive(sequence, alleft);
+				}
+				if(left < alright && alright < right) {
+		//			cout<<"here8"<<endl;
+				//	cout<<"al: "<<endl;
+		//			al->print();
+				//	cout<<"newal: "<<endl;
+				//	newal.print();
+					insert_split_point_nonrecursive(sequence, alright+1);
+				}
+
+			
+			}
+
+
+
+
+			if(al_leftmost_leftbound > right)  {
+#if SPLITPRINT
+				cout << "Break after See " << count << " al rightmost leftbound is " << al_leftmost_leftbound<<  endl;	
+#endif
+				break;
+			}
+		}
+
+
+}
 
 void splitpoints::find_initial_split_points(size_t sequence, size_t left, size_t right) {
 		const multimap<size_t , pw_alignment *> & alignments_on_reference = overl.get_als_on_reference_const(sequence);
@@ -1309,7 +1464,7 @@ void splitpoints::find_initial_split_points(size_t sequence, size_t left, size_t
 
 	}
 
-	void splitpoints::find_initial_split_point(){
+	void splitpoints::recursive_splits(){
 
 
 
@@ -1349,148 +1504,202 @@ void splitpoints::find_initial_split_points(size_t sequence, size_t left, size_t
 		insert_split_point(newal.getreference2(), right2+1);
 	
 }
-	void splitpoints::insert_split_point(size_t sequence, size_t position) {
-		pair<set<size_t>::iterator, bool> insertes = split_points.at(sequence).insert(position);
-		if(insertes.second) {
+
+void splitpoints::nonrecursive_splits(){
+
+
+		size_t left1;
+		size_t right1;
+		size_t left2 ;
+		size_t right2;
+		newal.get_lr1(left1, right1);
+		newal.get_lr2(left2, right2);
+
 #if SPLITPRINT
-			cout << " new split point " << sequence << " at " << position << endl;
+		cout << " Check ref 1 overlaps " << endl;
+#endif
+
+		find_initial_split_points_nonrecursive(newal.getreference1(), left1, right1);
+
+#if SPLITPRINT
+		cout << " Check ref 2 overlaps " << endl;
+#endif
+		find_initial_split_points_nonrecursive(newal.getreference2(), left2, right2);
+	
+		if(newal.getreference1()==newal.getreference2()) {
+			if(right1>=left2 && left1 < left2){
+				insert_split_point_nonrecursive(newal.getreference2(),left2);
+				insert_split_point_nonrecursive(newal.getreference2(),right1+1);
+			}
+			if(right2>=left1 && left2 < left1){
+				insert_split_point_nonrecursive(newal.getreference2(),left1);
+				insert_split_point_nonrecursive(newal.getreference2(),right2+1);
+			}
+		}
+
+		insert_split_point_nonrecursive(newal.getreference1(), left1);
+		insert_split_point_nonrecursive(newal.getreference1(), right1+1);
+		insert_split_point_nonrecursive(newal.getreference2(), left2);
+		insert_split_point_nonrecursive(newal.getreference2(), right2+1);
+	
+
+
+}
+
+
+void splitpoints::insert_split_point_nonrecursive(size_t sequence, size_t position) {
+	pair<set<size_t>::iterator, bool> insertes = split_points.at(sequence).insert(position);
+	if(insertes.second) {
+#if SPLITPRINT
+		cout << " new split point " << sequence << " at " << position << endl;
 #endif	
-			size_t left1;
-			size_t right1;
-			newal.get_lr1(left1, right1);
-			size_t left2;
-			size_t right2;
-			newal.get_lr2(left2, right2);
+	}
+}
 
 
 
 
-			if(newal.getreference1()==sequence) {
-				if(left1<position && right1>=position) {
-					pw_alignment fp;
-					pw_alignment sp;
-					newal.split(true, position, fp, sp);
+void splitpoints::insert_split_point(size_t sequence, size_t position) {
+	pair<set<size_t>::iterator, bool> insertes = split_points.at(sequence).insert(position);
+	if(insertes.second) {
+#if SPLITPRINT
+		cout << " new split point " << sequence << " at " << position << endl;
+#endif	
+		size_t left1;
+		size_t right1;
+		newal.get_lr1(left1, right1);
+		size_t left2;
+		size_t right2;
+		newal.get_lr2(left2, right2);
 
-					pw_alignment fpe;
-					pw_alignment spe;
 
 
-					// do splitted parts have only gaps one of their reference sequences
-					bool fgaps = onlyGapSample(&fp);
-					bool sgaps = onlyGapSample(&sp);
+
+		if(newal.getreference1()==sequence) {
+			if(left1<position && right1>=position) {
+				pw_alignment fp;
+				pw_alignment sp;
+				newal.split(true, position, fp, sp);
+
+				pw_alignment fpe;
+				pw_alignment spe;
+
+
+				// do splitted parts have only gaps one of their reference sequences
+				bool fgaps = onlyGapSample(&fp);
+				bool sgaps = onlyGapSample(&sp);
 					
-					// find split part alignment ends on reference after removing end gaps
-					size_t fpeleft2= (size_t) -1;
-					size_t fperight2 = (size_t) -1;
-					size_t speleft2 = (size_t) -1;
-					size_t speright2 = (size_t) -1;
-					if(!fgaps) {
-						fp.remove_end_gaps(fpe);
-						fpe.get_lr2(fpeleft2, fperight2);
+				// find split part alignment ends on reference after removing end gaps
+				size_t fpeleft2= (size_t) -1;
+				size_t fperight2 = (size_t) -1;
+				size_t speleft2 = (size_t) -1;
+				size_t speright2 = (size_t) -1;
+				if(!fgaps) {
+					fp.remove_end_gaps(fpe);
+					fpe.get_lr2(fpeleft2, fperight2);
 #if SPLITPRINT
-						cout << "newal fpe " << endl;
-						fpe.print();
-						cout  << endl;
+					cout << "newal fpe " << endl;
+					fpe.print();
+					cout  << endl;
 #endif
-					}
-					if(!sgaps) {
-						sp.remove_end_gaps(spe);
-						spe.get_lr2(speleft2, speright2);
+				}
+				if(!sgaps) {
+					sp.remove_end_gaps(spe);
+					spe.get_lr2(speleft2, speright2);
 #if SPLITPRINT
-						cout << "newal spe " << endl;
-						spe.print();
-						cout << endl;
+					cout << "newal spe " << endl;
+					spe.print();
+					cout << endl;
 #endif
-					}
+				}
 
 
-					if(newal.getbegin2() < newal.getend2()) {
+				if(newal.getbegin2() < newal.getend2()) {
 			//			cout << " try ins " << newal.getreference2() << " : " << spleft2 << endl;
-						if(!sgaps) {
-							insert_split_point(newal.getreference2(), speleft2);
-						}
-						// additional split point if gaps at split point
-						if(!fgaps) {
-							insert_split_point(newal.getreference2(), fperight2+1);
-						}
-					} else {
-			//			cout << " try ins " << newal.getreference2() << " : " << fpleft2 << endl;
-						if(!fgaps) {
-							insert_split_point(newal.getreference2(), fpeleft2);
-						}
-						if(!sgaps) {
-							insert_split_point(newal.getreference2(), speright2+1);
-						}
-
+					if(!sgaps) {
+						insert_split_point(newal.getreference2(), speleft2);
 					}
-				}
-			}
-			if(newal.getreference2()==sequence) {
-				if(left2<position && right2>=position) {
-				//	cout<<"HERE!!"<<endl;
-					pw_alignment fp;
-					pw_alignment sp;
-					newal.split(false, position, fp, sp);
-					pw_alignment fpe;
-					pw_alignment spe;
-				
-					// do splitted parts have only gaps one of their reference sequences
-					bool fgaps = onlyGapSample(&fp);
-					bool sgaps = onlyGapSample(&sp);
-					
-					// find split part alignment ends on reference after removing end gaps
-					size_t fpeleft1 = (size_t) -1;
-					size_t fperight1 = (size_t) -1;
-					size_t speleft1 = (size_t) -1;
-					size_t speright1 = (size_t) -1;
+					// additional split point if gaps at split point
 					if(!fgaps) {
-						fp.remove_end_gaps(fpe);
-						fpe.get_lr1(fpeleft1, fperight1);
-#if SPLITPRINT
-						cout << "newal fpe " << endl;
-						fpe.print();
-						cout  << endl;
-#endif
+						insert_split_point(newal.getreference2(), fperight2+1);
+					}
+				} else {
+			//			cout << " try ins " << newal.getreference2() << " : " << fpleft2 << endl;
+					if(!fgaps) {
+						insert_split_point(newal.getreference2(), fpeleft2);
 					}
 					if(!sgaps) {
-						sp.remove_end_gaps(spe);
-						spe.get_lr1(speleft1, speright1);
-#if SPLITPRINT
-						cout << "newal spe " << endl;
-						spe.print();
-						cout << endl;
-#endif
+						insert_split_point(newal.getreference2(), speright2+1);
 					}
 
+				}
+			}
+		}
+		if(newal.getreference2()==sequence) {
+			if(left2<position && right2>=position) {
+			//	cout<<"HERE!!"<<endl;
+				pw_alignment fp;
+				pw_alignment sp;
+				newal.split(false, position, fp, sp);
+				pw_alignment fpe;
+				pw_alignment spe;
 				
-					if(newal.getbegin1() < newal.getend1()) {	
-			//			cout << " try ins " << newal.getreference1() << " : " << spleft1 << endl;
-						if(!sgaps) {
-							insert_split_point(newal.getreference1(), speleft1);
-						}
-						if(!fgaps) {
-							insert_split_point(newal.getreference1(), fperight1+1);
-						}
-					} else {
-			//			cout << " try ins " << newal.getreference1() << " : " << fpleft1 << endl;
-						if(!fgaps) {
-							insert_split_point(newal.getreference1(), fpeleft1);
-						}
-						if(!sgaps) {
-							insert_split_point(newal.getreference1(), speright1+1);
-						}
+				// do splitted parts have only gaps one of their reference sequences
+				bool fgaps = onlyGapSample(&fp);
+				bool sgaps = onlyGapSample(&sp);
 					
+				// find split part alignment ends on reference after removing end gaps
+				size_t fpeleft1 = (size_t) -1;
+				size_t fperight1 = (size_t) -1;
+				size_t speleft1 = (size_t) -1;
+				size_t speright1 = (size_t) -1;
+				if(!fgaps) {
+					fp.remove_end_gaps(fpe);
+					fpe.get_lr1(fpeleft1, fperight1);
+#if SPLITPRINT
+					cout << "newal fpe " << endl;
+					fpe.print();
+					cout  << endl;
+#endif
+				}
+				if(!sgaps) {
+					sp.remove_end_gaps(spe);
+					spe.get_lr1(speleft1, speright1);
+#if SPLITPRINT
+					cout << "newal spe " << endl;
+					spe.print();
+					cout << endl;
+#endif
+				}
+
+				
+				if(newal.getbegin1() < newal.getend1()) {	
+		//			cout << " try ins " << newal.getreference1() << " : " << spleft1 << endl;
+					if(!sgaps) {
+						insert_split_point(newal.getreference1(), speleft1);
+					}
+					if(!fgaps) {
+						insert_split_point(newal.getreference1(), fperight1+1);
+					}
+				} else {
+			//			cout << " try ins " << newal.getreference1() << " : " << fpleft1 << endl;
+					if(!fgaps) {
+						insert_split_point(newal.getreference1(), fpeleft1);
+					}
+					if(!sgaps) {
+						insert_split_point(newal.getreference1(), speright1+1);
 					}
 				}
 			}
+		}
 
 
 
 
 
-			const multimap<size_t, pw_alignment *> & alonref = overl.get_als_on_reference_const(sequence);
-			for(multimap<size_t, pw_alignment *>::const_iterator it = alonref.lower_bound(position); it!=alonref.end(); ++it) {
-				const pw_alignment * al = it-> second;
+		const multimap<size_t, pw_alignment *> & alonref = overl.get_als_on_reference_const(sequence);
+		for(multimap<size_t, pw_alignment *>::const_iterator it = alonref.lower_bound(position); it!=alonref.end(); ++it) {
+			const pw_alignment * al = it-> second;
 				
 				
 	//			cout << " in ins " << sequence << " : " << position << " see: " << endl;
@@ -1498,35 +1707,35 @@ void splitpoints::find_initial_split_points(size_t sequence, size_t left, size_t
 	//			cout << endl;
 
 
-				if(al->getreference1()!=al->getreference2()) {
-					size_t alleft;
-					size_t alright;
-					al->get_lr_on_reference(sequence, alleft, alright);
-					if(alright < position) {
+			if(al->getreference1()!=al->getreference2()) {
+				size_t alleft;
+				size_t alright;
+				al->get_lr_on_reference(sequence, alleft, alright);
+				if(alright < position) {
 			//			cout << " break " << endl;
-						break;
-					}
-					if(alleft == position) {
+					break;
+				}
+				if(alleft == position) {
 			//			cout << " break " << endl;
-						break;
-					} 
-					if(alright+1== position) {
+					break;
+				} 
+				if(alright+1== position) {
 			//			cout << " break " << endl;
-						break;
-					}
-					if(alleft>position){
+					break;
+				}
+				if(alleft>position){
 			//			cout << " break " << endl;
-						break;
-					}
+					break;
+				}
 			//		al->print(); 
 				//	cout<<"position"<<position<<endl;
 				//	cout<<"alleft"<<alleft<<endl;
 				//	cout<<"alright"<<alright<<endl;
-					assert(alleft < position && position <= alright);
-					pw_alignment fp;
-					pw_alignment sp;
-					pw_alignment fpe;
-					pw_alignment spe;
+				assert(alleft < position && position <= alright);
+				pw_alignment fp;
+				pw_alignment sp;
+				pw_alignment fpe;
+				pw_alignment spe;
 				/*	for(size_t col = 0; col < al->alignment_length(); col++) {
 						char c1;
 						char c2;
@@ -1536,80 +1745,79 @@ void splitpoints::find_initial_split_points(size_t sequence, size_t left, size_t
 				//	cout<<"al length: "<< al->alignment_length() <<endl;
 				//	if(al->alignment_length()>1){
 
-						al->split_on_reference(sequence, position, fp, sp);
+				al->split_on_reference(sequence, position, fp, sp);
 				
 
 
-					// do splitted parts have only gaps one of their reference sequences
-					bool fgaps = onlyGapSample(&fp);
-					bool sgaps = onlyGapSample(&sp);
+				// do splitted parts have only gaps one of their reference sequences
+				bool fgaps = onlyGapSample(&fp);
+				bool sgaps = onlyGapSample(&sp);
 					
-					// find split part alignment ends on reference after removing end gaps
-					if(!fgaps) {
-						fp.remove_end_gaps(fpe);
+				// find split part alignment ends on reference after removing end gaps
+				if(!fgaps) {
+					fp.remove_end_gaps(fpe);
 #if SPLITPRINT
-						cout << "al fpe " << endl;
-						fpe.print();
-						cout  << endl;
+					cout << "al fpe " << endl;
+					fpe.print();
+					cout  << endl;
 #endif
-					}
-					if(!sgaps) {
-						sp.remove_end_gaps(spe);
+				}
+				if(!sgaps) {
+					sp.remove_end_gaps(spe);
 #if SPLITPRINT
-						cout << "al spe " << endl;
-						spe.print();
-						cout << endl;
+					cout << "al spe " << endl;
+					spe.print();
+					cout << endl;
 #endif
-					}
+				}
 
 
 
 
 					
-					if(sp.getreference1()==sequence) {
+				if(sp.getreference1()==sequence) {
 
 
 					
-							if(al->getbegin2() < al->getend2()) {
-								if(!sgaps) {
-									insert_split_point(sp.getreference2(), spe.getbegin2());
-								} 
-								if(!sgaps) {
-									insert_split_point(sp.getreference2(), fpe.getend2()+1);
-								}
-
-
-							} else {
-								if(!fgaps) {
-									insert_split_point(sp.getreference2(), fpe.getend2());
-								}
-								if(!sgaps) {
-									insert_split_point(sp.getreference2(), spe.getbegin2()+1);
-								}
+						if(al->getbegin2() < al->getend2()) {
+							if(!sgaps) {
+								insert_split_point(sp.getreference2(), spe.getbegin2());
+							} 
+							if(!sgaps) {
+								insert_split_point(sp.getreference2(), fpe.getend2()+1);
 							}
+
+
 						} else {
+							if(!fgaps) {
+								insert_split_point(sp.getreference2(), fpe.getend2());
+							}
+							if(!sgaps) {
+								insert_split_point(sp.getreference2(), spe.getbegin2()+1);
+							}
+						}
+					} else {
 
 
 
 
 						//	cout<<"Heya!!!"<<endl;
-							if(al->getbegin2() < al->getend2()) {
-								if(!sgaps) {
-									insert_split_point(sp.getreference1(), spe.getbegin1());
-								}
-								if(!fgaps) {
-									insert_split_point(sp.getreference1(), fpe.getend1()+1);
-								}
-							} else {
-								if(!fgaps) {
-									insert_split_point(sp.getreference1(), fpe.getend1());
-								}
-								if(!sgaps) {
-									insert_split_point(sp.getreference1(), spe.getbegin1()+1);
-								}
+						if(al->getbegin2() < al->getend2()) {
+							if(!sgaps) {
+								insert_split_point(sp.getreference1(), spe.getbegin1());
+							}
+							if(!fgaps) {
+								insert_split_point(sp.getreference1(), fpe.getend1()+1);
+							}
+						} else {
+							if(!fgaps) {
+								insert_split_point(sp.getreference1(), fpe.getend1());
+							}
+							if(!sgaps) {
+								insert_split_point(sp.getreference1(), spe.getbegin1()+1);
 							}
 						}
-					//}
+					}
 				} else {
 					
 					size_t alleft1;
