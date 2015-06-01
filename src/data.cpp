@@ -2974,7 +2974,7 @@ void mc_model::make_all_alignments_patterns(){
 		size_t firstPatterns = Alignment_level;
 		for(size_t j = 0; j < Alignment_level; j++){
 			firstPatterns --;
-			first_pattern+=modification_character(-1,-1,-1,firstPatterns);
+			first_pattern += modification_character(-1,-1,-1,firstPatterns);
 		}
 		return first_pattern;
 	}	
@@ -3107,7 +3107,6 @@ void mc_model::make_all_alignments_patterns(){
 // TODO 
 // this function should get a better name. It applies the functor on each position in the alignment
 	void mc_model::computing_modification_oneToTwo(const pw_alignment & p, abstract_context_functor & functor,ofstream & outs)const{
-		// TODO new entropy encoder makes no sense here
 		string seq = "";
 	//	cout<<"data ad in computing mod: "<< & data << endl;
 	//	p.print();
@@ -3683,13 +3682,13 @@ double counting_functor::get_total(size_t acc1, size_t acc2, string context)cons
 	//	for(size_t h =0; h < NUM_DELETE+NUM_KEEP+10; h++){
 		//	cout<< "high values: " << high.at(h)<<endl;
 	//	}
-		cout<< "context at " << pos << " is: ";
+	//	cout<< "context at " << pos << " is: ";
 		for(size_t i =0; i < context.size(); i++){
-			cout<<int(context.at(i));
+	//		cout<<int(context.at(i));
 			int con = int(context.at(i));
 			wrappers.context(pos,con);
 		}
-		cout<< " " <<endl;
+	//	cout<< " " <<endl;
 	//	cout<< "actual acc1 " << data.accNumber(p.getreference1())  << " actual acc2 " << data.accNumber(p.getreference2()) <<endl;
 	//	cout << "encoding form acc: " << acc1 << " to acc: "<< acc2 << endl;
 	//	cout<< "center acc should be: " << acc1 << endl;

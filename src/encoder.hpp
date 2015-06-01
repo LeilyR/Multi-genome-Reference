@@ -19,18 +19,12 @@ class encoder{
 	void arithmetic_encoding_seq(ofstream&);
 	void arithmetic_decoding_seq_test(int t);
 	void calculating_clusters_high(map<string, unsigned int> & weight);
-	void arithmetic_encoding_alignment(map<string, unsigned int> & weight, map<string, string> & cluster_members, map<string, vector<pw_alignment> > & alignmentOfCluster,ofstream&,dlib::entropy_encoder_kernel_1 &);
-	void arithmetic_decoding_alignment(ifstream&,dlib::entropy_decoder_kernel_1&);
-	void arithmetic_enc_centers(map<string, vector<pw_alignment> > & alignmentOfCluster, ofstream &);
-	void arithmetic_dec_centers(ifstream&, dlib::entropy_decoder_kernel_1&);
 	void encoding_seq_test();
 	void arithmetic_decoding_seq();
 	void setOfAlignments(map<string,vector<pw_alignment> > & );
 	void add_acc_to_stream(ofstream &);
 	void set_acc_from_stream(ifstream &);
 	void set_pattern_from_stream(ifstream & );
-	void arithmetic_enc_centId(map<string, vector<pw_alignment> > & alignmentOfCluster, ofstream &);
-	void arithmetic_dec_centId(ifstream &, dlib::entropy_decoder_kernel_1&);
 	const map<string, vector<unsigned int> > & get_center_high() const;
 	void partition_centers(map<string, vector<pw_alignment> > & , map<string, unsigned int>&);
 	void calculate_high_in_partition(map<string, unsigned int> &, map<string,vector<pw_alignment> > &);
@@ -43,12 +37,12 @@ class encoder{
 	void arithmetic_decoding_centers(ifstream &,dlib::entropy_decoder_kernel_1 &);
 	void add_partition_high_to_stream(ofstream & );
 	void set_partition_high_from_stream(ifstream&);
-	void test_al_encoding(map<string, unsigned int> & , map<string, string > & , map<string, vector<pw_alignment> > & ,ofstream &, dlib::entropy_encoder_kernel_1 &);
-	void test_al_decoding(ifstream &, dlib::entropy_decoder_kernel_1 &);
-	void test_al_decoding( string center,size_t part);
+	void al_encoding(map<string, unsigned int> & , map<string, string > & , map<string, vector<pw_alignment> > & ,ofstream &, dlib::entropy_encoder_kernel_1 &);
+	void al_decoding(ifstream &, dlib::entropy_decoder_kernel_1 &);
 	void write_to_stream(map<string, vector<pw_alignment> > & ,ofstream &);
 	void read_from_stream(ifstream&);
 	string associatedMember(string & , size_t&, size_t&);
+	const multimap<size_t, pw_alignment*> & get_alignment(map<string,vector<pw_alignment> > & , size_t);
 	private:
 	all_data & data;
 	mc_model & model;

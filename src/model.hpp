@@ -5,8 +5,6 @@
 #include "pw_alignment.hpp"
 #include <map>
 #include <vector>
-
-#include "data.hpp"
 #include <cassert>
 
 extern "C" {
@@ -437,6 +435,68 @@ void run(map<string, vector<string> > & cluster_result) {
 	map<string, char> cluster_centers;
 	void add_alignment(const pw_alignment *al, ofstream &);
 };
+
+class finding_centers{
+	public:
+	finding_centers(all_data &);
+	~finding_centers();
+	void setOfAlignments(map<string,vector<pw_alignment> > &);
+	void findMemberOfClusters(map<string,vector<pw_alignment> > & );
+	void center_frequency(map<string,vector<pw_alignment> > &);
+	vector<size_t> get_center(size_t)const;
+
+	private:
+	all_data & data;
+	vector< multimap<size_t , pw_alignment*> >AlignmentsFromClustering;
+	map<string,string> memberOfCluster; //first string is assocciated member and second one is its center
+	vector<vector<size_t> >centersOfASequence;//all the centers that happen on each sequence.
+
+
+
+};
+class suffix_tree{
+	public:
+	suffix_tree(all_data &, finding_centers&);
+	~suffix_tree();
+	void create_suffix(size_t);
+	void find_a_node(size_t& ,size_t&, string&);
+	void find_next_sibling(size_t, size_t);
+	void find_next_firstparent(size_t, size_t);
+	void make_a_tree();
+	void insert_node(string);
+	void count_paths();
+	vector<string> get_nodes()const;
+	map<vector<size_t>, size_t> get_count()const;
+	vector<size_t> get_first_parent()const;
+	
+	private:
+	all_data & data;
+	finding_centers & centers;
+	vector<string>suffixes;//all the suffixes of a sequence at the time
+	vector<string> nodes;
+	multimap<size_t , size_t> nodes_relation; //first size_t shows the parent and second one shows kids
+	map<string, size_t>firstParent; // size_t shows its index
+	map<vector<size_t>,size_t>branch_counter;//vector represents all nodes of a branch , size_t shows the number of that branch is happening
+		
+};
+
+class merging_centers{
+	public:
+		merging_centers(finding_centers &, suffix_tree &);
+		~merging_centers();
+		void merg_value();
+		void merg_alignments(map<string,vector<pw_alignment> > &);
+	private:
+		finding_centers & centers;
+		suffix_tree & tree;
+		vector<vector<size_t> > merged_centers;//merged nodes
+
+
+
+
+};
+
+
 
 
 #endif

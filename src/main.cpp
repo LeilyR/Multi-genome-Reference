@@ -487,7 +487,6 @@ ofstream outs("encode",std::ofstream::binary);
 	overlap ol(data);
 	wrapper wrap;
 	test_encoder test;
-
 	read_data_time = clock() - read_data_time;
 //	encoding_functor functor1(data);
 
@@ -593,6 +592,7 @@ ofstream outs("encode",std::ofstream::binary);
 	//	cout << "cc " << i << ": from " << cc.size() << " original als with total gain " << ias.get_max_gain() << " we made " << cc_overlap.at(i).size() << " pieces with total gain " << ias.get_result_gain() <<  endl; 
 	//	cout << " components for clustering: " << endl;
 		vector<string> all_centers;
+		map<string, vector<pw_alignment> >al_of_a_ccs;// it is used for creating long centers
 		for(size_t j=0; j<cc_cluster_in.size(); ++j) {
 
 		//	cout << " run affpro on " << cc_cluster_in.at(j).size()<<endl;
@@ -693,6 +693,9 @@ ofstream outs("encode",std::ofstream::binary);
 			
 			for(map<string, vector<pw_alignment> >::iterator it = local_al_in_a_cluster.begin(); it!=local_al_in_a_cluster.end(); ++it) {
 				alignments_in_a_cluster.insert(*it);
+				if(it->second.size()!=0){
+					al_of_a_ccs.insert(*it);
+				}
 				num_cluster_members_al += 1 + it->second.size();
 				
 			
@@ -728,17 +731,27 @@ ofstream outs("encode",std::ofstream::binary);
 				}
 			}
 }
+
 		} // for cluster_in set  
 		cout << endl;
-
-
-
-/*	for(map<string, vector<pw_alignment> >::iterator it=alignments_in_a_cluster.begin(); it != alignments_in_a_cluster.end();it++){
-		for(size_t h=0; h< it->second.size();h++){
-			it->second.at(h).print();
-		}
-	}*/	
-	
+//new code for long centers can be used here!(al_of_a_ccs is used for running mergingCenters class functions)
+	finding_centers centers(data);
+	suffix_tree tree(data,centers);
+	merging_centers merg(centers,tree);
+	for(map<string, vector<pw_alignment> >::iterator  al = al_of_a_ccs.begin(); al !=al_of_a_ccs.end();al++){
+		string cent = al->first;
+		cout<< "cent: " << al->first << "al_size: "<< al->second.size()<<endl;
+	}
+	if(al_of_a_ccs.size()>0){
+		centers.center_frequency(al_of_a_ccs);
+	//	for(size_t seq =0 ; seq < data.numSequences(); seq ++){
+	//		tree.create_suffix(seq);
+	//	}
+	}
+	tree.make_a_tree();
+	tree.count_paths();
+	tree.get_first_parent();
+	merg.merg_value();	
 				
 	/*	for(set< const pw_alignment *, compare_pw_alignment>::iterator it=cc.begin();it!=cc.end();it++ ){
 			const pw_alignment *al = *it;
@@ -803,12 +816,7 @@ ofstream outs("encode",std::ofstream::binary);
 			}
 		}else continue;
 	}
-	size_t no_al = 0;
-	for(map<string, vector<string> >::iterator it=global_results.begin();it !=global_results.end();it++){
-			no_al += it->second.size();
-	}
-//	cout<<"no of clustered alignments: "<< no_al <<endl;	
-	map<string, vector<string> >membersOfCluster;//first string represents center and vector of strings are associated members
+	map<string, vector<string> >membersOfCluster;//first string represents center and vector of strings are associated members(doesn't include centers with no associated member!)
 	for(map<string, vector<pw_alignment> >::iterator it = alignments_in_a_cluster.begin();it != alignments_in_a_cluster.end();it++){
 		map<string, vector<string> >::iterator it1 = membersOfCluster.find(it->first);
 		for(size_t j =0; j < it->second.size();j++){
@@ -928,7 +936,7 @@ ofstream outs("encode",std::ofstream::binary);
 //	en.calculate_high_in_partition(weight,alignments_in_a_cluster);
 //	en.arithmetic_encoding_centers(alignments_in_a_cluster,outs);
 //	en.arithmetic_encoding_alignment(weight,member_of_cluster,alignments_in_a_cluster,outs,*enc);
-	en.test_al_encoding(weight,member_of_cluster,alignments_in_a_cluster,outs,*enc);
+	en.al_encoding(weight,member_of_cluster,alignments_in_a_cluster,outs,*enc);
 	delete enc;
 	outs.close();
 //	test.encode();
@@ -939,10 +947,8 @@ ofstream outs("encode",std::ofstream::binary);
 	ifstream in("encode",std::ifstream::binary);
 //	en.read_from_stream(in);
 	dlib::entropy_decoder_kernel_1  dec;
-//	en.arithmetic_decoding_alignment(in,dec);
 //	test.compare();
-//	en.arithmetic_decoding_centers(in);
-	en.test_al_decoding(in,dec);
+	en.al_decoding(in,dec);
 	test.compare();
 	arithmetic_encoding_time = clock() - arithmetic_encoding_time;
 
