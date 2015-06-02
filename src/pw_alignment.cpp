@@ -1,6 +1,6 @@
 #include "pw_alignment.hpp"
 
-pw_alignment::pw_alignment(string sample1str, string sample2str, size_t sample1_begin, size_t sample2_begin, size_t sample1_end, size_t sample2_end, size_t sample1reference, size_t sample2reference ): samples(2), begins(2), ends(2), references(2) {
+pw_alignment::pw_alignment(std::string sample1str, std::string sample2str, size_t sample1_begin, size_t sample2_begin, size_t sample1_end, size_t sample2_end, size_t sample1reference, size_t sample2reference ): samples(2), begins(2), ends(2), references(2) {
 	assert(sample1str.length() == sample2str.length());
 
 
@@ -64,7 +64,7 @@ void pw_alignment::alignment_col(size_t c, char & s1, char & s2) const {
 	bit3 = samples.at(1).at(3*c+2);
 	s2 = base_translate_back(bit1, bit2, bit3);
 }
-void  pw_alignment::set_alignment_bits(vector<bool> s1, vector<bool> s2){
+void  pw_alignment::set_alignment_bits(std::vector<bool> s1, std::vector<bool> s2){
 	samples.at(0) = s1;
 	samples.at(1) = s2;
 }
@@ -73,10 +73,10 @@ void  pw_alignment::set_alignment_bits(vector<bool> s1, vector<bool> s2){
 /* cut before position
 */
 void pw_alignment::split(bool sample, size_t position, pw_alignment & first_part, pw_alignment & second_part ) const{
-	vector<bool> fps1(samples.at(0).size());
-	vector<bool> fps2(samples.at(0).size());
-	vector<bool> sps1(samples.at(0).size());
-	vector<bool> sps2(samples.at(0).size());
+	std::vector<bool> fps1(samples.at(0).size());
+	std::vector<bool> fps2(samples.at(0).size());
+	std::vector<bool> sps1(samples.at(0).size());
+	std::vector<bool> sps2(samples.at(0).size());
 	size_t s = 0;
 	size_t s2 = 0;
 	if (sample == true) {
@@ -110,8 +110,8 @@ void pw_alignment::split(bool sample, size_t position, pw_alignment & first_part
 					first_part.setend2(getbegin2()+position+s-s2-getbegin1()-1);
 				}
 				else{
-		//			cout<<"s: "<<s<<endl;
-		//			cout<<"s2: "<<s2<<endl;
+		//			std::cout<<"s: "<<s<<std::endl;
+		//			std::cout<<"s2: "<<s2<<std::endl;
 					first_part.setend2(getbegin2()-position-s+s2+getbegin1()+1);
 				}
 				
@@ -133,7 +133,7 @@ void pw_alignment::split(bool sample, size_t position, pw_alignment & first_part
 				if(getbegin2()<getend2()){
 					second_part.setbegin2(getbegin2()+first_part.alignment_length()-s2);
 				}
-				else{// cout<<"hey"<<endl;							
+				else{// std::cout<<"hey"<<std::endl;							
 					second_part.setbegin2(getbegin2()-first_part.alignment_length()+s2);
 				}
 				second_part.setend1(getend1());
@@ -309,7 +309,7 @@ void pw_alignment::split(bool sample, size_t position, pw_alignment & first_part
 				sps1.at(3*(i-getbegin2()+position-s-1)+2) = samples.at(0).at(3*i+2);
 				sps2.at(3*(i-getbegin2()+position-s-1)+2) = samples.at(1).at(3*i+2);
 			}
-	//		cout<<"sample size: "<<samples.at(1).size()<< "first part size: "<< fps2.size()<<endl;
+	//		std::cout<<"sample size: "<<samples.at(1).size()<< "first part size: "<< fps2.size()<<std::endl;
 			sps1.resize(samples.at(1).size()-fps2.size());
 			sps2.resize(samples.at(1).size()-fps2.size());
 			second_part.set_alignment_bits(sps1,sps2);
@@ -341,9 +341,9 @@ void pw_alignment::split(bool sample, size_t position, pw_alignment & first_part
 */   
 void pw_alignment::remove_end_gaps(pw_alignment & res) const {
 
-//	cout << "reg: " << endl;
+//	std::cout << "reg: " << std::endl;
 //	print();
-//	cout << endl;
+//	std::cout << std::endl;
 
 	// get first/last alignment column without gaps
 	size_t first_col = 0;
@@ -375,9 +375,9 @@ void pw_alignment::remove_end_gaps(pw_alignment & res) const {
 		}
 	}
 
-//	cout << " start gaps " << start_gaps1 << " " << start_gaps2 << endl;
-//	cout << " end gaps " << end_gaps1 << " " << end_gaps2 << endl;
-//	cout << " first col " << first_col << " last col " << last_col << endl;
+//	std::cout << " start gaps " << start_gaps1 << " " << start_gaps2 << std::endl;
+//	std::cout << " end gaps " << end_gaps1 << " " << end_gaps2 << std::endl;
+//	std::cout << " first col " << first_col << " last col " << last_col << std::endl;
 
 
 	assert(start_gaps1==0 || start_gaps2==0);
@@ -389,18 +389,18 @@ void pw_alignment::remove_end_gaps(pw_alignment & res) const {
 		pw_alignment gaps;
 		if(start_gaps1>0) {
 			if(getbegin2()<getend2()) {
-//				cout << " split 1 " << endl;
+//				std::cout << " split 1 " << std::endl;
 				split(false, getbegin2()+start_gaps1, gaps, res);	
 			} else {
-//				cout << " split 2 " << endl;
+//				std::cout << " split 2 " << std::endl;
 				split(false, getbegin2()-start_gaps1+1, gaps, res); // falsch?
 			}
 		} else { // gaps on second ref
 			if(getbegin1()<getend1()) {
-//				cout << " split 3 " << endl;
+//				std::cout << " split 3 " << std::endl;
 				split(true, getbegin1()+start_gaps2, gaps, res);
 			} else {
-//				cout << " split 4 " << endl;
+//				std::cout << " split 4 " << std::endl;
 				split(true, getbegin1()-start_gaps2+1, gaps, res);
 			}
 		}
@@ -410,26 +410,26 @@ void pw_alignment::remove_end_gaps(pw_alignment & res) const {
 		pw_alignment gaps;
 		if(end_gaps1>0) {
 			if(getbegin2()<getend2()) {
-//				cout << " split 5 " << endl;
+//				std::cout << " split 5 " << std::endl;
 				res.split(false, getend2()-end_gaps1+1, res, gaps);
 			} else {
-//				cout << " split 6 " << endl;
+//				std::cout << " split 6 " << std::endl;
 				res.split(false, getend2()+end_gaps1, res, gaps);
 			}
 		} else { // gaps on first ref
 			if(getbegin1()<getend1()) {
-//				cout << " split 7 " << endl;
+//				std::cout << " split 7 " << std::endl;
 				res.split(true, getend1()-end_gaps2+1, res, gaps);
 			} else {
-//				cout << " split 8 " << endl;
+//				std::cout << " split 8 " << std::endl;
 				res.split(true, getend2()+end_gaps2, res, gaps);
 			}
 		}
 	}
 
-//	cout << " regres " << endl;
+//	std::cout << " regres " << std::endl;
 //	res.print();
-//	cout << endl;
+//	std::cout << std::endl;
 }
 
 
@@ -541,7 +541,7 @@ void pw_alignment::base_translate(char base, bool  & bit1, bool & bit2, bool & b
 
 			break;
 			default:
-			cerr << "Error: Illegal character in DNA sequence: " << base << endl;
+			std::cerr << "Error: Illegal character in DNA sequence: " << base << std::endl;
 			exit(1);
 			break;
 		}
@@ -552,7 +552,7 @@ char pw_alignment::base_translate_back(bool bit1, bool bit2, bool bit3) {
 	if(bit1) {
 		if(bit2) {
 			if(bit3) {
-				cerr << "Error: wrong bit vector 111" << endl;
+				std::cerr << "Error: wrong bit std::vector 111" << std::endl;
 				exit(1);
 			} else {
 				return 'G';
@@ -570,7 +570,7 @@ char pw_alignment::base_translate_back(bool bit1, bool bit2, bool bit3) {
 	} else {
 		if(bit2) {
 			if(bit3) {
-				cerr << "Error: wrong bit vector 011" << endl;
+				std::cerr << "Error: wrong bit std::vector 011" << std::endl;
 				exit(1);
 			} else {
 				return 'T';
@@ -586,10 +586,10 @@ char pw_alignment::base_translate_back(bool bit1, bool bit2, bool bit3) {
 		}
 	}
 }
-	vector<bool> pw_alignment::getsample1()const{
+	std::vector<bool> pw_alignment::getsample1()const{
 	return samples.at(0);
 }
-	vector<bool> pw_alignment::getsample2()const{
+	std::vector<bool> pw_alignment::getsample2()const{
 	return samples.at(1);
 }
 	size_t pw_alignment::getbegin1()const{
@@ -610,7 +610,7 @@ char pw_alignment::base_translate_back(bool bit1, bool bit2, bool bit3) {
 	size_t pw_alignment::getreference2() const{
 	return references.at(1);
 }
-	vector<bool> pw_alignment::getsample(size_t id)const{
+	std::vector<bool> pw_alignment::getsample(size_t id)const{
 	return samples.at(id);
 }
 	size_t pw_alignment::getbegin(size_t id)const{
@@ -624,8 +624,8 @@ size_t pw_alignment::getreference(size_t id)const{
 	return references.at(id);
 }
 
-string pw_alignment::get_al_ref1() const {
-	stringstream res;
+std::string pw_alignment::get_al_ref1() const {
+	std::stringstream res;
 	for(size_t i=0; i<alignment_length(); ++i) {
 		char c1, c2;
 		alignment_col(i, c1, c2);
@@ -634,8 +634,8 @@ string pw_alignment::get_al_ref1() const {
 	return res.str();
 }
 	
-string pw_alignment::get_al_ref2() const {
-	stringstream res;
+std::string pw_alignment::get_al_ref2() const {
+	std::stringstream res;
 	for(size_t i=0; i<alignment_length(); ++i) {
 		char c1, c2;
 		alignment_col(i, c1, c2);
@@ -669,16 +669,18 @@ void pw_alignment::setbegin1(size_t begin1){
 }
 
 	void pw_alignment::print()const{ 
-		cout << "al1 seq "<< getreference1() << " b " << getbegin1() << " e " << getend1() <<  " l "  << alignment_length() << endl;
-		cout << "al2 seq "<< getreference2() << " b " << getbegin2() << " e " << getend2() << endl;
+		std::cout << "al1 seq "<< getreference1() << " b " << getbegin1() << " e " << getend1() <<  " l "  << alignment_length() << std::endl;
+		std::cout << "al2 seq "<< getreference2() << " b " << getbegin2() << " e " << getend2() << std::endl;
+		/*
 		for(size_t col = 0; col < alignment_length(); col++) {
 		//	if(col < 3 || (alignment_length() - col < 3)) {
 				char c1;
 				char c2;
 				alignment_col(col, c1, c2);
-				cout <<col <<"\t"<< c1<<"\t"<<c2<<endl;
+				std::cout <<col <<"\t"<< c1<<"\t"<<c2<<std::endl;
 		//	}
 		}
+		*/
 	}
 
 
@@ -739,7 +741,7 @@ bool compare_pw_alignment::operator()(const pw_alignment *const &a, const pw_ali
 	return false;
 }
 
-	void pw_alignment::set_cost(vector<double> create, vector<double> modify){
+	void pw_alignment::set_cost(std::vector<double> create, std::vector<double> modify){
 		create_costs = create;
 		modify_costs = modify; 
 	}
@@ -759,23 +761,28 @@ bool compare_pw_alignment::operator()(const pw_alignment *const &a, const pw_ali
 	}
 
 
-	wrapper::wrapper():encodeout("enc.txt"),decodeout("dec.txt"),al_encode("al_encode.txt"),al_decode("al_decode.txt"){
-	}
-	wrapper::~wrapper(){}
-	void wrapper::encode(unsigned int& low, unsigned int& high, unsigned int & total){
-		encodeout << "l"<< low << "h"<< high;
-		al_encode << " low: "<< low << " high: "<< high <<endl;
 
-	}
-	void wrapper::decode(unsigned int& low, unsigned int& high, unsigned int & total){
-		decodeout << "l"<< low << "h"<< high;
-		al_decode << " low: "<< low << " high: "<< high <<endl;
+        wrapper::wrapper():encodeout("enc.txt"),decodeout("dec.txt"),al_encode("al_encode.txt"),al_decode("al_decode.txt"){
+        }
+        wrapper::~wrapper(){}
+        void wrapper::encode(unsigned int& low, unsigned int& high, unsigned int & total){
+                encodeout << "l"<< low << "h"<< high;
+                al_encode << " low: "<< low << " high: "<< high <<std::endl;
 
-	}
-	void wrapper::context(size_t & pos , int & context){
-		al_encode << "position: " << pos << " context: " <<  context <<endl;
+        }
+        void wrapper::decode(unsigned int& low, unsigned int& high, unsigned int & total){
+                decodeout << "l"<< low << "h"<< high;
+                al_decode << " low: "<< low << " high: "<< high <<std::endl;
 
-	}
+        }
+        void wrapper::context(size_t & pos , int & context){
+                al_encode << "position: " << pos << " context: " <<  context <<std::endl;
+
+        }
+        void wrapper::decodeContext(size_t & pos, int & context){
+                al_decode << "position: " << pos << " context: " <<  context <<std::endl;
+        }
+
 	void wrapper::decodeContext(size_t & pos, int & context){
 		al_decode << "position: " << pos << " context: " <<  context <<endl;
 	}

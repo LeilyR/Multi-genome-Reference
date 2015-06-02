@@ -12,6 +12,11 @@
 #include <math.h> 
 #include <algorithm>
 
+#include "pw_alignment.hpp"
+#include "dlib/entropy_encoder/entropy_encoder_kernel_1.h"
+#include "dlib/entropy_decoder/entropy_decoder_kernel_1.h"
+
+
 // Library to read Sam File
 #include "SamFile.h"
 #include "SamValidation.h"
@@ -19,24 +24,16 @@
 #include "GenomeSequence.h"
 #include <SamFlag.h>
 
-
 #include "pw_alignment.hpp"
-//#include "readAlignment.hpp"
-//#include "dlib/entropy_encoder/entropy_encoder_kernel_1.h"
-//#include "dlib/entropy_decoder/entropy_decoder_kernel_1.h"
-//#include "/home/marion/software/dlib-18.14/dlib/entropy_decoder/entropy_decoder_kernel_1.h"
-//#include "/home/marion/software/dlib-18.14/dlib/entropy_encoder/entropy_encoder_kernel_1.h"
-
-using namespace std;
 
 #include <boost/iostreams/stream.hpp>
 #include <boost/tokenizer.hpp>
 typedef boost::tokenizer<boost::char_separator<char> > btokenizer;
-void strsep(string str, const char * sep, vector<string> & parts);
+void strsep(std::string str, const char * sep, std::vector<std::string> & parts);
 
 class dnastring {
 	public:
-	dnastring(string str);
+	dnastring(std::string str);
 	dnastring();
 	dnastring(const dnastring &d);
 	~dnastring();
@@ -51,7 +48,7 @@ class dnastring {
 
 
 	private:
-	vector<bool> bits;
+	std::vector<bool> bits;
 
 	static char base_translate_back(bool bit1, bool bit2, bool bit3);
 
@@ -62,47 +59,51 @@ class dnastring {
 class all_data {
 
 	public:
-		all_data(string fasta_all_sequences, string maf_all_alignments);
+		all_data();
+
+		void read_fasta_maf(std::string fasta_all_sequences, std::string maf_all_alignments);
+		void read_fasta_sam(std::string fasta_all_sequences, std::string sam_all_alignments);
 		// no copy constructor, never copy all data
 		~all_data();
 
 
 		const dnastring & getSequence(size_t index) const;
 		const pw_alignment & getAlignment(size_t index) const;
-		const vector<pw_alignment>& getAlignments()const; // Attention : I had a function to get the vector of alignments
-	//	const multimap<size_t, size_t> & getAlOnRefMap(size_t seq_idx) const;
 		void add_pw_alignment(const pw_alignment& p);
+		const std::vector<pw_alignment>& getAlignments()const; // Attention : I had a function to get the vector of alignments
+	//	const multistd::map<size_t, size_t> & getAlOnRefMap(size_t seq_idx) const;
+
 		size_t numSequences() const;
 		size_t numAlignments() const;
 		const size_t numAcc() const;
 		bool alignment_fits_ref(const pw_alignment * al) const;
 		void print_ref(const pw_alignment * al)const;
-		const vector<size_t> & getAcc(size_t acc)const;//return the vector of all sequences for a certain acc.
+		const std::vector<size_t> & getAcc(size_t acc)const;//return the vector of all sequences for a certain acc.
 		size_t accNumber(size_t sequence_id) const;
-		const string get_acc(size_t acc)const; //get the accession number and return its name.
-		const size_t get_acc_id(string acc)const;
-		string get_seq_name(size_t s) const;
+		const std::string get_acc(size_t acc)const; //get the accession number and return its name.
+		const size_t get_acc_id(std::string acc)const;
+		std::string get_seq_name(size_t s) const;
 		size_t get_seq_size(size_t s) const;
-		void set_accession(const string & acc);
+		void set_accession(const std::string & acc);
 		size_t numOfAcc() const;
 		const map< string, size_t>& getLongname2seqidx()const;
 	
 	private:
 		// data
-		vector<dnastring> sequences;
-		vector<string> sequence_names;
-		vector<pw_alignment> alignments;
+		std::vector<dnastring> sequences;
+		std::vector<std::string> sequence_names;
+		std::vector<pw_alignment> alignments;
 		// fast access indices
-		map< string, vector< size_t> > acc_sequences; // acc name -> sequences of that acc
-		vector<size_t> sequence_to_accession; // sequence id -> accession id
-		map<string, size_t> accession_name; // accession name -> accession id
+		std::map< std::string, std::vector< size_t> > acc_sequences; // acc name -> sequences of that acc
+		std::vector<size_t> sequence_to_accession; // sequence id -> accession id
+		std::map<std::string, size_t> accession_name; // accession name -> accession id
 
-		map< string, size_t> longname2seqidx; // long sequence name ("Accession:sequence name") -> sequence index
+		std::map< std::string, size_t> longname2seqidx; // long sequence name ("Accession:sequence name") -> sequence index
 
 		
 
-		void insert_sequence(const string & acc, const string & seq_name, const string & dna);
-		static void name_split(const string & longname, string & acc, string & name);
+		void insert_sequence(const std::string & acc, const std::string & seq_name, const std::string & dna);
+		static void name_split(const std::string & longname, std::string & acc, std::string & name);
 
 
 };
@@ -110,7 +111,6 @@ class all_data {
 
 class compute_cc;
 
-/*
 class overlap{
 public:
 	overlap(const all_data&);
@@ -118,32 +118,34 @@ public:
 	~overlap();
 	// insert p into overlap data structure, return pointer to inserted alignment
 	pw_alignment * insert_without_partial_overlap(const pw_alignment & p);
+	void insert_without_partial_overlap_p(pw_alignment * p);
 	// This function removes an alignment with adress identity to remove from overlap, then deletes remove
 	void remove_alignment(const pw_alignment  *remove);
+	void remove_alignment_nodelete(const pw_alignment * remove);
 
 	void test_all() const;
-	void test_all_part()const;// Change it later to check all those pieces with gap in one sample. Put them all in a set and check if the only missed parts of coverage are those parts.
+	void test_all_part()const;// Change it later to check all those pieces with gap in one sample. Put them all in a std::set and check if the only missed parts of coverage are those parts.
 	void test_overlap()const;
 	void print_all_alignment() const;
 	const pw_alignment * get_al_at_left_end(size_t ref1, size_t ref2, size_t left1, size_t left2) const;
-	multimap<size_t, pw_alignment*>& get_als_on_reference(size_t sequence) ;
-	const multimap<size_t, pw_alignment*>& get_als_on_reference_const(size_t sequence) const ;
+	std::multimap<size_t, pw_alignment*>& get_als_on_reference(size_t sequence) ;
+	const std::multimap<size_t, pw_alignment*>& get_als_on_reference_const(size_t sequence) const ;
 	void test_multimaps()  ;
 	bool checkAlignments(pw_alignment* const p)const;
 
-	const set<pw_alignment*, compare_pw_alignment> & get_all() const;
+	const std::set<pw_alignment*, compare_pw_alignment> & get_all() const;
 
 	void test_partial_overlap() const;
-	static void test_partial_overlap_set(set< const pw_alignment *, compare_pw_alignment> & als);
-	static void test_partial_overlap_vec(vector< const pw_alignment *> & als);
+	static void test_partial_overlap_set(std::set< const pw_alignment *, compare_pw_alignment> & als);
+	static void test_partial_overlap_vec(std::vector< const pw_alignment *> & als);
 	static bool check_po(size_t l1, size_t r1, size_t l2, size_t r2);
 
 
 	size_t size() const;
 private:
 	const all_data & data;
-	set<pw_alignment*, compare_pw_alignment> alignments;
-	vector< multimap< size_t, pw_alignment *> > als_on_reference; // sequence index -> pos on that sequence -> alignment reference
+	std::set<pw_alignment*, compare_pw_alignment> alignments;
+	std::vector< std::multimap< size_t, pw_alignment *> > als_on_reference; // sequence index -> pos on that sequence -> alignment reference
 
 
 	
@@ -161,29 +163,27 @@ class splitpoints {
 	void nonrecursive_splits(); // initial split points only 
 	void insert_split_point(size_t sequence, size_t position);//recursively find the other split points
 	void insert_split_point_nonrecursive(size_t sequence, size_t position);//insert without recursion
-	void split_all(set<const pw_alignment*, compare_pw_alignment> & remove_alignments, vector<pw_alignment> & insert_alignments);
-	void splits(const pw_alignment * p,  vector<pw_alignment> & insert_alignments);
+	void split_all(std::set<const pw_alignment*, compare_pw_alignment> & remove_alignments, std::vector<pw_alignment> & insert_alignments);
+	void splits(const pw_alignment * p,  std::vector<pw_alignment> & insert_alignments);
 	bool onlyGapSample(const pw_alignment* p);
-	 vector<pw_alignment>  get_insert () const;
+	 std::vector<pw_alignment>  get_insert () const;
 
 	private:
 	const overlap & overl;
 	const pw_alignment & newal;
 	const all_data & data;
-	vector<set<size_t> > split_points;
-	vector<pw_alignment> insert_alignments;	
-	*/
+	std::vector<std::set<size_t> > split_points;
+	std::vector<pw_alignment> insert_alignments;	
 /*
-	initial points in sets (method with and without sets)
+	initial points in std::sets (method with and without sets)
 	compute remove and insert alignments
 	cost change level 1, abort if no gain
 	if there is gain recurse
 
 
-
+*/
 	
 };
-*/
 
 class model{
 public:
@@ -199,9 +199,9 @@ public:
 
 private:
 	all_data & data;
-//	vector<vector<size_t> > transform;
-	vector<vector<double> > cost_on_acc;
-	vector<vector<vector<vector<double> > > >modification;
+//	std::vector<vector<size_t> > transform;
+	std::vector<std::vector<double> > cost_on_acc;
+	std::vector<std::vector<std::vector<std::vector<double> > > >modification;
 };
 #define Alignment_level 1
 #define Sequence_level 2
@@ -211,8 +211,8 @@ private:
 class abstract_context_functor {
 	public:
 	abstract_context_functor();
-	virtual void see_context(size_t acc1, size_t acc2,const pw_alignment& p, size_t pos, string context, char last_char,ofstream &);
-	virtual void see_entire_context(size_t acc1, size_t acc2, string entireContext);
+	virtual void see_context(size_t acc1, size_t acc2,const pw_alignment& p, size_t pos, std::string context, char last_char,std::ofstream &);
+	virtual void see_entire_context(size_t acc1, size_t acc2, std::string entireContext);
 	
 
 };
@@ -221,15 +221,15 @@ class abstract_context_functor {
 class counting_functor : public abstract_context_functor {
 	public:
 	counting_functor(all_data &);
-	virtual void see_context(size_t acc1, size_t acc2, const pw_alignment & p, size_t pos, string context, char last_char,ofstream&);
-	const map<string, vector<double> > & get_context(size_t acc1, size_t acc2)const;
+	virtual void see_context(size_t acc1, size_t acc2, const pw_alignment & p, size_t pos, std::string context, char last_char,std::ofstream&);
+	const std::map<std::string, std::vector<double> > & get_context(size_t acc1, size_t acc2)const;
 	void total_context();
-	double get_total(size_t acc1, size_t acc2, string context)const;
-	void create_context(size_t acc1, size_t acc2, string context);
+	double get_total(size_t acc1, size_t acc2, std::string context)const;
+	void create_context(size_t acc1, size_t acc2, std::string context);
 	private:
 	all_data & data;
-	vector<vector<map<string, vector<double> > > >successive_modification;
-	vector<vector<map <string, double > > > total;	
+	std::vector<std::vector<std::map<std::string, std::vector<double> > > >successive_modification;
+	std::vector<std::vector<std::map <std::string, double > > > total;	
 
 
 
@@ -239,11 +239,11 @@ class mc_model;
 
 class cost_functor : public abstract_context_functor {
 	public:
-	cost_functor(all_data &, const vector<vector<map<string, vector<double> > > >&);
-	virtual void see_context(size_t acc1, size_t acc2, const pw_alignment & p, size_t pos, string context, char last_char,ofstream& );
+	cost_functor(all_data &, const std::vector<vector<std::map<std::string, vector<double> > > >&);
+	virtual void see_context(size_t acc1, size_t acc2, const pw_alignment & p, size_t pos, std::string context, char last_char,std::ofstream& );
 	double get_modify(const pw_alignment & p, size_t acc1, size_t acc2)const;
 	private:
-	vector<vector< map<string, vector<double> > > >  modification; 
+	std::vector<vector< std::map<std::string, vector<double> > > >  modification; 
 	all_data & data;
 	double modify1;
 	double modify2;	
@@ -255,30 +255,30 @@ class adding_functor : public abstract_context_functor {
 	public:
 
 };
-/*
 class encoding_functor : public abstract_context_functor {
 	public:
-	encoding_functor(all_data& , mc_model*, wrapper &);
-	virtual void see_context(size_t acc1, size_t acc2,const pw_alignment& p, size_t pos, string context, char last_char,ofstream&);	
-	virtual void see_entire_context(size_t acc1, size_t acc2, string entireContext);
-	const map<string, vector<double> > & get_alignment_context()const;
-//	vector<string> & get_alignment_context(pw_alignment& p)const;
+	encoding_functor(all_data& , mc_model*, wrapper &, dlib::entropy_encoder_kernel_1 &);
+	virtual void see_context(size_t acc1, size_t acc2,const pw_alignment& p, size_t pos, std::string context, char last_char,std::ofstream&);	
+	virtual void see_entire_context(size_t acc1, size_t acc2, std::string entireContext);
+	const std::map<std::string, std::vector<double> > & get_alignment_context()const;
+//	std::vector<std::string> & get_alignment_context(pw_alignment& p)const;
 	private:
 	all_data & data;
 	mc_model * model;	
 	wrapper& wrappers;
-	string alignment_pattern;//shayadam behtar bashe ye vector of string tarif konam
-	map<string, vector<double> > alignment_context;
+	dlib::entropy_encoder_kernel_1 & enc;
+	std::string alignment_pattern;//shayadam behtar bashe ye std::vector of string tarif konam
+	std::map<std::string, std::vector<double> > alignment_context;
 
 };
 
 class clustering_functor : public abstract_context_functor{
 	public:
-	virtual void see_context(size_t acc1, size_t acc2, const pw_alignment& p, size_t pos, string context, char last_char, ofstream &);//computing_modification_oneToTwo is used to fill in the map of modification between center and its associated member.
+	virtual void see_context(size_t acc1, size_t acc2, const pw_alignment& p, size_t pos, std::string context, char last_char, std::ofstream &);//computing_modification_oneToTwo is used to fill in the map of modification between center and its associated member.
 	//fek konam hamoon encoding_functor ok bashe, lazem nist ino benvisim
 
 	private:
-	map<string, vector<double> >modification;
+	std::map<std::string, std::vector<double> >modification;
 
 
 };
@@ -286,58 +286,58 @@ class decoding_functor : public abstract_context_functor {
 
 
 };
-*/
+
 class mc_model{
 	public:
 		mc_model(all_data&);
 		~mc_model();	
 		void markov_chain();
-		void markov_chain_alignment(ofstream&);
-		const vector<vector<map <string, vector<double> > > >& get_mod_cost()const;
-		void cost_function(const pw_alignment& p, double & c1, double & c2, double & m1, double & m2,ofstream&)const ;
-		void gain_function(const pw_alignment& p, double & g1, double & g2,ofstream&)const ;
-		void train(ofstream &);
+		void markov_chain_alignment(std::ofstream&);
+		const std::vector<std::vector<std::map <std::string, vector<double> > > >& get_mod_cost()const;
+		void cost_function(const pw_alignment& p, double & c1, double & c2, double & m1, double & m2,std::ofstream&)const ;
+		void gain_function(const pw_alignment& p, double & g1, double & g2,std::ofstream&)const ;
+		void train(std::ofstream &);
 		char modification_character(int modify_base, int num_delete, int insert_base, int num_keep)const;
 		void modification(char enc, int & modify_base, int & num_delete, int & insert_base, int & num_keep)const;
-		void computing_modification_oneToTwo(const pw_alignment & p, abstract_context_functor & functor,ofstream&)const;
-		void computing_modification_twoToOne(const pw_alignment & p, abstract_context_functor & functor, ofstream&)const;
-		void cost_function( pw_alignment& p, ofstream&) const;
-		string print_modification_character(char enc)const;
-		const map<string, vector<double> > & getPattern(size_t acc)const;
-		const vector<double> & get_create_cost(size_t acc) const;
-		const vector<map<string, vector<double> > > & model_parameters()const;
-		void write_parameters(ofstream &);
-		void write_alignments_pattern(ofstream&);
-		vector<unsigned int> get_high_at_position(size_t seq_index, size_t position) const;
-		vector<unsigned int> get_center_high_at_position(size_t cent_ref, size_t cent_left, size_t position)const;
-		vector<unsigned int> get_reverse_center_high_at_position(size_t cent_ref, size_t cent_right, size_t position)const;
-		const map<string, vector<unsigned int> > & get_high(size_t acc)const;
+		void computing_modification_oneToTwo(const pw_alignment & p, abstract_context_functor & functor,std::ofstream&)const;
+		void computing_modification_twoToOne(const pw_alignment & p, abstract_context_functor & functor, std::ofstream&)const;
+		void cost_function( pw_alignment& p, std::ofstream&) const;
+		std::string print_modification_character(char enc)const;
+		const std::map<std::string, std::vector<double> > & getPattern(size_t acc)const;
+		const std::vector<double> & get_create_cost(size_t acc) const;
+		const std::vector<std::map<std::string, vector<double> > > & model_parameters()const;
+		void write_parameters(std::ofstream &);
+		void write_alignments_pattern(std::ofstream&);
+		std::vector<unsigned int> get_high_at_position(size_t seq_index, size_t position) const;
+		std::vector<unsigned int> get_center_high_at_position(size_t cent_ref, size_t cent_left, size_t position)const;
+		std::vector<unsigned int> get_reverse_center_high_at_position(size_t cent_ref, size_t cent_left, size_t position)const;
+		const std::map<std::string, std::vector<unsigned int> > & get_high(size_t acc)const;
 		void make_all_the_patterns();
 		void make_all_alignments_patterns();
-		void set_patterns(ifstream&);
-		void set_alignment_pattern(ifstream&);
-		string get_context(size_t position, size_t seq_id)const;
-		vector<size_t> get_powerOfTwo()const;
-		string get_firstPattern()const;
-		string get_firstAlignmentPattern() const;
-	//	const map<string, vector<double> > & get_alignment_context(size_t al_id, size_t seq_id, encoding_functor & functor)const;
-		const map<string, vector<unsigned int> >& get_highValue(size_t acc1, size_t acc2)const;
-		void computing_modification_in_cluster(string center, string member)const;
-	//	const map<string, vector<double> > & get_cluster_member_context(pw_alignment & al, size_t center_id, encoding_functor & functor)const;
+		void set_patterns(std::ifstream&);
+		void set_alignment_pattern(std::ifstream&);
+		std::string get_context(size_t position, size_t seq_id)const;
+		std::vector<size_t> get_powerOfTwo()const;
+		std::string get_firstPattern()const;
+		std::string get_firstAlignmentPattern() const;
+		const std::map<std::string, std::vector<double> > & get_alignment_context(size_t al_id, size_t seq_id, encoding_functor & functor)const;
+		const std::map<std::string, std::vector<unsigned int> >& get_highValue(size_t acc1, size_t acc2)const;
+		void computing_modification_in_cluster(std::string center, std::string member)const;
+		const std::map<std::string, std::vector<double> > & get_cluster_member_context(pw_alignment & al, size_t center_id, encoding_functor & functor)const;
 	//	void print_modification(char enc)const;
 		size_t modification_length(char mod)const;
-	//	void get_encoded_member(pw_alignment & al, size_t center_id, encoding_functor & functor,ofstream&)const;
+		void get_encoded_member(pw_alignment & al, size_t center_ref, size_t center_left, encoding_functor & functor,std::ofstream&)const;
 	private:
 	all_data & data;
-	vector<map<string, vector<double> > >sequence_successive_bases;
-	vector<vector<double> > create_cost;
-	vector<size_t> powersOfTwo;
-	vector<vector<map<string, vector<double> > > >mod_cost; // alignment modificaton information cost
-	vector<map<string, vector<unsigned int> > > high;//sequences patterns
-	map<string,vector<double> > all_the_patterns; // TODO vector<double> part is wrong (independent of accession)
+	std::vector<std::map<std::string, std::vector<double> > >sequence_successive_bases;
+	std::vector<std::vector<double> > create_cost;
+	std::vector<size_t> powersOfTwo;
+	std::vector<std::vector<std::map<std::string, std::vector<double> > > >mod_cost; // alignment modificaton information cost
+	std::vector<std::map<std::string, std::vector<unsigned int> > > high;//sequences patterns
+	std::map<std::string,std::vector<double> > all_the_patterns; // TODO vector<double> part is wrong (independent of accession)
 
-	set<string> all_alignment_patterns; // all possible alignment patterns
-	vector<vector<map<string , vector<unsigned int> > > >highValue;//alignments patterns
+	std::set<std::string> all_alignment_patterns; // all possible alignment patterns
+	std::vector<std::vector<std::map<std::string , std::vector<unsigned int> > > >highValue;//alignments patterns
 		
 
 };

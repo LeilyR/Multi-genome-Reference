@@ -12,13 +12,12 @@
 #include <cassert>
 #include <cstdlib>
 
-using namespace std;
 
 
 class pw_alignment {
 	public:
 	
-	pw_alignment(string sample1, string sample2, size_t sample1_begin, size_t sample2_begin, size_t sample1_end, size_t sample2_end,size_t sample1reference, size_t sample2reference);
+	pw_alignment(std::string sample1, std::string sample2, size_t sample1_begin, size_t sample2_begin, size_t sample1_end, size_t sample2_end,size_t sample1reference, size_t sample2reference);
 	pw_alignment();
 	~pw_alignment();
 	pw_alignment(const pw_alignment & p);
@@ -26,8 +25,8 @@ class pw_alignment {
 
 	size_t alignment_length() const;
 	void alignment_col(size_t c, char & s1, char & s2) const;
-	vector<bool> getsample1()const;
-	vector<bool> getsample2()const;
+	std::vector<bool> getsample1()const;
+	std::vector<bool> getsample2()const;
 	size_t getbegin1()const;
 	size_t getbegin2() const;
 	size_t getend1()const;
@@ -36,14 +35,14 @@ class pw_alignment {
 	size_t getreference2() const;
 	void split(bool sample, size_t position, pw_alignment & first_part, pw_alignment & second_part) const;
 	void remove_end_gaps(pw_alignment & res) const;
-	void set_alignment_bits(vector<bool> s1, vector<bool> s2);
-	vector<bool> getsample(size_t id)const;
+	void set_alignment_bits(std::vector<bool> s1, std::vector<bool> s2);
+	std::vector<bool> getsample(size_t id)const;
 	size_t getbegin(size_t id)const;
 	size_t getend(size_t id)const;
 	size_t getreference(size_t id)const;
 
-	string get_al_ref1() const;
-	string get_al_ref2() const;
+	std::string get_al_ref1() const;
+	std::string get_al_ref2() const;
 	
 	void setbegin1(size_t begin1);
 	void setbegin2(size_t begin2);
@@ -61,7 +60,7 @@ class pw_alignment {
 
 	void print() const;
 
-	void set_cost(vector<double> create, vector<double> modify);
+	void set_cost(std::vector<double> create, std::vector<double> modify);
 
 	double get_create1() const;
 	double get_create2() const;
@@ -72,12 +71,12 @@ class pw_alignment {
 			return (getbegin2() < p.getbegin2());
 		}
 	private:
-	vector<vector<bool> > samples;
-	vector<size_t> begins;
-	vector<size_t> ends;
-	vector<size_t> references;
-	vector<double> create_costs;
-	vector<double> modify_costs;
+	std::vector<std::vector<bool> > samples;
+	std::vector<size_t> begins;
+	std::vector<size_t> ends;
+	std::vector<size_t> references;
+	std::vector<double> create_costs;
+	std::vector<double> modify_costs;
 	
 	static inline void base_translate(char base, bool & bit1, bool & bit2, bool & bit3);
 	static inline char base_translate_back(bool bit1, bool bit2, bool bit3);
@@ -99,10 +98,10 @@ class wrapper{
 		void decodeContext(size_t &, int &);
 		
 	private:
-		ofstream encodeout;
-		ofstream decodeout;
-		ofstream al_encode;
-		ofstream al_decode;
+		std::ofstream encodeout;
+		std::ofstream decodeout;
+		std::ofstream al_encode;
+		std::ofstream al_decode;
 };
 		
 #endif 
