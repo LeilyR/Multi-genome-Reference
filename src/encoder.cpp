@@ -542,6 +542,7 @@
 		unsigned int flag =  model.get_powerOfTwo().at(bit);
 		size_t i = 0;
 		while(i<data.numOfAcc()){
+			cout<< "accession "<< i <<endl;
 			target = dec.get_target(total);
 			while(target < flag + 15){//end of an accession
 				string decodedCenter;
@@ -1133,7 +1134,7 @@
 				size_t right2;
 				p->get_lr1(left1,right1);
 				p->get_lr2(left2,right2);
-			//	cout<< "id of cent in enc: " << center <<endl;
+				cout<< "id of cent in enc: " << center <<endl;
 				if(cent_ref == p->getreference1()&& cent_left == left1){
 				//	cout<< "encoded center1: "<< it->first << " its al length: "<< p->alignment_length()<<endl;
 					if(p->getbegin1() < p->getend1()){//Encode the sequence itself

@@ -426,7 +426,7 @@ void msa_star_alignment(const string & center, vector<pw_alignment> & alignments
 		write the graph as multiple alignment data structure	
 	*/
 
-void write_graph_maf(const string & graphout, const map<string, vector<pw_alignment> > & cluster_result_al, const all_data & data) {
+void write_graph_maf(const string & graphout, const map<string, vector<pw_alignment> > & cluster_result_al, const all_data & data) { 
 	
 	ofstream gout(graphout.c_str());
 	gout << "##maf version=1 scoring=probability" << endl;
@@ -456,17 +456,14 @@ void write_graph_maf(const string & graphout, const map<string, vector<pw_alignm
 			cluster_number++;
 		}
 	}
-
 	gout.close();
 
-
-
-
+}
+void write_encoded_seq(ofstream & outs){
 
 }
 
-
-int do_mc_model(int argc, char * argv[]) {//mco bardar
+int do_mc_model(int argc, char * argv[]) {
 	typedef mc_model use_model;
 //	typedef clustering<use_model> use_clustering;
 	typedef initial_alignment_set<use_model> use_ias;
@@ -757,10 +754,10 @@ int do_mc_model(int argc, char * argv[]) {//mco bardar
 	//		tree.create_suffix(seq);
 	//	}
 	}
-	tree.make_a_tree();
-	tree.count_paths();
-	tree.get_first_parent();
-	merg.merg_value();	
+//	tree.make_a_tree();
+//	tree.count_paths();
+//	tree.get_first_parent();
+//	merg.merg_value();	
 				
 	/*	for(set< const pw_alignment *, compare_pw_alignment>::iterator it=cc.begin();it!=cc.end();it++ ){
 			const pw_alignment *al = *it;
@@ -942,7 +939,7 @@ int do_mc_model(int argc, char * argv[]) {//mco bardar
 	cout<< "weight size: "<< weight.size()<<endl;
 //	en.arithmetic_encoding_alignment(weight,member_of_cluster,alignments_in_a_cluster,outs);
 //	en.write_to_stream(alignments_in_a_cluster,outs);
-	ofstream al_encode("align_encode",std::ofstream::binary);
+//	ofstream al_encode("align_encode",std::ofstream::binary);
 	dlib::entropy_encoder_kernel_1 * enc = new dlib::entropy_encoder_kernel_1();
 //	en.arithmetic_encoding_seq(outs);
 //	en.calculate_high_in_partition(weight,alignments_in_a_cluster);
@@ -951,17 +948,16 @@ int do_mc_model(int argc, char * argv[]) {//mco bardar
 	en.al_encoding(weight,member_of_cluster,alignments_in_a_cluster,outs,*enc);
 	delete enc;
 	outs.close();
-//	test.encode();
+	test.encode();
 
 
-
-//	test.decode();
+	test.decode();
 	ifstream in("encode",std::ifstream::binary);
 //	en.read_from_stream(in);
 	dlib::entropy_decoder_kernel_1  dec;
-//	test.compare();
-	en.al_decoding(in,dec);
 	test.compare();
+	en.al_decoding(in,dec);
+//	test.compare();
 	arithmetic_encoding_time = clock() - arithmetic_encoding_time;
 
 	cout << "Clustering summary: " << endl;
@@ -983,7 +979,35 @@ int do_mc_model(int argc, char * argv[]) {//mco bardar
 
 	return 0;
 }
-int do_model_seq(int argc, char * argv[]){//mc o bardashtam
+int do_decoding(int argc, char * argv[]){
+	typedef mc_model use_model;
+	if(argc < 5){
+		usage();
+		cerr << "Program: model" << endl;
+		cerr << "Parameters:" << endl;
+		cerr << "* An empty fasta file"<<endl;
+		cerr << "* An empty maf file"<<endl;
+		cerr << "* output is fasta file for decoding" << endl;
+	}
+	string fastafile(argv[2]);
+	string maffile(argv[3]);
+	string graphout(argv[4]);
+	all_data data(fastafile, maffile);//Empty files!
+	use_model m(data);
+	wrapper wrap;
+	encoder en(data,m,wrap);
+//Decompression
+	ifstream in("encode",std::ifstream::binary);
+	dlib::entropy_decoder_kernel_1  dec;
+	en.al_decoding(in,dec);
+	cout<< "decoding is done!"<<endl;
+	return 0;
+
+	
+
+
+}
+int do_model_seq(int argc, char * argv[]){
 	typedef model use_model;
 	if(argc < 5) {
 		usage();
@@ -1049,10 +1073,11 @@ int main(int argc, char * argv[]) {
 	if(0==program.compare("fasta_prepare")) {
 		return do_fasta_prepare(argc, argv);
 	}
-	else if(0==program.compare("model"))
+	if(0==program.compare("model")) //else if boodesh
 		return do_mc_model(argc, argv);
 	
-	 
+//	if(0==program.compare("decoding"))
+//		return do_decoding(argc,argv);
 /*	else if(0==program.compare("model")){
 		return do_model_seq(argc,argv);
 	}*/

@@ -1692,6 +1692,7 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment *al,ofstream& out
 						break;
 					}
 				}
+				cout<< "branch size: "<< branch.size() << endl;
 				for(size_t i = 0; i < branch.size(); i ++){
 					vector<size_t>sub_branch;
 					cout<< " push back to sub branch: " <<endl;
@@ -1740,7 +1741,7 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment *al,ofstream& out
 		cout << " " <<endl;
 		return first_parent;
 	}
-	merging_centers::merging_centers(finding_center & cent , suffix_tree & t):centers(cent),tree(t){}
+	merging_centers::merging_centers(finding_centers & cent , suffix_tree & t):centers(cent),tree(t){}
 	merging_centers::~merging_centers(){}
 	void merging_centers::merg_value(){
 		vector<string> nodes = tree.get_nodes();
@@ -1825,7 +1826,7 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment *al,ofstream& out
 	}
 
 	void merging_centers::merg_alignments(map<string, vector<pw_alignment> > & al_of_a_ccs){
-		vector<string> center_index;
+	/*	vector<string> center_index;
 		for(map<string, vector<pw_alignment> >::iterator it2=al_of_a_ccs.begin(); it2 != al_of_a_ccs.end();it2++){
 			string cent = it2->first;
 			center_index.push_back(cent);
@@ -1861,7 +1862,7 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment *al,ofstream& out
 					}
 				}
 			}
-		}
+		}*/
 	}
 
 
