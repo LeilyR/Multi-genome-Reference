@@ -1,8 +1,9 @@
 #!/usr/bin/perl 
 use strict;
 use warnings;
+use Cwd 'abs_path';
 
-my @p = split /\//, $0;
+my @p = split /\//, abs_path($0);
 
 my $dir = ''; 
 for(my $i=0; $i<$#p; ++$i) {
