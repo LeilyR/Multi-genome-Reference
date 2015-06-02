@@ -716,7 +716,7 @@ all_data::~all_data() {
 	size_t all_data::numOfAcc()const{
 		return accession_name.size();
 	}
-	const std::map< string, size_t>& all_data::getLongname2seqidx()const{ // Attention : I had this function
+	const std::map< std::string, size_t>& all_data::getLongname2seqidx()const{ // Attention : I had this function
 		return longname2seqidx;
 	}
 	void all_data::set_accession(const std::string & acc){

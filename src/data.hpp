@@ -86,7 +86,7 @@ class all_data {
 		size_t get_seq_size(size_t s) const;
 		void set_accession(const std::string & acc);
 		size_t numOfAcc() const;
-		const map< string, size_t>& getLongname2seqidx()const;
+		const std::map< std::string, size_t>& getLongname2seqidx()const;
 	
 	private:
 		// data

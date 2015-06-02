@@ -783,9 +783,3 @@ bool compare_pw_alignment::operator()(const pw_alignment *const &a, const pw_ali
                 al_decode << "position: " << pos << " context: " <<  context <<std::endl;
         }
 
-	void wrapper::decodeContext(size_t & pos, int & context){
-		al_decode << "position: " << pos << " context: " <<  context <<endl;
-	}
-
-
-	

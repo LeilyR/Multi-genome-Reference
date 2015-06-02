@@ -82,7 +82,7 @@ public:
 	//~Graph();
 	void setStart(const int&id, const int&start);
 	void setEnd(const int&id, const int&end);
-	void readDotFile(std::string dotFile,map< string, size_t> longname2seqidx); // Graph from a dot file -> Transform to constructor ?
+	void readDotFile(std::string dotFile,std::map<std::string, size_t> longname2seqidx); // Graph from a dot file -> Transform to constructor ?
 	void addVertex(Vertex v);
 	void addEdge(int typeOfEdge,int id1,std::string name1, int id2, std::string name2);
 	const std::map<int,Vertex>& getVertices()const;

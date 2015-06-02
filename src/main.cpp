@@ -11,6 +11,7 @@
 #include "model.hpp"
 #include "encoder.hpp"
 #include "test.hpp"
+#include "graph.hpp"
 #define NO_MAKEFILE
 #include "dlib/entropy_encoder/entropy_encoder_kernel_1.h"
 #include "dlib/entropy_decoder/entropy_decoder_kernel_1.h"
@@ -25,14 +26,29 @@
 #define TIMING 1
 
 
-#define TEST 0
+#define TEST 1
 
 
 #if TEST
 
 int main(int argc, char * argv[]) {
 	std::cout << " hello " << std::endl;
+	Graph g = Graph();
+        Graph newGraph = Graph();
+        std::string fastaFile = "/ebio/abt6_projects7/small_projects/mdubarry/Documents/SampleProgram/bin/output/all.fasta";
+        std::string samFile = "/ebio/abt6_projects7/small_projects/mdubarry/Documents/SampleProgram/bin/output/referenceRead.sam";
+        std::string dotFile = "/ebio/abt6_projects7/small_projects/mdubarry/Documents/pbsim/graph.dot";
+        //load data
+        all_data data = all_data();
+	data.read_fasta_sam(fastaFile,samFile);
+        std::map< std::string, size_t> longname2seqidx = data.getLongname2seqidx();
+        g.readDotFile(dotFile,longname2seqidx);
+        std::cout << g;
+        g.parseData(data,newGraph);
+        std::cout <<" New Graph " <<newGraph << std::endl;
 
+
+/*
 	pw_alignment p(std::string("ATT----TTCTT"), string("AGTGATAT----"), 12, 15, 23, 26,1,1);
 	pw_alignment s(std::string("ATT----TTCTT"), string("ACTGATG---AC"),13, 18, 24, 29,2,1);
 
@@ -71,6 +87,7 @@ int main(int argc, char * argv[]) {
 }
 
 }
+*/
 	return 0;
 
 }

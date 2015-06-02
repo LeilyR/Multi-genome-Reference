@@ -118,7 +118,7 @@ const Graph::Vertex& Graph::getVertex(const int& id){
 		return it->second;
 }
 
-void Graph::readDotFile(std::string file,map< string, size_t> longname2seqidx){
+void Graph::readDotFile(std::string file,std::map<std::string, size_t> longname2seqidx){
 	std::cout << "readDotFile "<<std::endl;
 	/*
 	Achtung : Need spaces in the dot file
