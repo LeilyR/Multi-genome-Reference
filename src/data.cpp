@@ -256,6 +256,7 @@ char dnastring::index_to_base(size_t index) {
 
 
 all_data::all_data(string fasta_all_sequences, string samFile) {
+	std::cout << "fasta File "<<std::endl;
 	ifstream fastain(fasta_all_sequences.c_str());
 	if(fastain) {
 		string str;
@@ -589,6 +590,9 @@ all_data::~all_data() {
 	}
 	size_t all_data::numOfAcc()const{
 		return accession_name.size();
+	}
+	const map< string, size_t>& all_data::getLongname2seqidx()const{ // Attention : I had this function
+		return longname2seqidx;
 	}
 	void all_data::set_accession(const string & acc){
 		accession_name.insert(make_pair(acc, accession_name.size()));

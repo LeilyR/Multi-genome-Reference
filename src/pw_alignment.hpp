@@ -67,8 +67,7 @@ class pw_alignment {
 	double get_create2() const;
 	double get_modify1() const;
 	double get_modify2() const;
-
-	bool operator < (const pw_alignment& p)const // Marion : I had this function -> compare pw_alignment
+	bool operator < (const pw_alignment& p)const // Attention : I had this function -> compare pw_alignment
 		{
 			return (getbegin2() < p.getbegin2());
 		}
@@ -96,10 +95,14 @@ class wrapper{
 		~wrapper();
 		void encode(unsigned int&, unsigned int &, unsigned int&);
 		void decode(unsigned int &, unsigned int &, unsigned int&);
-
+		void context(size_t &, int &);
+		void decodeContext(size_t &, int &);
+		
 	private:
 		ofstream encodeout;
 		ofstream decodeout;
+		ofstream al_encode;
+		ofstream al_decode;
 };
 		
 #endif 
