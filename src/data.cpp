@@ -1,7 +1,7 @@
 #include "data.hpp"
 
 
-void strsep(string str, const char * sep, vector<string> & parts) {
+void strsep(std::string str, const char * sep, std::vector<std::string> & parts) {
         boost::char_separator<char> tsep(sep);
         btokenizer tok(str, tsep);
         for(btokenizer::iterator tit=tok.begin(); tit!=tok.end(); ++tit) {
@@ -65,7 +65,7 @@ char dnastring::complement(char c) {
 }
 
 
-dnastring::dnastring(string str):bits(str.length()*3) {
+dnastring::dnastring(std::string str):bits(str.length()*3) {
 	for(size_t i=0; i<str.length(); ++i) {
 		char c = str.at(i);
 		bool bit1 = false;
@@ -130,7 +130,7 @@ dnastring::dnastring(string str):bits(str.length()*3) {
 			break;
 
 			default:
-				cerr << "Error: Illegal character in DNA sequence: " << c << endl;
+				std::cerr << "Error: Illegal character in DNA sequence: " << c << std::endl;
 				exit(1);
 			break;
 		}
@@ -166,7 +166,7 @@ char dnastring::base_translate_back(bool bit1, bool bit2, bool bit3) {
 	if(bit1) {
 		if(bit2) {
 			if(bit3) {
-				cerr << "Error: wrong bit vector 111" << endl;
+				std::cerr << "Error: wrong bit std::vector 111" << std::endl;
 				exit(1);
 				return 'X';
 			} else {
@@ -175,7 +175,7 @@ char dnastring::base_translate_back(bool bit1, bool bit2, bool bit3) {
 		
 		} else {
 			if(bit3) {
-				cerr << "Error wrong bit vector 101" << endl;
+				std::cerr << "Error wrong bit std::vector 101" << std::endl;
 				exit(1);
 				return 'X';
 			} else {
@@ -187,7 +187,7 @@ char dnastring::base_translate_back(bool bit1, bool bit2, bool bit3) {
 	} else {
 		if(bit2) {
 			if(bit3) {
-				cerr << "Error: wrong bit vector 011" << endl;
+				std::cerr << "Error: wrong bit std::vector 011" << std::endl;
 				exit(1);
 				return 'X';
 			} else {
@@ -251,15 +251,15 @@ char dnastring::index_to_base(size_t index) {
 		}
 	return 'X';
 }
+all_data::all_data() {}
 
-
-all_data::all_data(string fasta_all_sequences, string maf_all_alignments) {
-	ifstream fastain(fasta_all_sequences.c_str());
+void all_data::read_fasta_sam(std::string fasta_all_sequences, std::string sam_all_alignments) {
+	std::ifstream fastain(fasta_all_sequences.c_str());
 	if(fastain) {
-		string str;
-		stringstream curseq;
-		string curname("");
-		string curacc("");
+		std::string str;
+		std::stringstream curseq;
+		std::string curname("");
+		std::string curacc("");
 		while(getline(fastain, str)) {
 			if(str.at(0)=='>') {
 				if(0!=curname.compare("")) { // store previous sequence
@@ -270,7 +270,7 @@ all_data::all_data(string fasta_all_sequences, string maf_all_alignments) {
 				}
 
 				// read next header
-				string fhead = str.substr(1);
+				std::string fhead = str.substr(1);
 				name_split(fhead, curacc, curname);
 			} else {
 				curseq << str;
@@ -284,60 +284,269 @@ all_data::all_data(string fasta_all_sequences, string maf_all_alignments) {
 		curseq.str("");
 		fastain.close();
 	} else {
-		cerr << "Error: cannot read: " << fasta_all_sequences << endl;
+		std::cerr << "Error: cannot read: " << fasta_all_sequences << std::endl;
 		exit(1);
 	}
 
-	cout << "loaded " << sequences.size() << " sequences" << endl;
+	std::cout << "loaded " << sequences.size() << " sequences" << std::endl;
 
-	vector< multimap< size_t, size_t> > als_on_reference; // sequence index -> begin pos on that sequence -> alignment index
+	std::vector< std::multimap< size_t, size_t> > als_on_reference; // sequence index -> begin pos on that sequence -> alignment index
 	// a new multimap for each ref sequence
 	als_on_reference.resize(sequences.size());
 	for(size_t i=0; i<sequences.size(); ++i) {
-		als_on_reference.at(i) = multimap<size_t, size_t>();
+		als_on_reference.at(i) = std::multimap<size_t, size_t>();
+	}
+
+	// READ SAM FILE ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+	/* Achtung
+	 * Library libStatGen creates an output -bs.umfa : if already exist can have some conflict, need to remove it before rerunning this code
+	 */
+	bool verbose = false;
+	  if(verbose) std::cout << "readAlignment sam file"<<std::endl;
+
+	  SamFile samIn;
+	  samIn.OpenForRead(sam_all_alignments.c_str());
+
+	  // Read the sam header.
+	  SamFileHeader samHeader;
+	  samIn.ReadHeader(samHeader);
+
+	  SamRecord samRecord;
+	  Cigar* tmpCigar;
+	  std::string alRefSeq, alReadSeq;
+	  int skip_alt = 0;
+	  int skip_self = 0;
+	  //GenomeSequence myRefSeq("/ebio/abt6_projects7/small_projects/mdubarry/Documents/SampleProgram/bin/output/tmpOut.fasta");
+
+	  GenomeSequence myRefSeq(fasta_all_sequences.c_str());
+	  myRefSeq.setDebugFlag(1);
+	  while(samIn.ReadRecord(samHeader, samRecord))
+	  {
+		// Achtung : sam file considere the file reference as an uniq sequence even if there are differentes sequences in reference, so the position are concatenate.
+		//e.g. if I take the first base of the second sequence from my reference.fasta, it will not return 1 but lengthOfTheSequence1 + 1 !
+
+		// For each Record do :
+		tmpCigar = samRecord.getCigarInfo(); //Pointer to Cigar object
+		const char* currentSeq = samRecord.getSequence();
+
+		int myStartOfReadOnRefIndex = myRefSeq.getGenomePosition(samRecord.getReferenceName(),samRecord.get1BasedPosition()); // Select the start on the good sequence in the fasta File
+		if(myStartOfReadOnRefIndex == -1){
+			std::cerr << "Error with the reference " <<samRecord.get1BasedPosition()<<" " <<samRecord.getReferenceName() << std::endl;
+			exit(1);
+		}
+
+		if (verbose) std::cout<<myStartOfReadOnRefIndex<<" getReferenceName "<<samRecord.getReferenceName()<<" get1BasedPosition "<< samRecord.get1BasedPosition() <<" myRefSeq.sequenceLength " <<myRefSeq.sequenceLength()
+		  << " getAlignmentLength "<< samRecord.getAlignmentLength() << " getReadLength " << samRecord.getReadLength()<< " getNumBeginClips "<< tmpCigar->getNumBeginClips()<< std::endl;
+		if(verbose) std::cout <<"flag "<<samRecord.getFlag() <<" reverse ? " << SamFlag::isReverse(samRecord.getFlag()) << std::endl;
+
+		// Loop through the read and determine the difference with the reference
+		int prevRef = -1;
+		for(int index = 0; index < samRecord.getReadLength(); index++)
+		{
+			int refOffset = tmpCigar->getRefOffset(index);
+			if(refOffset == Cigar::INDEX_NA)
+			{
+				// No reference base, meaning it is not in the reference, so add missing
+				alRefSeq += '-';
+				alReadSeq += currentSeq[index];
+			}
+			else
+			{
+				// While the reference offset is not 1 more than the previous, it means
+				// there is a deletion/N, so add missing to the read, and add the reference bases.
+				while(refOffset != ++prevRef)
+				{
+					alReadSeq += '-';
+					alRefSeq += myRefSeq[myStartOfReadOnRefIndex + prevRef];
+
+				}
+				//now we are at a spot in both the reference and the read, so add it.
+				alReadSeq += currentSeq[index];
+				alRefSeq += myRefSeq[myStartOfReadOnRefIndex + refOffset];
+			}
+		}
+		if(verbose)  std::cout << "\n" << alRefSeq <<"\n" << alReadSeq  <<std::endl;
+		//int myEndReadOnRefIndex =  myRefSeq.getGenomePosition(samRecord.getReferenceName(),samRecord.get1BasedAlignmentEnd()) + 1 ;
+		//if(verbose) cout << "reference start "<< myStartOfReadOnRefIndex << " end " << myEndReadOnRefIndex <<endl;
+
+		// Reference
+		std::string acc1;
+		std::string name1;
+		name_split(samRecord.getReferenceName(), acc1, name1);
+		size_t start1 = samRecord.get1BasedPosition() - 1 ;
+		size_t incl_end1 = start1 + tmpCigar->getExpectedReferenceBaseCount() - 1 ;
+		std::map<std::string, size_t>::iterator findseq1 = longname2seqidx.find(samRecord.getReferenceName());
+		if(findseq1==longname2seqidx.end()) {
+			std::cerr << "Error: unknown sequence: " << samRecord.getReferenceName() << std::endl;
+			exit(1);
+		}
+		size_t idx1 = findseq1->second;
+
+		// Read
+		std::string acc2;
+		std::string name2;
+		name_split(samRecord.getReadName(), acc2, name2);
+		size_t start2;
+		if(tmpCigar->getNumBeginClips()==0)
+			start2 = 0;
+		else
+			start2 = tmpCigar->getNumBeginClips()+1; // getNumbeginClips give the number of clip and the read start at the next one ( so +1)
+
+		size_t incl_end2 = start2 + samRecord.getReadLength() -1;//TODO -1 ?
+
+		// In Sam file : Reverse and Forward ??
+		std::string tmpString = samRecord.getReadName();
+		std::map<std::string, size_t>::iterator findseq2 = longname2seqidx.find((tmpString));
+		if(findseq2==longname2seqidx.end()) {
+			std::cerr << "Error: unknown sequence: " << samRecord.getReadName() << std::endl;
+			exit(1);
+		}
+		size_t idx2 = findseq2->second;
+
+
+    	// both al parts not identical	
+	if(idx1 != idx2 || !(start1==start2 && incl_end1 == incl_end2    )) {
+		bool skip = false;
+		// check if we already have an alignment with same coordinates
+		// because we are looking for identical alignment it suffices to go over only one multimap
+		std::pair<std::multimap<size_t, size_t>::iterator, std::multimap<size_t, size_t>::iterator> eqr =
+		als_on_reference.at(idx1).equal_range(start1);
+		for(std::multimap<size_t, size_t>::iterator it = eqr.first; it!=eqr.second; ++it) {
+			pw_alignment & al = alignments.at(it->second);
+			size_t same_ref = 2;
+			if(al.getreference(0)==idx1)
+				same_ref = 0;
+			else if(al.getreference(1)==idx1) 
+				same_ref = 1;
+			assert(same_ref < 2);
+			size_t other_ref = 1 - same_ref;
+			if(al.getreference(other_ref) == idx2) { // al and new alignment on same sequences
+				if(start1 == al.getbegin(same_ref) && start2 == al.getbegin(other_ref) && 
+					incl_end1 == al.getend(same_ref) && incl_end2 == al.getend(other_ref)) {
+					skip =true;
+					break;
+				}
+			}
+		 }
+	
+		if(skip)
+			skip_alt++;
+		else {
+			pw_alignment al(alRefSeq, alReadSeq, start1, start2, incl_end1, incl_end2, idx1, idx2);
+			size_t alidx = alignments.size();
+			alignments.push_back(al);
+			als_on_reference.at(idx1).insert(std::make_pair(start1, alidx));
+			als_on_reference.at(idx2).insert(std::make_pair(start2, alidx));
+		}
+
+	}
+	else 
+		skip_self++;
+		// cerr << "Warning: Skip self alignment in seq " << idx1 << " from " << start1 << " to " << incl_end1 << endl;
+// Clean sequences before reloop
+    alReadSeq = "";
+    alRefSeq = "";
+}
+
+	if(dnastring::found_iupac_ambiguity) {
+		std::cerr << "Warning: IUPAC DNA ambiguity characters were replaced by N" << std::endl;
+	}
+
+	std::cout << "Loaded: " << sequences.size() << " sequences and " << alignments.size() << " pairwise alignments " << std::endl;
+	std::cout << skip_self << " self alignments were skipped" << std::endl;
+	std::cout << skip_alt << " alternative alignments of identical regions were skipped" << std::endl;
+
+
+
+
+}
+
+
+void all_data::read_fasta_maf(std::string fasta_all_sequences, std::string maf_all_alignments) {
+	std::ifstream fastain(fasta_all_sequences.c_str());
+	if(fastain) {
+		std::string str;
+		std::stringstream curseq;
+		std::string curname("");
+		std::string curacc("");
+		while(getline(fastain, str)) {
+			if(str.at(0)=='>') {
+				if(0!=curname.compare("")) { // store previous sequence
+					insert_sequence(curacc, curname, curseq.str());
+					curname = "";
+					curacc = "";
+					curseq.str("");
+				}
+
+				// read next header
+				std::string fhead = str.substr(1);
+				name_split(fhead, curacc, curname);
+			} else {
+				curseq << str;
+			}
+		}
+		// store last sequence
+		insert_sequence(curacc, curname, curseq.str());
+		//std::cout << "R " << curseq.str().substr(62750, 15) << std::endl;
+		curname = "";
+		curacc = "";
+		curseq.str("");
+		fastain.close();
+	} else {
+		std::cerr << "Error: cannot read: " << fasta_all_sequences << std::endl;
+		exit(1);
+	}
+
+	std::cout << "loaded " << sequences.size() << " sequences" << std::endl;
+
+	std::vector< std::multimap< size_t, size_t> > als_on_reference; // sequence index -> begin pos on that sequence -> alignment index
+	// a new multimap for each ref sequence
+	als_on_reference.resize(sequences.size());
+	for(size_t i=0; i<sequences.size(); ++i) {
+		als_on_reference.at(i) = std::multimap<size_t, size_t>();
 	}
 
 
 
-	ifstream mafin(maf_all_alignments.c_str());
+	std::ifstream mafin(maf_all_alignments.c_str());
 	size_t skip_self = 0;
 	size_t skip_alt = 0;
 	if(mafin) {
-		string str;
+		std::string str;
 		while(getline(mafin, str)) {
 			if(str.at(0)!='#') { // skip headers
 				if(str.at(0)=='a') { // next alignment
-					string aline1;
-					string aline2;
+					std::string aline1;
+					std::string aline2;
 					getline(mafin, aline1);
 					getline(mafin, aline2);
 					getline(mafin, str); // empty line at end of alignment
 					if(0!=str.compare("")) {
-						cerr << "Error: exspected empty line after alignment. Seen: " << str << endl;
+						std::cerr << "Error: exspected empty line after alignment. Seen: " << str << std::endl;
 						exit(1);
 					}
 					if(aline1.at(0)!='s' || aline2.at(0)!='s') {
-						cerr << "Error: exspected maf sequence lines, found: " << endl << aline1 << endl<< aline2 << endl;
+						std::cerr << "Error: exspected maf sequence lines, found: " << std::endl << aline1 << std::endl<< aline2 << std::endl;
 						exit(1);
 					}
 
-					vector<string> parts;
+					std::vector<std::string> parts;
 					strsep(aline1, " ", parts);
 					if(parts.size()!=7) {
-						cerr << "Error: exspected 7 fields in sequence line: " << aline1 << endl;
+						std::cerr << "Error: exspected 7 fields in sequence line: " << aline1 << std::endl;
 						exit(1);
 					}
-					string acc1;
-					string name1;
+					std::string acc1;
+					std::string name1;
 					name_split(parts.at(1), acc1, name1);
 					size_t start1 = atoi(parts.at(2).c_str());
 					size_t size1 = atoi(parts.at(3).c_str());
 					char strand1 = parts.at(4).at(0);
 					size_t seqlength1 = atoi(parts.at(5).c_str());
-					string al1 = parts.at(6);
-					map<string, size_t>::iterator findseq1 = longname2seqidx.find(parts.at(1));
+					std::string al1 = parts.at(6);
+					std::map<std::string, size_t>::iterator findseq1 = longname2seqidx.find(parts.at(1));
 					if(findseq1==longname2seqidx.end()) {
-						cerr << "Error: unknown sequence: " << parts.at(1) << endl;
+						std::cerr << "Error: unknown sequence: " << parts.at(1) << std::endl;
 						exit(1);
 					}
 					size_t idx1 = findseq1->second;
@@ -353,21 +562,21 @@ all_data::all_data(string fasta_all_sequences, string maf_all_alignments) {
 					parts.clear();
 					strsep(aline2, " ", parts);
 					if(parts.size()!=7) {
-						cerr << "Error: exspected 7 fields in sequence line: " << aline2 << endl;
+						std::cerr << "Error: exspected 7 fields in sequence line: " << aline2 << std::endl;
 						exit(1);
 					}
 
-					string acc2;
-					string name2;
+					std::string acc2;
+					std::string name2;
 					name_split(parts.at(1), acc2, name2);
 					size_t start2 = atoi(parts.at(2).c_str());
 					size_t size2 = atoi(parts.at(3).c_str());
 					size_t seqlength2 = atoi(parts.at(5).c_str());
 					char strand2 = parts.at(4).at(0);
-					string al2 = parts.at(6);
-					map<string, size_t>::iterator findseq2 = longname2seqidx.find(parts.at(1));
+					std::string al2 = parts.at(6);
+					std::map<std::string, size_t>::iterator findseq2 = longname2seqidx.find(parts.at(1));
 					if(findseq2==longname2seqidx.end()) {
-						cerr << "Error: unknown sequence: " << parts.at(1) << endl;
+						std::cerr << "Error: unknown sequence: " << parts.at(1) << std::endl;
 						exit(1);
 					}
 					size_t idx2 = findseq2->second;
@@ -387,9 +596,9 @@ all_data::all_data(string fasta_all_sequences, string maf_all_alignments) {
 
 						// check if we already have an alignment with same coordinates
 						// because we are looking for identical alignment it suffices to go over only one multimap
-						pair<multimap<size_t, size_t>::iterator, multimap<size_t, size_t>::iterator> eqr =
+						std::pair<std::multimap<size_t, size_t>::iterator, std::multimap<size_t, size_t>::iterator> eqr =
 						als_on_reference.at(idx1).equal_range(start1);
-						for(multimap<size_t, size_t>::iterator it = eqr.first; it!=eqr.second; ++it) {
+						for(std::multimap<size_t, size_t>::iterator it = eqr.first; it!=eqr.second; ++it) {
 							pw_alignment & al = alignments.at(it->second);
 							size_t same_ref = 2;
 							if(al.getreference(0)==idx1) {
@@ -418,20 +627,20 @@ all_data::all_data(string fasta_all_sequences, string maf_all_alignments) {
 							size_t alidx = alignments.size();
 							alignments.push_back(al);
 
-							als_on_reference.at(idx1).insert(make_pair(start1, alidx));
-							als_on_reference.at(idx2).insert(make_pair(start2, alidx));
+							als_on_reference.at(idx1).insert(std::make_pair(start1, alidx));
+							als_on_reference.at(idx2).insert(std::make_pair(start2, alidx));
 
 
 						}
 
 					} else {
 						skip_self++;
-						// cerr << "Warning: Skip self alignment in seq " << idx1 << " from " << start1 << " to " << incl_end1 << endl;
+						// std::cerr << "Warning: Skip self alignment in seq " << idx1 << " from " << start1 << " to " << incl_end1 << std::endl;
 					
 					}
 
 				} else {
-					cerr << "Error: next alignment should start with 'a': " << str << endl;
+					std::cerr << "Error: next alignment should start with 'a': " << str << std::endl;
 					exit(1);
 				}
 			
@@ -442,15 +651,15 @@ all_data::all_data(string fasta_all_sequences, string maf_all_alignments) {
 		mafin.close();
 
 		if(dnastring::found_iupac_ambiguity) {
-			cerr << "Warning: IUPAC DNA ambiguity characters were replaced by N" << endl;
+			std::cerr << "Warning: IUPAC DNA ambiguity characters were replaced by N" << std::endl;
 		}
 
-		cout << "Loaded: " << sequences.size() << " sequences and " << alignments.size() << " pairwise alignments " << endl;
-		cout << skip_self << " self alignments were skipped" << endl;
-		cout << skip_alt << " alternative alignments of identical regions were skipped" << endl;
+		std::cout << "Loaded: " << sequences.size() << " sequences and " << alignments.size() << " pairwise alignments " << std::endl;
+		std::cout << skip_self << " self alignments were skipped" << std::endl;
+		std::cout << skip_alt << " alternative alignments of identical regions were skipped" << std::endl;
 	
 	} else {
-		cerr << "Error: cannot read: " << maf_all_alignments << endl;
+		std::cerr << "Error: cannot read: " << maf_all_alignments << std::endl;
 		exit(1);
 	}
 
@@ -470,9 +679,9 @@ all_data::~all_data() {
 	const pw_alignment & all_data::getAlignment(size_t index) const {
 		return alignments.at(index);
 	}
-	const vector<size_t> & all_data::getAcc(size_t acc)const{
-		string accName;
-		for(map<string,size_t>::const_iterator it = accession_name.begin();it != accession_name.end(); it++){
+	const std::vector<size_t> & all_data::getAcc(size_t acc)const{
+		std::string accName;
+		for(std::map<std::string,size_t>::const_iterator it = accession_name.begin();it != accession_name.end(); it++){
 			if(it->second == acc){
 				accName = it->first;
 			}else continue;
@@ -484,7 +693,7 @@ all_data::~all_data() {
 	}
 
 
-//const multimap<size_t, size_t> & all_data::getAlOnRefMap(size_t seq_idx) const {
+//const std::multimap<size_t, size_t> & all_data::getAlOnRefMap(size_t seq_idx) const {
 //	return als_on_reference.at(seq_idx);
 //}
 
@@ -501,30 +710,30 @@ all_data::~all_data() {
 	size_t all_data::numOfAcc()const{
 		return accession_name.size();
 	}
-	void all_data::set_accession(const string & acc){
-		accession_name.insert(make_pair(acc, accession_name.size()));
-	//	cout<<"accession name size: " << accession_name.size() <<endl;
+	void all_data::set_accession(const std::string & acc){
+		accession_name.insert(std::make_pair(acc, accession_name.size()));
+	//	std::cout<<"accession name size: " << accession_name.size() <<std::endl;
 	}
-	void all_data::insert_sequence(const string & acc, const string & seq_name, const string & dna) {
+	void all_data::insert_sequence(const std::string & acc, const std::string & seq_name, const std::string & dna) {
 	size_t seq_id = sequences.size();
 	sequences.push_back(dnastring(dna));
 	sequence_names.push_back(seq_name);
-	map<string, vector<size_t> >::iterator findacc = acc_sequences.find(acc);
+	std::map<std::string, std::vector<size_t> >::iterator findacc = acc_sequences.find(acc);
 	size_t acc_id;
 	if(findacc == acc_sequences.end()) {
-		acc_sequences.insert(make_pair(acc, vector<size_t>(0)));
+		acc_sequences.insert(std::make_pair(acc, std::vector<size_t>(0)));
 		findacc = acc_sequences.find(acc);
 		acc_id = accession_name.size();	
-		accession_name.insert(make_pair(acc, acc_id));	
+		accession_name.insert(std::make_pair(acc, acc_id));	
 	} else {
-	map<string, size_t>::iterator find_acc_id = accession_name.find(acc);
+	std::map<std::string, size_t>::iterator find_acc_id = accession_name.find(acc);
 	acc_id = find_acc_id -> second;
 	}
 	findacc->second.push_back(seq_id);
 	sequence_to_accession.push_back(acc_id);
-	stringstream longname;
+	std::stringstream longname;
 	longname << acc << ":" << seq_name;
-	longname2seqidx.insert(make_pair(longname.str(), seq_id));
+	longname2seqidx.insert(std::make_pair(longname.str(), seq_id));
 	}
 
 
@@ -535,18 +744,18 @@ all_data::~all_data() {
 	"Col0", "scaffold_0"
 	
 **/		
-	void all_data::name_split(const string & longname, string & acc, string & name) {
-	vector<string> wparts; // remove all after first space
+	void all_data::name_split(const std::string & longname, std::string & acc, std::string & name) {
+	std::vector<std::string> wparts; // remove all after first space
 	strsep(longname, " ", wparts);
-	string wname = wparts.at(0);
-	vector<string> fparts;
+	std::string wname = wparts.at(0);
+	std::vector<std::string> fparts;
 	strsep(wname, ":", fparts);
 	if(fparts.size()< 2) {
-		cerr << "Error: sequence " << longname << " does not contain an Accession name separated by a colon" << endl;
+		std::cerr << "Error: sequence " << longname << " does not contain an Accession name separated by a colon" << std::endl;
 		exit(1);
 	}
 	acc = fparts.at(0);
-	stringstream namewriter;
+	std::stringstream namewriter;
 	for(size_t i=1; i<fparts.size();++i) {
 		if(i!=1) namewriter << ":";
 		namewriter << fparts.at(i);
@@ -575,17 +784,17 @@ bool all_data::alignment_fits_ref(const pw_alignment * al) const {
 		al2fw = false;
 	}
 //al->print();
-//	cout << " directions " << al1fw << al2fw << endl;
+//	std::cout << " directions " << al1fw << al2fw << std::endl;
 
 	for(size_t col=0; col < al->alignment_length(); ++col) {
 		char al1char='X';
 		char al2char='X';
 		al->alignment_col(col, al1char, al2char);	
 		
-	//	cout << "c " << col << " " << al1char << " " << al2char << endl;	
+	//	std::cout << "c " << col << " " << al1char << " " << al2char << std::endl;	
 		if(al1char!='-') { 
 			char rchar = ref1.at(al1at);
-		//	cout << " al 1 at " << al1at;
+		//	std::cout << " al 1 at " << al1at;
 			if(al1fw) {
 				al1at++;
 			} else {
@@ -593,17 +802,17 @@ bool all_data::alignment_fits_ref(const pw_alignment * al) const {
 				rchar =  dnastring::complement(rchar);
 
 			}
-		//	cout << " is " << rchar << endl;
+		//	std::cout << " is " << rchar << std::endl;
 			if(rchar != al1char) {
 			//	al->print();
-				cerr << "Warning: alignment test failed. Alignment has " << al1char << " at " << col <<" where reference sequence has " << rchar << endl;
+				std::cerr << "Warning: alignment test failed. Alignment has " << al1char << " at " << col <<" where reference sequence has " << rchar << std::endl;
 			//	print_ref(al);
 				return false;
 			}
 		}
 		if(al2char!='-') {
 			char rchar = ref2.at(al2at);
-		//	cout << " al 2 at " << al2at ;
+		//	std::cout << " al 2 at " << al2at ;
 			if(al2fw) {
 				al2at++;
 			} else {
@@ -611,11 +820,11 @@ bool all_data::alignment_fits_ref(const pw_alignment * al) const {
 				rchar =  dnastring::complement(rchar);
 
 			}
-		//	cout << " is " << rchar << endl;
+		//	std::cout << " is " << rchar << std::endl;
 			if(rchar != al2char) {
 			//	al->print();
-				cerr << " at " << al2at <<endl;
-				cerr << "Warning: alignment test failed. Alignment has " << al2char << " where reference sequence has " << rchar << endl;
+				std::cerr << " at " << al2at <<std::endl;
+				std::cerr << "Warning: alignment test failed. Alignment has " << al2char << " where reference sequence has " << rchar << std::endl;
 				al->print();
 			//	print_ref(al);
 				return false;
@@ -635,7 +844,7 @@ bool all_data::alignment_fits_ref(const pw_alignment * al) const {
 			if(al1fw) {
 				size_t al1e = al1at-1;
 				if(al1e!=al->getend1()) {
-					cerr << "Warning: alignment end wrong. Should be " << al1e << " but is " << al->getend1() << endl;
+					std::cerr << "Warning: alignment end wrong. Should be " << al1e << " but is " << al->getend1() << std::endl;
 					//print_ref(al);
 					return false;
 				} 
@@ -645,7 +854,7 @@ bool all_data::alignment_fits_ref(const pw_alignment * al) const {
 				if(al1b!=al->getend1()) {
 					print_ref(al);
 
-					cerr << "Warning: rev alignment end wrong. Should be " << al->getend1() << " but is " << al1b << endl;
+					std::cerr << "Warning: rev alignment end wrong. Should be " << al->getend1() << " but is " << al1b << std::endl;
 
 					return false;
 				}
@@ -655,14 +864,14 @@ bool all_data::alignment_fits_ref(const pw_alignment * al) const {
 			size_t al2e = al2at-1;
 			if(al2e!=al->getend2()) {
 				print_ref(al);
-				cerr << "Warning: alignment end wrong. Should be " << al->getend2()<< " but is " << al2e << endl;
+				std::cerr << "Warning: alignment end wrong. Should be " << al->getend2()<< " but is " << al2e << std::endl;
 				return false;
 			}
 		 	} else {
 				size_t al2b = al2at+1;
 				if(al2b!=al->getend2()) {
 			//	print_ref(al);
-				cerr << "Warning: rev alignment end wrong. Should be " << al2b  << " but is " << al->getend2() << endl;
+				std::cerr << "Warning: rev alignment end wrong. Should be " << al2b  << " but is " << al->getend2() << std::endl;
 				print_ref(al);
 			
 				return false;
@@ -683,36 +892,36 @@ void all_data::print_ref(const pw_alignment * al)const{
 		size_t al2at = al->getbegin2();
 
 		if(al->getbegin1() < al->getend1())
-			cout << " direction1: forward "<< endl;
-		else 	cout << " direction1: reverse "<< endl;
+			std::cout << " direction1: forward "<< std::endl;
+		else 	std::cout << " direction1: reverse "<< std::endl;
 		if(al->getbegin2() < al->getend2())
-			cout << " direction2: forward "<< endl;
-		else 	cout << " direction2: reverse "<< endl;
+			std::cout << " direction2: forward "<< std::endl;
+		else 	std::cout << " direction2: reverse "<< std::endl;
 		for(size_t col=0; col < al->alignment_length(); ++col) {
 			char al1char='X';
 			char al2char='X';
 			al->alignment_col(col, al1char, al2char);	
 		
-			cout << "c " << col << " " << al1char << " " << al2char << endl;
+			std::cout << "c " << col << " " << al1char << " " << al2char << std::endl;
 				if(al1char!='-') { 
 				char rchar = ref1.at(al1at);
-				cout << " al 1 at " << al1at;
+				std::cout << " al 1 at " << al1at;
 					if(al->getbegin1() < al->getend1()) {
 						al1at++;
 					} else {
 						al1at--;
 					}
-				cout << " is " << rchar << endl;
+				std::cout << " is " << rchar << std::endl;
 				}
 				if(al2char!='-') {
 				char rchar = ref2.at(al2at);
-				cout << " al 2 at " << al2at ;
+				std::cout << " al 2 at " << al2at ;
 					if(al->getbegin2() < al->getend2()) {
 						al2at++;
 					} else {
 						al2at--;
 					}
-				cout << " is " << rchar << endl;
+				std::cout << " is " << rchar << std::endl;
 				}
 
 		}	
@@ -720,9 +929,9 @@ void all_data::print_ref(const pw_alignment * al)const{
 	}
 
 
-const string all_data::get_acc(size_t acc)const{	
-	string Accession;
-	for(map<string, size_t>::const_iterator it = accession_name.begin() ; it != accession_name.end();it++){
+const std::string all_data::get_acc(size_t acc)const{	
+	std::string Accession;
+	for(std::map<std::string, size_t>::const_iterator it = accession_name.begin() ; it != accession_name.end();it++){
 		if(it->second == acc){
 			Accession = it -> first;
 		}else continue;
@@ -730,13 +939,13 @@ const string all_data::get_acc(size_t acc)const{
 	return Accession;
 }
 
-const size_t all_data::get_acc_id(string acc)const{
-	map<string, size_t>::const_iterator it = accession_name.find(acc);
+const size_t all_data::get_acc_id(std::string acc)const{
+	std::map<std::string, size_t>::const_iterator it = accession_name.find(acc);
 	return it->second;
 }
 
 
-string all_data::get_seq_name(size_t s) const {
+std::string all_data::get_seq_name(size_t s) const {
 	return sequence_names.at(s);
 }
 
@@ -753,46 +962,46 @@ overlap::overlap(const overlap & o): data(o.data), als_on_reference(o.data.numSe
 
 	
 	overlap::~overlap(){
-		for(set<pw_alignment*, compare_pw_alignment>::iterator it = alignments.begin(); it!=alignments.end(); ++it) {
+		for(std::set<pw_alignment*, compare_pw_alignment>::iterator it = alignments.begin(); it!=alignments.end(); ++it) {
 			delete *it;
 		}
 	}
 
 	void overlap::remove_alignment_nodelete(const pw_alignment * remove){
-		pair< multimap<size_t, pw_alignment*>::iterator, multimap<size_t, pw_alignment*>::iterator > eqrb1 =
+		std::pair< std::multimap<size_t, pw_alignment*>::iterator, std::multimap<size_t, pw_alignment*>::iterator > eqrb1 =
 		als_on_reference.at(remove->getreference1()).equal_range(remove->getbegin1());
-		for(multimap<size_t, pw_alignment*>::iterator it = eqrb1.first; it!=eqrb1.second; ++it) {
+		for(std::multimap<size_t, pw_alignment*>::iterator it = eqrb1.first; it!=eqrb1.second; ++it) {
 			if ( it->second == remove ) {
 				als_on_reference.at(remove->getreference1()).erase(it);
 				break;
 			}		
 		}
-		pair< multimap<size_t, pw_alignment*>::iterator, multimap<size_t, pw_alignment*>::iterator > eqre1 =
+		std::pair< std::multimap<size_t, pw_alignment*>::iterator, std::multimap<size_t, pw_alignment*>::iterator > eqre1 =
 		als_on_reference.at(remove->getreference1()).equal_range(remove->getend1());
-		for(multimap<size_t, pw_alignment*>::iterator it = eqre1.first; it!=eqre1.second; ++it) {
+		for(std::multimap<size_t, pw_alignment*>::iterator it = eqre1.first; it!=eqre1.second; ++it) {
 			if ( (it->second) == remove ) {
 				als_on_reference.at(remove->getreference1()).erase(it);
 				break;
 			}		
 		}
-		pair< multimap<size_t, pw_alignment*>::iterator, multimap<size_t, pw_alignment*>::iterator > eqrb2 =
+		std::pair< std::multimap<size_t, pw_alignment*>::iterator, std::multimap<size_t, pw_alignment*>::iterator > eqrb2 =
 		als_on_reference.at(remove->getreference2()).equal_range(remove->getbegin2());
-		for(multimap<size_t, pw_alignment*>::iterator it = eqrb2.first; it!=eqrb2.second; ++it) {
+		for(std::multimap<size_t, pw_alignment*>::iterator it = eqrb2.first; it!=eqrb2.second; ++it) {
 			if ( (it->second) == remove ) {
 				als_on_reference.at(remove->getreference2()).erase(it);
 				break;
 			}		
 		}
-		pair< multimap<size_t, pw_alignment*>::iterator, multimap<size_t, pw_alignment*>::iterator > eqre2 =
+		std::pair< std::multimap<size_t, pw_alignment*>::iterator, std::multimap<size_t, pw_alignment*>::iterator > eqre2 =
 		als_on_reference.at(remove->getreference2()).equal_range(remove->getend2());
-		for(multimap<size_t, pw_alignment*>::iterator it = eqre2.first; it!=eqre2.second; ++it) {
+		for(std::multimap<size_t, pw_alignment*>::iterator it = eqre2.first; it!=eqre2.second; ++it) {
 			if ( (it->second) == remove ) {
 				als_on_reference.at(remove->getreference2()).erase(it);
 				break;
 			}		
 		}
 		pw_alignment * rem = const_cast<pw_alignment *>(remove);
-		set<pw_alignment*, compare_pw_alignment>::iterator findr = alignments.find(rem);
+		std::set<pw_alignment*, compare_pw_alignment>::iterator findr = alignments.find(rem);
 	//	remove->print();
 		assert(findr!=alignments.end());
 		alignments.erase(findr);
@@ -806,11 +1015,11 @@ overlap::overlap(const overlap & o): data(o.data), als_on_reference(o.data.numSe
 
 void overlap::test_all() const {
 
-	for(set<pw_alignment*, compare_pw_alignment>::iterator it = alignments.begin(); it!=alignments.end(); ++it) {
+	for(std::set<pw_alignment*, compare_pw_alignment>::iterator it = alignments.begin(); it!=alignments.end(); ++it) {
 		pw_alignment * al = *it;
 		bool alok = data.alignment_fits_ref(al);
 		if(!alok) {
-			cout << " test all failed " << endl;
+			std::cout << " test all failed " << std::endl;
 			al->print();
 			exit(1);
 		}
@@ -823,49 +1032,49 @@ void overlap::test_all() const {
 
 
 void overlap::print_all_alignment() const {
-	for(set<pw_alignment*, compare_pw_alignment>::const_iterator it = alignments.begin(); it!=alignments.end(); ++it ) {
+	for(std::set<pw_alignment*, compare_pw_alignment>::const_iterator it = alignments.begin(); it!=alignments.end(); ++it ) {
 		const pw_alignment * al = * it;
-		//cout << " x " << al << endl;
+		//std::cout << " x " << al << std::endl;
 		al->print();
-		cout << endl;
+		std::cout << std::endl;
 	}
 
 }
 
 void overlap::test_multimaps() {
 
-		for(set<pw_alignment*, compare_pw_alignment>::const_iterator it = alignments.begin(); it!=alignments.end(); ++it ) {
+		for(std::set<pw_alignment*, compare_pw_alignment>::const_iterator it = alignments.begin(); it!=alignments.end(); ++it ) {
 			const pw_alignment * remove = * it;
-			pair< multimap<size_t, pw_alignment*>::iterator, multimap<size_t, pw_alignment*>::iterator > eqrb1 =
+			std::pair< std::multimap<size_t, pw_alignment*>::iterator, std::multimap<size_t, pw_alignment*>::iterator > eqrb1 =
 			als_on_reference.at(remove->getreference1()).equal_range(remove->getbegin1());
 			size_t found =0;
-			for(multimap<size_t, pw_alignment*>::iterator it = eqrb1.first; it!=eqrb1.second; ++it) {
+			for(std::multimap<size_t, pw_alignment*>::iterator it = eqrb1.first; it!=eqrb1.second; ++it) {
 			if ( it->second == remove ) {
 				found++;
 				break;
 			}		
 			}
-			pair< multimap<size_t, pw_alignment*>::iterator, multimap<size_t, pw_alignment*>::iterator > eqre1 =
+			std::pair< std::multimap<size_t, pw_alignment*>::iterator, std::multimap<size_t, pw_alignment*>::iterator > eqre1 =
 			als_on_reference.at(remove->getreference1()).equal_range(remove->getend1());
-			for(multimap<size_t, pw_alignment*>::iterator it = eqre1.first; it!=eqre1.second; ++it) {
+			for(std::multimap<size_t, pw_alignment*>::iterator it = eqre1.first; it!=eqre1.second; ++it) {
 				if ( (it->second) == remove ) {
 				found++;
 				break;
 			}		
 			}
 
-			pair< multimap<size_t, pw_alignment*>::iterator, multimap<size_t, pw_alignment*>::iterator > eqrb2 =
+			std::pair< std::multimap<size_t, pw_alignment*>::iterator, std::multimap<size_t, pw_alignment*>::iterator > eqrb2 =
 			als_on_reference.at(remove->getreference2()).equal_range(remove->getbegin2());
-			for(multimap<size_t, pw_alignment*>::iterator it = eqrb2.first; it!=eqrb2.second; ++it) {
+			for(std::multimap<size_t, pw_alignment*>::iterator it = eqrb2.first; it!=eqrb2.second; ++it) {
 			if ( (it->second) == remove ) {
 				found++;
 				break;
 			}		
 			}
 
-			pair< multimap<size_t, pw_alignment*>::iterator, multimap<size_t, pw_alignment*>::iterator > eqre2 =
+			std::pair< std::multimap<size_t, pw_alignment*>::iterator, std::multimap<size_t, pw_alignment*>::iterator > eqre2 =
 			als_on_reference.at(remove->getreference2()).equal_range(remove->getend2());
-			for(multimap<size_t, pw_alignment*>::iterator it = eqre2.first; it!=eqre2.second; ++it) {
+			for(std::multimap<size_t, pw_alignment*>::iterator it = eqre2.first; it!=eqre2.second; ++it) {
 			if ( (it->second) == remove ) {
 				found++;
 				break;
@@ -875,13 +1084,13 @@ void overlap::test_multimaps() {
 
 		}
 		for(size_t s=0; s<data.numSequences(); s++) {
-			for(multimap< size_t, pw_alignment *>::const_iterator it = als_on_reference.at(s).begin(); it!=als_on_reference.at(s).end(); ++it) {
-				cout << it->second << endl;
+			for(std::multimap< size_t, pw_alignment *>::const_iterator it = als_on_reference.at(s).begin(); it!=als_on_reference.at(s).end(); ++it) {
+				std::cout << it->second << std::endl;
 				pw_alignment * p = const_cast<pw_alignment *>(it->second);
-				//cout << p << endl;
-				set<pw_alignment*, compare_pw_alignment>::iterator findp = alignments.find(p);
+				//std::cout << p << std::endl;
+				std::set<pw_alignment*, compare_pw_alignment>::iterator findp = alignments.find(p);
 				if(findp==alignments.end()){
-					cout<<"wrong one: "<<p<<endl;
+					std::cout<<"wrong one: "<<p<<std::endl;
 					p->print();
 				}
 				assert(findp!=alignments.end());
@@ -895,25 +1104,25 @@ void overlap::test_multimaps() {
 
 void overlap::insert_without_partial_overlap_p(pw_alignment * np){
 
-	//cout << " insert " << np << endl;
+	//std::cout << " insert " << np << std::endl;
 	assert(alignments.find(np) == alignments.end());
 	alignments.insert(np);
 
  	
-	multimap<size_t , pw_alignment *> & alignment_on_reference1 = als_on_reference.at(np->getreference1());
+	std::multimap<size_t , pw_alignment *> & alignment_on_reference1 = als_on_reference.at(np->getreference1());
 
 	
 //	if(np->getreference2()!=np->getreference1()) {
-		multimap<size_t , pw_alignment *> & alignment_on_reference2 = als_on_reference.at(np->getreference2());
-		pair<size_t,  pw_alignment *> begin2(np->getbegin2(),np);
+		std::multimap<size_t , pw_alignment *> & alignment_on_reference2 = als_on_reference.at(np->getreference2());
+		std::pair<size_t,  pw_alignment *> begin2(np->getbegin2(),np);
 		alignment_on_reference2.insert(begin2);
-		pair<size_t, pw_alignment *> end2(np->getend2(),np);
+		std::pair<size_t, pw_alignment *> end2(np->getend2(),np);
 		alignment_on_reference2.insert(end2);
 //	}
 
-	pair<size_t,  pw_alignment *> begin1(np->getbegin1(),np);
+	std::pair<size_t,  pw_alignment *> begin1(np->getbegin1(),np);
 		alignment_on_reference1.insert(begin1);
-	pair<size_t,  pw_alignment *> end1(np->getend1(),np);
+	std::pair<size_t,  pw_alignment *> end1(np->getend1(),np);
 		alignment_on_reference1.insert(end1);
 
 }
@@ -927,9 +1136,9 @@ pw_alignment * overlap::insert_without_partial_overlap(const pw_alignment & p){
 
 
 const pw_alignment * overlap::get_al_at_left_end(size_t ref1, size_t ref2, size_t left1, size_t left2) const {
-		const multimap<size_t, pw_alignment *> & r1map = als_on_reference.at(ref1);
-		pair<multimap<size_t, pw_alignment *>::const_iterator,multimap<size_t, pw_alignment *>::const_iterator> eqr = r1map.equal_range(left1);
-		for( multimap<size_t, pw_alignment *>::const_iterator it = eqr.first; it!= eqr.second; ++it) {
+		const std::multimap<size_t, pw_alignment *> & r1map = als_on_reference.at(ref1);
+		std::pair<std::multimap<size_t, pw_alignment *>::const_iterator,std::multimap<size_t, pw_alignment *>::const_iterator> eqr = r1map.equal_range(left1);
+		for( std::multimap<size_t, pw_alignment *>::const_iterator it = eqr.first; it!= eqr.second; ++it) {
 			const pw_alignment * cal = it->second;
 			if(cal->getreference1()==ref1) {
 				size_t cal_left1 = cal->getbegin1();
@@ -957,16 +1166,16 @@ const pw_alignment * overlap::get_al_at_left_end(size_t ref1, size_t ref2, size_
 		return NULL;
 }
 
-multimap<size_t, pw_alignment*> &  overlap::get_als_on_reference(size_t sequence)  {
+std::multimap<size_t, pw_alignment*> &  overlap::get_als_on_reference(size_t sequence)  {
 	return als_on_reference.at(sequence);
 }
-const multimap<size_t, pw_alignment*> &  overlap::get_als_on_reference_const(size_t sequence) const {
+const std::multimap<size_t, pw_alignment*> &  overlap::get_als_on_reference_const(size_t sequence) const {
 	return als_on_reference.at(sequence);
 }
 
 void overlap::test_all_part()const{
 	
-	/*set < const pw_alignment*, compare_pw_alignment> alignment_parts;
+	/*std::set < const pw_alignment*, compare_pw_alignment> alignment_parts;
 		
 		for(size_t i =0 ; i< data.numAlignments(); ++i){
 		const pw_alignment & al = data.getAlignment(i);
@@ -1003,12 +1212,12 @@ void overlap::test_all_part()const{
 			alignment_parts.insert(cal);
 
 			if(cal_right1 > al_right1 || cal_right2 > al_right2) {
-				cout << "Small alignment part is to long" << endl;
+				std::cout << "Small alignment part is to long" << std::endl;
 				exit(1);
 			}
 			}
 			 else { 
-			cout<< "There is no alignment!"<<endl;
+			std::cout<< "There is no alignment!"<<std::endl;
 			exit(1);
 			}
 
@@ -1017,13 +1226,13 @@ void overlap::test_all_part()const{
 		
 	}
 		if(alignment_parts.size()!=alignments.size()) {
-		cout<< " Small parts don't cover the original one!"<<endl;
+		std::cout<< " Small parts don't cover the original one!"<<std::endl;
 		exit(1);
 		}*/
 }
 
 void overlap::test_overlap()const{
-	for(set<pw_alignment*, compare_pw_alignment>::iterator it1 = alignments.begin(); it1!=alignments.end(); ++it1){	
+	for(std::set<pw_alignment*, compare_pw_alignment>::iterator it1 = alignments.begin(); it1!=alignments.end(); ++it1){	
 		pw_alignment * al1 = *it1;
 		size_t l1ref1 = al1->getbegin1();
 		size_t r1ref1 = al1->getend1();
@@ -1037,7 +1246,7 @@ void overlap::test_overlap()const{
 			l1ref2 = al1->getend2();
 			r1ref2 = al1->getbegin2();		
 		}
-		for(set<pw_alignment*, compare_pw_alignment>::iterator it2 = alignments.begin(); it2!=alignments.end(); ++it2){
+		for(std::set<pw_alignment*, compare_pw_alignment>::iterator it2 = alignments.begin(); it2!=alignments.end(); ++it2){
 			pw_alignment * al2 = *it2;
 			size_t l2ref1 = al2->getbegin1();
 			size_t r2ref1 = al2->getend1();
@@ -1052,15 +1261,15 @@ void overlap::test_overlap()const{
 				r2ref2 = al2->getbegin2();		
 			}
 			if ((l1ref1 < l2ref1 && l2ref1 < r1ref1) || (l1ref1 < l2ref1 && r2ref1 < r2ref1)){
-				cout<< "There are some overlap!"<<endl;
+				std::cout<< "There are some overlap!"<<std::endl;
 				exit(1);
 			}
 			else if((l1ref2 < l2ref2 && l2ref2 < r1ref2) || (l1ref2 < l2ref2 && r2ref2 < r2ref2)){
-				cout<< "There are some overlap!"<<endl;
+				std::cout<< "There are some overlap!"<<std::endl;
 				exit(1);
 			}
 			else{
-				cout<< "There is no overlap" << endl;
+				std::cout<< "There is no overlap" << std::endl;
 				exit(0);
 			}
 
@@ -1069,7 +1278,7 @@ void overlap::test_overlap()const{
 }
 	
 bool overlap::checkAlignments(pw_alignment* const p)const{
-	set<pw_alignment*,compare_pw_alignment>::iterator it=alignments.find(p);
+	std::set<pw_alignment*,compare_pw_alignment>::iterator it=alignments.find(p);
 	if(it !=alignments.end()) return true;	
 	else return false;	
 }
@@ -1080,12 +1289,12 @@ bool overlap::checkAlignments(pw_alignment* const p)const{
 size_t overlap::size() const {
 
 //	for(size_t i=0; i<als_on_reference.size(); i++) {
-//		cout << " ref " << i << " al start/end points: " << als_on_reference.at(i).size() << endl;
+//		std::cout << " ref " << i << " al start/end points: " << als_on_reference.at(i).size() << std::endl;
 //	}
 	return alignments.size();
 }
 		
-const set<pw_alignment*, compare_pw_alignment> & overlap::get_all() const {
+const std::set<pw_alignment*, compare_pw_alignment> & overlap::get_all() const {
 	return alignments;
 }
 
@@ -1100,10 +1309,10 @@ bool overlap::check_po(size_t l1, size_t r1, size_t l2, size_t r2) {
 	return false;
 }
 
-void overlap::test_partial_overlap_set(set< const pw_alignment *, compare_pw_alignment> & als) {
+void overlap::test_partial_overlap_set(std::set< const pw_alignment *, compare_pw_alignment> & als) {
 	
-	vector<const pw_alignment *> all;
-	for(set<const pw_alignment *, compare_pw_alignment>::iterator it = als.begin(); it!=als.end(); ++it) {
+	std::vector<const pw_alignment *> all;
+	for(std::set<const pw_alignment *, compare_pw_alignment>::iterator it = als.begin(); it!=als.end(); ++it) {
 		const pw_alignment * al = *it;
 		all.push_back(al);
 	}
@@ -1111,7 +1320,7 @@ void overlap::test_partial_overlap_set(set< const pw_alignment *, compare_pw_ali
 }
 
 
-void overlap::test_partial_overlap_vec(vector< const pw_alignment *> & all) {
+void overlap::test_partial_overlap_vec(std::vector< const pw_alignment *> & all) {
 	for(size_t i=0; i<all.size(); ++i) {
 		for(size_t j=i+1; j<all.size(); ++j) {
 			const pw_alignment * a = all.at(i);
@@ -1129,7 +1338,7 @@ void overlap::test_partial_overlap_vec(vector< const pw_alignment *> & all) {
 			bref2 = b->getreference2();
 			if(aref1 == bref1) {
 				if(check_po(al1, ar1, bl1, br1)) {
-					cout << "partial overlap error 1: " << endl;
+					std::cout << "partial overlap error 1: " << std::endl;
 					a->print();
 					b->print();
 					throw 0;
@@ -1139,7 +1348,7 @@ void overlap::test_partial_overlap_vec(vector< const pw_alignment *> & all) {
 			
 			if(aref1 == bref2) {
 				if(check_po(al1, ar1, bl2, br2)) {
-					cout << "partial overlap error 2: " << endl;
+					std::cout << "partial overlap error 2: " << std::endl;
 					a->print();
 					b->print();
 					throw 0;
@@ -1149,7 +1358,7 @@ void overlap::test_partial_overlap_vec(vector< const pw_alignment *> & all) {
 
 			if(aref2 == bref1) {
 				if(check_po(al2, ar2, bl1, br1)) {
-					cout << "partial overlap error 3: " << endl;
+					std::cout << "partial overlap error 3: " << std::endl;
 					a->print();
 					b->print();
 					throw 0;
@@ -1159,7 +1368,7 @@ void overlap::test_partial_overlap_vec(vector< const pw_alignment *> & all) {
 
 			if(aref2 == bref2) {
 				if(check_po(al2, ar2, bl2, br2)) {
-					cout << "partial overlap error 4: " << endl;
+					std::cout << "partial overlap error 4: " << std::endl;
 					a->print();
 					b->print();
 					throw 0;
@@ -1177,8 +1386,8 @@ void overlap::test_partial_overlap_vec(vector< const pw_alignment *> & all) {
 }
 void overlap::test_partial_overlap() const {
 
-	vector<const pw_alignment *> all;
-	for(set<pw_alignment *, compare_pw_alignment>::iterator it = alignments.begin(); it!=alignments.end(); ++it) {
+	std::vector<const pw_alignment *> all;
+	for(std::set<pw_alignment *, compare_pw_alignment>::iterator it = alignments.begin(); it!=alignments.end(); ++it) {
 		const pw_alignment * al = *it;
 		all.push_back(al);
 	}
@@ -1192,12 +1401,12 @@ void overlap::test_partial_overlap() const {
 splitpoints::splitpoints(const pw_alignment & p, const overlap & o, const all_data & d):overl(o), newal(p),data(d), split_points(d.numSequences()) {
 
 #if SPLITPRINT
-	cout << "RUN SPLITPOINTS ON " << endl;
+	std::cout << "RUN SPLITPOINTS ON " << std::endl;
 	o.print_all_alignment();
 
-	cout << " split with " << endl;
+	std::cout << " split with " << std::endl;
 	p.print();
-	cout << " end " << endl;
+	std::cout << " end " << std::endl;
 
 #endif
 
@@ -1206,20 +1415,20 @@ splitpoints::splitpoints(const pw_alignment & p, const overlap & o, const all_da
 splitpoints::~splitpoints() {}
 
 void splitpoints::find_initial_split_points_nonrecursive(size_t sequence, size_t left, size_t right) {
-		const multimap<size_t , pw_alignment *> & alignments_on_reference = overl.get_als_on_reference_const(sequence);
+		const std::multimap<size_t , pw_alignment *> & alignments_on_reference = overl.get_als_on_reference_const(sequence);
 
 #if SPLITPRINT		
-		cout << " seach for initial split points on " << sequence << " from " << left << endl;
+		std::cout << " seach for initial split points on " << sequence << " from " << left << std::endl;
 		size_t count = 0;
 #endif
 
-		for( multimap<size_t, pw_alignment *>::const_iterator it=alignments_on_reference.lower_bound(left);it!=alignments_on_reference.end(); ++it){
+		for( std::multimap<size_t, pw_alignment *>::const_iterator it=alignments_on_reference.lower_bound(left);it!=alignments_on_reference.end(); ++it){
 			const pw_alignment * al = it->second;
 			
 #if SPLITPRINT
-			cout << count++ <<" See " << endl;
+			std::cout << count++ <<" See " << std::endl;
 			al->print();
-			cout << endl;
+			std::cout << std::endl;
 #endif
 
 			// loop break condition. This special treatment is needed to avoid to-early break in case of both parts of al being on the same reference
@@ -1236,39 +1445,39 @@ void splitpoints::find_initial_split_points_nonrecursive(size_t sequence, size_t
 
 
 				if(alleft < left && left <= alright) {
-	//				cout<<"here1"<<endl;
-				//	cout<<"al: "<<endl;
+	//				std::cout<<"here1"<<std::endl;
+				//	std::cout<<"al: "<<std::endl;
 				//	al->print();
 					insert_split_point_nonrecursive(sequence, left);
 				}
 				if(alleft <= right && right < alright) {
-	//				cout<<"here2"<<endl;
-				//	cout<<"al: "<<endl;
+	//				std::cout<<"here2"<<std::endl;
+				//	std::cout<<"al: "<<std::endl;
 				//	al->print();
 					insert_split_point_nonrecursive(sequence, right+1);
 
 				}
 				if(left < alleft && alleft < right) {
-	//				cout<<"here3"<<endl;
-	//				cout<<"al: "<<endl;
+	//				std::cout<<"here3"<<std::endl;
+	//				std::cout<<"al: "<<std::endl;
 				/*	for(size_t col = 0; col < al->alignment_length(); col++) {
 						char c1;
 						char c2;
 						al->alignment_col(col, c1, c2);
-						cout <<col <<"\t"<< c1<<"\t"<<c2<<endl;
+						std::cout <<col <<"\t"<< c1<<"\t"<<c2<<std::endl;
 					}*/
 
 				//	al->print();
-				//	cout<<"newal: "<<endl;
+				//	std::cout<<"newal: "<<std::endl;
 				//	newal.print();
 					insert_split_point_nonrecursive(sequence, alleft);
 
 				}
 				if(left < alright && alright < right) {
-		//			cout<<"here4"<<endl;
-				//	cout<<"al: "<<endl;
+		//			std::cout<<"here4"<<std::endl;
+				//	std::cout<<"al: "<<std::endl;
 		//			al->print();
-				//	cout<<"newal: "<<endl;
+				//	std::cout<<"newal: "<<std::endl;
 				//	newal.print();
 					insert_split_point_nonrecursive(sequence, alright+1);
 					
@@ -1287,33 +1496,33 @@ void splitpoints::find_initial_split_points_nonrecursive(size_t sequence, size_t
 
 
 				if(alleft < left && left <= alright) {
-				//	cout<<"here5"<<endl;
-				//	cout<<"al: "<<endl;
+				//	std::cout<<"here5"<<std::endl;
+				//	std::cout<<"al: "<<std::endl;
 				//	al->print();
-				//	cout<<"newal: "<<endl;
+				//	std::cout<<"newal: "<<std::endl;
 				//	newal.print();
 
 					insert_split_point_nonrecursive(sequence, left);
 				
 				}
 				if(alleft <= right && right < alright) {
-		//			cout<<"here6"<<endl;
+		//			std::cout<<"here6"<<std::endl;
 				//	al->print();
 					insert_split_point_nonrecursive(sequence, right+1);
 				}
 				if(left < alleft && alleft < right) {
-		//			cout<<"here7"<<endl;
-				//	cout<<"al: "<<endl;
+		//			std::cout<<"here7"<<std::endl;
+				//	std::cout<<"al: "<<std::endl;
 				//	al->print();
-				//	cout<<"newal: "<<endl;
+				//	std::cout<<"newal: "<<std::endl;
 				//	newal.print();
 					insert_split_point_nonrecursive(sequence, alleft);
 				}
 				if(left < alright && alright < right) {
-		//			cout<<"here8"<<endl;
-				//	cout<<"al: "<<endl;
+		//			std::cout<<"here8"<<std::endl;
+				//	std::cout<<"al: "<<std::endl;
 		//			al->print();
-				//	cout<<"newal: "<<endl;
+				//	std::cout<<"newal: "<<std::endl;
 				//	newal.print();
 					insert_split_point_nonrecursive(sequence, alright+1);
 				}
@@ -1326,7 +1535,7 @@ void splitpoints::find_initial_split_points_nonrecursive(size_t sequence, size_t
 
 			if(al_leftmost_leftbound > right)  {
 #if SPLITPRINT
-				cout << "Break after See " << count << " al rightmost leftbound is " << al_leftmost_leftbound<<  endl;	
+				std::cout << "Break after See " << count << " al rightmost leftbound is " << al_leftmost_leftbound<<  std::endl;	
 #endif
 				break;
 			}
@@ -1336,20 +1545,20 @@ void splitpoints::find_initial_split_points_nonrecursive(size_t sequence, size_t
 }
 
 void splitpoints::find_initial_split_points(size_t sequence, size_t left, size_t right) {
-		const multimap<size_t , pw_alignment *> & alignments_on_reference = overl.get_als_on_reference_const(sequence);
+		const std::multimap<size_t , pw_alignment *> & alignments_on_reference = overl.get_als_on_reference_const(sequence);
 
 #if SPLITPRINT		
-		cout << " seach for initial split points on " << sequence << " from " << left << endl;
+		std::cout << " seach for initial split points on " << sequence << " from " << left << std::endl;
 		size_t count = 0;
 #endif
 
-		for( multimap<size_t, pw_alignment *>::const_iterator it=alignments_on_reference.lower_bound(left);it!=alignments_on_reference.end(); ++it){
+		for( std::multimap<size_t, pw_alignment *>::const_iterator it=alignments_on_reference.lower_bound(left);it!=alignments_on_reference.end(); ++it){
 			const pw_alignment * al = it->second;
 			
 #if SPLITPRINT
-			cout << count++ <<" See " << endl;
+			std::cout << count++ <<" See " << std::endl;
 			al->print();
-			cout << endl;
+			std::cout << std::endl;
 #endif
 
 			// loop break condition. This special treatment is needed to avoid to-early break in case of both parts of al being on the same reference
@@ -1366,39 +1575,39 @@ void splitpoints::find_initial_split_points(size_t sequence, size_t left, size_t
 
 
 				if(alleft < left && left <= alright) {
-	//				cout<<"here1"<<endl;
-				//	cout<<"al: "<<endl;
+	//				std::cout<<"here1"<<std::endl;
+				//	std::cout<<"al: "<<std::endl;
 				//	al->print();
 					insert_split_point(sequence, left);
 				}
 				if(alleft <= right && right < alright) {
-	//				cout<<"here2"<<endl;
-				//	cout<<"al: "<<endl;
+	//				std::cout<<"here2"<<std::endl;
+				//	std::cout<<"al: "<<std::endl;
 				//	al->print();
 					insert_split_point(sequence, right+1);
 
 				}
 				if(left < alleft && alleft < right) {
-	//				cout<<"here3"<<endl;
-	//				cout<<"al: "<<endl;
+	//				std::cout<<"here3"<<std::endl;
+	//				std::cout<<"al: "<<std::endl;
 				/*	for(size_t col = 0; col < al->alignment_length(); col++) {
 						char c1;
 						char c2;
 						al->alignment_col(col, c1, c2);
-						cout <<col <<"\t"<< c1<<"\t"<<c2<<endl;
+						std::cout <<col <<"\t"<< c1<<"\t"<<c2<<std::endl;
 					}*/
 
 				//	al->print();
-				//	cout<<"newal: "<<endl;
+				//	std::cout<<"newal: "<<std::endl;
 				//	newal.print();
 					insert_split_point(sequence, alleft);
 
 				}
 				if(left < alright && alright < right) {
-		//			cout<<"here4"<<endl;
-				//	cout<<"al: "<<endl;
+		//			std::cout<<"here4"<<std::endl;
+				//	std::cout<<"al: "<<std::endl;
 		//			al->print();
-				//	cout<<"newal: "<<endl;
+				//	std::cout<<"newal: "<<std::endl;
 				//	newal.print();
 					insert_split_point(sequence, alright+1);
 					
@@ -1417,33 +1626,33 @@ void splitpoints::find_initial_split_points(size_t sequence, size_t left, size_t
 
 
 				if(alleft < left && left <= alright) {
-				//	cout<<"here5"<<endl;
-				//	cout<<"al: "<<endl;
+				//	std::cout<<"here5"<<std::endl;
+				//	std::cout<<"al: "<<std::endl;
 				//	al->print();
-				//	cout<<"newal: "<<endl;
+				//	std::cout<<"newal: "<<std::endl;
 				//	newal.print();
 
 					insert_split_point(sequence, left);
 				
 				}
 				if(alleft <= right && right < alright) {
-		//			cout<<"here6"<<endl;
+		//			std::cout<<"here6"<<std::endl;
 				//	al->print();
 					insert_split_point(sequence, right+1);
 				}
 				if(left < alleft && alleft < right) {
-		//			cout<<"here7"<<endl;
-				//	cout<<"al: "<<endl;
+		//			std::cout<<"here7"<<std::endl;
+				//	std::cout<<"al: "<<std::endl;
 				//	al->print();
-				//	cout<<"newal: "<<endl;
+				//	std::cout<<"newal: "<<std::endl;
 				//	newal.print();
 					insert_split_point(sequence, alleft);
 				}
 				if(left < alright && alright < right) {
-		//			cout<<"here8"<<endl;
-				//	cout<<"al: "<<endl;
+		//			std::cout<<"here8"<<std::endl;
+				//	std::cout<<"al: "<<std::endl;
 		//			al->print();
-				//	cout<<"newal: "<<endl;
+				//	std::cout<<"newal: "<<std::endl;
 				//	newal.print();
 					insert_split_point(sequence, alright+1);
 				}
@@ -1456,7 +1665,7 @@ void splitpoints::find_initial_split_points(size_t sequence, size_t left, size_t
 
 			if(al_leftmost_leftbound > right)  {
 #if SPLITPRINT
-				cout << "Break after See " << count << " al rightmost leftbound is " << al_leftmost_leftbound<<  endl;	
+				std::cout << "Break after See " << count << " al rightmost leftbound is " << al_leftmost_leftbound<<  std::endl;	
 #endif
 				break;
 			}
@@ -1477,13 +1686,13 @@ void splitpoints::find_initial_split_points(size_t sequence, size_t left, size_t
 		newal.get_lr2(left2, right2);
 
 #if SPLITPRINT
-		cout << " Check ref 1 overlaps " << endl;
+		std::cout << " Check ref 1 overlaps " << std::endl;
 #endif
 
 		find_initial_split_points(newal.getreference1(), left1, right1);
 
 #if SPLITPRINT
-		cout << " Check ref 2 overlaps " << endl;
+		std::cout << " Check ref 2 overlaps " << std::endl;
 #endif
 		find_initial_split_points(newal.getreference2(), left2, right2);
 	
@@ -1516,13 +1725,13 @@ void splitpoints::nonrecursive_splits(){
 		newal.get_lr2(left2, right2);
 
 #if SPLITPRINT
-		cout << " Check ref 1 overlaps " << endl;
+		std::cout << " Check ref 1 overlaps " << std::endl;
 #endif
 
 		find_initial_split_points_nonrecursive(newal.getreference1(), left1, right1);
 
 #if SPLITPRINT
-		cout << " Check ref 2 overlaps " << endl;
+		std::cout << " Check ref 2 overlaps " << std::endl;
 #endif
 		find_initial_split_points_nonrecursive(newal.getreference2(), left2, right2);
 	
@@ -1548,10 +1757,10 @@ void splitpoints::nonrecursive_splits(){
 
 
 void splitpoints::insert_split_point_nonrecursive(size_t sequence, size_t position) {
-	pair<set<size_t>::iterator, bool> insertes = split_points.at(sequence).insert(position);
+	std::pair<std::set<size_t>::iterator, bool> insertes = split_points.at(sequence).insert(position);
 	if(insertes.second) {
 #if SPLITPRINT
-		cout << " new split point " << sequence << " at " << position << endl;
+		std::cout << " new split point " << sequence << " at " << position << std::endl;
 #endif	
 	}
 }
@@ -1560,10 +1769,10 @@ void splitpoints::insert_split_point_nonrecursive(size_t sequence, size_t positi
 
 
 void splitpoints::insert_split_point(size_t sequence, size_t position) {
-	pair<set<size_t>::iterator, bool> insertes = split_points.at(sequence).insert(position);
+	std::pair<std::set<size_t>::iterator, bool> insertes = split_points.at(sequence).insert(position);
 	if(insertes.second) {
 #if SPLITPRINT
-		cout << " new split point " << sequence << " at " << position << endl;
+		std::cout << " new split point " << sequence << " at " << position << std::endl;
 #endif	
 		size_t left1;
 		size_t right1;
@@ -1598,24 +1807,24 @@ void splitpoints::insert_split_point(size_t sequence, size_t position) {
 					fp.remove_end_gaps(fpe);
 					fpe.get_lr2(fpeleft2, fperight2);
 #if SPLITPRINT
-					cout << "newal fpe " << endl;
+					std::cout << "newal fpe " << std::endl;
 					fpe.print();
-					cout  << endl;
+					std::cout  << std::endl;
 #endif
 				}
 				if(!sgaps) {
 					sp.remove_end_gaps(spe);
 					spe.get_lr2(speleft2, speright2);
 #if SPLITPRINT
-					cout << "newal spe " << endl;
+					std::cout << "newal spe " << std::endl;
 					spe.print();
-					cout << endl;
+					std::cout << std::endl;
 #endif
 				}
 
 
 				if(newal.getbegin2() < newal.getend2()) {
-			//			cout << " try ins " << newal.getreference2() << " : " << spleft2 << endl;
+			//			std::cout << " try ins " << newal.getreference2() << " : " << spleft2 << std::endl;
 					if(!sgaps) {
 						insert_split_point(newal.getreference2(), speleft2);
 					}
@@ -1624,7 +1833,7 @@ void splitpoints::insert_split_point(size_t sequence, size_t position) {
 						insert_split_point(newal.getreference2(), fperight2+1);
 					}
 				} else {
-			//			cout << " try ins " << newal.getreference2() << " : " << fpleft2 << endl;
+			//			std::cout << " try ins " << newal.getreference2() << " : " << fpleft2 << std::endl;
 					if(!fgaps) {
 						insert_split_point(newal.getreference2(), fpeleft2);
 					}
@@ -1637,7 +1846,7 @@ void splitpoints::insert_split_point(size_t sequence, size_t position) {
 		}
 		if(newal.getreference2()==sequence) {
 			if(left2<position && right2>=position) {
-			//	cout<<"HERE!!"<<endl;
+			//	std::cout<<"HERE!!"<<std::endl;
 				pw_alignment fp;
 				pw_alignment sp;
 				newal.split(false, position, fp, sp);
@@ -1657,24 +1866,24 @@ void splitpoints::insert_split_point(size_t sequence, size_t position) {
 					fp.remove_end_gaps(fpe);
 					fpe.get_lr1(fpeleft1, fperight1);
 #if SPLITPRINT
-					cout << "newal fpe " << endl;
+					std::cout << "newal fpe " << std::endl;
 					fpe.print();
-					cout  << endl;
+					std::cout  << std::endl;
 #endif
 				}
 				if(!sgaps) {
 					sp.remove_end_gaps(spe);
 					spe.get_lr1(speleft1, speright1);
 #if SPLITPRINT
-					cout << "newal spe " << endl;
+					std::cout << "newal spe " << std::endl;
 					spe.print();
-					cout << endl;
+					std::cout << std::endl;
 #endif
 				}
 
 				
 				if(newal.getbegin1() < newal.getend1()) {	
-		//			cout << " try ins " << newal.getreference1() << " : " << spleft1 << endl;
+		//			std::cout << " try ins " << newal.getreference1() << " : " << spleft1 << std::endl;
 					if(!sgaps) {
 						insert_split_point(newal.getreference1(), speleft1);
 					}
@@ -1682,7 +1891,7 @@ void splitpoints::insert_split_point(size_t sequence, size_t position) {
 						insert_split_point(newal.getreference1(), fperight1+1);
 					}
 				} else {
-			//			cout << " try ins " << newal.getreference1() << " : " << fpleft1 << endl;
+			//			std::cout << " try ins " << newal.getreference1() << " : " << fpleft1 << std::endl;
 					if(!fgaps) {
 						insert_split_point(newal.getreference1(), fpeleft1);
 					}
@@ -1697,14 +1906,14 @@ void splitpoints::insert_split_point(size_t sequence, size_t position) {
 
 
 
-		const multimap<size_t, pw_alignment *> & alonref = overl.get_als_on_reference_const(sequence);
-		for(multimap<size_t, pw_alignment *>::const_iterator it = alonref.lower_bound(position); it!=alonref.end(); ++it) {
+		const std::multimap<size_t, pw_alignment *> & alonref = overl.get_als_on_reference_const(sequence);
+		for(std::multimap<size_t, pw_alignment *>::const_iterator it = alonref.lower_bound(position); it!=alonref.end(); ++it) {
 			const pw_alignment * al = it-> second;
 				
 				
-	//			cout << " in ins " << sequence << " : " << position << " see: " << endl;
+	//			std::cout << " in ins " << sequence << " : " << position << " see: " << std::endl;
 	//			al->print();
-	//			cout << endl;
+	//			std::cout << std::endl;
 
 
 			if(al->getreference1()!=al->getreference2()) {
@@ -1712,25 +1921,25 @@ void splitpoints::insert_split_point(size_t sequence, size_t position) {
 				size_t alright;
 				al->get_lr_on_reference(sequence, alleft, alright);
 				if(alright < position) {
-			//			cout << " break " << endl;
+			//			std::cout << " break " << std::endl;
 					break;
 				}
 				if(alleft == position) {
-			//			cout << " break " << endl;
+			//			std::cout << " break " << std::endl;
 					break;
 				} 
 				if(alright+1== position) {
-			//			cout << " break " << endl;
+			//			std::cout << " break " << std::endl;
 					break;
 				}
 				if(alleft>position){
-			//			cout << " break " << endl;
+			//			std::cout << " break " << std::endl;
 					break;
 				}
 			//		al->print(); 
-				//	cout<<"position"<<position<<endl;
-				//	cout<<"alleft"<<alleft<<endl;
-				//	cout<<"alright"<<alright<<endl;
+				//	std::cout<<"position"<<position<<std::endl;
+				//	std::cout<<"alleft"<<alleft<<std::endl;
+				//	std::cout<<"alright"<<alright<<std::endl;
 				assert(alleft < position && position <= alright);
 				pw_alignment fp;
 				pw_alignment sp;
@@ -1740,9 +1949,9 @@ void splitpoints::insert_split_point(size_t sequence, size_t position) {
 						char c1;
 						char c2;
 						al->alignment_col(col, c1, c2);
-						cout <<col <<"\t"<< c1<<"\t"<<c2<<endl;
+						std::cout <<col <<"\t"<< c1<<"\t"<<c2<<std::endl;
 					}*/
-				//	cout<<"al length: "<< al->alignment_length() <<endl;
+				//	std::cout<<"al length: "<< al->alignment_length() <<std::endl;
 				//	if(al->alignment_length()>1){
 
 				al->split_on_reference(sequence, position, fp, sp);
@@ -1757,17 +1966,17 @@ void splitpoints::insert_split_point(size_t sequence, size_t position) {
 				if(!fgaps) {
 					fp.remove_end_gaps(fpe);
 #if SPLITPRINT
-					cout << "al fpe " << endl;
+					std::cout << "al fpe " << std::endl;
 					fpe.print();
-					cout  << endl;
+					std::cout  << std::endl;
 #endif
 				}
 				if(!sgaps) {
 					sp.remove_end_gaps(spe);
 #if SPLITPRINT
-					cout << "al spe " << endl;
+					std::cout << "al spe " << std::endl;
 					spe.print();
-					cout << endl;
+					std::cout << std::endl;
 #endif
 				}
 
@@ -1801,7 +2010,7 @@ void splitpoints::insert_split_point(size_t sequence, size_t position) {
 
 
 
-						//	cout<<"Heya!!!"<<endl;
+						//	std::cout<<"Heya!!!"<<std::endl;
 						if(al->getbegin2() < al->getend2()) {
 							if(!sgaps) {
 								insert_split_point(sp.getreference1(), spe.getbegin1());
@@ -1827,7 +2036,7 @@ void splitpoints::insert_split_point(size_t sequence, size_t position) {
 					size_t alright2;
 					al->get_lr2(alleft2, alright2);
 					if(position > alleft1 && position <= alright1) {
-		//				cout << "inone" << endl;
+		//				std::cout << "inone" << std::endl;
 						pw_alignment fp;
 						pw_alignment sp;
 						al->split(true, position, fp, sp);
@@ -1846,18 +2055,18 @@ void splitpoints::insert_split_point(size_t sequence, size_t position) {
 						fp.remove_end_gaps(fpe);
 						fpe.get_lr2(fpeleft2, fperight2);
 #if SPLITPRINT
-						cout << "al fpe " << endl;
+						std::cout << "al fpe " << std::endl;
 						fpe.print();
-						cout  << endl;
+						std::cout  << std::endl;
 #endif
 					}
 					if(!sgaps) {
 						sp.remove_end_gaps(spe);
 						spe.get_lr2(speleft2, speright2);
 #if SPLITPRINT
-						cout << "al spe " << endl;
+						std::cout << "al spe " << std::endl;
 						spe.print();
-						cout << endl;
+						std::cout << std::endl;
 #endif
 					}
 
@@ -1865,7 +2074,7 @@ void splitpoints::insert_split_point(size_t sequence, size_t position) {
 						
 							
 						if(al->getbegin2() < al->getend2()) {
-			//				cout << " spleft2 " << spleft2 << endl;
+			//				std::cout << " spleft2 " << spleft2 << std::endl;
 							if(!sgaps) {
 								insert_split_point(sp.getreference2(), speleft2);
 							}
@@ -1873,7 +2082,7 @@ void splitpoints::insert_split_point(size_t sequence, size_t position) {
 								insert_split_point(sp.getreference2(), fperight2+1);
 							}
 						} else {
-			//				cout << " fpgetend2 " << fp.getend2() << endl;
+			//				std::cout << " fpgetend2 " << fp.getend2() << std::endl;
 							if(!fgaps) {
 								insert_split_point(fp.getreference2(), fpe.getend2());
 							}
@@ -1885,7 +2094,7 @@ void splitpoints::insert_split_point(size_t sequence, size_t position) {
 					}
 											
 					if(position > alleft2 && position <= alright2) {
-			//			cout << "intwo" << endl;
+			//			std::cout << "intwo" << std::endl;
 						pw_alignment fp;
 						pw_alignment sp;
 						al->split(false, position, fp, sp);
@@ -1905,18 +2114,18 @@ void splitpoints::insert_split_point(size_t sequence, size_t position) {
 						fp.remove_end_gaps(fpe);
 						fpe.get_lr1(fpeleft1, fperight1);
 #if SPLITPRINT
-						cout << "al fpe " << endl;
+						std::cout << "al fpe " << std::endl;
 						fpe.print();
-						cout  << endl;
+						std::cout  << std::endl;
 #endif
 					}
 					if(!sgaps) {
 						sp.remove_end_gaps(spe);
 						spe.get_lr1(speleft1, speright1);
 #if SPLITPRINT
-						cout << "al spe " << endl;
+						std::cout << "al spe " << std::endl;
 						spe.print();
-						cout << endl;
+						std::cout << std::endl;
 #endif
 					}
 
@@ -1952,16 +2161,16 @@ void splitpoints::insert_split_point(size_t sequence, size_t position) {
 	}
 
 
-	void splitpoints::split_all(set<const pw_alignment*,compare_pw_alignment> & remove_alignments, vector<pw_alignment> & insert_alignments ){
+	void splitpoints::split_all(std::set<const pw_alignment*,compare_pw_alignment> & remove_alignments, std::vector<pw_alignment> & insert_alignments ){
 
 #if SPLITPRINT		
-		cout << " All split points " << endl;
+		std::cout << " All split points " << std::endl;
 		for(size_t i=0; i<data.numSequences(); ++i) {
-			cout << "ref " << i << " ";
-			for(set<size_t>::iterator it = split_points.at(i).begin(); it!=split_points.at(i).end(); ++it) {
-				cout << " " << *it;
+			std::cout << "ref " << i << " ";
+			for(std::set<size_t>::iterator it = split_points.at(i).begin(); it!=split_points.at(i).end(); ++it) {
+				std::cout << " " << *it;
 			}
-			cout << endl;
+			std::cout << std::endl;
 		}
 #endif
 
@@ -1970,19 +2179,19 @@ void splitpoints::insert_split_point(size_t sequence, size_t position) {
 		for(size_t i = 0; i <data.numSequences();i++){
 
 #if SPLITPRINT			
-			cout << "REFERENCE " << i << endl;
+			std::cout << "REFERENCE " << i << std::endl;
 #endif
-			const multimap<size_t, pw_alignment *> & als_on_ref = overl.get_als_on_reference_const(i);
-			for(set<size_t>::iterator split = split_points.at(i).begin(); split!= split_points.at(i).end(); ++split){
+			const std::multimap<size_t, pw_alignment *> & als_on_ref = overl.get_als_on_reference_const(i);
+			for(std::set<size_t>::iterator split = split_points.at(i).begin(); split!= split_points.at(i).end(); ++split){
 #if SPLITPRINT
-				cout << "SPLIT " << *split << endl;
+				std::cout << "SPLIT " << *split << std::endl;
 #endif
-				for(multimap<size_t, pw_alignment*>::const_iterator it =als_on_ref.lower_bound(*split); it!=als_on_ref.end(); ++it){
+				for(std::multimap<size_t, pw_alignment*>::const_iterator it =als_on_ref.lower_bound(*split); it!=als_on_ref.end(); ++it){
 					pw_alignment * p = it-> second;
 
 
 //					p->print();
-//					cout << endl;
+//					std::cout << std::endl;
 
 					if(p->getreference1() == i) {
 						size_t pleft1;
@@ -1991,7 +2200,7 @@ void splitpoints::insert_split_point(size_t sequence, size_t position) {
 						if( pleft1<*split && pright1>=*split){
 							remove_alignments.insert(p);
 #if SPLITPRINT
-							cout<<"remove alignment1: "<<endl;
+							std::cout<<"remove alignment1: "<<std::endl;
 							p->print();
 #endif
 
@@ -2005,7 +2214,7 @@ void splitpoints::insert_split_point(size_t sequence, size_t position) {
 							//	pw_alignment *np = new pw_alignment(*p);
 							remove_alignments.insert(p);
 #if SPLITPRINT
-							cout<<"remove alignment2: "<<endl;
+							std::cout<<"remove alignment2: "<<std::endl;
 									p->print();
 #endif
 						}
@@ -2014,20 +2223,20 @@ void splitpoints::insert_split_point(size_t sequence, size_t position) {
 			}
 		}
 
-	//	cout << " in split all "<< remove_alignments.size() << " remove_alignments " << endl;
-		vector<pw_alignment>  split_pieces;
+	//	std::cout << " in split all "<< remove_alignments.size() << " remove_alignments " << std::endl;
+		std::vector<pw_alignment>  split_pieces;
 		splits(&newal, split_pieces);	
-		for(set<const pw_alignment*,compare_pw_alignment>::iterator removed = remove_alignments.begin(); removed != remove_alignments.end(); ++removed){
+		for(std::set<const pw_alignment*,compare_pw_alignment>::iterator removed = remove_alignments.begin(); removed != remove_alignments.end(); ++removed){
 			splits(*removed, split_pieces);			
 		}
-	//	cout<<"split_pieces: "<<endl;
+	//	std::cout<<"split_pieces: "<<std::endl;
 	//	for(size_t i = 0 ; i < split_pieces.size();i++){split_pieces.at(i).print();}	
-//		cout<<"size of split pieces"<<split_pieces.size()<<endl;
-		set<pw_alignment*,compare_pw_alignment> inserted_pieces;
+//		std::cout<<"size of split pieces"<<split_pieces.size()<<std::endl;
+		std::set<pw_alignment*,compare_pw_alignment> inserted_pieces;
 		for(size_t i = 0; i<split_pieces.size();i++) {
 #ifndef NDEBUG
 				if(!data.alignment_fits_ref(&split_pieces.at(i))) {
-				//	cout<<"fails here!"<<endl;
+				//	std::cout<<"fails here!"<<std::endl;
 					exit(1);
 				}
 #endif
@@ -2035,13 +2244,13 @@ void splitpoints::insert_split_point(size_t sequence, size_t position) {
 				pw_alignment noendgaps;
 				split_pieces.at(i).remove_end_gaps(noendgaps);
 #if SPLITPRINT
-				cout << "ENDGAPS" << endl;
+				std::cout << "ENDGAPS" << std::endl;
 				split_pieces.at(i).print();
-				cout << "TO " << endl;
+				std::cout << "TO " << std::endl;
 				noendgaps.print();
-				cout << endl;
+				std::cout << std::endl;
 #endif
-				set<pw_alignment*,compare_pw_alignment>::const_iterator it = inserted_pieces.find(&noendgaps);
+				std::set<pw_alignment*,compare_pw_alignment>::const_iterator it = inserted_pieces.find(&noendgaps);
 				if (overl.checkAlignments(&noendgaps)) {}
 				else if ( it != inserted_pieces.end()){}
 				else {
@@ -2054,18 +2263,18 @@ void splitpoints::insert_split_point(size_t sequence, size_t position) {
 			}
 		}
 		
-		for(set<pw_alignment*,compare_pw_alignment>::iterator it = inserted_pieces.begin(); it!=inserted_pieces.end(); ++it) {
+		for(std::set<pw_alignment*,compare_pw_alignment>::iterator it = inserted_pieces.begin(); it!=inserted_pieces.end(); ++it) {
 			delete *it;
 		}
 			
 	}
-	void splitpoints::splits(const pw_alignment * p,  vector<pw_alignment> & insert_alignments){
+	void splitpoints::splits(const pw_alignment * p,  std::vector<pw_alignment> & insert_alignments){
 #if SPLITPRINT	
-		cout << "SPL" << endl;
+		std::cout << "SPL" << std::endl;
 		p->print();
-		cout << endl;
+		std::cout << std::endl;
 
-		cout << " split on " << p->getreference1() << endl;
+		std::cout << " split on " << p->getreference1() << std::endl;
 #endif
 
 		pw_alignment p1;
@@ -2076,10 +2285,10 @@ void splitpoints::insert_split_point(size_t sequence, size_t position) {
 //		size_t right2;
 		p->get_lr1(left1,right1);
 //		p->get_lr2(left2,right2);
-		for(set<size_t>::iterator splitp = split_points.at(p->getreference1()).upper_bound(left1); splitp!= split_points.at(p->getreference1()).end(); splitp++){
+		for(std::set<size_t>::iterator splitp = split_points.at(p->getreference1()).upper_bound(left1); splitp!= split_points.at(p->getreference1()).end(); splitp++){
 			if(right1>=*splitp){
 #if SPLITPRINT
-				cout << "sp " << *splitp << endl;
+				std::cout << "sp " << *splitp << std::endl;
 #endif
 				p->split(true,*splitp,p1,p2);
 				if(p->getbegin1() < p->getend1()) {
@@ -2108,9 +2317,9 @@ void splitpoints::insert_split_point(size_t sequence, size_t position) {
 		}
 
 #if SPLITPRINT
-		cout << " last part" << endl;
+		std::cout << " last part" << std::endl;
 		p->print();
-		cout << endl;
+		std::cout << std::endl;
 #endif
 
 		if(!onlyGapSample(p)&& p->alignment_length()>1 && p->getbegin1()!=p->getend1() && p->getbegin2()!=p->getend2() ){	
@@ -2135,19 +2344,19 @@ void splitpoints::insert_split_point(size_t sequence, size_t position) {
 	}
 
 
-	vector<pw_alignment>  splitpoints::get_insert()const{
+	std::vector<pw_alignment>  splitpoints::get_insert()const{
 		return insert_alignments;
 	}
 		
-	model::model(all_data & d): data(d),cost_on_acc (5, vector<double>(data.numAcc(),1)),modification(data.numAcc(), vector<vector<vector<double> > >(data.numAcc(),vector<vector<double> > (6, vector<double>(6,1) ))) {}
+	model::model(all_data & d): data(d),cost_on_acc (5, std::vector<double>(data.numAcc(),1)),modification(data.numAcc(), vector<vector<vector<double> > >(data.numAcc(),vector<vector<double> > (6, vector<double>(6,1) ))) {}
 
 	model::~model(){}
 
 	void model::acc_base_frequency(){
-//	vector<vector<double> > cost_on_acc (5, vector<double>(data.numAcc(),0));
-	vector<size_t> total_base_number_on_acc (data.numAcc(),0);
+//	std::vector<vector<double> > cost_on_acc (5, vector<double>(data.numAcc(),0));
+	std::vector<size_t> total_base_number_on_acc (data.numAcc(),0);
 	for(size_t k = 0; k < data.numSequences(); k++){
-		vector<size_t> number(5,0);
+		std::vector<size_t> number(5,0);
 		total_base_number_on_acc.at(data.accNumber(k)) += data.getSequence(k).length();
 		for(size_t i = 0 ; i< data.getSequence(k).length(); i++ ){
 			size_t base = dnastring::base_to_index(data.getSequence(k).at(i));
@@ -2165,13 +2374,13 @@ void splitpoints::insert_split_point(size_t sequence, size_t position) {
 				}
 		for(size_t t=0; t<5;t++){
 				cost_on_acc.at(t).at(m)= cost_on_acc.at(t).at(m)/numbases;
-			//	cout<< "cost of base "<< t <<" on acc "<< m << " is "<< cost_on_acc.at(t).at(m)<<endl;
+			//	std::cout<< "cost of base "<< t <<" on acc "<< m << " is "<< cost_on_acc.at(t).at(m)<<std::endl;
 				}
 			}
 		}
 
 		void model::alignment_modification(){
-	//	vector<vector<vector<vector<double> > > >modification(data.numAcc(), vector<vector<vector<double> > >(data.numAcc(),vector<vector<double> > (6, vector<double>(6,0) )));
+	//	std::vector<vector<vector<vector<double> > > >modification(data.numAcc(), vector<vector<vector<double> > >(data.numAcc(),vector<vector<double> > (6, vector<double>(6,0) )));
 		// count:
 		for(size_t i = 0 ; i< data.numAlignments() ; i++){
 			const pw_alignment & p = data.getAlignment(i);
@@ -2195,12 +2404,12 @@ void splitpoints::insert_split_point(size_t sequence, size_t position) {
 					double sum = 0;
 					for(size_t k=0; k<6; ++k) {
 
-					//	cout << "k " << k << " num " << modification.at(acc1).at(acc2).at(j).at(k) << endl;
+					//	std::cout << "k " << k << " num " << modification.at(acc1).at(acc2).at(j).at(k) << std::endl;
 						sum+=modification.at(acc1).at(acc2).at(j).at(k);
 					}	
 					for(size_t k=0; k<6; ++k) {
 						modification.at(acc1).at(acc2).at(j).at(k)/=sum;
-					//	cout << " simple model cost: acc " << acc1 << " to " << acc2 << " modify " << j << " to " << k << " costs " << -log2(modification.at(acc1).at(acc2).at(j).at(k)) << " bits " << endl; 
+					//	std::cout << " simple model cost: acc " << acc1 << " to " << acc2 << " modify " << j << " to " << k << " costs " << -log2(modification.at(acc1).at(acc2).at(j).at(k)) << " bits " << std::endl; 
 					
 					}
 				}
@@ -2210,9 +2419,9 @@ void splitpoints::insert_split_point(size_t sequence, size_t position) {
 	}
 
 	void model::cost_function( pw_alignment& p) const {
-//		cout << " cf2 " << endl;
-		vector<double> cost_on_sample(2);
-		vector<double> modify_cost(2);
+//		std::cout << " cf2 " << std::endl;
+		std::vector<double> cost_on_sample(2);
+		std::vector<double> modify_cost(2);
 		double c1;
 		double c2;
 		double m1;
@@ -2227,19 +2436,19 @@ void splitpoints::insert_split_point(size_t sequence, size_t position) {
 
 	void model::cost_function(const pw_alignment& p, double & c1, double & c2, double & m1, double & m2) const {
 
-		vector<double> cost_on_sample(2,0);
-		vector<double> modify_cost(2,0);
-		vector<vector<size_t> >al_base_number(2,vector<size_t>(6,0));
-		vector<vector<double> >sequence_cost(2,vector<double>(5,0));
-		vector<vector<double> >create_cost(2,vector<double>(5,0));		
-	//	vector<vector<vector<double> > > modification_cost(2,vector<vector<double> >(6,vector<double>(6,0)));
-		vector<vector<double> > modification_number(6, vector<double>(6,0)); // in (i,j): store modifications from 1 to 2
-	//	vector<double> cost_on_sample (2,0);
+		std::vector<double> cost_on_sample(2,0);
+		std::vector<double> modify_cost(2,0);
+		std::vector<vector<size_t> >al_base_number(2,vector<size_t>(6,0));
+		std::vector<vector<double> >sequence_cost(2,vector<double>(5,0));
+		std::vector<vector<double> >create_cost(2,vector<double>(5,0));		
+	//	std::vector<vector<vector<double> > > modification_cost(2,vector<vector<double> >(6,vector<double>(6,0)));
+		std::vector<vector<double> > modification_number(6, vector<double>(6,0)); // in (i,j): store modifications from 1 to 2
+	//	std::vector<double> cost_on_sample (2,0);
 		for(size_t i = 0 ; i < 5; i++){
 		 sequence_cost.at(0).at(i)= -log2(cost_on_acc.at(i).at(data.accNumber(p.getreference1())));
 		 sequence_cost.at(1).at(i)= -log2(cost_on_acc.at(i).at(data.accNumber(p.getreference2())));
 		}
-//		cout << " alsample size " << p.getsample1().size() << endl;
+//		std::cout << " alsample size " << p.getsample1().size() << std::endl;
 		for(size_t i = 0 ; i< p.getsample1().size()/3; i++ ){
 			char s1ch;
 			char s2ch;
@@ -2254,13 +2463,13 @@ void splitpoints::insert_split_point(size_t sequence, size_t position) {
 		for(size_t j=0; j<5; j++){	
 			create_cost.at(0).at(j)= al_base_number.at(0).at(j)*sequence_cost.at(0).at(j);
 			cost_on_sample.at(0)=cost_on_sample.at(0)+ create_cost.at(0).at(j);
-//			cout<<"creat cost of "<< dnastring::index_to_base(j)<<"  on reference1 is "<<  (al_base_number.at(0).at(j))*(sequence_cost.at(0).at(j))<<endl;
+//			std::cout<<"creat cost of "<< dnastring::index_to_base(j)<<"  on reference1 is "<<  (al_base_number.at(0).at(j))*(sequence_cost.at(0).at(j))<<std::endl;
 			create_cost.at(1).at(j)= al_base_number.at(1).at(j)*sequence_cost.at(1).at(j);
 			cost_on_sample.at(1)=cost_on_sample.at(1)+ create_cost.at(1).at(j);			
-//			cout<<"creat cost of "<< dnastring::index_to_base(j)<<"  on reference2 is "<<  al_base_number.at(1).at(j)*sequence_cost.at(1).at(j)<<endl;
+//			std::cout<<"creat cost of "<< dnastring::index_to_base(j)<<"  on reference2 is "<<  al_base_number.at(1).at(j)*sequence_cost.at(1).at(j)<<std::endl;
 		}
-		//	cout<<"creat cost of the alignment on sample 1: "<< cost_on_sample.at(0);
-		//	cout<<"creat cost of the alignment on sample 2: "<< cost_on_sample.at(1);	
+		//	std::cout<<"creat cost of the alignment on sample 1: "<< cost_on_sample.at(0);
+		//	std::cout<<"creat cost of the alignment on sample 2: "<< cost_on_sample.at(1);	
 		
 		for(size_t j=0; j<6; j++){	
 			for (size_t k= 0; k<6; k++){
@@ -2275,8 +2484,8 @@ void splitpoints::insert_split_point(size_t sequence, size_t position) {
 		c2 = cost_on_sample.at(1);
 		m1 = modify_cost.at(0);
 		m2 = modify_cost.at(1);
-		cout << " create 2 " << c2 << " m1 " << m1 << endl; 
-		cout << " create 1 " << c1 << " m2 " << m2 << endl; 
+		std::cout << " create 2 " << c2 << " m1 " << m1 << std::endl; 
+		std::cout << " create 1 " << c1 << " m2 " << m2 << std::endl; 
 
 
 	}
@@ -2294,7 +2503,7 @@ void splitpoints::insert_split_point(size_t sequence, size_t position) {
 				the gain of using the alignment is: c2 - m1 
 
 		*/
-//		cout << "in gain: create 2 " << c2 << " m1 " << m1 << endl; 
+//		std::cout << "in gain: create 2 " << c2 << " m1 " << m1 << std::endl; 
 
 		g1 = c2 - m1;
 		g2 = c1 - m2;
@@ -2306,13 +2515,13 @@ void splitpoints::insert_split_point(size_t sequence, size_t position) {
 		alignment_modification();
 	}
 
-mc_model::mc_model(all_data & d):data(d), sequence_successive_bases(d.numAcc()), create_cost(d.numAcc(),vector<double>(5,1)),mod_cost(d.numAcc(),vector<map<string, vector<double> > >(d.numAcc())),high(d.numAcc()),highValue(d.numAcc(),vector<map<string, vector<unsigned int> > >(d.numAcc())){
+mc_model::mc_model(all_data & d):data(d), sequence_successive_bases(d.numAcc()), create_cost(d.numAcc(),std::vector<double>(5,1)),mod_cost(d.numAcc(),vector<std::map<std::string, vector<double> > >(d.numAcc())),high(d.numAcc()),highValue(d.numAcc(),std::vector<std::map<std::string, std::vector<unsigned int> > >(d.numAcc())){
 	size_t numberOfPowers = 32;
 //	size_t numberOfPowers = NUM_DELETE;
 	if(NUM_KEEP>numberOfPowers) {
 		numberOfPowers = NUM_KEEP;
 	}
-	powersOfTwo = vector<size_t>(numberOfPowers, 1);
+	powersOfTwo = std::vector<size_t>(numberOfPowers, 1);
 	for(size_t i=1; i< numberOfPowers; ++i) {
 		powersOfTwo.at(i) = powersOfTwo.at(i-1)*2;
 		
@@ -2332,7 +2541,7 @@ void mc_model::markov_chain(){
 			for(size_t i = 0 ; i< data.getSequence(k).length(); i++ ){
 				char schr = data.getSequence(k).at(i);
 				size_t s = dnastring::base_to_index(schr);
-				stringstream context;		
+				std::stringstream context;		
 				for(size_t j = Sequence_level; j>0; j--){
 					char rchr;
 					signed long temp = i - j;
@@ -2344,30 +2553,30 @@ void mc_model::markov_chain(){
 					}
 					context << rchr;
 				}
-				string seq;
+				std::string seq;
 				context>>seq;
-				map <string, vector<double> >::iterator it= sequence_successive_bases.at(acc).find(seq);
+				std::map <std::string, std::vector<double> >::iterator it= sequence_successive_bases.at(acc).find(seq);
 				if(it==sequence_successive_bases.at(acc).end()) {
-					sequence_successive_bases.at(acc).insert(make_pair(seq, vector<double>(5,1)));
+					sequence_successive_bases.at(acc).insert(std::make_pair(seq, std::vector<double>(5,1)));
 					it= sequence_successive_bases.at(acc).find(seq);
 				}
 				it->second.at(s)++;	
 			}
 		}
 		for(size_t i =0 ; i< data.numAcc(); i++){
-			for(map <string, vector<double> >::iterator it= sequence_successive_bases.at(i).begin();it!=sequence_successive_bases.at(i).end();it++){
-				string seq = it->first;
+			for(std::map <std::string, std::vector<double> >::iterator it= sequence_successive_bases.at(i).begin();it!=sequence_successive_bases.at(i).end();it++){
+				std::string seq = it->first;
 				int total = 0;
-				vector<double> & base = sequence_successive_bases.at(i).at(seq);
+				std::vector<double> & base = sequence_successive_bases.at(i).at(seq);
 				for(size_t j = 0; j<5;j++){
 					total += base.at(j);
-			//	cout<<"base: "<<base.at(j)<<endl;
+			//	std::cout<<"base: "<<base.at(j)<<std::endl;
 				}
-		//	cout<<"totalnumber of bases for each seq:  "<< total<<endl;
+		//	std::cout<<"totalnumber of bases for each seq:  "<< total<<std::endl;
 				for(size_t k=0; k<5;k++){
 					base.at(k) = -log2(base.at(k)/total);
 					create_cost.at(i).at(k) += base.at(k);
-				//	cout<<"cr_cost: "<<base.at(k) <<endl;		
+				//	std::cout<<"cr_cost: "<<base.at(k) <<std::endl;		
 				}
 			}
 		}
@@ -2383,17 +2592,17 @@ void mc_model::markov_chain(){
  TODO does this write the alignment training paramters to outs?
 */
 	
-void mc_model::markov_chain_alignment(ofstream& outs){
+void mc_model::markov_chain_alignment(std::ofstream& outs){
 	// zero content counting functor
 	counting_functor functor(data);
 	// make all possible patterns in this class (all_alignment_patterns)
 	make_all_alignments_patterns();
 
-	// set all counts to 1 for all context/accession pairs
+	// std::set all counts to 1 for all context/accession pairs
 	for(size_t i = 0; i< data.numAcc();i++){
 		for(size_t j = 0; j < data.numAcc();j++){
-			for(set<string>::iterator it= all_alignment_patterns.begin(); it != all_alignment_patterns.end() ; it++){
-				string pattern = *it;	
+			for(std::set<std::string>::iterator it= all_alignment_patterns.begin(); it != all_alignment_patterns.end() ; it++){
+				std::string pattern = *it;	
 				functor.create_context(i, j, pattern);			
 			}
 		}
@@ -2412,24 +2621,24 @@ void mc_model::markov_chain_alignment(ofstream& outs){
 
 
 
-			for(map <string, vector<double> >::const_iterator it= functor.get_context(i,j).begin();it!=functor.get_context(i,j).end();it++){
-				string seq1 = it->first;
-				const vector<double> & base = functor.get_context(i,j).at(seq1);
-			//	cout<<"base is: "<<endl;
+			for(std::map <std::string, std::vector<double> >::const_iterator it= functor.get_context(i,j).begin();it!=functor.get_context(i,j).end();it++){
+				std::string seq1 = it->first;
+				const std::vector<double> & base = functor.get_context(i,j).at(seq1);
+			//	std::cout<<"base is: "<<std::endl;
 			//	for(size_t a= 0; a< base.size();a++){
-				//		cout<< "base at "<< a<< " which is  " << print_modification_character(a)<<" is "<<base.at(a)<<endl;
+				//		std::cout<< "base at "<< a<< " which is  " << print_modification_character(a)<<" is "<<base.at(a)<<std::endl;
 			//	}
-			//	cout<< "context is: "<<endl;
+			//	std::cout<< "context is: "<<std::endl;
 				//	for(size_t m = 0 ; m < seq1.size() ; m++){
-				//		cout<< int(seq1.at(m))<<endl;
+				//		std::cout<< int(seq1.at(m))<<std::endl;
 				//	}
-				//	cout<<"the total number of happening the above context between "<<i<<" and "<<j<<" is "<< functor.get_total(i,j,seq1) <<endl;
+				//	std::cout<<"the total number of happening the above context between "<<i<<" and "<<j<<" is "<< functor.get_total(i,j,seq1) <<std::endl;
 				for(size_t k = 0; k< (NUM_DELETE+NUM_KEEP+10);k++) {
-				//		cout<<"The number of happening "<< print_modification_character(k) << " between acc " <<i<< " and acc " << j << " after a certain context is "<< base.at(k)<<endl;
-				//		cout<<"In MC model, the cost value of" <<print_modification_character(k) <<  " after above pattern between acc " << i << " and acc " << j << " is " << -log2(base.at(k)/functor.get_total(i,j,seq1)) << " bits " << endl; 
-					map <string, vector<double> >::iterator it1= mod_cost.at(i).at(j).find(seq1);
+				//		std::cout<<"The number of happening "<< print_modification_character(k) << " between acc " <<i<< " and acc " << j << " after a certain context is "<< base.at(k)<<std::endl;
+				//		std::cout<<"In MC model, the cost value of" <<print_modification_character(k) <<  " after above pattern between acc " << i << " and acc " << j << " is " << -log2(base.at(k)/functor.get_total(i,j,seq1)) << " bits " << std::endl; 
+					std::map <std::string, std::vector<double> >::iterator it1= mod_cost.at(i).at(j).find(seq1);
 					if(it1==mod_cost.at(i).at(j).end()) {
-						mod_cost.at(i).at(j).insert(make_pair(seq1, vector<double>((NUM_DELETE+NUM_KEEP+10),1)));
+						mod_cost.at(i).at(j).insert(std::make_pair(seq1, std::vector<double>((NUM_DELETE+NUM_KEEP+10),1)));
 						it1= mod_cost.at(i).at(j).find(seq1);
 					}
 					it1->second.at(k)=-log2(base.at(k)/functor.get_total(i,j,seq1));
@@ -2437,20 +2646,20 @@ void mc_model::markov_chain_alignment(ofstream& outs){
 			}
 			
 			// Compute low and high values TODO 			
-			for(set<string>::iterator it= all_alignment_patterns.begin(); it != all_alignment_patterns.end() ; it++){	
-				vector<double> num(NUM_DELETE+NUM_KEEP+10,0);
-				vector<unsigned int> low(NUM_DELETE+NUM_KEEP+10,0);
-				vector<unsigned int> high_value(NUM_DELETE+NUM_KEEP+10,0);
+			for(std::set<std::string>::iterator it= all_alignment_patterns.begin(); it != all_alignment_patterns.end() ; it++){	
+				std::vector<double> num(NUM_DELETE+NUM_KEEP+10,0);
+				std::vector<unsigned int> low(NUM_DELETE+NUM_KEEP+10,0);
+				std::vector<unsigned int> high_value(NUM_DELETE+NUM_KEEP+10,0);
 				unsigned int l = 0;
 			//	unsigned int total = 0;
 				size_t bit = 12; // number of bits to use for encoding event width
-				string current_pattern	= *it;
+				std::string current_pattern	= *it;
 				// it1: high values for current pattern/accession pair
-                               	highValue.at(i).at(j).insert(make_pair(current_pattern,vector<unsigned int>(NUM_DELETE+NUM_KEEP+10,0)));
-				map<string, vector<unsigned int> >::iterator it1=highValue.at(i).at(j).find(current_pattern);
+                               	highValue.at(i).at(j).insert(std::make_pair(current_pattern,std::vector<unsigned int>(NUM_DELETE+NUM_KEEP+10,0)));
+				std::map<std::string, std::vector<unsigned int> >::iterator it1=highValue.at(i).at(j).find(current_pattern);
 				assert(it1 != highValue.at(i).at(j).end());
 				// it3: get counts for current pattern/accession pair
-				map <string, vector<double> >::const_iterator it3= functor.get_context(i,j).find(current_pattern);
+				std::map <std::string, std::vector<double> >::const_iterator it3= functor.get_context(i,j).find(current_pattern);
 				double total =  functor.get_total(i,j,current_pattern);
 
 				for (size_t f=0; f < NUM_DELETE+NUM_KEEP+10;f++){
@@ -2459,7 +2668,7 @@ void mc_model::markov_chain_alignment(ofstream& outs){
 					size_t rescaledNum = (num.at(f)/total)*(powersOfTwo.at(bit) - NUM_DELETE - NUM_KEEP - 11) + 1;
 					assert(rescaledNum >= 1);
 					assert(rescaledNum < powersOfTwo.at(bit));
-				//	cout << "rescled num: "<< rescaledNum << "num: " << num.at(j) << endl;
+				//	std::cout << "rescled num: "<< rescaledNum << "num: " << num.at(j) << std::endl;
 					high_value.at(f) = l + rescaledNum;
 					l = high_value.at(f);
 				}
@@ -2483,7 +2692,7 @@ void mc_model::markov_chain_alignment(ofstream& outs){
 					it1->second.at(f)=high_value.at(f);
 				}
 				/*	for(size_t k =0; k < NUM_DELETE+NUM_KEEP+10; k++){
-						cout<<"high value: "<< it1 ->second.at(k)<<endl;
+						std::cout<<"high value: "<< it1 ->second.at(k)<<std::endl;
 					}*/
 			}
 
@@ -2492,15 +2701,15 @@ void mc_model::markov_chain_alignment(ofstream& outs){
 }
 
 
-const map<string, vector<unsigned int> > & mc_model::get_highValue(size_t acc1, size_t acc2)const{
+const std::map<std::string, std::vector<unsigned int> > & mc_model::get_highValue(size_t acc1, size_t acc2)const{
 	return highValue.at(acc1).at(acc2);
 }
 
 
 
-	void mc_model::cost_function( pw_alignment& p,ofstream & outs) const {
-		vector<double> cost_on_sample(2);
-		vector<double> modify_cost(2);
+	void mc_model::cost_function( pw_alignment& p,std::ofstream & outs) const {
+		std::vector<double> cost_on_sample(2);
+		std::vector<double> modify_cost(2);
 		double c1;
 		double c2;
 		double m1;
@@ -2513,23 +2722,23 @@ const map<string, vector<unsigned int> > & mc_model::get_highValue(size_t acc1, 
 
 		p.set_cost(cost_on_sample, modify_cost);
 	}
-	const vector<vector< map<string, vector<double> > > > &mc_model::get_mod_cost()const{
+	const std::vector<vector< std::map<std::string, vector<double> > > > &mc_model::get_mod_cost()const{
 		return mod_cost;
 
 	}
 
-	void mc_model::cost_function(const pw_alignment& p, double & c1, double & c2, double & m1, double & m2,ofstream & outs)const {
+	void mc_model::cost_function(const pw_alignment& p, double & c1, double & c2, double & m1, double & m2,std::ofstream & outs)const {
 	//	p.print();
-	//	cout<<"data address in cost function: "<< &data <<endl;
+	//	std::cout<<"data address in cost function: "<< &data <<std::endl;
 	//	data.numAcc();
 		cost_functor f(data,mod_cost);
 	//	p.print();
 	//	size_t length = p.alignment_length();
-	//	cout<<"length: "<< length<<endl;
+	//	std::cout<<"length: "<< length<<std::endl;
 		computing_modification_oneToTwo(p,f,outs);
 		computing_modification_twoToOne(p,f,outs);
-		vector<double> cost_on_sample(2,0);
-		vector<double> modify_cost(2,0);
+		std::vector<double> cost_on_sample(2,0);
+		std::vector<double> modify_cost(2,0);
 		size_t acc1 = data.accNumber(p.getreference1());
 		size_t acc2 = data.accNumber(p.getreference2());
 		char s1chr;
@@ -2540,11 +2749,11 @@ const map<string, vector<unsigned int> > & mc_model::get_highValue(size_t acc1, 
 		size_t right2;
 		p.get_lr1(left1,right1);
 		p.get_lr2(left2,right2);
-	//	cout<<"left: "<<left1<<"right: "<<right1<<endl;
+	//	std::cout<<"left: "<<left1<<"right: "<<right1<<std::endl;
 		for(size_t i = left1; i< right1; i++){
 			s1chr = data.getSequence(p.getreference1()).at(i);
 			size_t s1 = dnastring::base_to_index(s1chr);
-			stringstream context1;
+			std::stringstream context1;
 			for (size_t j = Sequence_level; j>0; j--){
 				
 				if(i<j){
@@ -2553,22 +2762,22 @@ const map<string, vector<unsigned int> > & mc_model::get_highValue(size_t acc1, 
 				}else{
 					char r1chr = data.getSequence(p.getreference1()).at(i-j);
 					context1 << r1chr;
-				//	cout<<"rchr: "<<r1chr<<endl;	
+				//	std::cout<<"rchr: "<<r1chr<<std::endl;	
 				}
 			}
-			string seq1;
+			std::string seq1;
 			context1>>seq1;
-		//	cout<<"seq1: " << seq1<<endl;
-			map <string, vector<double> >::const_iterator it= sequence_successive_bases.at(acc1).find(seq1);
+		//	std::cout<<"seq1: " << seq1<<std::endl;
+			std::map <std::string, std::vector<double> >::const_iterator it= sequence_successive_bases.at(acc1).find(seq1);
 			assert(it != sequence_successive_bases.at(acc1).end());
-		//	cout<<"sequence successive at "<< s1 << " is "<<it->second.at(s1)<<endl;
+		//	std::cout<<"sequence successive at "<< s1 << " is "<<it->second.at(s1)<<std::endl;
 			cost_on_sample.at(0) += it->second.at(s1);
 		}	
-	//	cout<<"cost: "<<cost_on_sample.at(0)<<endl;	
+	//	std::cout<<"cost: "<<cost_on_sample.at(0)<<std::endl;	
 		for(size_t i = left2; i<right2; i++){
 			s2chr = data.getSequence(p.getreference2()).at(i);
 			size_t s2 = dnastring::base_to_index(s2chr);
-			stringstream context2;
+			std::stringstream context2;
 			for(size_t j = Sequence_level; j>0; j--){
 				if(i<j){
 						char r2chr = 'A';
@@ -2578,54 +2787,54 @@ const map<string, vector<unsigned int> > & mc_model::get_highValue(size_t acc1, 
 						context2 << r2chr;
 				}
 			}
-			string seq2;
+			std::string seq2;
 			context2>>seq2;
-			map <string, vector<double> >::const_iterator it1= sequence_successive_bases.at(acc2).find(seq2);
+			std::map <std::string, std::vector<double> >::const_iterator it1= sequence_successive_bases.at(acc2).find(seq2);
 			assert(it1 != sequence_successive_bases.at(acc2).end());
-		//	cout<<"sequence successive at "<< s2 << " is "<<it1->second.at(s2)<<endl;
+		//	std::cout<<"sequence successive at "<< s2 << " is "<<it1->second.at(s2)<<std::endl;
 			cost_on_sample.at(1) += it1->second.at(s2);
 		}	
-	//	cout<<"cost: "<<cost_on_sample.at(1)<<endl;										
-	/*	for(map <string, vector<double> >::const_iterator it= f.get_context(acc1,acc2).begin();it!=f.get_context(acc1,acc2).end();it++){
-			string seq1 = it->first;
-			const vector<double> & base = f.get_context(acc1,acc2).at(seq1);
-			map <string, vector<double> >::const_iterator it1= mod_cost.at(acc1).at(acc2).find(seq1);
-			// cout << " pattern " << seq1 << endl;
-//			cout << " acc " << acc1 << " " << acc2 << endl;
+	//	std::cout<<"cost: "<<cost_on_sample.at(1)<<std::endl;										
+	/*	for(map <std::string, std::vector<double> >::const_iterator it= f.get_context(acc1,acc2).begin();it!=f.get_context(acc1,acc2).end();it++){
+			std::string seq1 = it->first;
+			const std::vector<double> & base = f.get_context(acc1,acc2).at(seq1);
+			map <std::string, std::vector<double> >::const_iterator it1= mod_cost.at(acc1).at(acc2).find(seq1);
+			// std::cout << " pattern " << seq1 << std::endl;
+//			std::cout << " acc " << acc1 << " " << acc2 << std::endl;
 //			for(size_t y=0; y<seq1.length(); ++y) {
 //				size_t c = seq1.at(y);
-//				cout << " p " << y << " = " << c << endl;
-//				cout << print_modification_character(c);
-//				cout << endl;
+//				std::cout << " p " << y << " = " << c << std::endl;
+//				std::cout << print_modification_character(c);
+//				std::cout << std::endl;
 //			}
 			assert(it1!=mod_cost.at(acc1).at(acc2).end());
 			for(size_t k = 0; k< (NUM_DELETE+NUM_KEEP+10);k++){
 				modify_cost.at(0) +=(base.at(k)-1)*(it1->second.at(k));
 			}
-			cout<< " context is "<<endl;
+			std::cout<< " context is "<<std::endl;
 			for(size_t i = 0 ; i < seq1.size(); i++){
-				cout<< int(seq1.at(i))<<endl;
+				std::cout<< int(seq1.at(i))<<std::endl;
 			}
-			cout<<"base is: "<<endl;
+			std::cout<<"base is: "<<std::endl;
 			for(size_t a= 0; a< base.size();a++){
-				cout<< "base at "<< a << " which is " << print_modification_character(a)<<" is "<<base.at(a)<<endl;
-				cout<< "modification cost of it is "<< -log2(base.at(a)/f.get_total(acc1,acc2,seq1))<<endl;
+				std::cout<< "base at "<< a << " which is " << print_modification_character(a)<<" is "<<base.at(a)<<std::endl;
+				std::cout<< "modification cost of it is "<< -log2(base.at(a)/f.get_total(acc1,acc2,seq1))<<std::endl;
 			}	
 
 		}
-		for(map <string, vector<double> >::const_iterator it= f.get_context(acc2,acc1).begin();it!=f.get_context(acc2,acc1).end();it++){
-			string seq1 = it->first;
-			cout<< " context2 is "<<endl;
+		for(map <std::string, std::vector<double> >::const_iterator it= f.get_context(acc2,acc1).begin();it!=f.get_context(acc2,acc1).end();it++){
+			std::string seq1 = it->first;
+			std::cout<< " context2 is "<<std::endl;
 			for(size_t i = 0 ; i < seq1.size(); i++){
-				cout<< int(seq1.at(i))<<endl;
+				std::cout<< int(seq1.at(i))<<std::endl;
 			}
-			const vector<double> & base = f.get_context(acc2,acc1).at(seq1);
-			map <string, vector<double> >::const_iterator it1= mod_cost.at(acc2).at(acc1).find(seq1);
+			const std::vector<double> & base = f.get_context(acc2,acc1).at(seq1);
+			map <std::string, std::vector<double> >::const_iterator it1= mod_cost.at(acc2).at(acc1).find(seq1);
 			assert(it1!=mod_cost.at(acc2).at(acc1).end());
 			for(size_t k = 0; k< (NUM_DELETE+NUM_KEEP+10);k++){
 				modify_cost.at(1) +=(base.at(k)-1)*(it1->second.at(k));
 			}
-		//	cout<<"Modification cost on the second ref: " << modify_cost.at(1) << endl;			
+		//	std::cout<<"Modification cost on the second ref: " << modify_cost.at(1) << std::endl;			
 		}*/
 
 		c1 = cost_on_sample.at(0);
@@ -2634,12 +2843,12 @@ const map<string, vector<unsigned int> > & mc_model::get_highValue(size_t acc1, 
 //		m2 = modify_cost.at(1);
 		m1 = f.get_modify(p,acc1,acc2);
 		m2 = f.get_modify(p,acc2,acc1);
-	//	cout << " c2 " << c2 << " m1 " << m1 << endl; 
-	//	cout << " c1 " << c1 << " m2 " << m2 << endl; 
-	//	cout<< "length: " << length<<endl;
-	//	cout<< "c1: " << c1 << " c2: "<< c2 << " m1: "<< m1<< " m2: "<< m2 <<endl;
+	//	std::cout << " c2 " << c2 << " m1 " << m1 << std::endl; 
+	//	std::cout << " c1 " << c1 << " m2 " << m2 << std::endl; 
+	//	std::cout<< "length: " << length<<std::endl;
+	//	std::cout<< "c1: " << c1 << " c2: "<< c2 << " m1: "<< m1<< " m2: "<< m2 <<std::endl;
 	}
-	void mc_model::gain_function(const pw_alignment& p, double & g1, double & g2,ofstream & outs)const {
+	void mc_model::gain_function(const pw_alignment& p, double & g1, double & g2,std::ofstream & outs)const {
 		double c1;
 		double c2;
 		double m1;
@@ -2650,22 +2859,22 @@ const map<string, vector<unsigned int> > & mc_model::get_highValue(size_t acc1, 
 		g1 = c2 - m1;
 		g2 = c1 - m2;
 
-//		cout << " gain function c2 " << c2 << " m1 " << m1 << " gain1 " << g1 << endl; 
-//		cout << " gain function c1 " << c1 << " m2 " << m2 << " gain2 " << g2 << endl; 
+//		std::cout << " gain function c2 " << c2 << " m1 " << m1 << " gain1 " << g1 << std::endl; 
+//		std::cout << " gain function c1 " << c1 << " m2 " << m2 << " gain2 " << g2 << std::endl; 
 
 
 	}
-	void mc_model::write_parameters(ofstream & outs){
+	void mc_model::write_parameters(std::ofstream & outs){
 		make_all_the_patterns();
-	//	ofstream outs("encode",std::ofstream::binary);
+	//	std::ofstream outs("encode",std::ofstream::binary);
 	//	if(outs.is_open()){
 			for(size_t i = 0 ; i < data.numAcc(); i++){
 				outs << data.get_acc(i);
-				cout<<"acc: "<<data.get_acc(i)<<endl;
+				std::cout<<"acc: "<<data.get_acc(i)<<std::endl;
 				outs<< (char)0;
-				for(map<string, vector<double> >::iterator it= all_the_patterns.begin(); it != all_the_patterns.end() ; it++){
-					string pattern = it ->first;
-					map<string,vector<double> >::iterator it1=sequence_successive_bases.at(i).find(pattern);
+				for(std::map<std::string, std::vector<double> >::iterator it= all_the_patterns.begin(); it != all_the_patterns.end() ; it++){
+					std::string pattern = it ->first;
+					std::map<std::string,std::vector<double> >::iterator it1=sequence_successive_bases.at(i).find(pattern);
 					if(it1 != sequence_successive_bases.at(i).end()){
 						for(size_t n = 0; n <5; n ++){
 							it->second.at(n) = it1 ->second.at(n);
@@ -2675,32 +2884,32 @@ const map<string, vector<unsigned int> > & mc_model::get_highValue(size_t acc1, 
 							it -> second.at(n) = -log2(0.2);
 					}
 				}
-				map <string, vector<unsigned int> >lower_bound;
-				for(map<string, vector<double> >::iterator it= all_the_patterns.begin(); it != all_the_patterns.end() ; it++){	
-					vector<double> num(5,0);
-					vector<bool> bit_to_byte(0);
-					vector<unsigned int> low(5,0);
-					vector<unsigned int> high_value(5,0);
+				std::map <std::string, std::vector<unsigned int> >lower_bound;
+				for(std::map<std::string, std::vector<double> >::iterator it= all_the_patterns.begin(); it != all_the_patterns.end() ; it++){	
+					std::vector<double> num(5,0);
+					std::vector<bool> bit_to_byte(0);
+					std::vector<unsigned int> low(5,0);
+					std::vector<unsigned int> high_value(5,0);
 					unsigned int l = 0;
 			//		unsigned int total = 0;
 					size_t bit = 12;
-					string current_pattern	= it ->first;
-                                 	high.at(i).insert(make_pair(current_pattern,vector<unsigned int>(5,0)));
-					map<string, vector<unsigned int> >::iterator it1=high.at(i).find(current_pattern);
+					std::string current_pattern	= it ->first;
+                                 	high.at(i).insert(std::make_pair(current_pattern,std::vector<unsigned int>(5,0)));
+					std::map<std::string, std::vector<unsigned int> >::iterator it1=high.at(i).find(current_pattern);
 					assert(it1 != high.at(i).end());
 					for (size_t j=0; j < 5;j++){
 						low.at(j) = l;
-					//	cout<< " low: " << low.at(j)<<endl;
+					//	std::cout<< " low: " << low.at(j)<<std::endl;
 						num.at(j)=it->second.at(j);
-						//cout<< "num at " << j << " is " << exp((-num.at(j))*log(2))<<endl;
+						//std::cout<< "num at " << j << " is " << exp((-num.at(j))*log(2))<<std::endl;
 						int power_of_two = exp((-num.at(j))*log(2))*powersOfTwo.at(bit);
 						high_value.at(j) = l + power_of_two;
 						l = high_value.at(j);
-					//	cout<<"high: "<< high_value.at(j)<<endl;
+					//	std::cout<<"high: "<< high_value.at(j)<<std::endl;
 					}
 					for(size_t j = 0; j < 5 ; j++){
 						if(high_value.at(j)==low.at(j)){
-						//	cout << "low = high" <<endl;
+						//	std::cout << "low = high" <<std::endl;
 							for(size_t m = 0; m < 4 ; m++){
 								int power_of_two = exp((-num.at(m))*log(2))*(powersOfTwo.at(bit)-5);
 								high_value.at(m)= low.at(m)+power_of_two+1;
@@ -2713,21 +2922,21 @@ const map<string, vector<unsigned int> > & mc_model::get_highValue(size_t acc1, 
 					for(size_t j = 0; j < 5; j++){
 						it1->second.at(j)=high_value.at(j);
 						int h = high_value.at(j);
-					//	cout<< "low1: "<<low.at(j)<<endl;
+					//	std::cout<< "low1: "<<low.at(j)<<std::endl;
 					/*	if(it->first == "AC"){
-							cout<< "high: "<<h<<endl;
+							std::cout<< "high: "<<h<<std::endl;
 						}*/
 						for(size_t m = 0; m < bit; m++){
 							bit_to_byte.push_back(h%2);
-				//			cout<< "h%2: "<< h%2;
+				//			std::cout<< "h%2: "<< h%2;
 							h = h/2;
 						}
-				//		cout<< " "<<endl;
+				//		std::cout<< " "<<std::endl;
 						assert(high_value.at(j)!=low.at(j));
 					}
 				//	total = it1->second.at(4);
-				//	cout<< "total in stream: "<< it1->second.at(4)<<endl;
-				//	cout<<bit_to_byte.size()<<endl;					
+				//	std::cout<< "total in stream: "<< it1->second.at(4)<<std::endl;
+				//	std::cout<<bit_to_byte.size()<<std::endl;					
 					for(size_t n =0; n < bit_to_byte.size()-8; n++){
 						unsigned char a = 0;
 						for(size_t m = n; m <n+8; m++){
@@ -2735,18 +2944,18 @@ const map<string, vector<unsigned int> > & mc_model::get_highValue(size_t acc1, 
 						}
 						n= n+7;
 						outs<< a;
-				//		cout<< "eight bits of high: "<<int(a); 
+				//		std::cout<< "eight bits of high: "<<int(a); 
 					}
-				//	cout << " " << endl;
+				//	std::cout << " " << std::endl;
 				}
 			}
 			outs<<(char)8;
 		//}
 	//	outs.close();
 	}
-	void mc_model::write_alignments_pattern(ofstream & outs){
-	//	ofstream outs("encode",std::ofstream::binary);
-	//	ofstream outs("encode",std::ofstream::binary|std::ofstream::app);
+	void mc_model::write_alignments_pattern(std::ofstream & outs){
+	//	std::ofstream outs("encode",std::ofstream::binary);
+	//	std::ofstream outs("encode",std::ofstream::binary|std::ofstream::app);
 		size_t bit = 12;
 	//	if(outs.is_open()){//Per accession!
 			for(size_t i = 0 ; i < data.numAcc(); i++){
@@ -2755,9 +2964,9 @@ const map<string, vector<unsigned int> > & mc_model::get_highValue(size_t acc1, 
 					outs<< (char) 0;
 					outs<< data.get_acc(j);
 					outs<< (char) 0;
-			//		cout<<"acc1 : " << data.get_acc(i) << " acc2: " << data.get_acc(j) << endl;
-					for(map<string, vector<unsigned int> >::iterator it= highValue.at(i).at(j).begin(); it != highValue.at(i).at(j).end(); it++){	
-						vector<bool> bit_to_byte(0);
+			//		std::cout<<"acc1 : " << data.get_acc(i) << " acc2: " << data.get_acc(j) << std::endl;
+					for(std::map<std::string, std::vector<unsigned int> >::iterator it= highValue.at(i).at(j).begin(); it != highValue.at(i).at(j).end(); it++){	
+						std::vector<bool> bit_to_byte(0);
 						for(size_t j = 0; j < NUM_DELETE+NUM_KEEP+10; j++){
 							int h =it->second.at(j);
 							for(size_t m = 0; m < bit; m++){
@@ -2766,7 +2975,7 @@ const map<string, vector<unsigned int> > & mc_model::get_highValue(size_t acc1, 
 							}
 						}
 					//	size_t counter =0;
-					//	cout<< "bit to byte: "<< bit_to_byte.size()<<endl;
+					//	std::cout<< "bit to byte: "<< bit_to_byte.size()<<std::endl;
 						for(size_t n =0; n < bit_to_byte.size()-8; n++){
 							unsigned char a = 0;
 							for(size_t m = n; m <n+8; m++){
@@ -2776,7 +2985,7 @@ const map<string, vector<unsigned int> > & mc_model::get_highValue(size_t acc1, 
 					//		counter = counter+1;
 							outs<< a;
 						}	
-					//	cout<< "counter: "<< counter << endl;
+					//	std::cout<< "counter: "<< counter << std::endl;
 					}
 				//	outs << (char) 0;
 				}				
@@ -2796,8 +3005,8 @@ const map<string, vector<unsigned int> > & mc_model::get_highValue(size_t acc1, 
 
 */   
 void mc_model::make_all_alignments_patterns(){
-	string context; 
-	set<string>pattern;
+	std::string context; 
+	std::set<std::string>pattern;
 	// Alignment_level is makov chain level for alignments
 	for(size_t i = 0 ; i < Alignment_level ; i++){
 		context += (char)0;
@@ -2805,11 +3014,11 @@ void mc_model::make_all_alignments_patterns(){
 	pattern.insert(context);
 	// this will create about (ND+NK+10)^Alignment_length patterns:
 	for(size_t i =0; i < Alignment_level; i++) {
-		set<string> intermediate_pattern;
+		std::set<std::string> intermediate_pattern;
 		for(size_t j = 0; j <NUM_DELETE+NUM_KEEP+10; j++){
 			// For each current pattern: modify position i to character j
-			for(set<string>::iterator it = pattern.begin(); it!= pattern.end();it++){
-				string seq = *it;
+			for(std::set<std::string>::iterator it = pattern.begin(); it!= pattern.end();it++){
+				std::string seq = *it;
 				seq.at(i)=j;	
 				
 				// throw away some patterns to enforce decreasing order of binary encoding for num keep/delete
@@ -2832,49 +3041,49 @@ void mc_model::make_all_alignments_patterns(){
 				}
 				if(keepthispattern)
 					intermediate_pattern.insert(seq);
-			//	cout<< "pattern: " << seq << endl;
+			//	std::cout<< "pattern: " << seq << std::endl;
 			}
 		}
 		pattern.clear();
-		for(set<string>::iterator it1 = intermediate_pattern.begin(); it1 != intermediate_pattern.end();++it1){
-			string seq1 = *it1;
+		for(std::set<std::string>::iterator it1 = intermediate_pattern.begin(); it1 != intermediate_pattern.end();++it1){
+			std::string seq1 = *it1;
 			pattern.insert(seq1);
 		}
 	} // for Alignment_level
-	set<string> intermediate1_pattern;
-	for(set<string>::iterator it = pattern.begin(); it != pattern.end();++it){
+	std::set<std::string> intermediate1_pattern;
+	for(std::set<std::string>::iterator it = pattern.begin(); it != pattern.end();++it){
 		for(size_t i = 0 ; i < 6 ; i++){
-			string seq = *it;
+			std::string seq = *it;
 			char c = i;
-			string seq1 = seq + c;
-		//	cout << "seq1: " << seq1 <<endl;
+			std::string seq1 = seq + c;
+		//	std::cout << "seq1: " << seq1 <<std::endl;
 			intermediate1_pattern.insert(seq1);
 		}
 	}
 	pattern.clear();
-	for(set<string>::iterator it1 = intermediate1_pattern.begin(); it1 != intermediate1_pattern.end();++it1){
-			string seq1 = *it1;
+	for(std::set<std::string>::iterator it1 = intermediate1_pattern.begin(); it1 != intermediate1_pattern.end();++it1){
+			std::string seq1 = *it1;
 			pattern.insert(seq1);
 	}
-	for(set<string>::iterator it = pattern.begin();it !=pattern.end();it++){
-		string seq = *it;
+	for(std::set<std::string>::iterator it = pattern.begin();it !=pattern.end();it++){
+		std::string seq = *it;
 		all_alignment_patterns.insert(seq);
 	}
 	/*
 		size_t number =0;
-		for(set<string>::iterator it = pattern.begin(); it != pattern.end();++it){
-			string seq = *it;
+		for(std::set<std::string>::iterator it = pattern.begin(); it != pattern.end();++it){
+			std::string seq = *it;
 			number ++ ;
-			string str = print_modification_character(seq.at(0));
-//			string str1 = print_modification_character(seq.at(1));
-			cout<< "" << str << "" <<  "" << int(seq.at(1)) << endl;			
+			std::string str = print_modification_character(seq.at(0));
+//			std::string str1 = print_modification_character(seq.at(1));
+			std::cout<< "" << str << "" <<  "" << int(seq.at(1)) << std::endl;			
 		}
-		cout<< "number: "<< number<<endl; 
+		std::cout<< "number: "<< number<<std::endl; 
  	 */
 }
 
 // TODO do we want to make markov chain levels dependent on input sequence length?
-	void mc_model::train(ofstream & outs){
+	void mc_model::train(std::ofstream & outs){
 		make_all_the_patterns();
 		markov_chain();
 		markov_chain_alignment(outs);
@@ -2883,77 +3092,77 @@ void mc_model::make_all_alignments_patterns(){
 	}
 	
 	void mc_model::make_all_the_patterns(){
-		string seq = "";
-		set<string> pattern;
+		std::string seq = "";
+		std::set<std::string> pattern;
 		for(size_t i = 0 ; i < Sequence_level ; i++){
 			seq += dnastring::index_to_base(0);
 		}
 		pattern.insert(seq);
 		for(size_t i = 0; i < Sequence_level;i++){	
-			set<string> intermediate_pattern;
+			std::set<std::string> intermediate_pattern;
 			for(size_t j = 0; j <5; j++){
-				for(set<string>::iterator pat = pattern.begin();pat != pattern.end();++pat){
-					string seq1 = *pat;
+				for(std::set<std::string>::iterator pat = pattern.begin();pat != pattern.end();++pat){
+					std::string seq1 = *pat;
 					seq1.at(Sequence_level-1-i)=dnastring::index_to_base(j);	
 					intermediate_pattern.insert(seq1);
 				}
 			}
-			for(set<string>::iterator pat1 = intermediate_pattern.begin(); pat1 != intermediate_pattern.end();++pat1){
-				string seq2 = *pat1;
+			for(std::set<std::string>::iterator pat1 = intermediate_pattern.begin(); pat1 != intermediate_pattern.end();++pat1){
+				std::string seq2 = *pat1;
 				pattern.insert(seq2);
 			}
 		}	
-		for(set<string>::iterator it = pattern.begin();it !=pattern.end();it++){
-			string seq3 = *it;
-			all_the_patterns.insert(make_pair(seq3,vector<double>(5,0)));
+		for(std::set<std::string>::iterator it = pattern.begin();it !=pattern.end();it++){
+			std::string seq3 = *it;
+			all_the_patterns.insert(std::make_pair(seq3,std::vector<double>(5,0)));
 		}	
 
 	}
 
-	void mc_model::set_patterns(ifstream& in){
+	void mc_model::set_patterns(std::ifstream& in){
 		make_all_the_patterns();
 		size_t bit = 12;
-//		ifstream in("encode", std::ifstream::binary);
+//		std::ifstream in("encode", std::ifstream::binary);
 		char c;
 		char h;
 		c= in.get();	
 		while(c != 8){
-		//	cout << " here2"<<endl;
+		//	std::cout << " here2"<<std::endl;
 			size_t accession = 0;
-			string acc;
-			stringstream s;
+			std::string acc;
+			std::stringstream s;
 			while(c != 0){
-		//	cout<< "c: " << int(c)<<endl;
-		//	cout << " here3"<<endl;
+		//	std::cout<< "c: " << int(c)<<std::endl;
+		//	std::cout << " here3"<<std::endl;
 				s << c;
 				c = in.get();
 			}
 			s >> acc;
 			data.set_accession(acc);//since in decoding we have no access to our fasta file we need to set accession names in data class
 			accession = data.get_acc_id(acc);
-		//	cout<<"acc name: "<< acc <<endl;
-			for(map<string,vector<double> >::const_iterator it= all_the_patterns.begin(); it!= all_the_patterns.end();it++){
-				string pattern = it ->first;
-				high.at(accession).insert(make_pair(pattern, vector<unsigned int>(5,0)));
+		//	std::cout<<"acc name: "<< acc <<std::endl;
+			for(std::map<std::string,std::vector<double> >::const_iterator it= all_the_patterns.begin(); it!= all_the_patterns.end();it++){
+				std::string pattern = it ->first;
+				high.at(accession).insert(std::make_pair(pattern, std::vector<unsigned int>(5,0)));
 			}
-			for(map<string,vector<unsigned int> >::iterator it= high.at(accession).begin(); it!= high.at(accession).end();it++){
-				vector<bool> binary_high_value(0);
+			for(std::map<std::string,std::vector<unsigned int> >::iterator it= high.at(accession).begin(); it!= high.at(accession).end();it++){
+				std::vector<bool> binary_high_value(0);
 				size_t bound = (5*bit)/8;
-			//	cout<< "bound: " << bound << endl;
+			//	std::cout<< "bound: " << bound << std::endl;
 				for(size_t j = 0 ; j < bound ; j++){ 
 					h=in.get();
 					size_t H = size_t(h); // should be a better solution!
-			//		cout<<"h: "<< size_t(h)<<endl;
+			//		std::cout<<"h: "<< size_t(h)<<std::endl;
 					for(size_t k = 0; k < 8 ; k++){
 						binary_high_value.push_back(H%2);
-				//		cout<< " "<< H%2 ;	
+				//		std::cout<< " "<< H%2 ;	
 						H = H/2;
 					}
-				//		cout << " " << endl;
+				//		std::cout << " " << std::endl;
 				}
 				size_t counter = 0;
-			//	cout<< "binary size= "<< binary_high_value.size()<<endl;
-			//	cout<< "size- 8 "<<  binary_high_value.size() -( binary_high_value.size()%bit)<<endl;
+			//	std::cout<< "binary size= "<< binary_high_value.size()<<std::endl;
+			//	std::cout<< "size- 8 "<<  binary_high_value.size() -( binary_high_value.size()%bit)<<std::endl;
 				for(size_t i = 0; i < binary_high_value.size()-bit;i++){
 					unsigned int high_value = 0;					
 					for(size_t j =i; j < i+bit; j++){
@@ -2962,29 +3171,29 @@ void mc_model::make_all_alignments_patterns(){
 					i=i+bit-1;
 					it -> second.at(counter)=high_value;
 				//	if(it->first == "AC"){
-				//		cout<< "high value of AC in set pattern: ";
-				//		cout<< high_value<<endl;
+				//		std::cout<< "high value of AC in std::set pattern: ";
+				//		std::cout<< high_value<<std::endl;
 				//	}
-			//		cout<<"high value in model class: "<< high_value << " at " << counter << " i " << i <<endl;
-			//		cout<< " "<<endl;
+			//		std::cout<<"high value in model class: "<< high_value << " at " << counter << " i " << i <<std::endl;
+			//		std::cout<< " "<<std::endl;
 					counter = counter + 1;
 				}
-			//	cout<< "counter: "<< counter << endl;
+			//	std::cout<< "counter: "<< counter << std::endl;
 			/*	unsigned int high_value = 0;
 				for(size_t j =  binary_high_value.size() -( binary_high_value.size()%bit) ; j <  binary_high_value.size(); j++){
 						high_value += binary_high_value.at(j)*powersOfTwo.at(j-binary_high_value.size()+( binary_high_value.size()%bound));					
 				}*/
 			//	it -> second.at(4)=powersOfTwo.at(bit); 
-			//	cout << "high at 4 "<< it->second.at(4)<<endl;
+			//	std::cout << "high at 4 "<< it->second.at(4)<<std::endl;
 			/*	for(size_t j =0; j < 5 ; j++){
-					cout<< "high from stream: " << it->second.at(j)<<endl;
+					std::cout<< "high from stream: " << it->second.at(j)<<std::endl;
 				}*/
 			}
 			c= in.get();	
 		}
-	//	cout<<"last c: "<< int(c)<<endl;
+	//	std::cout<<"last c: "<< int(c)<<std::endl;
 	}
-	void mc_model::set_alignment_pattern(ifstream & in){
+	void mc_model::set_alignment_pattern(std::ifstream & in){
 		make_all_alignments_patterns();
 		size_t bit = 12;
 		char c;
@@ -2992,8 +3201,8 @@ void mc_model::make_all_alignments_patterns(){
 		c= in.get();	
 		while(c != 8){
 			size_t accession1 = 0;
-			string acc1;
-			stringstream s1;
+			std::string acc1;
+			std::stringstream s1;
 			while(c != 0){
 				s1 << c;
 				c = in.get();
@@ -3002,8 +3211,8 @@ void mc_model::make_all_alignments_patterns(){
 			data.set_accession(acc1);//since in decoding we have no access to our fasta file we need to set accession names in data class
 			accession1 = data.get_acc_id(acc1);
 			size_t accession2 = 0;
-			string acc2;
-			stringstream s2;
+			std::string acc2;
+			std::stringstream s2;
 			c= in.get();
 			while(c != 0){
 				s2 << c;
@@ -3012,13 +3221,13 @@ void mc_model::make_all_alignments_patterns(){
 			s2 >> acc2;
 			data.set_accession(acc2);
 			accession2 = data.get_acc_id(acc2);	
-			for(set<string>::const_iterator it= all_alignment_patterns.begin(); it!= all_alignment_patterns.end();it++){
-				string pattern = *it;
-			//	cout<<"acc1: "<<accession1 << " acc2 " << accession2<<endl;
-				highValue.at(accession1).at(accession2).insert(make_pair(pattern, vector<unsigned int>(NUM_KEEP+NUM_DELETE+10,0)));
+			for(std::set<std::string>::const_iterator it= all_alignment_patterns.begin(); it!= all_alignment_patterns.end();it++){
+				std::string pattern = *it;
+			//	std::cout<<"acc1: "<<accession1 << " acc2 " << accession2<<std::endl;
+				highValue.at(accession1).at(accession2).insert(std::make_pair(pattern, std::vector<unsigned int>(NUM_KEEP+NUM_DELETE+10,0)));
 			}
-			for(map<string,vector<unsigned int> >::iterator it= highValue.at(accession1).at(accession2).begin(); it!= highValue.at(accession1).at(accession2).end();it++){
-				vector<bool> binary_high_value(0);
+			for(std::map<std::string,std::vector<unsigned int> >::iterator it= highValue.at(accession1).at(accession2).begin(); it!= highValue.at(accession1).at(accession2).end();it++){
+				std::vector<bool> binary_high_value(0);
 				size_t bound = ((NUM_KEEP+NUM_DELETE+10)*bit)/8;
 				for(size_t j = 0 ; j < bound ; j++){ 
 					h=in.get();
@@ -3029,7 +3238,7 @@ void mc_model::make_all_alignments_patterns(){
 					}
 				}
 				size_t counter =0;
-			//	cout<< "bit to byte 1: "<< binary_high_value.size() << endl;
+			//	std::cout<< "bit to byte 1: "<< binary_high_value.size() << std::endl;
 				for(size_t i = 0; i < (binary_high_value.size())-bit;i++){
 					unsigned int high_value = 0;					
 					for(size_t j =i; j < i+bit; j++){
@@ -3039,20 +3248,20 @@ void mc_model::make_all_alignments_patterns(){
 					it -> second.at(counter)= high_value;
 					counter = counter +1;
 				}
-		//		cout<< "counter: "<< counter<<endl;
+		//		std::cout<< "counter: "<< counter<<std::endl;
 				it -> second.at(NUM_KEEP+NUM_DELETE+9)=powersOfTwo.at(bit); 
-		//		cout<< "size of high value: "<< it ->second.size() << endl;
+		//		std::cout<< "size of high value: "<< it ->second.size() << std::endl;
 			}
 			c= in.get();	
 		}
 
 
 	}
-	vector<unsigned int> mc_model::get_high_at_position(size_t seq_index, size_t position)const{
+	std::vector<unsigned int> mc_model::get_high_at_position(size_t seq_index, size_t position)const{
 		const dnastring & sequence = data.getSequence(seq_index);
-	//	cout << " sequence " << seq_index << " length " << sequence.length() << endl;
+	//	std::cout << " sequence " << seq_index << " length " << sequence.length() << std::endl;
 		size_t accession = data.accNumber(seq_index);
-		stringstream context;
+		std::stringstream context;
 		for(size_t j = Sequence_level; j>0; j--){
 			if(position < j){
 				char chr = 'A';
@@ -3062,34 +3271,34 @@ void mc_model::make_all_alignments_patterns(){
 				context<<chr;
 			}
 		}
-		string current_pattern;
+		std::string current_pattern;
 		context >> current_pattern;
 /*		if(position ==112060){
-			cout<<"current pattern in seq  "<< seq_index << " of accession " << accession <<endl;
+			std::cout<<"current pattern in seq  "<< seq_index << " of accession " << accession <<std::endl;
 			for(size_t j=0; j< current_pattern.length(); j++){
-				cout<<current_pattern.at(j)<<endl;
+				std::cout<<current_pattern.at(j)<<std::endl;
 			}
 		}*/
-		map<string, vector<unsigned int> >::const_iterator it=high.at(accession).find(current_pattern);
+		std::map<std::string, std::vector<unsigned int> >::const_iterator it=high.at(accession).find(current_pattern);
 		assert(it!=high.at(accession).end());
-	//	cout << " sequence " << seq_index << " length " << sequence.length() << " " << current_pattern<<  endl;
-	//	cout<<"accession: "<< accession << endl;
+	//	std::cout << " sequence " << seq_index << " length " << sequence.length() << " " << current_pattern<<  std::endl;
+	//	std::cout<<"accession: "<< accession << std::endl;
 	//	for(size_t k =0; k< 5; k++){
-	//		cout<< "high at " << k << " is "<< it->second.at(k)<<endl;
+	//		std::cout<< "high at " << k << " is "<< it->second.at(k)<<std::endl;
 	//	}
 	//	if(current_pattern == "GA"){
-	//		cout<< "high at GA: ";
+	//		std::cout<< "high at GA: ";
 	//		for(size_t j = 0; j < 5 ; j++){
-	//			cout<< it->second.at(j) <<endl;
+	//			std::cout<< it->second.at(j) <<std::endl;
 	//		}
 	//	}
 		return it->second;
 	}
-	vector<unsigned int> mc_model::get_center_high_at_position(size_t cent_ref, size_t cent_left, size_t position)const{
+	std::vector<unsigned int> mc_model::get_center_high_at_position(size_t cent_ref, size_t cent_left, size_t position)const{
 		const dnastring & sequence = data.getSequence(cent_ref);
-	//	cout << " sequence " << seq_index << " length " << sequence.length() << endl;
+	//	std::cout << " sequence " << seq_index << " length " << sequence.length() << std::endl;
 		size_t accession = data.accNumber(cent_ref);
-		stringstream context;
+		std::stringstream context;
 		for(size_t j = Sequence_level; j>0; j--){
 			if(position < cent_left+j){
 				char chr = 'A';
@@ -3099,27 +3308,27 @@ void mc_model::make_all_alignments_patterns(){
 				context<<chr;
 			}
 		}
-		string current_pattern;
+		std::string current_pattern;
 		context >> current_pattern;
-	//	cout<<"current pattern: "<< current_pattern<<endl;					
-	/*	cout<<"current pattern in seq  "<< seq_index << " of accession " << accession <<endl;
+	//	std::cout<<"current pattern: "<< current_pattern<<std::endl;					
+	/*	std::cout<<"current pattern in seq  "<< seq_index << " of accession " << accession <<std::endl;
 		for(size_t j=0; j< current_pattern.length(); j++){
-			cout<<current_pattern.at(j)<<endl;
+			std::cout<<current_pattern.at(j)<<std::endl;
 		}*/
-		map<string, vector<unsigned int> >::const_iterator it=high.at(accession).find(current_pattern);
+		std::map<std::string, std::vector<unsigned int> >::const_iterator it=high.at(accession).find(current_pattern);
 		assert(it!=high.at(accession).end());
-	//	cout << " sequence " << seq_index << " length " << sequence.length() << " " << current_pattern<<  endl;
-	//	cout<<"accession: "<< accession << endl;
+	//	std::cout << " sequence " << seq_index << " length " << sequence.length() << " " << current_pattern<<  std::endl;
+	//	std::cout<<"accession: "<< accession << std::endl;
 	//	for(size_t k =0; k< 5; k++){
-	//		cout<< "high at " << k << " is "<< it->second.at(k)<<endl;
+	//		std::cout<< "high at " << k << " is "<< it->second.at(k)<<std::endl;
 	//	}
 		return it->second;
 	}
-	vector<unsigned int> mc_model::get_reverse_center_high_at_position(size_t cent_ref, size_t cent_left, size_t position)const{
+	std::vector<unsigned int> mc_model::get_reverse_center_high_at_position(size_t cent_ref, size_t cent_left, size_t position)const{
 		const dnastring & sequence = data.getSequence(cent_ref);
-	//	cout << " sequence " << seq_index << " length " << sequence.length() << endl;
+	//	std::cout << " sequence " << seq_index << " length " << sequence.length() << std::endl;
 		size_t accession = data.accNumber(cent_ref);
-		stringstream context;
+		std::stringstream context;
 		for(size_t j = Sequence_level; j>0; j--){
 		//	if(position > cent_right-j){
 			if(position < cent_left+j){
@@ -3131,32 +3340,32 @@ void mc_model::make_all_alignments_patterns(){
 				context<<chr;
 			}
 		}
-		string current_pattern;
+		std::string current_pattern;
 		context >> current_pattern;
-	//	cout<<"current pattern: "<< current_pattern<<endl;					
-	/*	cout<<"current pattern in seq  "<< seq_index << " of accession " << accession <<endl;
+	//	std::cout<<"current pattern: "<< current_pattern<<std::endl;					
+	/*	std::cout<<"current pattern in seq  "<< seq_index << " of accession " << accession <<std::endl;
 		for(size_t j=0; j< current_pattern.length(); j++){
-			cout<<current_pattern.at(j)<<endl;
+			std::cout<<current_pattern.at(j)<<std::endl;
 		}*/
-		map<string, vector<unsigned int> >::const_iterator it=high.at(accession).find(current_pattern);
+		std::map<std::string, std::vector<unsigned int> >::const_iterator it=high.at(accession).find(current_pattern);
 		assert(it!=high.at(accession).end());
-	//	cout << " sequence " << seq_index << " length " << sequence.length() << " " << current_pattern<<  endl;
-	//	cout<<"accession: "<< accession << endl;
+	//	std::cout << " sequence " << seq_index << " length " << sequence.length() << " " << current_pattern<<  std::endl;
+	//	std::cout<<"accession: "<< accession << std::endl;
 	//	for(size_t k =0; k< 5; k++){
-	//		cout<< "high at " << k << " is "<< it->second.at(k)<<endl;
+	//		std::cout<< "high at " << k << " is "<< it->second.at(k)<<std::endl;
 	//	}
 		return it->second;
 	}
 
-	vector<size_t> mc_model::get_powerOfTwo()const{
+	std::vector<size_t> mc_model::get_powerOfTwo()const{
 		return powersOfTwo;
 	}		
-	const map<string, vector<unsigned int> >&  mc_model::get_high(size_t acc)const{
+	const std::map<std::string, std::vector<unsigned int> >&  mc_model::get_high(size_t acc)const{
 		return high.at(acc);
 	}
-	string mc_model::get_context(size_t position, size_t seq_id)const{
+	std::string mc_model::get_context(size_t position, size_t seq_id)const{
 		const dnastring & sequence = data.getSequence(seq_id);
-		stringstream context;
+		std::stringstream context;
 		for(size_t j = Sequence_level; j > 0; j--){
 			if(position<j){
 				char chr = 'A';
@@ -3166,19 +3375,19 @@ void mc_model::make_all_alignments_patterns(){
 				context << chr;
 			}
 		}
-		string current_pattern;
+		std::string current_pattern;
 		context >> current_pattern;	
 		return current_pattern;
 	}
-	string mc_model::get_firstPattern()const{
-		string first_pattern;
+	std::string mc_model::get_firstPattern()const{
+		std::string first_pattern;
 		for(size_t i = 0; i< Sequence_level; i++){
 			first_pattern += "A";
 		}
 		return first_pattern;
 	}
-	string mc_model::get_firstAlignmentPattern()const{
-		string first_pattern;
+	std::string mc_model::get_firstAlignmentPattern()const{
+		std::string first_pattern;
 		size_t firstPatterns = Alignment_level;
 		for(size_t j = 0; j < Alignment_level; j++){
 			firstPatterns --;
@@ -3189,33 +3398,33 @@ void mc_model::make_all_alignments_patterns(){
 	char mc_model::modification_character(int modify_base, int num_delete, int insert_base, int num_keep)const {
 		//return the enc
 		if(num_delete != -1){
-		//	cout<< "there is a delete of length "<< num_delete <<endl; 
+		//	std::cout<< "there is a delete of length "<< num_delete <<std::endl; 
 		//	return NUM_DELETE+num_delete; TODO this was really wrong
 			return 5 + num_delete;
 		}
 		if(num_keep != -1){
-		//	cout<< "there is a keep of length" << num_keep << endl;
+		//	std::cout<< "there is a keep of length" << num_keep << std::endl;
 		//	return NUM_KEEP+num_keep;
 			return 5 + NUM_DELETE + num_keep;
 		}
 		if(modify_base != -1) {
-		//	cout<< "there is a modification at " << dnastring::index_to_base(modify_base) << endl;
+		//	std::cout<< "there is a modification at " << dnastring::index_to_base(modify_base) << std::endl;
 			return modify_base;
 		}
 		if(insert_base != -1){
-		//	cout<< " there is a insertion at " << dnastring::index_to_base(insert_base) <<endl;
+		//	std::cout<< " there is a insertion at " << dnastring::index_to_base(insert_base) <<std::endl;
 			return insert_base + NUM_KEEP + NUM_DELETE + 5;
 		}
 		assert (false);
 		return -1;
 	}
-	string mc_model::print_modification_character(char enc)const{
+	std::string mc_model::print_modification_character(char enc)const{
 		int modify_base = -1;
 		int num_delete =-1;
 		int insert_base = -1;
 		int num_keep = -1;
 		modification(enc, modify_base, num_delete, insert_base, num_keep);
-		stringstream s;
+		std::stringstream s;
 		if(num_delete != -1){
 			s<< " a delete of length " <<  num_delete; 
 		}
@@ -3243,18 +3452,18 @@ void mc_model::make_all_alignments_patterns(){
 		size_t modification_type = -1;
 		if(num_delete != -1){
 			 modification_type = 5+num_delete;
-			 cout << " delete " << num_delete << endl;
+			 std::cout << " delete " << num_delete << std::endl;
 		}
 		if(num_keep != -1){
 			modification_type = 5+NUM_DELETE+num_keep;
-			 cout << " keep " << num_keep << endl;
+			 std::cout << " keep " << num_keep << std::endl;
 		}
 		if(modify_base != -1) {
 			modification_type = modify_base; 
-			cout << " replace to " << modify_base << endl;
+			std::cout << " replace to " << modify_base << std::endl;
 		}
 		if(insert_base != -1){
-			cout << " insert: " << insert_base << endl;
+			std::cout << " insert: " << insert_base << std::endl;
 			modification_type = insert_base + NUM_KEEP + NUM_DELETE + 5;
 
 		}
@@ -3314,9 +3523,9 @@ void mc_model::make_all_alignments_patterns(){
 
 // TODO 
 // this function should get a better name. It applies the functor on each position in the alignment
-	void mc_model::computing_modification_oneToTwo(const pw_alignment & p, abstract_context_functor & functor,ofstream & outs)const{
-		string seq = "";
-	//	cout<<"data ad in computing mod: "<< & data << endl;
+	void mc_model::computing_modification_oneToTwo(const pw_alignment & p, abstract_context_functor & functor,std::ofstream & outs)const{
+		std::string seq = "";
+	//	std::cout<<"data ad in computing mod: "<< & data << std::endl;
 	//	p.print();
 		size_t left_1; 
 		size_t left_2;
@@ -3327,19 +3536,19 @@ void mc_model::make_all_alignments_patterns(){
 		size_t acc2 = data.accNumber(p.getreference2());
 		size_t first_patterns = Alignment_level;
 		size_t power = powersOfTwo.at(NUM_KEEP-1);
-	//	cout<< "power: "<<powersOfTwo.at(0)<<endl;	
+	//	std::cout<< "power: "<<powersOfTwo.at(0)<<std::endl;	
 		for(size_t j = 0; j < Alignment_level; j++){// two keeps of length 2^1 and 2^0 has been created at the begining of each alignment.
 			first_patterns--;
 			seq+=modification_character(-1,-1,-1,first_patterns);
 		}
-	//	cout<<p.alignment_length()<<endl;
+	//	std::cout<<p.alignment_length()<<std::endl;
 		for (size_t i = 0; i< p.alignment_length(); i++){
 			size_t n = 0;
 			int modify_base =-1;
 			int num_delete=-1;
 			int insert_base=-1;
 			int num_keep=-1;
-			string seq1(" ",Alignment_level+1);
+			std::string seq1(" ",Alignment_level+1);
 			char seq2;
 			for(size_t w = Alignment_level; w>0 ;w--){
 				seq1.at(Alignment_level-w)=seq.at(seq.size()-w);
@@ -3364,11 +3573,11 @@ void mc_model::make_all_alignments_patterns(){
 				}else break;	
 			}
 		//	if(p.getreference1() == 28 &&left_1 == 176557){
-		//		cout<<"using s1n! " << s1n <<endl;
+		//		std::cout<<"using s1n! " << s1n <<std::endl;
 		//	}
 			seq1.at(Alignment_level)=s1n;
 			if(s1 == s2){
-			//	cout<< "keep at "<< i <<endl;
+			//	std::cout<< "keep at "<< i <<std::endl;
 				size_t klength = 0;
 				for(size_t j = i; j<p.alignment_length(); j++){
 					char q1chr;
@@ -3383,21 +3592,21 @@ void mc_model::make_all_alignments_patterns(){
 					}
 				}
 			/*	if(i<51){
-					cout<<"keep length at "<< i << " is  "<< klength<<endl;
+					std::cout<<"keep length at "<< i << " is  "<< klength<<std::endl;
 				}*/
-			//	cout<<"keep length: "<<klength<<endl;
-			//	cout<<"NUM KEEP: "<< NUM_KEEP-1<<endl;
+			//	std::cout<<"keep length: "<<klength<<std::endl;
+			//	std::cout<<"NUM KEEP: "<< NUM_KEEP-1<<std::endl;
 				if(klength > power){
 					num_keep = NUM_KEEP-1;
 					n=powersOfTwo.at(num_keep)-1;
-				//	cout<<"Long keep"<<endl;
+				//	std::cout<<"Long keep"<<std::endl;
 					seq+=modification_character(modify_base,num_delete,insert_base,num_keep);
 				}else{
 					for (size_t m = NUM_KEEP; m > 0; m--){
 				//	for (size_t m = powersOfTwo.size()-1; m >= 0; m--)
 						if((klength & powersOfTwo.at(m-1)) != 0){
 							num_keep=m-1;
-						//	cout<<"m: "<<m <<endl;
+						//	std::cout<<"m: "<<m <<std::endl;
 							n= powersOfTwo.at(num_keep)-1;
 							seq += modification_character(modify_base,num_delete,insert_base,num_keep);
 							break;
@@ -3405,29 +3614,29 @@ void mc_model::make_all_alignments_patterns(){
 					}
 				}
 				seq2 = seq.at(seq.size()-1);
-		//		cout<< "recorded keep length: " << n+1 << endl;
-		//		cout<< "size of seq: "<< seq.size()<<endl;
-		//		cout << "seq 2 " << int(seq2) << endl;
-		//		cout<< "recorded keep length: " << n+1 << endl;
+		//		std::cout<< "recorded keep length: " << n+1 << std::endl;
+		//		std::cout<< "size of seq: "<< seq.size()<<std::endl;
+		//		std::cout << "seq 2 " << int(seq2) << std::endl;
+		//		std::cout<< "recorded keep length: " << n+1 << std::endl;
 				functor. see_context(acc1,acc2,p,i,seq1,seq2, outs);
-		//		cout<<"n: "<< n << endl;
+		//		std::cout<<"n: "<< n << std::endl;
 			}else{
 				if((s1!=5) & (s2!=5)){
 					modify_base = s2;
 				/*	if(i<51){
-						cout<<"modification at "<< i << " is  "<<s1 <<endl;
+						std::cout<<"modification at "<< i << " is  "<<s1 <<std::endl;
 					}*/
 					seq += modification_character(modify_base,num_delete,insert_base,num_keep);
 					seq2 = modification_character(modify_base,num_delete,insert_base,num_keep);
 					functor. see_context(acc1,acc2,p,i,seq1,seq2,outs);
-				//	cout<< "seq1" << seq1 <<endl;
+				//	std::cout<< "seq1" << seq1 <<std::endl;
 				}
 				if(s1 == 5){
 					insert_base = s2;
 					seq += modification_character(modify_base,num_delete,insert_base,num_keep);						
 					seq2 = modification_character(modify_base,num_delete,insert_base,num_keep);
 					functor. see_context(acc1,acc2,p,i,seq1,seq2,outs);
-			//		cout<< "seq1" << seq1 <<endl;						
+			//		std::cout<< "seq1" << seq1 <<std::endl;						
 				}
 				if(s2 == 5){
 					size_t dlength = 0;
@@ -3451,7 +3660,7 @@ void mc_model::make_all_alignments_patterns(){
 						seq+=modification_character(modify_base,num_delete,insert_base,num_keep);
 					}else{
 						for(size_t m = NUM_DELETE; m > 0; m--){
-					//	cout<< "m in delete1: "<< m << endl;
+					//	std::cout<< "m in delete1: "<< m << std::endl;
 //						for (size_t m = powersOfTwo.size()-1;m>=0;m--)
 							if((dlength & powersOfTwo.at(m-1)) != 0){
 								num_delete = m-1;
@@ -3466,48 +3675,48 @@ void mc_model::make_all_alignments_patterns(){
 				}
 
 			}
-			/*cout<< " context1 is "<<endl;
+			/*std::cout<< " context1 is "<<std::endl;
 			for(size_t h = 0 ; h < seq1.size(); h++){
-				cout<< int(seq1.at(h))<<endl;
+				std::cout<< int(seq1.at(h))<<std::endl;
 			}*/
-			//cout<<"last char: "<<int(seq2)<<endl;
-			//cout<<"i+n: "<< i+n<<endl;
-//			cout<< " context1 is "<<endl;
+			//std::cout<<"last char: "<<int(seq2)<<std::endl;
+			//std::cout<<"i+n: "<< i+n<<std::endl;
+//			std::cout<< " context1 is "<<std::endl;
 //			for(size_t h = 0 ; h < seq1.size(); h++){
-//				cout<< int(seq1.at(h))<<endl;
+//				std::cout<< int(seq1.at(h))<<std::endl;
 //			}
-	//		cout<<"last char in mod function: "<<int(seq2)<<endl;
-//			cout<<"i+n: "<< i+n<<endl;
+	//		std::cout<<"last char in mod function: "<<int(seq2)<<std::endl;
+//			std::cout<<"i+n: "<< i+n<<std::endl;
 			i=i+n;
-			//cout<<"n"<< n << endl;
+			//std::cout<<"n"<< n << std::endl;
 			//	uint32_t initial = 1;
 			//	for (uint32_t m = 0; m <32 ; m++)
 			//		uint32_t power_of_two = initial << m; 
 			//		if((klength & power_of_two) !=0)
 		}
 
-	//	cout<<"The alignment is: "<<endl;
+	//	std::cout<<"The alignment is: "<<std::endl;
 	//	p.print();
-	//	cout<<"encoded sequence from one to two is: "<<endl;
+	//	std::cout<<"encoded sequence from one to two is: "<<std::endl;
 	//	for(size_t m = 0; m < seq.size(); m ++){
-	//		cout<< int(seq.at(m))<<endl;
+	//		std::cout<< int(seq.at(m))<<std::endl;
 	//	}
-	//	cout<< "one to two was done! " << endl;
+	//	std::cout<< "one to two was done! " << std::endl;
 		functor.see_entire_context(acc1,acc2,seq);
 	}
 
 	
-	void mc_model::computing_modification_twoToOne(const pw_alignment & p, abstract_context_functor & functor,ofstream & outs)const{
-		string seq = "";
+	void mc_model::computing_modification_twoToOne(const pw_alignment & p, abstract_context_functor & functor,std::ofstream & outs)const{
+		std::string seq = "";
 		size_t acc1 = data.accNumber(p.getreference1());
 		size_t acc2 = data.accNumber(p.getreference2());
 		size_t first_patterns = Alignment_level;
 	/*	if(p.getreference2()==28&&p.getreference1()==0 && p.getbegin2()==176557){
-			cout << "forward"<<endl;
+			std::cout << "forward"<<std::endl;
 			p.print();
 		}
 		if(p.getreference2()==28&&p.getreference1()==0 && p.getend2()==176557){
-			cout << "reverse"<<endl;
+			std::cout << "reverse"<<std::endl;
 			p.print();
 		}*/
 		for(size_t j = 0; j < Alignment_level; j++){
@@ -3520,11 +3729,11 @@ void mc_model::make_all_alignments_patterns(){
 			int insert_base=-1;
 			int num_keep=-1;
 			size_t n = 0;			
-			string seq1(" ",Alignment_level+1);
+			std::string seq1(" ",Alignment_level+1);
 			char seq2;
 			for(size_t w = Alignment_level; w>0 ;w--){
 				seq1.at(Alignment_level-w)=seq.at(seq.size()-w);
-			//	cout<< "seq at size - w: " << seq.at(seq.size()-w)<<endl;
+			//	std::cout<< "seq at size - w: " << seq.at(seq.size()-w)<<std::endl;
 			}
 			char s1chr;
 			char s2chr;
@@ -3537,7 +3746,7 @@ void mc_model::make_all_alignments_patterns(){
 			char s2nchr;
 			size_t s2n;
 			if(s2 == 5){
-			//	if(p.getreference2()==28&&p.getreference1()==0){cout<< "i " << i << " s2 " << s2 << endl;}
+			//	if(p.getreference2()==28&&p.getreference1()==0){std::cout<< "i " << i << " s2 " << s2 << std::endl;}
 				for(size_t j =i; j < p.alignment_length(); j++){
 					p.alignment_col(j, s1nchr, s2nchr);				
 					s2n = dnastring::base_to_index(s2nchr);
@@ -3547,7 +3756,7 @@ void mc_model::make_all_alignments_patterns(){
 					}else continue;
 				}
 			}else seq1.at(Alignment_level)=s2;
-	//		cout<<"using s2n! " << s2n <<endl;
+	//		std::cout<<"using s2n! " << s2n <<std::endl;
 			if(s1 == s2){
 				size_t klength = 0;
 				for(size_t j = i; j<p.alignment_length(); j++){
@@ -3563,7 +3772,7 @@ void mc_model::make_all_alignments_patterns(){
 					}
 				}
 			/*	if(i<51){
-					cout<<"keep length at "<< i << " is  "<< klength<<endl;
+					std::cout<<"keep length at "<< i << " is  "<< klength<<std::endl;
 				}*/
 				if(klength > powersOfTwo.at(NUM_KEEP-1)){
 //				if(klength > powersOfTwo.at(powersOfTwo.size()-1))
@@ -3573,7 +3782,7 @@ void mc_model::make_all_alignments_patterns(){
 					seq+=modification_character(modify_base,num_delete,insert_base,num_keep);
 				}else{
 					for(size_t m = NUM_KEEP; m > 0; m--){
-				//	cout<<"m: "<<m <<endl;
+				//	std::cout<<"m: "<<m <<std::endl;
 //					for (size_t m =powersOfTwo.size()-1; m>= 0; m--)
 						if((klength & powersOfTwo.at(m-1)) != 0){
 							num_keep=m-1;
@@ -3589,7 +3798,7 @@ void mc_model::make_all_alignments_patterns(){
 				if((s1!=5) & (s2!=5)){
 					modify_base = s1;
 				/*	if(i<51){
-						cout<<"modification at "<< i << " is  "<<s2 <<endl;
+						std::cout<<"modification at "<< i << " is  "<<s2 <<std::endl;
 					}*/
 					seq += modification_character(modify_base,num_delete,insert_base,num_keep);
 					seq2 = modification_character(modify_base,num_delete,insert_base,num_keep);
@@ -3615,7 +3824,7 @@ void mc_model::make_all_alignments_patterns(){
 							break;
 						}
 					}
-				//	cout<< "dlength: " << dlength << endl;
+				//	std::cout<< "dlength: " << dlength << std::endl;
 					if(dlength > powersOfTwo.at(NUM_DELETE-1)){
 //					if(dlength > powersOfTwo.at(powersOfTwo.size()-1))
 //						num_delete= powersOfTwo.size()-1;
@@ -3625,7 +3834,7 @@ void mc_model::make_all_alignments_patterns(){
 					}else{
 						for(size_t m = NUM_DELETE ; m > 0; m--){
 //						for (size_t m = powersOfTwo.size()-1; m>0; m--)
-						//	cout<< "m in delete2: "<< m << endl;
+						//	std::cout<< "m in delete2: "<< m << std::endl;
 							if((dlength & powersOfTwo.at(m-1)) != 0){
 								num_delete = m-1;
 								n = powersOfTwo.at(num_delete)-1;
@@ -3638,44 +3847,44 @@ void mc_model::make_all_alignments_patterns(){
 					functor. see_context(acc2,acc1,p,i,seq1,seq2,outs);
 				}
 			}
-	/*		cout<< " context2 is "<<endl;
+	/*		std::cout<< " context2 is "<<std::endl;
 			for(size_t h = 0 ; h < seq1.size(); h++){
-				cout<< int(seq1.at(h))<<endl;
+				std::cout<< int(seq1.at(h))<<std::endl;
 			}*/
-		//	cout<<"last char in mod function: "<<int(seq2)<<endl;
+		//	std::cout<<"last char in mod function: "<<int(seq2)<<std::endl;
 			i=i+n;
-		//	cout<< "i in modification : " << i << endl;
+		//	std::cout<< "i in modification : " << i << std::endl;
 		}		
-	//	cout<<"encoded sequence from two to one is: "<<endl;
+	//	std::cout<<"encoded sequence from two to one is: "<<std::endl;
 	/*	for(size_t m = 0; m < seq.size(); m ++){
-			cout<< int(seq.at(m))<<endl;
+			std::cout<< int(seq.at(m))<<std::endl;
 		}*/
 		functor.see_entire_context(acc2,acc1,seq);
 	}
-	const map<string, vector<double> > & mc_model::getPattern(size_t acc)const{
+	const std::map<std::string, std::vector<double> > & mc_model::getPattern(size_t acc)const{
 		return sequence_successive_bases.at(acc);
 
 	}
 	
-	const vector<double> & mc_model::get_create_cost(size_t acc)const{
+	const std::vector<double> & mc_model::get_create_cost(size_t acc)const{
 		return create_cost.at(acc);		
 
 	}
 	
-	const vector<map<string, vector<double> > > & mc_model::model_parameters()const{
+	const std::vector<std::map<std::string, vector<double> > > & mc_model::model_parameters()const{
 		return sequence_successive_bases;
-//			cout<< " context2 is "<<endl;
+//			std::cout<< " context2 is "<<std::endl;
 //			for(size_t h = 0 ; h < seq1.size(); h++){
-//				cout<< int(seq1.at(h))<<endl;
+//				std::cout<< int(seq1.at(h))<<std::endl;
 //		}
-//		cout<<"last char: "<<int(seq2)<<endl;	
-//		cout<<"encoded sequence from two to one is: "<<endl;
+//		std::cout<<"last char: "<<int(seq2)<<std::endl;	
+//		std::cout<<"encoded sequence from two to one is: "<<std::endl;
 //		for(size_t m = 0; m < seq.size(); m ++){
-//			cout<< int(seq.at(m))<<endl;
+//			std::cout<< int(seq.at(m))<<std::endl;
 //		}
 
 	}
-	const map<string, vector<double> > & mc_model::get_alignment_context(size_t al_id, size_t seq_id, encoding_functor & functor)const{
+	const std::map<std::string, std::vector<double> > & mc_model::get_alignment_context(size_t al_id, size_t seq_id, encoding_functor & functor)const{
 	/*	const pw_alignment & al = data.getAlignment(al_id);
 		size_t acc1 = data.accNumber(al.getreference1());
 	//	size_t acc2 = data.accNumber(al.getreference2());
@@ -3687,10 +3896,10 @@ void mc_model::make_all_alignments_patterns(){
 			computing_modification_twoToOne(al, functor);
 			return functor.get_alignment_context();
 		}*/
-		const map<string, vector<double> > & res = *((const map<string, vector<double> >*) NULL);
+		const std::map<std::string, std::vector<double> > & res = *((const std::map<std::string, std::vector<double> >*) NULL);
 		return res;
 	}
-	const map<string, vector<double> > &mc_model::get_cluster_member_context(pw_alignment & al, size_t center_id, encoding_functor & functor)const{
+	const std::map<std::string, std::vector<double> > &mc_model::get_cluster_member_context(pw_alignment & al, size_t center_id, encoding_functor & functor)const{
 	/*	size_t acc1 = data.accNumber(al.getreference1());
 	//	size_t acc2 = data.accNumber(al.getreference2());
 		size_t accession = data.accNumber(center_id);
@@ -3701,31 +3910,31 @@ void mc_model::make_all_alignments_patterns(){
 			computing_modification_twoToOne(al, functor);
 			return functor.get_alignment_context();
 		}*/
-		const map<string, vector<double> > & res = *((const map<string, vector<double> >*) NULL);
+		const std::map<std::string, std::vector<double> > & res = *((const std::map<std::string, vector<double> >*) NULL);
 		return res;
 	}
-	void mc_model ::get_encoded_member(pw_alignment & al,size_t center_ref,size_t center_left, encoding_functor & functor,ofstream& outs)const{
+	void mc_model ::get_encoded_member(pw_alignment & al,size_t center_ref,size_t center_left, encoding_functor & functor,std::ofstream& outs)const{
 		size_t acc1 = data.accNumber(al.getreference1());
 		size_t accession = data.accNumber(center_ref);
 		size_t left_1; 
 		size_t left_2;
 		size_t right_1;
 		size_t right_2;
-		cout<< "al length: "<< al.alignment_length()<<endl;
+		std::cout<< "al length: "<< al.alignment_length()<<std::endl;
 		al.get_lr1(left_1,right_1);
 		al.get_lr2(left_2,right_2);
-		cout<< " left1: "<< left_1 << " left2: "<<left_2<< "center left: "<< center_left << endl;
-		cout << "center accession: "<< accession << " accession1: "<< acc1 << endl;
+		std::cout<< " left1: "<< left_1 << " left2: "<<left_2<< "center left: "<< center_left << std::endl;
+		std::cout << "center accession: "<< accession << " accession1: "<< acc1 << std::endl;
 		if(al.getreference1()==center_ref && left_1 == center_left){
-			cout<< "center is on ref1"<<endl;
+			std::cout<< "center is on ref1"<<std::endl;
 			computing_modification_oneToTwo(al, functor,outs);	
 		}else{
-			cout<< "center is on ref2"<<endl;
+			std::cout<< "center is on ref2"<<std::endl;
 			computing_modification_twoToOne(al, functor,outs);
 		}
 	}
 
-	void mc_model::computing_modification_in_cluster(string center, string member)const{
+	void mc_model::computing_modification_in_cluster(std::string center, std::string member)const{
 	// we should read their bases one by one find the modification pattern between them, information be gained from clustering class
 	// in main function call it over global results, but then it is not part of training! :|
 	// different sequences in a cluster may have different length, but we always need to check the modification from the center. Thus just go through the center size.
@@ -3756,30 +3965,30 @@ void mc_model::make_all_alignments_patterns(){
 	abstract_context_functor::abstract_context_functor(){
 	
 	}
-	void abstract_context_functor::see_context(size_t acc1, size_t acc2, const pw_alignment & p, size_t pos, string context, char last_char, ofstream& outs){
+	void abstract_context_functor::see_context(size_t acc1, size_t acc2, const pw_alignment & p, size_t pos, std::string context, char last_char, std::ofstream& outs){
 		
 	}
-	void abstract_context_functor::see_entire_context(size_t acc1,size_t acc2, string entireContext){
+	void abstract_context_functor::see_entire_context(size_t acc1,size_t acc2, std::string entireContext){
 
 	}
-	counting_functor::counting_functor(all_data & d):data(d), successive_modification(d.numAcc(),vector<map<string, vector<double> > >(d.numAcc())),total(d.numAcc(),vector<map<string, double > >(d.numAcc())) {}
+	counting_functor::counting_functor(all_data & d):data(d), successive_modification(d.numAcc(),std::vector<std::map<std::string, std::vector<double> > >(d.numAcc())),total(d.numAcc(),std::vector<std::map<std::string, double > >(d.numAcc())) {}
 // TODO why do we use double for counting?
-	void counting_functor::see_context(size_t acc1, size_t acc2, const pw_alignment & p, size_t pos, string context, char last_char, ofstream & outs){
-	//	cout<< "accession 1: " << acc1 << " accession 2: " << acc2 << " size: " << pos << " last char: " << dnastring::base_to_index(last_char) << " " << int(last_char)<<endl;
-	//	cout<< "context is: "<< endl;
+	void counting_functor::see_context(size_t acc1, size_t acc2, const pw_alignment & p, size_t pos, std::string context, char last_char, std::ofstream & outs){
+	//	std::cout<< "accession 1: " << acc1 << " accession 2: " << acc2 << " size: " << pos << " last char: " << dnastring::base_to_index(last_char) << " " << int(last_char)<<std::endl;
+	//	std::cout<< "context is: "<< std::endl;
 	/*	for(size_t i = 0 ; i < context.size(); i++){
-			cout<< int(context.at(i))<<endl;
+			std::cout<< int(context.at(i))<<std::endl;
 		}*/
-		map <string, vector<double> >::iterator it1= successive_modification.at(acc1).at(acc2).find(context);
+		std::map <std::string, std::vector<double> >::iterator it1= successive_modification.at(acc1).at(acc2).find(context);
 		if(it1==successive_modification.at(acc1).at(acc2).end()) {
-			successive_modification.at(acc1).at(acc2).insert(make_pair(context, vector<double>((NUM_DELETE+NUM_KEEP+10),1)));
+			successive_modification.at(acc1).at(acc2).insert(std::make_pair(context, std::vector<double>((NUM_DELETE+NUM_KEEP+10),1)));
 			it1= successive_modification.at(acc1).at(acc2).find(context);
 			assert(it1 != successive_modification.at(acc1).at(acc2).end());
 		}
 			it1->second.at(last_char)++;
-		//	cout<< "context is: "<< context.length() << endl;
-			//cout<< context <<endl;			
-		//	cout<<"number of happening "<<int(last_char)<< " after above context is "<< it1->second.at(last_char)<<endl;
+		//	std::cout<< "context is: "<< context.length() << std::endl;
+			//std::cout<< context <<std::endl;			
+		//	std::cout<<"number of happening "<<int(last_char)<< " after above context is "<< it1->second.at(last_char)<<std::endl;
 	}
 
 /*
@@ -3789,11 +3998,11 @@ void mc_model::make_all_alignments_patterns(){
 void counting_functor::total_context(){
 	for(size_t i = 0; i < data.numAcc(); i++){
 		for(size_t j = 0; j<data.numAcc(); j++){
-			for(map<string, vector<double> >::iterator it = successive_modification.at(i).at(j).begin(); it!= successive_modification.at(i).at(j).end();it++){
-				string context = it->first;
-				map<string, double >::iterator it1=total.at(i).at(j).find(context);
+			for(std::map<std::string, std::vector<double> >::iterator it = successive_modification.at(i).at(j).begin(); it!= successive_modification.at(i).at(j).end();it++){
+				std::string context = it->first;
+				std::map<std::string, double >::iterator it1=total.at(i).at(j).find(context);
 				if(it1 == total.at(i).at(j).end()){
-					total.at(i).at(j).insert(make_pair(context,0));
+					total.at(i).at(j).insert(std::make_pair(context,0));
 					it1=total.at(i).at(j).find(context);
 				}
 				for(size_t k = 0; k < NUM_DELETE+NUM_KEEP+10; k++){
@@ -3808,9 +4017,9 @@ void counting_functor::total_context(){
 	}
 }
 
-double counting_functor::get_total(size_t acc1, size_t acc2, string context)const{
-	map<string, double>::const_iterator it = total.at(acc1).at(acc2).find(context);
-//	cout << " a " << acc1 << " " << acc2 << " : " << total.at(acc1).at(acc2).size() << endl;
+double counting_functor::get_total(size_t acc1, size_t acc2, std::string context)const{
+	std::map<std::string, double>::const_iterator it = total.at(acc1).at(acc2).find(context);
+//	std::cout << " a " << acc1 << " " << acc2 << " : " << total.at(acc1).at(acc2).size() << std::endl;
 	assert(it!=total.at(acc1).at(acc2).end());
 	return it->second;
 }
@@ -3819,35 +4028,35 @@ double counting_functor::get_total(size_t acc1, size_t acc2, string context)cons
 /*
 	initialize context counting with 1
 */   	
-	void counting_functor::create_context(size_t acc1, size_t acc2, string context) {
-		map<string, vector<double> >::iterator it = successive_modification.at(acc1).at(acc2).find(context);
+	void counting_functor::create_context(size_t acc1, size_t acc2, std::string context) {
+		std::map<std::string, std::vector<double> >::iterator it = successive_modification.at(acc1).at(acc2).find(context);
 		if(it==successive_modification.at(acc1).at(acc2).end()) {
-			successive_modification.at(acc1).at(acc2).insert(make_pair(context, vector<double>(NUM_DELETE+NUM_KEEP+10, 1)));
+			successive_modification.at(acc1).at(acc2).insert(std::make_pair(context, std::vector<double>(NUM_DELETE+NUM_KEEP+10, 1)));
 		}
 	}
 	
-	const  map<string, vector<double> > & counting_functor::get_context(size_t acc1, size_t acc2)const{
+	const  std::map<std::string, std::vector<double> > & counting_functor::get_context(size_t acc1, size_t acc2)const{
 		return successive_modification.at(acc1).at(acc2);
 	}
 
-	cost_functor::cost_functor(all_data & d, const vector<vector<map<string, vector<double> > > > & mod_cost):data(d){
+	cost_functor::cost_functor(all_data & d, const std::vector<vector<std::map<std::string, vector<double> > > > & mod_cost):data(d){
 		modify1 = 0;
 		modify2 = 0;		
 		modification = mod_cost;
 	}
-	void cost_functor::see_context(size_t acc1, size_t acc2, const pw_alignment & p, size_t pos, string context, char last_char, ofstream & outs){
+	void cost_functor::see_context(size_t acc1, size_t acc2, const pw_alignment & p, size_t pos, std::string context, char last_char, std::ofstream & outs){
 		size_t ref1 = p.getreference1();
 		size_t ref2 = p.getreference2();
 		size_t accession1 = data.accNumber(ref1);
 		size_t accession2 = data.accNumber(ref2);
 		if(acc1 == accession1){//if acc1 is the first accession
-			map<string, vector<double> >::const_iterator it = modification.at(acc1).at(acc2).find(context);
-		//	cout<< "modification cost at "<< pos << " is "<< it->second.at(last_char)<<endl;
+			std::map<std::string, std::vector<double> >::const_iterator it = modification.at(acc1).at(acc2).find(context);
+		//	std::cout<< "modification cost at "<< pos << " is "<< it->second.at(last_char)<<std::endl;
 			modify1 +=it->second.at(last_char);
 		}
 		if(acc1 == accession2){
-			map<string, vector<double> >::const_iterator it = modification.at(acc1).at(acc2).find(context);
-		//	cout<< "modification cost at "<< pos << " is "<< it->second.at(last_char)<<endl;
+			std::map<std::string, std::vector<double> >::const_iterator it = modification.at(acc1).at(acc2).find(context);
+		//	std::cout<< "modification cost at "<< pos << " is "<< it->second.at(last_char)<<std::endl;
 			modify2 +=it->second.at(last_char);
 		}
 	}
@@ -3868,14 +4077,14 @@ double counting_functor::get_total(size_t acc1, size_t acc2, string context)cons
 	encoding_functor::encoding_functor(all_data & d, mc_model * m, wrapper & wrap, 	dlib::entropy_encoder_kernel_1 & encode ):data(d),model(m),wrappers(wrap),enc(encode){
 	}
 	
-	void encoding_functor::see_context(size_t acc1, size_t acc2,const pw_alignment & p, size_t pos, string context, char last_char, ofstream& outs){//last_char is infact a pattern!
+	void encoding_functor::see_context(size_t acc1, size_t acc2,const pw_alignment & p, size_t pos, std::string context, char last_char, std::ofstream& outs){//last_char is infact a pattern!
 		size_t bit = 13;
 	//	dlib::entropy_encoder_kernel_1 * enc = new dlib::entropy_encoder_kernel_1();
-	//	enc->set_stream(outs);
+	//	enc->std::set_stream(outs);
 		unsigned int total = model->get_powerOfTwo().at(bit)+20;
-		map<string, vector<unsigned int> >::const_iterator it1 = model->get_highValue(acc1,acc2).find(context);// if modification is from acc2 to acc1 the order is already exchanged. So this is true
-		vector<unsigned int> low(NUM_DELETE+NUM_KEEP+10,0);
-		vector<unsigned int> high(NUM_DELETE+NUM_KEEP+10,0);
+		std::map<std::string, std::vector<unsigned int> >::const_iterator it1 = model->get_highValue(acc1,acc2).find(context);// if modification is from acc2 to acc1 the order is already exchanged. So this is true
+		std::vector<unsigned int> low(NUM_DELETE+NUM_KEEP+10,0);
+		std::vector<unsigned int> high(NUM_DELETE+NUM_KEEP+10,0);
 		for(size_t m = 0; m < it1->second.size(); m++){
 			if(m ==0){
 				low.at(m) = 0;
@@ -3888,20 +4097,21 @@ double counting_functor::get_total(size_t acc1, size_t acc2, string context)cons
 			}
 		}
 	//	for(size_t h =0; h < NUM_DELETE+NUM_KEEP+10; h++){
-		//	cout<< "high values: " << high.at(h)<<endl;
+		//	std::cout<< "high values: " << high.at(h)<<std::endl;
 	//	}
-	//	cout<< "context at " << pos << " is: ";
+
+		std::cout<< "context at " << pos << " is: ";
 		for(size_t i =0; i < context.size(); i++){
-	//		cout<<int(context.at(i));
+			std::cout<<int(context.at(i));
 			int con = int(context.at(i));
 			wrappers.context(pos,con);
 		}
-	//	cout<< " " <<endl;
-	//	cout<< "actual acc1 " << data.accNumber(p.getreference1())  << " actual acc2 " << data.accNumber(p.getreference2()) <<endl;
-	//	cout << "encoding form acc: " << acc1 << " to acc: "<< acc2 << endl;
-	//	cout<< "center acc should be: " << acc1 << endl;
-	//	cout << " ended char in al: "<< int(last_char)<<endl;
-	//	cout<< "encoded low: "<< low.at(last_char)<<" encoded high: "<< high.at(last_char)<<endl;
+		std::cout<< " " <<std::endl;
+	//	std::cout<< "actual acc1 " << data.accNumber(p.getreference1())  << " actual acc2 " << data.accNumber(p.getreference2()) <<std::endl;
+	//	std::cout << "encoding form acc: " << acc1 << " to acc: "<< acc2 << std::endl;
+	//	std::cout<< "center acc should be: " << acc1 << std::endl;
+	//	std::cout << " ended char in al: "<< int(last_char)<<std::endl;
+	//	std::cout<< "encoded low: "<< low.at(last_char)<<" encoded high: "<< high.at(last_char)<<std::endl;
 		enc.encode(low.at(last_char),high.at(last_char),total);
 		wrappers.encode(low.at(last_char),high.at(last_char),total);
 	//	delete enc;
@@ -3909,30 +4119,30 @@ double counting_functor::get_total(size_t acc1, size_t acc2, string context)cons
 
 
 
-	void encoding_functor::see_entire_context(size_t acc1, size_t acc2, string entireContext){
+	void encoding_functor::see_entire_context(size_t acc1, size_t acc2, std::string entireContext){
 		alignment_pattern = entireContext;
 	}
-	const map<string, vector<double> > & encoding_functor::get_alignment_context()const{
-		for(map<string, vector<double> >::const_iterator it = alignment_context.begin(); it !=alignment_context.end(); it++){
+	const std::map<std::string, std::vector<double> > & encoding_functor::get_alignment_context()const{
+		for(std::map<std::string, std::vector<double> >::const_iterator it = alignment_context.begin(); it !=alignment_context.end(); it++){
 		/*	for(size_t n =0; n < NUM_DELETE+NUM_KEEP+10; n++){
-				cout << "counts: "<< it->second.at(n)<<endl;
+				std::cout << "counts: "<< it->second.at(n)<<std::endl;
 			}*/
 		}
 		return alignment_context;
 	}
 /*
-	vector<string>  &  encoding_functor::get_alignment_context(pw_alignment & p)const{
-		vector<string>longName;
+	std::vector<std::string>  &  encoding_functor::get_alignment_context(pw_alignment & p)const{
+		std::vector<std::string>longName;
 */
 	/*	pw_alignment * copy_p = new pw_alignment(p);
-		map<pw_alignment*, vector<string> >::const_iterator it = pattern.find(copy_p);
+		std::map<pw_alignment*, std::vector<std::string> >::const_iterator it = pattern.find(copy_p);
 		assert(it != pattern.end());
 		delete copy_p;
 		return it->second;*
-		for(map<string , vector<double> >::const_iterator it = alignment_context.begin(); it!=alignment_context.end(); it++){
-			string context = it->first;
+		for(std::map<std::string , std::vector<double> >::const_iterator it = alignment_context.begin(); it!=alignment_context.end(); it++){
+			std::string context = it->first;
 			for(size_t i = 0; i < it->second.size();i++){
-				stringstream longname;
+				std::stringstream longname;
 				if(it->second.at(i)!=0){
 					longname << context << ":" << it->second.at(i);
 					longName.push_back(longname.str());
@@ -3940,11 +4150,11 @@ double counting_functor::get_total(size_t acc1, size_t acc2, string context)cons
 				
 			}
 		}
-		cout<<"new longname: "<<endl;
+		std::cout<<"new longname: "<<std::endl;
 		for(size_t j =0; j < longName.size(); j++){
-			cout<< longName.at(j);
+			std::cout<< longName.at(j);
 		}
-		cout<< " " <<endl;
+		std::cout<< " " <<std::endl;
 		return longName;
 	}
 

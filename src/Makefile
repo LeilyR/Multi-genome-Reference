@@ -2,7 +2,7 @@
 
 CXX = g++
 CFLAGS = -Wall -fmessage-length=50 -fopenmp 
-CXXFLAGS = -Wall -fmessage-length=50 -fopenmp -pedantic
+CXXFLAGS = -Wall -fmessage-length=50 -fopenmp -pedantic -std=c++11
 #OPTFLAGS = -O3 -DNDEBUG
 OPTFLAGS = -O3 -DNDEBUG 
 DEBUGFLAGS = -g3 -O0 -gdwarf-2 
@@ -20,11 +20,13 @@ endif
 
 CXXFLAGS += -Wlong-long
 
-INCLUDEDIRS =
-INCLUDEARGS =
-LIBARGS =  apclusterunix64.so -L../dlib_build -ldlib
+
+STATGEN_INC = libStatGen-1.0.13/include
+INCLUDEARGS = -I$(STATGEN_INC)
+LIBARGS =   apclusterunix64.so -L../dlib_build -ldlib  libStatGen-1.0.13/libStatGen.a -lz
 
 
+# include libStatGen-1.0.13/Makefiles/Makefile.include
 
 PROGS = graph
 OBJS = pw_alignment.o data.o encoder.o test.o
@@ -32,7 +34,11 @@ OBJS = pw_alignment.o data.o encoder.o test.o
 #model.o
 
 
+# .DEFAULT_GOAL := graph 
 all: $(PROGS)
+
+
+
 
 graph: main.cpp $(OBJS) model.cpp model.hpp pw_alignment.hpp data.hpp
 	$(CXX) -o graph $(CXXFLAGS) $(INCLUDEARGS) main.cpp $(OBJS) $(LIBARGS)
