@@ -952,10 +952,10 @@ int do_mc_model(int argc, char * argv[]) {
 
 
 	test.decode();
+	test.compare();
 	ifstream in("encode",std::ifstream::binary);
 //	en.read_from_stream(in);
 	dlib::entropy_decoder_kernel_1  dec;
-	test.compare();
 	en.al_decoding(in,dec);
 //	test.compare();
 	arithmetic_encoding_time = clock() - arithmetic_encoding_time;
