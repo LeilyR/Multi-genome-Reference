@@ -2728,6 +2728,16 @@ const std::map<std::string, std::vector<unsigned int> > & mc_model::get_highValu
 	}
 
 	void mc_model::cost_function(const pw_alignment& p, double & c1, double & c2, double & m1, double & m2,std::ofstream & outs)const {
+		if(p.is_cost_cached()) {
+			c1 = p.get_create1();
+			c1 = p.get_create2();
+			m1 = p.get_modify1();
+			m2 = p.get_modify2();
+			return;
+		}
+
+
+
 	//	p.print();
 	//	std::cout<<"data address in cost function: "<< &data <<std::endl;
 	//	data.numAcc();
@@ -2794,48 +2804,6 @@ const std::map<std::string, std::vector<unsigned int> > & mc_model::get_highValu
 		//	std::cout<<"sequence successive at "<< s2 << " is "<<it1->second.at(s2)<<std::endl;
 			cost_on_sample.at(1) += it1->second.at(s2);
 		}	
-	//	std::cout<<"cost: "<<cost_on_sample.at(1)<<std::endl;										
-	/*	for(map <std::string, std::vector<double> >::const_iterator it= f.get_context(acc1,acc2).begin();it!=f.get_context(acc1,acc2).end();it++){
-			std::string seq1 = it->first;
-			const std::vector<double> & base = f.get_context(acc1,acc2).at(seq1);
-			map <std::string, std::vector<double> >::const_iterator it1= mod_cost.at(acc1).at(acc2).find(seq1);
-			// std::cout << " pattern " << seq1 << std::endl;
-//			std::cout << " acc " << acc1 << " " << acc2 << std::endl;
-//			for(size_t y=0; y<seq1.length(); ++y) {
-//				size_t c = seq1.at(y);
-//				std::cout << " p " << y << " = " << c << std::endl;
-//				std::cout << print_modification_character(c);
-//				std::cout << std::endl;
-//			}
-			assert(it1!=mod_cost.at(acc1).at(acc2).end());
-			for(size_t k = 0; k< (NUM_DELETE+NUM_KEEP+10);k++){
-				modify_cost.at(0) +=(base.at(k)-1)*(it1->second.at(k));
-			}
-			std::cout<< " context is "<<std::endl;
-			for(size_t i = 0 ; i < seq1.size(); i++){
-				std::cout<< int(seq1.at(i))<<std::endl;
-			}
-			std::cout<<"base is: "<<std::endl;
-			for(size_t a= 0; a< base.size();a++){
-				std::cout<< "base at "<< a << " which is " << print_modification_character(a)<<" is "<<base.at(a)<<std::endl;
-				std::cout<< "modification cost of it is "<< -log2(base.at(a)/f.get_total(acc1,acc2,seq1))<<std::endl;
-			}	
-
-		}
-		for(map <std::string, std::vector<double> >::const_iterator it= f.get_context(acc2,acc1).begin();it!=f.get_context(acc2,acc1).end();it++){
-			std::string seq1 = it->first;
-			std::cout<< " context2 is "<<std::endl;
-			for(size_t i = 0 ; i < seq1.size(); i++){
-				std::cout<< int(seq1.at(i))<<std::endl;
-			}
-			const std::vector<double> & base = f.get_context(acc2,acc1).at(seq1);
-			map <std::string, std::vector<double> >::const_iterator it1= mod_cost.at(acc2).at(acc1).find(seq1);
-			assert(it1!=mod_cost.at(acc2).at(acc1).end());
-			for(size_t k = 0; k< (NUM_DELETE+NUM_KEEP+10);k++){
-				modify_cost.at(1) +=(base.at(k)-1)*(it1->second.at(k));
-			}
-		//	std::cout<<"Modification cost on the second ref: " << modify_cost.at(1) << std::endl;			
-		}*/
 
 		c1 = cost_on_sample.at(0);
 		c2 = cost_on_sample.at(1);
@@ -2843,6 +2811,9 @@ const std::map<std::string, std::vector<unsigned int> > & mc_model::get_highValu
 //		m2 = modify_cost.at(1);
 		m1 = f.get_modify(p,acc1,acc2);
 		m2 = f.get_modify(p,acc2,acc1);
+		modify_cost.at(0) = m1;
+		modify_cost.at(1) = m2;
+		p.set_cost(cost_on_sample, modify_cost);
 	//	std::cout << " c2 " << c2 << " m1 " << m1 << std::endl; 
 	//	std::cout << " c1 " << c1 << " m2 " << m2 << std::endl; 
 	//	std::cout<< "length: " << length<<std::endl;
