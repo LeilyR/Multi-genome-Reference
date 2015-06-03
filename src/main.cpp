@@ -961,11 +961,11 @@ int do_mc_model(int argc, char * argv[]) {
 	en.al_encoding(weight,member_of_cluster,alignments_in_a_cluster,outs,*enc);
 	delete enc;
 	outs.close();
-	test.encode();
+//	test.encode();
 
 
-	test.decode();
-	test.compare();
+//	test.decode();
+//	test.compare();
 	std::ifstream in("encode",std::ifstream::binary);
 //	en.read_from_stream(in);
 	dlib::entropy_decoder_kernel_1  dec;

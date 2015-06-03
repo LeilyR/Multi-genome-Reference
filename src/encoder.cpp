@@ -386,6 +386,7 @@
 		std::cout<<"number of acc:" <<data.numAcc()<<std::endl;
 		for(size_t i = 0; i< data.numAcc(); i++){
 			std::cout<< " i "<< i <<std::endl;
+			std::cout << "number of seq in an acc : "<< data.getAcc(i).size() <<std::endl;
 			for(size_t k = 0; k <data.getAcc(i).size(); k++){
 				const dnastring & sequence = data.getSequence(data.getAcc(i).at(k));
 				size_t sequenceId = data.getAcc(i).at(k);
@@ -396,7 +397,7 @@
 					}
 				}
 				std::cout<< " " <<std::endl;*/
-				std::cout<< "sequence length is: "<< sequence.length()<< " sequence id: "<< k <<std::endl;
+				std::cout<< "sequence length is: "<< sequence.length()<< " sequence id: "<< sequenceId <<std::endl;
 				for(size_t n= 0; n < sequence.length(); n++){
 					std::multimap<size_t, pw_alignment* >::iterator it = AlignmentsFromClustering.at(sequenceId).find(n);
 					if(it != AlignmentsFromClustering.at(sequenceId).end()){//If there is an alignment on that position
@@ -447,7 +448,7 @@
 								break;
 							}
 						}
-						std::cout<< "center low "<< center_l << " center high " << center_h<<std::endl;
+						std::cout<< "center low "<< center_l << " center high " << center_h<<"center left : "<< cent_left <<std::endl;
 						enc.encode(center_l, center_h, total);
 						wrappers.encode(center_l,center_h,total);
 						if(cent_ref == sequenceId && cent_left == n){
@@ -462,8 +463,8 @@
 							}else{
 							}					
 						}else{
-							if((cent_left == p->getend1()&& left_2==p->getbegin2())||(cent_left ==p->getend2()&&left_1 == p->getbegin1())){
-								std::cout<<"reverse center1!"<<std::endl;
+							if((cent_ref == p->getreference1() && cent_left == p->getend1()&& left_2==p->getbegin2())||(cent_ref == p->getreference2()&& cent_left ==p->getend2()&&left_1 == p->getbegin1())){
+								std::cout<<"reverse center!"<<std::endl;
 								//center is reverse
 								unsigned int l1 =  model.get_powerOfTwo().at(bit) + 0;
 								unsigned int h1 = model.get_powerOfTwo().at(bit) + 5;
@@ -471,16 +472,16 @@
 								wrappers.encode(l1,h1,total);
 
 							}
-							if((cent_left == p->getbegin1()&& left_2==p->getend2())||(cent_left ==p->getbegin2()&&left_1 == p->getend1())){
+							if((cent_ref == p->getreference1()&& cent_left == p->getbegin1()&& left_2==p->getend2())||(cent_ref == p->getreference2()&& cent_left ==p->getbegin2()&&left_1 == p->getend1())){
 							//	p->print();
-								std::cout<<"reverse center2!"<<std::endl;
+								std::cout<<"other ref is reverse!"<<std::endl;
 								//other ref is reverse
 								unsigned int l1 =  model.get_powerOfTwo().at(bit) + 10;
 								unsigned int h1 = model.get_powerOfTwo().at(bit) + 15;
 								enc.encode(l1,h1,total);
 								wrappers.encode(l1,h1,total);
 							}
-							if((cent_left == p->getend1()&& left_2==p->getend2())||(cent_left ==p->getend2()&&left_1 == p->getend1())){
+							if((cent_ref == p->getreference1()&& cent_left == p->getend1()&& left_2==p->getend2())||(cent_ref == p->getreference2() && cent_left ==p->getend2()&&left_1 == p->getend1())){
 								p->print();
 								std::cout<<"reverse_both!"<<std::endl;
 								//both are reverse
@@ -748,7 +749,7 @@
 							//	if(pos==0){
 							//		std::cout<< "last base: " << last_base << std::endl;
 							//	}
-						//	}
+						//	
 							else if(reverse_both > 0){
 							//	std::string rev_decodedCenter;
 							//	for(size_t rev = 0; rev< decodedCenter.size(); rev++){
@@ -813,8 +814,11 @@
 									rev_decodedCenter +=chr;
 								}
 								member += associatedMember(rev_decodedCenter,modification,pos);							
+								std::cout << "associatedMem_both reverse "<<std::endl;
 							}else{
 								member += associatedMember(decodedCenter,modification,pos);
+								std::cout << "associatedMem_else "<<std::endl;
+
 							}
 							std::cout<<"al_pattern: ";
 							for(size_t al = 0; al < al_pattern.size();al++){
