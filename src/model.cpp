@@ -170,7 +170,7 @@ void initial_alignment_set<T>::lazy_split_insert_step(overlap & ovrlp, size_t le
 				
 	//			std::cout <<"level " << level << "REMOVE NOW: " << std::endl;
 	//			pwa->print();
-	//			std::cout << " ovrlp size " << ovrlp.size() << std::endl;
+				std::cout << " ovrlp size " << ovrlp.size() << std::endl;
 				
 				
 				ovrlp.remove_alignment_nodelete(pwa);
@@ -676,10 +676,10 @@ void compute_cc::cc_step(size_t ref, size_t left, size_t right, std::set <const 
 /*
 template<typename tmodel>
 clustering<tmodel>::clustering(overlap & o, all_data & d,tmodel & m):overl(o),data(d),model(m),als_on_ref(data.numSequences()),gain(data.numSequences(),std::vector<vector<double> >(data.numSequences(),vector<double>(500000,0))),ava(data.numSequences(),vector<vector<double> >(data.numSequences(),vector<double>(500000,0))),res(data.numSequences(),vector<vector<double> >(data.numSequences(),vector<double>(500000,0))){
-	/*	for(size_t i=0; i<data.numAlignments(); ++i) {
+		for(size_t i=0; i<data.numAlignments(); ++i) {
 			const pw_alignment * a = &(data.getAlignment(i));
 			alignments.insert(a);
-		}*
+		}
 
 	}
 template<typename tmodel>
@@ -687,7 +687,7 @@ clustering<tmodel>::~clustering(){}
 
 template<typename tmodel>
 void clustering<tmodel>::als_on_reference(const pw_alignment * p) {
-/*	size_t ref1 = p->getreference1();
+	size_t ref1 = p->getreference1();
 	size_t ref2 = p->getreference2();
 
 	als_on_ref.at(ref1).insert(make_pair(p->getbegin1(), p));
@@ -766,7 +766,7 @@ template<typename tmodel>
 
 template<typename tmodel>
 	void clustering<tmodel>::update_clusters(size_t acc){
-	/*	size_t iteration = 100;
+		size_t iteration = 100;
 		double damp_value = 0.6;
 		std::vector<size_t> examplar(data.numAcc(),0); //examplars of the class of acc, acc will be the center.
 		for(size_t i = 0; i<data.numAcc(); i++){
@@ -782,7 +782,7 @@ template<typename tmodel>
 				}
 
 			}
-		}*
+		}
 		
 	}
 

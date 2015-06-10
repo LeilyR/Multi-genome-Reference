@@ -1085,9 +1085,9 @@ int main(int argc, char * argv[]) {
 	if(0==program.compare("fasta_prepare")) {
 		return do_fasta_prepare(argc, argv);
 	}
-	if(0==program.compare("model")) //else if boodesh
+	else if(0==program.compare("model")){
 		return do_mc_model(argc, argv);
-	
+	}
 //	if(0==program.compare("decoding"))
 //		return do_decoding(argc,argv);
 /*	else if(0==program.compare("model")){
