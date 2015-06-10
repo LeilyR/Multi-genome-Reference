@@ -60,8 +60,8 @@ class pw_alignment {
 
 	void print() const;
 
-	void set_cost(std::vector<double> create, std::vector<double> modify);
-
+	void set_cost(std::vector<double> create, std::vector<double> modify) const;
+	bool is_cost_cached() const;
 	double get_create1() const;
 	double get_create2() const;
 	double get_modify1() const;
@@ -76,8 +76,11 @@ class pw_alignment {
 	std::vector<size_t> begins;
 	std::vector<size_t> ends;
 	std::vector<size_t> references;
-	std::vector<double> create_costs;
-	std::vector<double> modify_costs;
+
+	// cache costs here:
+	mutable std::vector<double> create_costs;
+	mutable std::vector<double> modify_costs;
+	mutable bool costs_cached;
 	
 	static inline void base_translate(char base, bool & bit1, bool & bit2, bool & bit3);
 	static inline char base_translate_back(bool bit1, bool bit2, bool bit3);

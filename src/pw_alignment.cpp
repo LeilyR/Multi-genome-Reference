@@ -1,6 +1,6 @@
 #include "pw_alignment.hpp"
 
-pw_alignment::pw_alignment(std::string sample1str, std::string sample2str, size_t sample1_begin, size_t sample2_begin, size_t sample1_end, size_t sample2_end, size_t sample1reference, size_t sample2reference ): samples(2), begins(2), ends(2), references(2) {
+pw_alignment::pw_alignment(std::string sample1str, std::string sample2str, size_t sample1_begin, size_t sample2_begin, size_t sample1_end, size_t sample2_end, size_t sample1reference, size_t sample2reference ): samples(2), begins(2), ends(2), references(2), costs_cached(false) {
 	assert(sample1str.length() == sample2str.length());
 
 
@@ -31,7 +31,7 @@ pw_alignment::pw_alignment(std::string sample1str, std::string sample2str, size_
 	references.at(1) = sample2reference;
 }
 
-pw_alignment::pw_alignment(): samples(2), begins(2), ends(2), references(2) {}
+pw_alignment::pw_alignment(): samples(2), begins(2), ends(2), references(2), costs_cached(false) {}
 
 pw_alignment::~pw_alignment() {
 
@@ -43,6 +43,9 @@ pw_alignment::pw_alignment(const pw_alignment & p) {
 	ends = p.ends;
 	samples = p.samples;
 	references = p.references;
+	costs_cached = p.costs_cached;
+	create_costs = p.create_costs;
+	modify_costs = p.modify_costs;
 
 }
 
@@ -67,6 +70,7 @@ void pw_alignment::alignment_col(size_t c, char & s1, char & s2) const {
 void  pw_alignment::set_alignment_bits(std::vector<bool> s1, std::vector<bool> s2){
 	samples.at(0) = s1;
 	samples.at(1) = s2;
+	costs_cached = false;
 }
 
 
@@ -427,6 +431,8 @@ void pw_alignment::remove_end_gaps(pw_alignment & res) const {
 		}
 	}
 
+	res.costs_cached = false;
+
 //	std::cout << " regres " << std::endl;
 //	res.print();
 //	std::cout << std::endl;
@@ -648,40 +654,43 @@ std::string pw_alignment::get_al_ref2() const {
 
 
 void pw_alignment::setbegin1(size_t begin1){
-		begins.at(0) = begin1;
-}
-	void pw_alignment::setbegin2(size_t begin2){
-		begins.at(1) = begin2;
+	begins.at(0) = begin1;
 }
 
-	void pw_alignment::setend1(size_t end1){
-		ends.at(0) = end1;
+void pw_alignment::setbegin2(size_t begin2){
+	begins.at(1) = begin2;
 }
 
-	void pw_alignment::setend2(size_t end2){
-		ends.at(1) = end2;
-}
-	void pw_alignment::setreference1(size_t ref1){
-		references.at(0)=ref1;
-}
-	void pw_alignment::setreference2(size_t ref2){
-		references.at(1)=ref2;
+void pw_alignment::setend1(size_t end1){
+	ends.at(0) = end1;
 }
 
-	void pw_alignment::print()const{ 
-		std::cout << "al1 seq "<< getreference1() << " b " << getbegin1() << " e " << getend1() <<  " l "  << alignment_length() << std::endl;
-		std::cout << "al2 seq "<< getreference2() << " b " << getbegin2() << " e " << getend2() << std::endl;
-		/*
-		for(size_t col = 0; col < alignment_length(); col++) {
-		//	if(col < 3 || (alignment_length() - col < 3)) {
-				char c1;
-				char c2;
-				alignment_col(col, c1, c2);
-				std::cout <<col <<"\t"<< c1<<"\t"<<c2<<std::endl;
-		//	}
-		}
-		*/
+void pw_alignment::setend2(size_t end2){
+	ends.at(1) = end2;
+}
+
+void pw_alignment::setreference1(size_t ref1){
+	references.at(0)=ref1;
+}
+
+void pw_alignment::setreference2(size_t ref2){
+	references.at(1)=ref2;
+}
+
+void pw_alignment::print()const{ 
+	std::cout << "al1 seq "<< getreference1() << " b " << getbegin1() << " e " << getend1() <<  " l "  << alignment_length() << std::endl;
+	std::cout << "al2 seq "<< getreference2() << " b " << getbegin2() << " e " << getend2() << std::endl;
+	/*
+	for(size_t col = 0; col < alignment_length(); col++) {
+	//	if(col < 3 || (alignment_length() - col < 3)) {
+			char c1;
+			char c2;
+			alignment_col(col, c1, c2);
+			std::cout <<col <<"\t"<< c1<<"\t"<<c2<<std::endl;
+	//	}
 	}
+	*/
+}
 
 
 
@@ -741,24 +750,28 @@ bool compare_pw_alignment::operator()(const pw_alignment *const &a, const pw_ali
 	return false;
 }
 
-	void pw_alignment::set_cost(std::vector<double> create, std::vector<double> modify){
-		create_costs = create;
-		modify_costs = modify; 
-	}
+void pw_alignment::set_cost(std::vector<double> create, std::vector<double> modify) const{
+	create_costs = create;
+	modify_costs = modify; 
+	costs_cached = true;
+}
 
+bool pw_alignment::is_cost_cached() const {
+	return costs_cached;
+}
 
-	double pw_alignment::get_create1() const {
-		return create_costs.at(0);
-	}
-	double pw_alignment::get_create2() const {
-		return create_costs.at(1);
-	}
-	double pw_alignment::get_modify1() const {
-		return modify_costs.at(0);
-	}
-	double pw_alignment::get_modify2() const {
-		return modify_costs.at(1);
-	}
+double pw_alignment::get_create1() const {
+	return create_costs.at(0);
+}
+double pw_alignment::get_create2() const {
+	return create_costs.at(1);
+}
+double pw_alignment::get_modify1() const {
+	return modify_costs.at(0);
+}
+double pw_alignment::get_modify2() const {
+	return modify_costs.at(1);
+}
 
 
 
