@@ -740,6 +740,9 @@ bool compare_pw_alignment::operator()(const pw_alignment *const &a, const pw_ali
 	if ( a->getend(abigger) > b->getend(bbigger)) return false;
 	return false;
 }
+bool sort_pw_alignment::operator() (const pw_alignment &p1, const pw_alignment &p2)const	{
+			return (p1.getbegin2() < p2.getbegin2());
+}
 
 	void pw_alignment::set_cost(std::vector<double> create, std::vector<double> modify){
 		create_costs = create;

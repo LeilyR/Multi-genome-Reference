@@ -24,6 +24,7 @@ const bool VERBOSE = true;
 class Graph{
 
 private:
+//	class OrientedVertex;
 	// ----------------------------
 	//		Vertex
 	//-----------------------------
@@ -37,24 +38,26 @@ private:
 		const int& getIdVertex()const;
 		friend std::ostream& operator<<(std::ostream &os, Vertex const& v);
 		void printVertex(std::ostream &os)const;
-		void setStartToStart(const int& id);
-		void setStartToEnd(const int& id);
-		void setEndToStart(const int& id);
-		void setEndToEnd(const int& id);
+		void setRtoF(const int& id);
+		void setRtoR(const int& id);
+		void setFtoF(const int& id);
+		void setFtoR(const int& id);
 		void setCostScore(const double& score);
 		void setDistance(const double& distance);
 		void setPrevious(const int& idPrevious);
 		void setStartOnRead(const int& start);
 		void setEndOnRead(const int& end);
 		void setName(const std::string& name);
-		const std::vector<int>& getStartToStart();
-		const std::vector<int>& getStartToEnd();
-		const std::vector<int>& getEndToStart();
-		const std::vector<int>& getEndToEnd();
+		const std::vector<int>& getRtoF()const;
+		const std::vector<int>& getRtoR()const;
+		const std::vector<int>& getFtoF()const;
+		const std::vector<int>& getFtoR()const;
 		const std::vector<int>& getPrevious();
 		const double& getCostScore();
 		const double& getDistance();
 		const int& getStartOnRead();
+		const int& getEndOnRead();
+		const std::string& getName();
 		bool operator < (const Graph::Vertex& v)const
 				    {
 				        return (distance < v.distance);
@@ -67,12 +70,33 @@ private:
 		std::vector<int> previous;
 		double costScore;
 		double distance;
-		std::vector<int> startToStart;
-		std::vector<int> startToEnd;
-		std::vector<int> endToStart;
-		std::vector<int> endToEnd;
+		std::vector<int> RtoF;
+		std::vector<int> RtoR;
+		std::vector<int> FtoF;
+		std::vector<int> FtoR;
 		int startOnRead;
 		int endOnRead;
+		//TODO add length of the node, I can stop using data in a lot of function
+		//friend void Graph::OrientedVertex::getSuccessors(std::vector<Graph::OrientedVertex>& oriented) const{
+	};
+
+	class OrientedVertex{
+	public:
+		//OrientedVertex();
+		OrientedVertex(const Graph::Vertex& v, bool b);
+		bool vertexIsForward(pw_alignment p);
+		const std::vector<int>& getVertexFtoF(Graph::Vertex v)const;
+		const std::vector<int>& getVertexFtoR(Graph::Vertex v)const;
+		const std::vector<int>& getVertexRtoR(Graph::Vertex v)const;
+		const std::vector<int>& getVertexRtoF(Graph::Vertex v)const;
+		void getSuccessors(std::vector<Graph::OrientedVertex>& oriented) const;
+		void getPredecessors(std::vector<OrientedVertex>) const;
+		const Graph::Vertex& getVertex()const ;
+		std::string getDna() const;
+	
+	private:
+		Vertex vertex;
+		bool isForward;
 
 	};
 
@@ -95,16 +119,26 @@ public:
 	void updateDistance(Graph::Vertex& v1, Graph::Vertex& v2, std::map<int,int>& previous);
 	std::vector<int> dijkstra(int start,int end);
 	void initAllCostScore(all_data data, Graph& newGraph);
-	void parseData(all_data data, Graph& newGraph);
+	void lookPrevious(std::string partOfRead,Graph::Vertex it, all_data& data, Graph& newGraph);
+	void lookNext(std::string partOfRead,Graph::Vertex it, all_data& data, Graph& newGraph);
+	void DFS(Graph::Vertex v1, int target, int length, all_data data, std::vector<int> path);
+	void lookGap(std::string gapSeq, Graph::Vertex v1, int idEnd, all_data data,Graph& newGraph);
+	void parseData(all_data& data, Graph& newGraph);
 	friend bool operator== ( const Vertex &v1, const Vertex &v2);
 	std::string extractPartOfSeq(dnastring seq, int start, int end);
-	void findFinalPath();
-
-
+	void findFinalPath(size_t lengthRead);
+	int findIdAlignment(Graph::Vertex v, all_data data);
+//	std::vector<OrientedVertex>
 private:
 	std::map<int,Vertex> vertices;
+	//std::vector<OrientedVertex> OV;
 };
-
+/*
+class sortVertexByStart{
+	public:
+	bool operator () (const Vertex &v1, const Vertex &v2 )const;
+};
+*/
 #endif // GRAPH_HPP
 
 

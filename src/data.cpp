@@ -254,24 +254,26 @@ char dnastring::index_to_base(size_t index) {
 all_data::all_data() {}
 
 void all_data::read_fasta_sam(std::string fasta_all_sequences, std::string sam_all_alignments) {
+	std::cout << "read sam File "<< std::endl;
 	std::ifstream fastain(fasta_all_sequences.c_str());
 	if(fastain) {
 		std::string str;
 		std::stringstream curseq;
 		std::string curname("");
-		std::string curacc("");
+		std::string curacc("noAcc"); //TODO put default acc !
 		while(getline(fastain, str)) {
 			if(str.at(0)=='>') {
 				if(0!=curname.compare("")) { // store previous sequence
 					insert_sequence(curacc, curname, curseq.str());
 					curname = "";
-					curacc = "";
+					curacc = "noAcc";
 					curseq.str("");
 				}
 
 				// read next header
-				std::string fhead = str.substr(1);
-				name_split(fhead, curacc, curname);
+				//std::string fhead = str.substr(1);
+				curname = str.substr(1);
+			//	name_split(fhead, curacc, curname);
 			} else {
 				curseq << str;
 			}
@@ -280,15 +282,14 @@ void all_data::read_fasta_sam(std::string fasta_all_sequences, std::string sam_a
 		insert_sequence(curacc, curname, curseq.str());
 		//cout << "R " << curseq.str().substr(62750, 15) << endl;
 		curname = "";
-		curacc = "";
+		curacc = "noAcc";
 		curseq.str("");
+
 		fastain.close();
 	} else {
 		std::cerr << "Error: cannot read: " << fasta_all_sequences << std::endl;
 		exit(1);
 	}
-
-	std::cout << "loaded " << sequences.size() << " sequences" << std::endl;
 
 	std::vector< std::multimap< size_t, size_t> > als_on_reference; // sequence index -> begin pos on that sequence -> alignment index
 	// a new multimap for each ref sequence
@@ -302,7 +303,7 @@ void all_data::read_fasta_sam(std::string fasta_all_sequences, std::string sam_a
 	 * Library libStatGen creates an output -bs.umfa : if already exist can have some conflict, need to remove it before rerunning this code
 	 */
 	bool verbose = false;
-	  if(verbose) std::cout << "readAlignment sam file"<<std::endl;
+	  std::cout << "readAlignment sam file"<<std::endl;
 
 	  SamFile samIn;
 	  samIn.OpenForRead(sam_all_alignments.c_str());
@@ -316,8 +317,6 @@ void all_data::read_fasta_sam(std::string fasta_all_sequences, std::string sam_a
 	  std::string alRefSeq, alReadSeq;
 	  int skip_alt = 0;
 	  int skip_self = 0;
-	  //GenomeSequence myRefSeq("/ebio/abt6_projects7/small_projects/mdubarry/Documents/SampleProgram/bin/output/tmpOut.fasta");
-
 	  GenomeSequence myRefSeq(fasta_all_sequences.c_str());
 	  myRefSeq.setDebugFlag(1);
 	  while(samIn.ReadRecord(samHeader, samRecord))
@@ -370,22 +369,24 @@ void all_data::read_fasta_sam(std::string fasta_all_sequences, std::string sam_a
 		//if(verbose) cout << "reference start "<< myStartOfReadOnRefIndex << " end " << myEndReadOnRefIndex <<endl;
 
 		// Reference
-		std::string acc1;
+		std::string acc1("noAcc");
 		std::string name1;
-		name_split(samRecord.getReferenceName(), acc1, name1);
+		//name_split(samRecord.getReferenceName(), acc1, name1);
 		size_t start1 = samRecord.get1BasedPosition() - 1 ;
 		size_t incl_end1 = start1 + tmpCigar->getExpectedReferenceBaseCount() - 1 ;
-		std::map<std::string, size_t>::iterator findseq1 = longname2seqidx.find(samRecord.getReferenceName());
+		std::string tmpString = acc1 + ":" + samRecord.getReferenceName();
+		//std::cout << "tmpString " << tmpString << " long " << longname2seqidx.begin()->first << std::endl;
+		std::map<std::string, size_t>::iterator findseq1 = longname2seqidx.find(tmpString);
 		if(findseq1==longname2seqidx.end()) {
-			std::cerr << "Error: unknown sequence: " << samRecord.getReferenceName() << std::endl;
+			std::cerr << "Error: unknown sequence in sam file : " << samRecord.getReferenceName() << std::endl;
 			exit(1);
 		}
 		size_t idx1 = findseq1->second;
 
 		// Read
-		std::string acc2;
+		std::string acc2("noAcc");
 		std::string name2;
-		name_split(samRecord.getReadName(), acc2, name2);
+		//name_split(samRecord.getReadName(), acc2, name2);
 		size_t start2;
 		if(tmpCigar->getNumBeginClips()==0)
 			start2 = 0;
@@ -395,10 +396,11 @@ void all_data::read_fasta_sam(std::string fasta_all_sequences, std::string sam_a
 		size_t incl_end2 = start2 + samRecord.getReadLength() -1;//TODO -1 ?
 
 		// In Sam file : Reverse and Forward ??
-		std::string tmpString = samRecord.getReadName();
-		std::map<std::string, size_t>::iterator findseq2 = longname2seqidx.find((tmpString));
+		std::string tmpString2 = acc2 + ":" + samRecord.getReadName();
+
+		std::map<std::string, size_t>::iterator findseq2 = longname2seqidx.find((tmpString2));
 		if(findseq2==longname2seqidx.end()) {
-			std::cerr << "Error: unknown sequence: " << samRecord.getReadName() << std::endl;
+			std::cerr << "Error: unknown sequence in sam file : " << samRecord.getReadName() << std::endl;
 			exit(1);
 		}
 		size_t idx2 = findseq2->second;
@@ -679,10 +681,10 @@ all_data::~all_data() {
 	const pw_alignment & all_data::getAlignment(size_t index) const {
 		return alignments.at(index);
 	}
-	const std::vector<pw_alignment>& all_data::getAlignments()const{ // Attention : I create this function
+	const std::vector<pw_alignment>& all_data::getAlignments()const{
 		return alignments;
 	}
-	void all_data::add_pw_alignment(const pw_alignment& p){ //Attention : I create this function
+	void all_data::add_pw_alignment(const pw_alignment& p){
 		alignments.push_back(p);
 	}
 	const std::vector<size_t> & all_data::getAcc(size_t acc)const{
@@ -716,9 +718,23 @@ all_data::~all_data() {
 	size_t all_data::numOfAcc()const{
 		return accession_name.size();
 	}
-	const std::map< std::string, size_t>& all_data::getLongname2seqidx()const{ // Attention : I had this function
+	const std::map< std::string, size_t>& all_data::getLongname2seqidx()const{
 		return longname2seqidx;
 	}
+	int all_data::findIdAlignment(std::string name,int start, int end){ // declare in graph or data ?
+		for(std::vector<pw_alignment>::iterator it = alignments.begin(); it != alignments.end(); ++it){
+			size_t idReference = it->getreference1();
+			std::string nameReference = get_seq_name(idReference);
+			//std::cout << name << " " << start << " " << end << " data " << nameReference << " " << it->getbegin2() << " " <<  it->getend2() << std::endl;
+			if(start == it->getbegin2() && end == it->getend2() && name == nameReference ){
+				return std::distance(alignments.begin(), it);
+			}
+
+		}
+		std::cerr << "Alignment not found in findIdAlignment " << std::endl;
+		return 0;
+	}
+
 	void all_data::set_accession(const std::string & acc){
 		accession_name.insert(std::make_pair(acc, accession_name.size()));
 	//	std::cout<<"accession name size: " << accession_name.size() <<std::endl;
@@ -853,7 +869,7 @@ bool all_data::alignment_fits_ref(const pw_alignment * al) const {
 			if(al1fw) {
 				size_t al1e = al1at-1;
 				if(al1e!=al->getend1()) {
-					std::cerr << "Warning: alignment end wrong. Should be " << al1e << " but is " << al->getend1() << std::endl;
+					std::cerr << "Warning: alignment end1 wrong. Should be " << al1e << " but is " << al->getend1() << std::endl;
 					//print_ref(al);
 					return false;
 				} 
@@ -873,7 +889,7 @@ bool all_data::alignment_fits_ref(const pw_alignment * al) const {
 			size_t al2e = al2at-1;
 			if(al2e!=al->getend2()) {
 				print_ref(al);
-				std::cerr << "Warning: alignment end wrong. Should be " << al->getend2()<< " but is " << al2e << std::endl;
+				std::cerr << "Warning: alignment end2 wrong. Should be " << al->getend2()<< " but is " << al2e << std::endl;
 				return false;
 			}
 		 	} else {

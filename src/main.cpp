@@ -34,18 +34,20 @@
 int main(int argc, char * argv[]) {
 	std::cout << " hello " << std::endl;
 	Graph g = Graph();
-        Graph newGraph = Graph();
-        std::string fastaFile = "/ebio/abt6_projects7/small_projects/mdubarry/Documents/SampleProgram/bin/output/all.fasta";
-        std::string samFile = "/ebio/abt6_projects7/small_projects/mdubarry/Documents/SampleProgram/bin/output/referenceRead.sam";
-        std::string dotFile = "/ebio/abt6_projects7/small_projects/mdubarry/Documents/pbsim/graph.dot";
-        //load data
-        all_data data = all_data();
-	data.read_fasta_sam(fastaFile,samFile);
-        std::map< std::string, size_t> longname2seqidx = data.getLongname2seqidx();
-        g.readDotFile(dotFile,longname2seqidx);
-        std::cout << g;
-        g.parseData(data,newGraph);
-        std::cout <<" New Graph " <<newGraph << std::endl;
+
+
+	//  runNeedleman("CCCGGGGGGTGCA","ATAGTTGCA",2);
+	//load data
+	all_data data = all_data();
+
+	//Init new Graph //TODO in main or parseData ?
+	Graph newGraph = Graph();
+	g.parseData(data,newGraph);
+
+	//std::cout << newGraph;
+	//std::cout <<" New Graph " <<newGraph << std::endl;
+
+
 
 
 /*
@@ -592,7 +594,7 @@ int do_mc_model(int argc, char * argv[]) {//mco bardar
 		clock_t ias_time_local = clock();
 		std::set< const pw_alignment *, compare_pw_alignment> & cc = ccs.at(i);
 		use_ias ias(data,cc, m, cluster_base_cost,outs);
-		ias.compute(cc_overlap.at(i),outs);
+		ias.compute(cc_overlap.at(i),outs); //Marion : I have an error that I dont understand
 		ias_time_local = clock() - ias_time_local;
 
 		clock_t test_time_local = clock();
@@ -1080,8 +1082,8 @@ int main(int argc, char * argv[]) {
 
 
 
-#include "model.cpp"
 #endif
+#include "model.cpp"
 
 
 

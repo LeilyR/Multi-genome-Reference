@@ -88,6 +88,10 @@ void traceback(int** matrix, std::string ref, std::string read, int typeOfAlignm
 		}
 		i = read.size();
 		j = lastLargestIndex(liste,ref.size());
+		for(int tmp = ref.size(); tmp > j; --tmp){
+			al1 = ref[tmp-1] + al1;
+			al2 += "-";
+		}
 	}
 	while(i>0 || j>0){
 		if(ref[j-1] == read[i-1])
@@ -111,7 +115,7 @@ void traceback(int** matrix, std::string ref, std::string read, int typeOfAlignm
 			--j;
 		}
 	}
-	std::cout << al1 << "\n" << al2 <<std::endl;
+	//std::cout << al1 << "\n" << al2 <<std::endl;
 }
 
 int lastLargestIndex( int arr[], int size )
