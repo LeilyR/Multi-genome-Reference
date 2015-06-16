@@ -11,6 +11,7 @@
 #include "model.hpp"
 #include "encoder.hpp"
 #include "test.hpp"
+#include "graph.hpp"
 #define NO_MAKEFILE
 #include "dlib/entropy_encoder/entropy_encoder_kernel_1.h"
 #include "dlib/entropy_decoder/entropy_decoder_kernel_1.h"
@@ -32,7 +33,24 @@
 
 int main(int argc, char * argv[]) {
 	std::cout << " hello " << std::endl;
+	Graph g = Graph();
 
+
+	//  runNeedleman("CCCGGGGGGTGCA","ATAGTTGCA",2);
+	//load data
+	all_data data = all_data();
+
+	//Init new Graph //TODO in main or parseData ?
+	Graph newGraph = Graph();
+	g.parseData(data,newGraph);
+
+	//std::cout << newGraph;
+	//std::cout <<" New Graph " <<newGraph << std::endl;
+
+
+
+
+/*
 	pw_alignment p(std::string("ATT----TTCTT"), string("AGTGATAT----"), 12, 15, 23, 26,1,1);
 	pw_alignment s(std::string("ATT----TTCTT"), string("ACTGATG---AC"),13, 18, 24, 29,2,1);
 
@@ -71,6 +89,7 @@ int main(int argc, char * argv[]) {
 }
 
 }
+*/
 	return 0;
 
 }
@@ -465,13 +484,14 @@ int do_mc_model(int argc, char * argv[]) {
 //	typedef clustering<use_model> use_clustering;
 	typedef initial_alignment_set<use_model> use_ias;
 	typedef affpro_clusters<use_model> use_affpro;
-	if(argc < 5) {
+	if(argc < 6) {
 		usage();
 		cerr << "Program: model" << std::endl;
 		cerr << "Parameters:" << std::endl;
 		cerr << "* fasta file from fasta_prepare" << std::endl;
 		cerr << "* maf file containing alignments of sequences contained in the fasta file" << std::endl;
 		cerr << "* output maf file for the graph" << std::endl;
+		cerr << "* output binary compressed file (use 'noencode' to skip encoding step)" << std::endl;
 		cerr << "* number of threads to use (optional, default 10)" << std::endl;
 	}
 
@@ -482,10 +502,11 @@ int do_mc_model(int argc, char * argv[]) {
 	std::string maffile(argv[3]);
 	std::string graphout(argv[4]);
 	size_t num_threads = 1;
-	if(argc == 6) {
-		num_threads = atoi(argv[5]);
+	if(argc == 7) {
+		num_threads = atoi(argv[6]);
 	}
-	std::ofstream outs("encode",std::ofstream::binary);
+	std::string encoding_out(argv[5]);
+	std::ofstream outs(encoding_out.c_str(),std::ofstream::binary);
 // Read all data
 	all_data data;
 	data.read_fasta_maf(fastafile, maffile);
@@ -560,6 +581,10 @@ int do_mc_model(int argc, char * argv[]) {
 
 #endif
 
+	double all_gain = 0;
+	double all_gain_in_ias = 0;
+	size_t all_used_input_alignments = 0;
+	size_t all_npo_alignments = 0;
 
 #pragma omp parallel for num_threads(num_threads) schedule(dynamic)
 	for(size_t i=0; i<ccs.size(); ++i) {
@@ -569,13 +594,21 @@ int do_mc_model(int argc, char * argv[]) {
 }
 		clock_t ias_time_local = clock();
 		std::set< const pw_alignment *, compare_pw_alignment> & cc = ccs.at(i);
-		use_ias ias(data,cc, m, cluster_base_cost,outs);
-		ias.compute(cc_overlap.at(i),outs);
+		use_ias ias(data,cc, m, cluster_base_cost);
+		ias.compute(cc_overlap.at(i));
 		ias_time_local = clock() - ias_time_local;
 
 		clock_t test_time_local = clock();
 		cc_overlap.at(i).test_partial_overlap(); // TODO remove slow test function
 		test_time_local = clock() - test_time_local;
+#pragma omp critical(gain_statistics)
+{
+		all_gain+=ias.get_max_gain();
+		all_gain_in_ias+=ias.get_result_gain();
+		all_used_input_alignments+=ias.get_used_alignments();
+		all_npo_alignments += cc_overlap.at(i).size();
+}
+
 
 	//	std::cout << " number of alignments " << cc_overlap.at(i).size() << std::endl;
 		// TODO this can be done a lot faster because there is no partial overlap here
@@ -764,7 +797,9 @@ int do_mc_model(int argc, char * argv[]) {
 		for(size_t h=0; h< it->second.size();h++){
 			it->second.at(h).print();
 		}
-	}*/	
+	}
+ 
+ */	
 	
 				
 	/*	for(std::set< const pw_alignment *, compare_pw_alignment>::iterator it=cc.begin();it!=cc.end();it++ ){
@@ -801,7 +836,8 @@ int do_mc_model(int argc, char * argv[]) {
 /*	std::cout<< "al cent size: "<<  alignments_in_a_cluster.size() << std::endl;
 	for(std::map<std::string, std::vector<pw_alignment> >::iterator it = alignments_in_a_cluster.begin(); it!=alignments_in_a_cluster.end();it++){
 		std::cout << " al cent: "<< it->first <<std::endl;
-	}*/
+	} 
+*/
 	//Defining weights of global clustering results! 
 	std::map<std::string, unsigned int>weight;
 	size_t max_bit = 8;	
@@ -949,6 +985,7 @@ int do_mc_model(int argc, char * argv[]) {
 
 	*/
 //Data compression:
+	if(0!=encoding_out.compare("noencode")) {
 	std::cout<< "weight size: "<< weight.size()<<std::endl;
 //	en.arithmetic_encoding_alignment(weight,member_of_cluster,alignments_in_a_cluster,outs);
 //	en.write_to_stream(alignments_in_a_cluster,outs);
@@ -963,19 +1000,14 @@ int do_mc_model(int argc, char * argv[]) {
 	outs.close();
 //	test.encode();
 
+	}
 
-//	test.decode();
-//	test.compare();
-	std::ifstream in("encode",std::ifstream::binary);
-//	en.read_from_stream(in);
-	dlib::entropy_decoder_kernel_1  dec;
-	en.al_decoding(in,dec);
-//	test.compare();
-//	en.arithmetic_decoding_centers(in);
-//	en.test_al_decoding(in,dec);
-//	test.compare();
 	arithmetic_encoding_time = clock() - arithmetic_encoding_time;
-
+	
+	std::cout << "Initial alignments sets summary:" << std::endl;
+	std::cout << "Of " << data.numAlignments() << " pairwise alignments with total gain of " << all_gain << " we could use " << all_used_input_alignments << std::endl;
+	std::cout << "to create " << all_npo_alignments << " pieces without pairwise overlap, with a total gain of " << all_gain_in_ias << std::endl; 
+	std::cout << "inital alignment sets efficiency is " << all_gain_in_ias/all_gain<<std::endl;
 	std::cout << "Clustering summary: " << std::endl;
 	std::cout << "Input: " << num_cluster_inputs_al << " pw alignments on " << num_cluster_seq <<" sequence pieces " <<std::endl;
 	std::cout << "Output: " << num_clusters << " clusters containing " << num_cluster_members_al << " alignments " << std::endl;
@@ -983,7 +1015,7 @@ int do_mc_model(int argc, char * argv[]) {
 	std::cout << "Time overview: " << std::endl;
 	std::cout << "Read data " << (double)read_data_time/CLOCKS_PER_SEC << std::endl;
 	std::cout << "Compute initial connected components " << (double)initial_cc_time/CLOCKS_PER_SEC << std::endl;
-	std::cout << "Compute initial alignments std::set + remove partial overlap " << (double)ias_time/CLOCKS_PER_SEC << std::endl;
+	std::cout << "Compute initial alignments set + remove partial overlap " << (double)ias_time/CLOCKS_PER_SEC << std::endl;
 	std::cout << "Test functions " << (double)test_function_time/CLOCKS_PER_SEC << std::endl;
 	std::cout << "Compute second connected components " << (double)second_cc_time/CLOCKS_PER_SEC << std::endl;
 	std::cout << "Affinity propagation clustering " << (double)ap_time/CLOCKS_PER_SEC << std::endl;
@@ -1103,8 +1135,8 @@ int main(int argc, char * argv[]) {
 
 
 
-#include "model.cpp"
 #endif
+#include "model.cpp"
 
 
 

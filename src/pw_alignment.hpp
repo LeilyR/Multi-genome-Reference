@@ -60,17 +60,13 @@ class pw_alignment {
 
 	void print() const;
 
-	void set_cost(std::vector<double> create, std::vector<double> modify) const;
+	void set_cost(const std::vector<double> & create, const std::vector<double> & modify) const;
 	bool is_cost_cached() const;
 	double get_create1() const;
 	double get_create2() const;
 	double get_modify1() const;
 	double get_modify2() const;
 
-	bool operator < (const pw_alignment& p)const // Marion : I had this function -> compare pw_alignment
-		{
-			return (getbegin2() < p.getbegin2());
-		}
 	private:
 	std::vector<std::vector<bool> > samples;
 	std::vector<size_t> begins;
@@ -90,6 +86,10 @@ class pw_alignment {
 class compare_pw_alignment {
 	public:
 	bool operator()(const pw_alignment *const &a, const pw_alignment *const &b) const ;
+};
+class sort_pw_alignment{
+	public:
+	bool operator () (const pw_alignment &p1, const pw_alignment &p2 )const;
 };
 
 class wrapper{
