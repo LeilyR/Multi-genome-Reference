@@ -2612,8 +2612,8 @@ void mc_model::markov_chain_alignment(std::ofstream& outs){
 	// count all edit operations contained in the alignments (per context)
 	for(size_t k = 0; k < data.numAlignments(); k++){
 		const pw_alignment & p = data.getAlignment(k);
-		computing_modification_oneToTwo(p,functor,outs);
-		computing_modification_twoToOne(p,functor,outs);
+		computing_modification_oneToTwo(p,functor);
+		computing_modification_twoToOne(p,functor);
 	}
 	functor.total_context();
 	for(size_t i = 0; i< data.numAcc();i++){
@@ -2707,135 +2707,151 @@ const std::map<std::string, std::vector<unsigned int> > & mc_model::get_highValu
 
 
 
-	void mc_model::cost_function( pw_alignment& p,std::ofstream & outs) const {
-		std::vector<double> cost_on_sample(2);
-		std::vector<double> modify_cost(2);
-		double c1;
-		double c2;
-		double m1;
-		double m2;
-		cost_function(p, c1, c2, m1, m2,outs);
-		cost_on_sample.at(0) = c1;
-		cost_on_sample.at(1) = c2;
-		modify_cost.at(0) = m1;
-		modify_cost.at(1) = m2;
+void mc_model::cost_function( pw_alignment& p) const {
+	std::vector<double> cost_on_sample(2);
+	std::vector<double> modify_cost(2);
+	double c1;
+	double c2;
+	double m1;
+	double m2;
+	cost_function(p, c1, c2, m1, m2);
+	cost_on_sample.at(0) = c1;
+	cost_on_sample.at(1) = c2;
+	modify_cost.at(0) = m1;
+	modify_cost.at(1) = m2;
 
-		p.set_cost(cost_on_sample, modify_cost);
+	p.set_cost(cost_on_sample, modify_cost);
+}
+
+const std::vector<vector< std::map<std::string, vector<double> > > > &mc_model::get_mod_cost()const{
+	return mod_cost;
+}
+
+
+void mc_model::cost_function(const pw_alignment& p, double & c1, double & c2, double & m1, double & m2)const {
+	if(p.is_cost_cached()) {
+//		std::cout << " from cache " << &p << std::endl;
+		c1 = p.get_create1();
+		c2 = p.get_create2();
+		m1 = p.get_modify1();
+		m2 = p.get_modify2();
+//			std::cout << " c2 " << c2 << " m1 " << m1 << std::endl; 
+//		std::cout << " c1 " << c1 << " m2 " << m2 << std::endl; 
+
+		return; 
 	}
-	const std::vector<vector< std::map<std::string, vector<double> > > > &mc_model::get_mod_cost()const{
-		return mod_cost;
 
-	}
 
-	void mc_model::cost_function(const pw_alignment& p, double & c1, double & c2, double & m1, double & m2,std::ofstream & outs)const {
-		if(p.is_cost_cached()) {
-			c1 = p.get_create1();
-			c1 = p.get_create2();
-			m1 = p.get_modify1();
-			m2 = p.get_modify2();
-			return;
+
+//	p.print();
+//	std::cout<<"data address in cost function: "<< &data <<std::endl;
+//	data.numAcc();
+	cost_functor f(data,mod_cost);
+//	p.print();
+//	size_t length = p.alignment_length();
+//	std::cout<<"length: "<< length<<std::endl;
+	computing_modification_oneToTwo(p,f);
+	computing_modification_twoToOne(p,f);
+	std::vector<double> cost_on_sample(2,0);
+	std::vector<double> modify_cost(2,0);
+	size_t acc1 = data.accNumber(p.getreference1());
+	size_t acc2 = data.accNumber(p.getreference2());
+	char s1chr;
+	char s2chr;
+	size_t left1;
+	size_t right1;	
+	size_t left2;
+	size_t right2;
+	p.get_lr1(left1,right1);
+	p.get_lr2(left2,right2);
+//	std::cout<<"left: "<<left1<<"right: "<<right1<<std::endl;
+	for(size_t i = left1; i< right1; i++){
+		s1chr = data.getSequence(p.getreference1()).at(i);
+		size_t s1 = dnastring::base_to_index(s1chr);
+		std::stringstream context1;
+		for (size_t j = Sequence_level; j>0; j--){
+			
+			if(i<j){
+				char r1chr = 'A';
+				context1 << r1chr;					
+			}else{
+				char r1chr = data.getSequence(p.getreference1()).at(i-j);
+				context1 << r1chr;
+			//	std::cout<<"rchr: "<<r1chr<<std::endl;	
+			}
 		}
-
-
-
-	//	p.print();
-	//	std::cout<<"data address in cost function: "<< &data <<std::endl;
-	//	data.numAcc();
-		cost_functor f(data,mod_cost);
-	//	p.print();
-	//	size_t length = p.alignment_length();
-	//	std::cout<<"length: "<< length<<std::endl;
-		computing_modification_oneToTwo(p,f,outs);
-		computing_modification_twoToOne(p,f,outs);
-		std::vector<double> cost_on_sample(2,0);
-		std::vector<double> modify_cost(2,0);
-		size_t acc1 = data.accNumber(p.getreference1());
-		size_t acc2 = data.accNumber(p.getreference2());
-		char s1chr;
-		char s2chr;
-		size_t left1;
-		size_t right1;	
-		size_t left2;
-		size_t right2;
-		p.get_lr1(left1,right1);
-		p.get_lr2(left2,right2);
-	//	std::cout<<"left: "<<left1<<"right: "<<right1<<std::endl;
-		for(size_t i = left1; i< right1; i++){
-			s1chr = data.getSequence(p.getreference1()).at(i);
-			size_t s1 = dnastring::base_to_index(s1chr);
-			std::stringstream context1;
-			for (size_t j = Sequence_level; j>0; j--){
-				
-				if(i<j){
-					char r1chr = 'A';
-					context1 << r1chr;					
-				}else{
-					char r1chr = data.getSequence(p.getreference1()).at(i-j);
-					context1 << r1chr;
-				//	std::cout<<"rchr: "<<r1chr<<std::endl;	
-				}
+		std::string seq1;
+		context1>>seq1;
+	//	std::cout<<"seq1: " << seq1<<std::endl;
+		std::map <std::string, std::vector<double> >::const_iterator it= sequence_successive_bases.at(acc1).find(seq1);
+		assert(it != sequence_successive_bases.at(acc1).end());
+	//	std::cout<<"sequence successive at "<< s1 << " is "<<it->second.at(s1)<<std::endl;
+		cost_on_sample.at(0) += it->second.at(s1);
+	}	
+//	std::cout<<"cost: "<<cost_on_sample.at(0)<<std::endl;	
+	for(size_t i = left2; i<right2; i++){
+		s2chr = data.getSequence(p.getreference2()).at(i);
+		size_t s2 = dnastring::base_to_index(s2chr);
+		std::stringstream context2;
+		for(size_t j = Sequence_level; j>0; j--){
+			if(i<j){
+				char r2chr = 'A';
+				context2 << r2chr;	
+			}else{
+				char r2chr = data.getSequence(p.getreference2()).at(i-j);
+				context2 << r2chr;
 			}
-			std::string seq1;
-			context1>>seq1;
-		//	std::cout<<"seq1: " << seq1<<std::endl;
-			std::map <std::string, std::vector<double> >::const_iterator it= sequence_successive_bases.at(acc1).find(seq1);
-			assert(it != sequence_successive_bases.at(acc1).end());
-		//	std::cout<<"sequence successive at "<< s1 << " is "<<it->second.at(s1)<<std::endl;
-			cost_on_sample.at(0) += it->second.at(s1);
-		}	
-	//	std::cout<<"cost: "<<cost_on_sample.at(0)<<std::endl;	
-		for(size_t i = left2; i<right2; i++){
-			s2chr = data.getSequence(p.getreference2()).at(i);
-			size_t s2 = dnastring::base_to_index(s2chr);
-			std::stringstream context2;
-			for(size_t j = Sequence_level; j>0; j--){
-				if(i<j){
-						char r2chr = 'A';
-						context2 << r2chr;	
-				}else{
-						char r2chr = data.getSequence(p.getreference2()).at(i-j);
-						context2 << r2chr;
-				}
-			}
-			std::string seq2;
-			context2>>seq2;
-			std::map <std::string, std::vector<double> >::const_iterator it1= sequence_successive_bases.at(acc2).find(seq2);
-			assert(it1 != sequence_successive_bases.at(acc2).end());
-		//	std::cout<<"sequence successive at "<< s2 << " is "<<it1->second.at(s2)<<std::endl;
-			cost_on_sample.at(1) += it1->second.at(s2);
-		}	
+		}
+		std::string seq2;
+		context2>>seq2;
+		std::map <std::string, std::vector<double> >::const_iterator it1= sequence_successive_bases.at(acc2).find(seq2);
+		assert(it1 != sequence_successive_bases.at(acc2).end());
+	//	std::cout<<"sequence successive at "<< s2 << " is "<<it1->second.at(s2)<<std::endl;
+		cost_on_sample.at(1) += it1->second.at(s2);
+	}
 
-		c1 = cost_on_sample.at(0);
-		c2 = cost_on_sample.at(1);
+
+
+	c1 = cost_on_sample.at(0);
+	c2 = cost_on_sample.at(1);
 //		m1 = modify_cost.at(0);
 //		m2 = modify_cost.at(1);
-		m1 = f.get_modify(p,acc1,acc2);
-		m2 = f.get_modify(p,acc2,acc1);
-		modify_cost.at(0) = m1;
-		modify_cost.at(1) = m2;
-		p.set_cost(cost_on_sample, modify_cost);
-	//	std::cout << " c2 " << c2 << " m1 " << m1 << std::endl; 
-	//	std::cout << " c1 " << c1 << " m2 " << m2 << std::endl; 
+	m1 = f.get_modify(p,acc1,acc2);
+	m2 = f.get_modify(p,acc2,acc1);
+	modify_cost.at(0) = m1;
+	modify_cost.at(1) = m2;
+	p.set_cost(cost_on_sample, modify_cost);
+//		std::cout << " c2 " << c2 << " m1 " << m1 << std::endl; 
+//		std::cout << " c1 " << c1 << " m2 " << m2 << std::endl; 
+	assert(p.is_cost_cached());
+	assert(m1==p.get_modify1());
+	assert(m2==p.get_modify2());
+	assert(c1==p.get_create1());
+	assert(c2==p.get_create2());
+
 	//	std::cout<< "length: " << length<<std::endl;
 	//	std::cout<< "c1: " << c1 << " c2: "<< c2 << " m1: "<< m1<< " m2: "<< m2 <<std::endl;
-	}
-	void mc_model::gain_function(const pw_alignment& p, double & g1, double & g2,std::ofstream & outs)const {
-		double c1;
-		double c2;
-		double m1;
-		double m2;
-		cost_function(p, c1, c2, m1,m2,outs);
+}
+
+
+void mc_model::gain_function(const pw_alignment& p, double & g1, double & g2)const {
+	double c1;
+	double c2;
+	double m1;
+	double m2;
+	cost_function(p, c1, c2, m1,m2);
 
 	
-		g1 = c2 - m1;
-		g2 = c1 - m2;
+	g1 = c2 - m1;
+	g2 = c1 - m2;
 
 //		std::cout << " gain function c2 " << c2 << " m1 " << m1 << " gain1 " << g1 << std::endl; 
 //		std::cout << " gain function c1 " << c1 << " m2 " << m2 << " gain2 " << g2 << std::endl; 
 
 
-	}
-	void mc_model::write_parameters(std::ofstream & outs){
+}
+
+void mc_model::write_parameters(std::ofstream & outs){
 		make_all_the_patterns();
 	//	std::ofstream outs("encode",std::ofstream::binary);
 	//	if(outs.is_open()){
@@ -3494,15 +3510,15 @@ void mc_model::make_all_alignments_patterns(){
 
 // TODO 
 // this function should get a better name. It applies the functor on each position in the alignment
-	void mc_model::computing_modification_oneToTwo(const pw_alignment & p, abstract_context_functor & functor,std::ofstream & outs)const{
+	void mc_model::computing_modification_oneToTwo(const pw_alignment & p, abstract_context_functor & functor)const{
 		// TODO new entropy encoder makes no sense here
 		std::string seq = "";
 	//	std::cout<<"data ad in computing mod: "<< & data << std::endl;
 	//	p.print();
 		size_t left_1; 
-		size_t left_2;
+	//	size_t left_2;
 		size_t right_1;
-		size_t right_2;
+	//	size_t right_2;
 		p.get_lr1(left_1,right_1);
 		size_t acc1 = data.accNumber(p.getreference1());
 		size_t acc2 = data.accNumber(p.getreference2());
@@ -3590,7 +3606,7 @@ void mc_model::make_all_alignments_patterns(){
 		//		std::cout<< "size of seq: "<< seq.size()<<std::endl;
 		//		std::cout << "seq 2 " << int(seq2) << std::endl;
 		//		std::cout<< "recorded keep length: " << n+1 << std::endl;
-				functor. see_context(acc1,acc2,p,i,seq1,seq2, outs);
+				functor. see_context(acc1,acc2,p,i,seq1,seq2);
 		//		std::cout<<"n: "<< n << std::endl;
 			}else{
 				if((s1!=5) & (s2!=5)){
@@ -3600,14 +3616,14 @@ void mc_model::make_all_alignments_patterns(){
 					}*/
 					seq += modification_character(modify_base,num_delete,insert_base,num_keep);
 					seq2 = modification_character(modify_base,num_delete,insert_base,num_keep);
-					functor. see_context(acc1,acc2,p,i,seq1,seq2,outs);
+					functor. see_context(acc1,acc2,p,i,seq1,seq2);
 				//	std::cout<< "seq1" << seq1 <<std::endl;
 				}
 				if(s1 == 5){
 					insert_base = s2;
 					seq += modification_character(modify_base,num_delete,insert_base,num_keep);						
 					seq2 = modification_character(modify_base,num_delete,insert_base,num_keep);
-					functor. see_context(acc1,acc2,p,i,seq1,seq2,outs);
+					functor. see_context(acc1,acc2,p,i,seq1,seq2);
 			//		std::cout<< "seq1" << seq1 <<std::endl;						
 				}
 				if(s2 == 5){
@@ -3643,7 +3659,7 @@ void mc_model::make_all_alignments_patterns(){
 						}
 					}
 					seq2 = seq.at(seq.size()-1);
-					functor. see_context(acc1,acc2,p,i,seq1,seq2,outs);
+					functor. see_context(acc1,acc2,p,i,seq1,seq2);
 				}
 
 			}
@@ -3678,7 +3694,7 @@ void mc_model::make_all_alignments_patterns(){
 	}
 
 	
-	void mc_model::computing_modification_twoToOne(const pw_alignment & p, abstract_context_functor & functor,std::ofstream & outs)const{
+	void mc_model::computing_modification_twoToOne(const pw_alignment & p, abstract_context_functor & functor)const{
 		std::string seq = "";
 		size_t acc1 = data.accNumber(p.getreference1());
 		size_t acc2 = data.accNumber(p.getreference2());
@@ -3765,7 +3781,7 @@ void mc_model::make_all_alignments_patterns(){
 					}
 				}
 				seq2 = seq.at(seq.size()-1);
-				functor. see_context(acc2,acc1,p,i,seq1,seq2,outs);
+				functor. see_context(acc2,acc1,p,i,seq1,seq2);
 			}else{
 				if((s1!=5) & (s2!=5)){
 					modify_base = s1;
@@ -3774,13 +3790,13 @@ void mc_model::make_all_alignments_patterns(){
 					}*/
 					seq += modification_character(modify_base,num_delete,insert_base,num_keep);
 					seq2 = modification_character(modify_base,num_delete,insert_base,num_keep);
-					functor. see_context(acc2,acc1,p,i,seq1,seq2,outs);
+					functor. see_context(acc2,acc1,p,i,seq1,seq2);
 				}
 				if(s2 == 5){
 					insert_base = s1;
 					seq += modification_character(modify_base,num_delete,insert_base,num_keep);					
 					seq2 = modification_character(modify_base,num_delete,insert_base,num_keep);
-					functor. see_context(acc2,acc1,p,i,seq1,seq2,outs);						
+					functor. see_context(acc2,acc1,p,i,seq1,seq2);						
 				}
 				if(s1 == 5){
 					size_t dlength = 0;
@@ -3816,7 +3832,7 @@ void mc_model::make_all_alignments_patterns(){
 						}
 					}
 					seq2 = seq.at(seq.size()-1);
-					functor. see_context(acc2,acc1,p,i,seq1,seq2,outs);
+					functor. see_context(acc2,acc1,p,i,seq1,seq2);
 				}
 			}
 	/*		std::cout<< " context2 is "<<std::endl;
@@ -3899,10 +3915,10 @@ void mc_model::make_all_alignments_patterns(){
 		std::cout << "center accession: "<< accession << " accession1: "<< acc1 << std::endl;
 		if(al.getreference1()==center_ref && left_1 == center_left){
 			std::cout<< "center is on ref1"<<std::endl;
-			computing_modification_oneToTwo(al, functor,outs);	
+			computing_modification_oneToTwo(al, functor);	
 		}else{
 			std::cout<< "center is on ref2"<<std::endl;
-			computing_modification_twoToOne(al, functor,outs);
+			computing_modification_twoToOne(al, functor);
 		}
 	}
 
@@ -3934,18 +3950,19 @@ void mc_model::make_all_alignments_patterns(){
 		}
 
 	}
-	abstract_context_functor::abstract_context_functor(){
 	
+	abstract_context_functor::abstract_context_functor(){
 	}
-	void abstract_context_functor::see_context(size_t acc1, size_t acc2, const pw_alignment & p, size_t pos, std::string context, char last_char, std::ofstream& outs){
+	void abstract_context_functor::see_context(size_t acc1, size_t acc2, const pw_alignment & p, size_t pos, std::string context, char last_char){
 		
 	}
 	void abstract_context_functor::see_entire_context(size_t acc1,size_t acc2, std::string entireContext){
 
 	}
+	
 	counting_functor::counting_functor(all_data & d):data(d), successive_modification(d.numAcc(),std::vector<std::map<std::string, std::vector<double> > >(d.numAcc())),total(d.numAcc(),std::vector<std::map<std::string, double > >(d.numAcc())) {}
 // TODO why do we use double for counting?
-	void counting_functor::see_context(size_t acc1, size_t acc2, const pw_alignment & p, size_t pos, std::string context, char last_char, std::ofstream & outs){
+	void counting_functor::see_context(size_t acc1, size_t acc2, const pw_alignment & p, size_t pos, std::string context, char last_char){
 	//	std::cout<< "accession 1: " << acc1 << " accession 2: " << acc2 << " size: " << pos << " last char: " << dnastring::base_to_index(last_char) << " " << int(last_char)<<std::endl;
 	//	std::cout<< "context is: "<< std::endl;
 	/*	for(size_t i = 0 ; i < context.size(); i++){
@@ -4016,7 +4033,7 @@ double counting_functor::get_total(size_t acc1, size_t acc2, std::string context
 		modify2 = 0;		
 		modification = mod_cost;
 	}
-	void cost_functor::see_context(size_t acc1, size_t acc2, const pw_alignment & p, size_t pos, std::string context, char last_char, std::ofstream & outs){
+	void cost_functor::see_context(size_t acc1, size_t acc2, const pw_alignment & p, size_t pos, std::string context, char last_char){
 		size_t ref1 = p.getreference1();
 		size_t ref2 = p.getreference2();
 		size_t accession1 = data.accNumber(ref1);
@@ -4049,7 +4066,7 @@ double counting_functor::get_total(size_t acc1, size_t acc2, std::string context
 	encoding_functor::encoding_functor(all_data & d, mc_model * m, wrapper & wrap, 	dlib::entropy_encoder_kernel_1 & encode ):data(d),model(m),wrappers(wrap),enc(encode){
 	}
 	
-	void encoding_functor::see_context(size_t acc1, size_t acc2,const pw_alignment & p, size_t pos, std::string context, char last_char, std::ofstream& outs){//last_char is infact a pattern!
+	void encoding_functor::see_context(size_t acc1, size_t acc2,const pw_alignment & p, size_t pos, std::string context, char last_char){//last_char is infact a pattern!
 		size_t bit = 13;
 	//	dlib::entropy_encoder_kernel_1 * enc = new dlib::entropy_encoder_kernel_1();
 	//	enc->std::set_stream(outs);

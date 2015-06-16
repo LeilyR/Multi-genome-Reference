@@ -20,7 +20,7 @@ typedef  std::set<const pw_alignment*, compare_pw_alignment> alset;
 template<typename T>
 class initial_alignment_set {
 	public:
-	initial_alignment_set(const all_data & d, const T & a_model, double base_cost,std::ofstream & outs): data(d), common_model(a_model) {
+	initial_alignment_set(const all_data & d, const T & a_model, double base_cost): data(d), common_model(a_model) {
 		this->base_cost = base_cost;
 		std::multimap<double, const pw_alignment*> sorter;
 		double sumgain = 0;
@@ -28,15 +28,13 @@ class initial_alignment_set {
 			const pw_alignment * cur = &(data.getAlignment(i));
 	
 			double gain1, gain2;
-			common_model.gain_function(*cur, gain1, gain2,outs);
+			common_model.gain_function(*cur, gain1, gain2);
 			double vgain = (gain1+gain2)/2 - base_cost;
-			// TODO gain1 and gain2
-		//	if(gain2 > gain1) gain1 = gain2;
 		//	std::cout << " al " << i << " gain1 " << gain1 << std::endl;
 			if(vgain > 0.0) {
 				sorter.insert(std::make_pair(vgain, cur));
+				sumgain+=vgain;
 			}
-			sumgain+=vgain;
 		}
 
 		sorted_original_als = std::vector<const pw_alignment*>(sorter.size(), NULL);
@@ -53,7 +51,7 @@ class initial_alignment_set {
 		assert(pos == sorter.size());
 	//	std::cout << " " << sorter.size() << " input alignments, total gain: " << sumgain << " bit " << std::endl;
 	}
-	initial_alignment_set(const all_data & d, const std::set< const pw_alignment *, compare_pw_alignment> & als, const T & a_model, double base_cost, std::ofstream & outs): data(d), common_model(a_model) {
+	initial_alignment_set(const all_data & d, const std::set< const pw_alignment *, compare_pw_alignment> & als, const T & a_model, double base_cost): data(d), common_model(a_model) {
 		this->base_cost = base_cost;
 		std::multimap<double, const pw_alignment*> sorter;
 		double sumgain = 0;
@@ -61,12 +59,21 @@ class initial_alignment_set {
 			const pw_alignment * cur = *it;
 	
 			double gain1, gain2;
-			common_model.gain_function(*cur, gain1, gain2,outs);
+			common_model.gain_function(*cur, gain1, gain2);
 			double vgain = (gain1+gain2)/2 - base_cost;
 		//	if(gain2 > gain1) gain1 = gain2;
 		//	std::cout << " al length " << cur->alignment_length() << " gain1 " << gain1 << " gain2 " << gain2 <<  std::endl;
 			if(vgain>0.0) {
+			//	std::cout << " ins " << vgain << " at " << cur << std::endl;
 				sorter.insert(std::make_pair(vgain, cur));
+
+				/*
+				common_model.gain_function(*cur, gain1, gain2);
+				vgain = (gain1+gain2)/2 - base_cost;
+				std::cout << " cached gian "<< vgain << std::endl;
+				assert(vgain>=0);
+				*/
+
 			}
 			sumgain+=vgain;
 		}
@@ -75,6 +82,16 @@ class initial_alignment_set {
 		size_t pos = 0;
 		for(std::multimap<double, const pw_alignment*>::reverse_iterator rit = sorter.rbegin(); rit!=sorter.rend(); ++rit) {
 			const pw_alignment * alit = rit->second;
+		//	std::cout << " ins2 " << pos << " weight " << rit->first << " at " << alit <<  std::endl;
+			
+			/*
+			double g1, g2;
+			common_model.gain_function(*alit, g1, g2);
+			double vgain = (g1+g2)/2 - base_cost;
+			std::cout << " cached gain " << vgain << std::endl;
+			assert(vgain >=0);
+*/
+
 			sorted_original_als.at(pos) = alit;
 			pos++;
 		}
@@ -85,16 +102,27 @@ class initial_alignment_set {
 
 	~initial_alignment_set() {}
 
-	void compute(overlap & o, std::ofstream &);
-	void compute_simple(overlap & o,std::ofstream &);
-	void compute_simple_lazy_splits(overlap & o,std::ofstream &);
-	void lazy_split_insert_step(overlap & ovrlp, size_t level, const pw_alignment * al, std::vector<const pw_alignment*> & inserted_alignments, vector<const pw_alignment*> & removed_alignments, double & local_gain, std::ofstream & outs);
+	void compute(overlap & o);
+	void compute_simple(overlap & o);
+
+/*
+	This method starts with a weighted INDEPENDENT SET of alignments without partial overlap which is computed
+	using a fast and easy to implement VERTEX COVER 2-approximation 
+	(Clarkson, KL. A modification of the greedy algorithm for vertex cover. Information Processing Letters. 1983.)
+*/
+	void compute_vcover_clarkson(overlap & o);
+	void compute_simple_lazy_splits(overlap & o);
+	void lazy_split_insert_step(overlap & ovrlp, size_t level, const pw_alignment * al, std::vector<const pw_alignment*> & inserted_alignments, vector<const pw_alignment*> & removed_alignments, double & local_gain);
 
 	double get_max_gain() const {
 		return max_gain;
 	}
 	double get_result_gain() const {
 		return result_gain;
+	}
+
+	size_t get_used_alignments() const {
+		return used_alignments;
 	}
 
 	private:
@@ -104,6 +132,14 @@ class initial_alignment_set {
 	double base_cost;
 	double max_gain;
 	double result_gain;
+	size_t used_alignments;
+
+
+	void update_remove(size_t index, std::vector<std::set<size_t> > & edges, std::map<size_t, double> & index_to_weight, std::multimap<double, size_t> & weight_to_index);
+	void remove_val(size_t index, std::map<size_t, double> & index_to_weight,  std::multimap<double, size_t> & weight_to_index);
+	void overlap_graph(std::vector<std::set<size_t> > & edges);
+	void search_area(size_t from, size_t to, const std::multimap<size_t, size_t> & data, std::set<size_t> & res);
+	
 };
 
 

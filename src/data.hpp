@@ -210,7 +210,7 @@ private:
 class abstract_context_functor {
 	public:
 	abstract_context_functor();
-	virtual void see_context(size_t acc1, size_t acc2,const pw_alignment& p, size_t pos, std::string context, char last_char,std::ofstream &);
+	virtual void see_context(size_t acc1, size_t acc2,const pw_alignment& p, size_t pos, std::string context, char last_char);
 	virtual void see_entire_context(size_t acc1, size_t acc2, std::string entireContext);
 	
 
@@ -220,7 +220,7 @@ class abstract_context_functor {
 class counting_functor : public abstract_context_functor {
 	public:
 	counting_functor(all_data &);
-	virtual void see_context(size_t acc1, size_t acc2, const pw_alignment & p, size_t pos, std::string context, char last_char,std::ofstream&);
+	virtual void see_context(size_t acc1, size_t acc2, const pw_alignment & p, size_t pos, std::string context, char last_char);
 	const std::map<std::string, std::vector<double> > & get_context(size_t acc1, size_t acc2)const;
 	void total_context();
 	double get_total(size_t acc1, size_t acc2, std::string context)const;
@@ -239,7 +239,7 @@ class mc_model;
 class cost_functor : public abstract_context_functor {
 	public:
 	cost_functor(all_data &, const std::vector<vector<std::map<std::string, vector<double> > > >&);
-	virtual void see_context(size_t acc1, size_t acc2, const pw_alignment & p, size_t pos, std::string context, char last_char,std::ofstream& );
+	virtual void see_context(size_t acc1, size_t acc2, const pw_alignment & p, size_t pos, std::string context, char last_char);
 	double get_modify(const pw_alignment & p, size_t acc1, size_t acc2)const;
 	private:
 	std::vector<vector< std::map<std::string, vector<double> > > >  modification; 
@@ -257,7 +257,7 @@ class adding_functor : public abstract_context_functor {
 class encoding_functor : public abstract_context_functor {
 	public:
 	encoding_functor(all_data& , mc_model*, wrapper &, dlib::entropy_encoder_kernel_1 &);
-	virtual void see_context(size_t acc1, size_t acc2,const pw_alignment& p, size_t pos, std::string context, char last_char,std::ofstream&);	
+	virtual void see_context(size_t acc1, size_t acc2,const pw_alignment& p, size_t pos, std::string context, char last_char);	
 	virtual void see_entire_context(size_t acc1, size_t acc2, std::string entireContext);
 	const std::map<std::string, std::vector<double> > & get_alignment_context()const;
 //	std::vector<std::string> & get_alignment_context(pw_alignment& p)const;
@@ -273,7 +273,7 @@ class encoding_functor : public abstract_context_functor {
 
 class clustering_functor : public abstract_context_functor{
 	public:
-	virtual void see_context(size_t acc1, size_t acc2, const pw_alignment& p, size_t pos, std::string context, char last_char, std::ofstream &);//computing_modification_oneToTwo is used to fill in the map of modification between center and its associated member.
+	virtual void see_context(size_t acc1, size_t acc2, const pw_alignment& p, size_t pos, std::string context, char last_char);//computing_modification_oneToTwo is used to fill in the map of modification between center and its associated member.
 	//fek konam hamoon encoding_functor ok bashe, lazem nist ino benvisim
 
 	private:
@@ -293,14 +293,14 @@ class mc_model{
 		void markov_chain();
 		void markov_chain_alignment(std::ofstream&);
 		const std::vector<std::vector<std::map <std::string, vector<double> > > >& get_mod_cost()const;
-		void cost_function(const pw_alignment& p, double & c1, double & c2, double & m1, double & m2,std::ofstream&)const ;
-		void gain_function(const pw_alignment& p, double & g1, double & g2,std::ofstream&)const ;
+		void cost_function(const pw_alignment& p, double & c1, double & c2, double & m1, double & m2)const ;
+		void gain_function(const pw_alignment& p, double & g1, double & g2)const ;
 		void train(std::ofstream &);
 		char modification_character(int modify_base, int num_delete, int insert_base, int num_keep)const;
 		void modification(char enc, int & modify_base, int & num_delete, int & insert_base, int & num_keep)const;
-		void computing_modification_oneToTwo(const pw_alignment & p, abstract_context_functor & functor,std::ofstream&)const;
-		void computing_modification_twoToOne(const pw_alignment & p, abstract_context_functor & functor, std::ofstream&)const;
-		void cost_function( pw_alignment& p, std::ofstream&) const;
+		void computing_modification_oneToTwo(const pw_alignment & p, abstract_context_functor & functor)const;
+		void computing_modification_twoToOne(const pw_alignment & p, abstract_context_functor & functor)const;
+		void cost_function( pw_alignment& p) const;
 		std::string print_modification_character(char enc)const;
 		const std::map<std::string, std::vector<double> > & getPattern(size_t acc)const;
 		const std::vector<double> & get_create_cost(size_t acc) const;

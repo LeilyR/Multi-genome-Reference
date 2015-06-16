@@ -565,6 +565,10 @@ int do_mc_model(int argc, char * argv[]) {//mco bardar
 
 #endif
 
+	double all_gain = 0;
+	double all_gain_in_ias = 0;
+	size_t all_used_input_alignments = 0;
+	size_t all_npo_alignments = 0;
 
 #pragma omp parallel for num_threads(num_threads) schedule(dynamic)
 	for(size_t i=0; i<ccs.size(); ++i) {
@@ -574,13 +578,21 @@ int do_mc_model(int argc, char * argv[]) {//mco bardar
 }
 		clock_t ias_time_local = clock();
 		std::set< const pw_alignment *, compare_pw_alignment> & cc = ccs.at(i);
-		use_ias ias(data,cc, m, cluster_base_cost,outs);
-		ias.compute(cc_overlap.at(i),outs);
+		use_ias ias(data,cc, m, cluster_base_cost);
+		ias.compute(cc_overlap.at(i));
 		ias_time_local = clock() - ias_time_local;
 
 		clock_t test_time_local = clock();
 		cc_overlap.at(i).test_partial_overlap(); // TODO remove slow test function
 		test_time_local = clock() - test_time_local;
+#pragma omp critical(gain_statistics)
+{
+		all_gain+=ias.get_max_gain();
+		all_gain_in_ias+=ias.get_result_gain();
+		all_used_input_alignments+=ias.get_used_alignments();
+		all_npo_alignments += cc_overlap.at(i).size();
+}
+
 
 	//	std::cout << " number of alignments " << cc_overlap.at(i).size() << std::endl;
 		// TODO this can be done a lot faster because there is no partial overlap here
@@ -959,7 +971,11 @@ int do_mc_model(int argc, char * argv[]) {//mco bardar
 //	en.test_al_decoding(in,dec);
 //	test.compare();
 	arithmetic_encoding_time = clock() - arithmetic_encoding_time;
-
+	
+	std::cout << "Initial alignments sets summary:" << std::endl;
+	std::cout << "Of " << data.numAlignments() << " pairwise alignments with total gain of " << all_gain << " we could use " << all_used_input_alignments << std::endl;
+	std::cout << "to create " << all_npo_alignments << " pieces without pairwise overlap, with a total gain of " << all_gain_in_ias << std::endl; 
+	std::cout << "inital alignment sets efficiency is " << all_gain_in_ias/all_gain<<std::endl;
 	std::cout << "Clustering summary: " << std::endl;
 	std::cout << "Input: " << num_cluster_inputs_al << " pw alignments on " << num_cluster_seq <<" sequence pieces " <<std::endl;
 	std::cout << "Output: " << num_clusters << " clusters containing " << num_cluster_members_al << " alignments " << std::endl;
@@ -967,7 +983,7 @@ int do_mc_model(int argc, char * argv[]) {//mco bardar
 	std::cout << "Time overview: " << std::endl;
 	std::cout << "Read data " << (double)read_data_time/CLOCKS_PER_SEC << std::endl;
 	std::cout << "Compute initial connected components " << (double)initial_cc_time/CLOCKS_PER_SEC << std::endl;
-	std::cout << "Compute initial alignments std::set + remove partial overlap " << (double)ias_time/CLOCKS_PER_SEC << std::endl;
+	std::cout << "Compute initial alignments set + remove partial overlap " << (double)ias_time/CLOCKS_PER_SEC << std::endl;
 	std::cout << "Test functions " << (double)test_function_time/CLOCKS_PER_SEC << std::endl;
 	std::cout << "Compute second connected components " << (double)second_cc_time/CLOCKS_PER_SEC << std::endl;
 	std::cout << "Affinity propagation clustering " << (double)ap_time/CLOCKS_PER_SEC << std::endl;

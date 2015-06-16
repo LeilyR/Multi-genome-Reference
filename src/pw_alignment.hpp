@@ -60,7 +60,7 @@ class pw_alignment {
 
 	void print() const;
 
-	void set_cost(std::vector<double> create, std::vector<double> modify) const;
+	void set_cost(const std::vector<double> & create, const std::vector<double> & modify) const;
 	bool is_cost_cached() const;
 	double get_create1() const;
 	double get_create2() const;
