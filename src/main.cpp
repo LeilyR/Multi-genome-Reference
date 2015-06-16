@@ -11,6 +11,7 @@
 #include "model.hpp"
 #include "encoder.hpp"
 #include "test.hpp"
+#include "graph.hpp"
 #define NO_MAKEFILE
 #include "dlib/entropy_encoder/entropy_encoder_kernel_1.h"
 #include "dlib/entropy_decoder/entropy_decoder_kernel_1.h"
@@ -32,7 +33,24 @@
 
 int main(int argc, char * argv[]) {
 	std::cout << " hello " << std::endl;
+	Graph g = Graph();
 
+
+	//  runNeedleman("CCCGGGGGGTGCA","ATAGTTGCA",2);
+	//load data
+	all_data data = all_data();
+
+	//Init new Graph //TODO in main or parseData ?
+	Graph newGraph = Graph();
+	g.parseData(data,newGraph);
+
+	//std::cout << newGraph;
+	//std::cout <<" New Graph " <<newGraph << std::endl;
+
+
+
+
+/*
 	pw_alignment p(std::string("ATT----TTCTT"), string("AGTGATAT----"), 12, 15, 23, 26,1,1);
 	pw_alignment s(std::string("ATT----TTCTT"), string("ACTGATG---AC"),13, 18, 24, 29,2,1);
 
@@ -71,6 +89,7 @@ int main(int argc, char * argv[]) {
 }
 
 }
+*/
 	return 0;
 
 }
@@ -1122,8 +1141,8 @@ int main(int argc, char * argv[]) {
 
 
 
-#include "model.cpp"
 #endif
+#include "model.cpp"
 
 
 

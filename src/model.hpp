@@ -325,7 +325,7 @@ class affpro_clusters {
 		//	al->print();
 		//	dat.numAcc();
 		//	std::cout<<"data3 ad in afp: "<< & dat << std::endl;	
-			add_alignment(al,outs);
+			add_alignment(al,outs); //Marion : I have an error that I dont understand !
 		//	std::cout<<"data4 ad in afp: "<< & dat << std::endl;	
 
 		}

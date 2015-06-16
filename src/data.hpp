@@ -69,7 +69,8 @@ class all_data {
 
 		const dnastring & getSequence(size_t index) const;
 		const pw_alignment & getAlignment(size_t index) const;
-		const std::vector<pw_alignment>& getAlignments()const; // Attention : I had a function to get the vector of alignments
+		void add_pw_alignment(const pw_alignment& p);
+		const std::vector<pw_alignment>& getAlignments()const;
 	//	const multistd::map<size_t, size_t> & getAlOnRefMap(size_t seq_idx) const;
 
 		size_t numSequences() const;
@@ -85,7 +86,8 @@ class all_data {
 		size_t get_seq_size(size_t s) const;
 		void set_accession(const std::string & acc);
 		size_t numOfAcc() const;
-
+		const std::map< std::string, size_t>& getLongname2seqidx()const;
+		int findIdAlignment(std::string name,int start, int end);
 	
 	private:
 		// data

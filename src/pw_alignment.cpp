@@ -749,6 +749,9 @@ bool compare_pw_alignment::operator()(const pw_alignment *const &a, const pw_ali
 	if ( a->getend(abigger) > b->getend(bbigger)) return false;
 	return false;
 }
+bool sort_pw_alignment::operator() (const pw_alignment &p1, const pw_alignment &p2)const	{
+			return (p1.getbegin2() < p2.getbegin2());
+}
 
 void pw_alignment::set_cost(const std::vector<double> & create, const std::vector<double> & modify) const{
 	assert(create.size()==2 && modify.size()==2);
@@ -776,7 +779,6 @@ double pw_alignment::get_modify2() const {
 
 
 
-
         wrapper::wrapper():encodeout("enc.txt"),decodeout("dec.txt"),al_encode("al_encode.txt"),al_decode("al_decode.txt"){
         }
         wrapper::~wrapper(){}
@@ -798,6 +800,3 @@ double pw_alignment::get_modify2() const {
                 al_decode << "position: " << pos << " context: " <<  context <<std::endl;
         }
 
-
-
-	

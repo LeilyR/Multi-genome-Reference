@@ -65,7 +65,7 @@ void initial_alignment_set<T>::lazy_split_insert_step(overlap & ovrlp, size_t le
 			double iav_gain = (gain1 + gain2)/2 - base_cost;
 			if(iav_gain > 0) {
 				max_parts_gain += iav_gain;
-				ordered_parts.insert(make_pair(iav_gain, insert_als.at(i)));
+				ordered_parts.insert(std::make_pair(iav_gain, insert_als.at(i)));
 			}
 
 //			std::cout << "INS " << std::endl;
@@ -128,7 +128,7 @@ void initial_alignment_set<T>::lazy_split_insert_step(overlap & ovrlp, size_t le
 					common_model.gain_function(insert_als.at(i), gain1, gain2);
 					double iav_gain = (gain1 + gain2)/2 - base_cost;
 					if(iav_gain > 0) {
-						ordered_parts.insert(make_pair(iav_gain, insert_als.at(i)));
+						ordered_parts.insert(std::make_pair(iav_gain, insert_als.at(i)));
 						max_parts_gain+=iav_gain;
 					}
 		//			std::cout << "1 level " << level << " on al length " << al->alignment_length() << " 
@@ -724,10 +724,10 @@ void compute_cc::add_on_mmaps(const pw_alignment * pwa) {
 	pwa->print();
 	std::cout << std::endl;	
 */
-	als_on_reference.at(ref1).insert(make_pair(pwa->getbegin1(), pwa));
-	als_on_reference.at(ref1).insert(make_pair(pwa->getend1(), pwa));
-	als_on_reference.at(ref2).insert(make_pair(pwa->getbegin2(), pwa));
-	als_on_reference.at(ref2).insert(make_pair(pwa->getend2(), pwa));
+	als_on_reference.at(ref1).insert(std::make_pair(pwa->getbegin1(), pwa));
+	als_on_reference.at(ref1).insert(std::make_pair(pwa->getend1(), pwa));
+	als_on_reference.at(ref2).insert(std::make_pair(pwa->getbegin2(), pwa));
+	als_on_reference.at(ref2).insert(std::make_pair(pwa->getend2(), pwa));
 
 	size_t left, right;
 	pwa->get_lr1(left, right);
@@ -747,7 +747,7 @@ void compute_cc::remove_on_mmaps(const pw_alignment * al) {
 	size_t left, right;
 	al->get_lr1(left, right);
 
-	pair<std::multimap<size_t, const pw_alignment *>::iterator, std::multimap<size_t, const pw_alignment*>::iterator > l1 = 
+	std::pair<std::multimap<size_t, const pw_alignment *>::iterator, std::multimap<size_t, const pw_alignment*>::iterator > l1 = 
 		als_on_reference.at(ref1).equal_range(left);
 	for(std::multimap<size_t, const pw_alignment*>::iterator it = l1.first; it!=l1.second; ++it) {
 		if(it->second == al) {
@@ -755,7 +755,7 @@ void compute_cc::remove_on_mmaps(const pw_alignment * al) {
 			break;
 		}	
 	}
-	pair<std::multimap<size_t, const pw_alignment *>::iterator, std::multimap<size_t, const pw_alignment*>::iterator  > r1 = 
+	std::pair<std::multimap<size_t, const pw_alignment *>::iterator, std::multimap<size_t, const pw_alignment*>::iterator  > r1 = 
 		als_on_reference.at(ref1).equal_range(left);
 	for(std::multimap<size_t, const pw_alignment*>::iterator it = r1.first; it!=r1.second; ++it) {
 		if(it->second == al) {
@@ -766,7 +766,7 @@ void compute_cc::remove_on_mmaps(const pw_alignment * al) {
 
 	size_t ref2 = al->getreference2();
 	al->get_lr2(left, right);
-	pair<std::multimap<size_t, const pw_alignment *>::iterator, std::multimap<size_t, const pw_alignment*>::iterator  > l2 = 
+	std::pair<std::multimap<size_t, const pw_alignment *>::iterator, std::multimap<size_t, const pw_alignment*>::iterator  > l2 = 
 		als_on_reference.at(ref2).equal_range(left);
 	for(std::multimap<size_t, const pw_alignment*>::iterator it = l2.first; it!=l2.second; ++it) {
 		if(it->second == al) {
@@ -774,7 +774,7 @@ void compute_cc::remove_on_mmaps(const pw_alignment * al) {
 			break;
 		}	
 	}
-	pair<std::multimap<size_t, const pw_alignment *>::iterator, std::multimap<size_t, const pw_alignment*>::iterator  > r2 = 
+	std::pair<std::multimap<size_t, const pw_alignment *>::iterator, std::multimap<size_t, const pw_alignment*>::iterator  > r2 = 
 		als_on_reference.at(ref2).equal_range(left);
 	for(std::multimap<size_t, const pw_alignment*>::iterator it = r2.first; it!=r2.second; ++it) {
 		if(it->second == al) {
@@ -798,7 +798,7 @@ void compute_cc::compute(std::vector<std::set< const pw_alignment *, compare_pw_
 			std::set<const pw_alignment *, compare_pw_alignment> cc;
 			get_cc(al, cc, seen);
 	//		std::cout << "FOUND CC size " << cc.size() << std::endl;
-			sorter.insert(make_pair(cc.size(), cc));
+			sorter.insert(std::make_pair(cc.size(), cc));
 		}
 	
 	}
@@ -810,7 +810,7 @@ void compute_cc::compute(std::vector<std::set< const pw_alignment *, compare_pw_
 
 }
 
-void compute_cc::get_cc(const pw_alignment * al, std::set <const pw_alignment *, compare_pw_alignment> & cc, set <const pw_alignment *, compare_pw_alignment> & seen) {
+void compute_cc::get_cc(const pw_alignment * al, std::set <const pw_alignment *, compare_pw_alignment> & cc, std::set <const pw_alignment *, compare_pw_alignment> & seen) {
 	
 	size_t left, right;
 	al->get_lr1(left, right);
@@ -823,7 +823,7 @@ void compute_cc::get_cc(const pw_alignment * al, std::set <const pw_alignment *,
 
 
 // TODO further improvements to this function are possible if we store intervals on the references in which all alignments were already processed
-void compute_cc::cc_step(size_t ref, size_t left, size_t right, std::set <const pw_alignment *, compare_pw_alignment> & cc, set <const pw_alignment *, compare_pw_alignment>  & seen ) {
+void compute_cc::cc_step(size_t ref, size_t left, size_t right, std::set <const pw_alignment *, compare_pw_alignment> & cc, std::set <const pw_alignment *, compare_pw_alignment>  & seen ) {
 	// search bounds (where could other alignments which overlap with the current one start or end)
 	// leftbound: all alignments starting at leftbound or ealier either have the end in the search interval or no overlap with the search interval
 //	std::cout << " cc step " << ref << " fr " << left << " to " << right << " seen is " << seen.size() << " we are on " << alignments.size() << " alignments" <<  std::endl; 
@@ -1105,7 +1105,7 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment *al,std::ofstream
 	std::map<std::string, size_t>::iterator find2 = sequence_pieces.find(ref2name);
 	if(find1 == sequence_pieces.end()) {
 		ref1idx = sequence_pieces.size();
-		sequence_pieces.insert(make_pair(ref1name, ref1idx));
+		sequence_pieces.insert(std::make_pair(ref1name, ref1idx));
 		sequence_names.push_back(ref1name);
 		sequence_lengths.push_back(right1 - left1 + 1);
 	} else {
@@ -1113,7 +1113,7 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment *al,std::ofstream
 	}
 	if(find2 == sequence_pieces.end()) {
 		ref2idx = sequence_pieces.size();
-		sequence_pieces.insert(make_pair(ref2name, ref2idx));
+		sequence_pieces.insert(std::make_pair(ref2name, ref2idx));
 		sequence_names.push_back(ref2name);
 		sequence_lengths.push_back(right2 - left2 + 1);
 	} else {
