@@ -5,8 +5,6 @@
 #include "pw_alignment.hpp"
 #include <map>
 #include <vector>
-
-#include "data.hpp"
 #include <cassert>
 
 extern "C" {
@@ -476,6 +474,68 @@ void run(std::map<std::string, std::vector<std::string> > & cluster_result) {
 	std::map<std::string, char> cluster_centers;
 	void add_alignment(const pw_alignment *al, std::ofstream &);
 };
+
+class finding_centers{
+	public:
+	finding_centers(all_data &);
+	~finding_centers();
+	void setOfAlignments(std::map<std::string,std::vector<pw_alignment> > &);
+	void findMemberOfClusters(std::map<std::string,std::vector<pw_alignment> > & );
+	void center_frequency(std::map<std::string,std::vector<pw_alignment> > &);
+	std::vector<size_t> get_center(size_t)const;
+
+	private:
+	all_data & data;
+	std::vector< std::multimap<size_t , pw_alignment*> >AlignmentsFromClustering;
+	std::map<std::string,std::string> memberOfCluster; //first string is assocciated member and second one is its center
+	std::vector<std::vector<size_t> >centersOfASequence;//all the centers that happen on each sequence.
+
+
+
+};
+class suffix_tree{
+	public:
+	suffix_tree(all_data &, finding_centers&);
+	~suffix_tree();
+	void create_suffix(size_t);
+	void find_a_node(size_t& ,size_t&, std::string&);
+	void find_next_sibling(size_t, size_t);
+	void find_next_firstparent(size_t, size_t);
+	void make_a_tree();
+	void insert_node(std::string);
+	void count_paths();
+	std::vector<std::string> get_nodes()const;
+	std::map<std::vector<size_t>, size_t> get_count()const;
+	std::vector<size_t> get_first_parent()const;
+	
+	private:
+	all_data & data;
+	finding_centers & centers;
+	std::vector<std::string>suffixes;//all the suffixes of a sequence at the time
+	std::vector<std::string> nodes;
+	std::multimap<size_t , size_t> nodes_relation; //first size_t shows the parent and second one shows kids
+	std::map<std::string, size_t>firstParent; // size_t shows its index
+	std::map<std::vector<size_t>,size_t>branch_counter;//vector represents all nodes of a branch , size_t shows the number of that branch is happening
+		
+};
+
+class merging_centers{
+	public:
+		merging_centers(finding_centers &, suffix_tree &);
+		~merging_centers();
+		void merg_value();
+		void merg_alignments(std::map<std::string,std::vector<pw_alignment> > &);
+	private:
+		finding_centers & centers;
+		suffix_tree & tree;
+		std::vector<std::vector<size_t> > merged_centers;//merged nodes
+
+
+
+
+};
+
+
 
 
 #endif

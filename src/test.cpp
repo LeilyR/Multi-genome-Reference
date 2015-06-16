@@ -71,9 +71,9 @@
 			read >> l;
 			low_dec.push_back(l);
 			c = read.get();
-			unsigned int h;
-			read >> h;
-			high_dec.push_back(h);
+			unsigned int hi;
+			read >> hi;
+			high_dec.push_back(hi);
 		}
 		read.close();
 		char h;
@@ -85,18 +85,18 @@
 			read1 >> l;
 			low.push_back(l);
 			h = read1.get();
-			unsigned int h;
-			read1 >> h;
-			high.push_back(h);
+			unsigned int hi;
+			read1 >> hi;
+			high.push_back(hi);
 		}
 		
 	/*	for(size_t i =0 ; i < high.size();i++){
 			cout << "high at " << i << " is " << high.at(i) << endl;
 		}*/
-	//	cout<< "low_dec size: "<< low_dec.size()<< endl;
+		cout<< "low_dec size: "<< low_dec.size() << "low size "<< low.size()<< endl;
 		for(size_t i = 0; i < low_dec.size(); i++){
 			if(low.at(i)!=low_dec.at(i)){
-				cout<< "low values at " << i << " are different" <<endl;
+				cout<< "low values at " << i << " are different" << low.at(i) << " " << low_dec.at(i) <<endl;
 				break;
 			}
 			if(high.at(i)!=high_dec.at(i)){

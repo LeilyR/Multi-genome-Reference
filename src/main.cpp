@@ -424,8 +424,7 @@ void msa_star_alignment(const std::string & center, std::vector<pw_alignment> & 
 		write the graph as multiple alignment data structure	
 	*/
 
-void write_graph_maf(const std::string & graphout, const std::map<string, std::vector<pw_alignment> > & cluster_result_al, const all_data & data) {
-	
+void write_graph_maf(const std::string & graphout, const std::map<string, std::vector<pw_alignment> > & cluster_result_al, const all_data & data) {	
 	std::ofstream gout(graphout.c_str());
 	gout << "##maf version=1 scoring=probability" << std::endl;
 	gout << "# graph version " << VERSION << std::endl;
@@ -454,17 +453,14 @@ void write_graph_maf(const std::string & graphout, const std::map<string, std::v
 			cluster_number++;
 		}
 	}
-
 	gout.close();
 
-
-
-
+}
+void write_encoded_seq(ofstream & outs){
 
 }
 
-
-int do_mc_model(int argc, char * argv[]) {//mco bardar
+int do_mc_model(int argc, char * argv[]) {
 	typedef mc_model use_model;
 //	typedef clustering<use_model> use_clustering;
 	typedef initial_alignment_set<use_model> use_ias;
@@ -496,7 +492,6 @@ int do_mc_model(int argc, char * argv[]) {//mco bardar
 	overlap ol(data);
 	wrapper wrap;
 	test_encoder test;
-
 	read_data_time = clock() - read_data_time;
 //	encoding_functor functor1(data);
 
@@ -614,6 +609,7 @@ int do_mc_model(int argc, char * argv[]) {//mco bardar
 	//	std::cout << "cc " << i << ": from " << cc.size() << " original als with total gain " << ias.get_max_gain() << " we made " << cc_overlap.at(i).size() << " pieces with total gain " << ias.get_result_gain() <<  std::endl; 
 	//	std::cout << " components for clustering: " << std::endl;
 		std::vector<std::string> all_centers;
+		map<string, vector<pw_alignment> >al_of_a_ccs;// it is used for creating long centers
 		for(size_t j=0; j<cc_cluster_in.size(); ++j) {
 
 		//	std::cout << " run affpro on " << cc_cluster_in.at(j).size()<<std::endl;
@@ -714,6 +710,9 @@ int do_mc_model(int argc, char * argv[]) {//mco bardar
 			
 			for(std::map<std::string, std::vector<pw_alignment> >::iterator it = local_al_in_a_cluster.begin(); it!=local_al_in_a_cluster.end(); ++it) {
 				alignments_in_a_cluster.insert(*it);
+				if(it->second.size()!=0){
+					al_of_a_ccs.insert(*it);
+				}
 				num_cluster_members_al += 1 + it->second.size();
 				
 			
@@ -749,8 +748,27 @@ int do_mc_model(int argc, char * argv[]) {//mco bardar
 				}
 			}
 }
-		} // for cluster_in std::set  
+
+		} // for cluster_in set  
 		std::cout << std::endl;
+//new code for long centers can be used here!(al_of_a_ccs is used for running mergingCenters class functions)
+	finding_centers centers(data);
+	suffix_tree tree(data,centers);
+	merging_centers merg(centers,tree);
+	for(std::map<std::string, std::vector<pw_alignment> >::iterator  al = al_of_a_ccs.begin(); al !=al_of_a_ccs.end();al++){
+		std::string cent = al->first;
+		std::cout<< "cent: " << al->first << "al_size: "<< al->second.size()<<std::endl;
+	}
+	if(al_of_a_ccs.size()>0){
+		centers.center_frequency(al_of_a_ccs);
+	//	for(size_t seq =0 ; seq < data.numSequences(); seq ++){
+	//		tree.create_suffix(seq);
+	//	}
+	}
+//	tree.make_a_tree();
+//	tree.count_paths();
+//	tree.get_first_parent();
+//	merg.merg_value();	
 
 
 
@@ -758,7 +776,9 @@ int do_mc_model(int argc, char * argv[]) {//mco bardar
 		for(size_t h=0; h< it->second.size();h++){
 			it->second.at(h).print();
 		}
-	}*/	
+	}
+ 
+ */	
 	
 				
 	/*	for(std::set< const pw_alignment *, compare_pw_alignment>::iterator it=cc.begin();it!=cc.end();it++ ){
@@ -795,7 +815,8 @@ int do_mc_model(int argc, char * argv[]) {//mco bardar
 /*	std::cout<< "al cent size: "<<  alignments_in_a_cluster.size() << std::endl;
 	for(std::map<std::string, std::vector<pw_alignment> >::iterator it = alignments_in_a_cluster.begin(); it!=alignments_in_a_cluster.end();it++){
 		std::cout << " al cent: "<< it->first <<std::endl;
-	}*/
+	} 
+*/
 	//Defining weights of global clustering results! 
 	std::map<std::string, unsigned int>weight;
 	size_t max_bit = 8;	
@@ -946,28 +967,26 @@ int do_mc_model(int argc, char * argv[]) {//mco bardar
 	std::cout<< "weight size: "<< weight.size()<<std::endl;
 //	en.arithmetic_encoding_alignment(weight,member_of_cluster,alignments_in_a_cluster,outs);
 //	en.write_to_stream(alignments_in_a_cluster,outs);
-	std::ofstream al_encode("align_encode",std::ofstream::binary);
+//	std::ofstream al_encode("align_encode",std::ofstream::binary);
 	dlib::entropy_encoder_kernel_1 * enc = new dlib::entropy_encoder_kernel_1();
 //	en.arithmetic_encoding_seq(outs);
 //	en.calculate_high_in_partition(weight,alignments_in_a_cluster);
 //	en.arithmetic_encoding_centers(alignments_in_a_cluster,outs);
 //	en.arithmetic_encoding_alignment(weight,member_of_cluster,alignments_in_a_cluster,outs,*enc);
-
-//	en.test_al_encoding(weight,member_of_cluster,alignments_in_a_cluster,outs,*enc);
+//	en.al_encoding(weight,member_of_cluster,alignments_in_a_cluster,outs,*enc);
 	delete enc;
 	outs.close();
 //	test.encode();
 
 
-
+//	test.decode();
+//	test.compare();
 	std::ifstream in("encode",std::ifstream::binary);
 //	en.read_from_stream(in);
 	dlib::entropy_decoder_kernel_1  dec;
-//	en.arithmetic_decoding_alignment(in,dec);
+//	en.al_decoding(in,dec);
 //	test.compare();
 //	en.arithmetic_decoding_centers(in);
-
-
 //	en.test_al_decoding(in,dec);
 //	test.compare();
 	arithmetic_encoding_time = clock() - arithmetic_encoding_time;
@@ -995,7 +1014,30 @@ int do_mc_model(int argc, char * argv[]) {//mco bardar
 
 	return 0;
 }
-int do_model_seq(int argc, char * argv[]){//mc o bardashtam
+int do_decoding(int argc, char * argv[]){
+	typedef mc_model use_model;
+	if(argc < 3){
+		usage();
+		cerr << "Program: model" << endl;
+		cerr << "Parameters:" << endl;
+		cerr << "* output is fasta file for decoding" << endl;
+	}
+	all_data data;
+	use_model m(data);
+	wrapper wrap;
+	encoder en(data,m,wrap);
+//Decompression
+	ifstream in("encode",std::ifstream::binary);
+	dlib::entropy_decoder_kernel_1  dec;
+	en.al_decoding(in,dec);
+	cout<< "decoding is done!"<<endl;
+	return 0;
+
+	
+
+
+}
+int do_model_seq(int argc, char * argv[]){
 	typedef model use_model;
 	if(argc < 5) {
 		usage();
@@ -1062,10 +1104,11 @@ int main(int argc, char * argv[]) {
 	if(0==program.compare("fasta_prepare")) {
 		return do_fasta_prepare(argc, argv);
 	}
-	else if(0==program.compare("model"))
+	if(0==program.compare("model")) //else if boodesh
 		return do_mc_model(argc, argv);
 	
-	 
+//	if(0==program.compare("decoding"))
+//		return do_decoding(argc,argv);
 /*	else if(0==program.compare("model")){
 		return do_model_seq(argc,argv);
 	}*/

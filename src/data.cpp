@@ -3378,7 +3378,7 @@ void mc_model::make_all_alignments_patterns(){
 		size_t firstPatterns = Alignment_level;
 		for(size_t j = 0; j < Alignment_level; j++){
 			firstPatterns --;
-			first_pattern+=modification_character(-1,-1,-1,firstPatterns);
+			first_pattern += modification_character(-1,-1,-1,firstPatterns);
 		}
 		return first_pattern;
 	}	
@@ -4088,6 +4088,7 @@ double counting_functor::get_total(size_t acc1, size_t acc2, std::string context
 	//	for(size_t h =0; h < NUM_DELETE+NUM_KEEP+10; h++){
 		//	std::cout<< "high values: " << high.at(h)<<std::endl;
 	//	}
+
 		std::cout<< "context at " << pos << " is: ";
 		for(size_t i =0; i < context.size(); i++){
 			std::cout<<int(context.at(i));
