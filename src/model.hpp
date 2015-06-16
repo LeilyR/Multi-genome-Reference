@@ -487,7 +487,7 @@ class merging_centers{
 	public:
 		merging_centers(finding_centers &, suffix_tree &);
 		~merging_centers();
-		void merg_value();
+		void merg_gain_value();
 		void merg_alignments(std::map<std::string,std::vector<pw_alignment> > &);
 	private:
 		finding_centers & centers;

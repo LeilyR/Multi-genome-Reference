@@ -749,14 +749,14 @@ int do_mc_model(int argc, char * argv[]) {
 	}
 	if(al_of_a_ccs.size()>0){
 		centers.center_frequency(al_of_a_ccs);
-	//	for(size_t seq =0 ; seq < data.numSequences(); seq ++){
-	//		tree.create_suffix(seq);
-	//	}
+		for(size_t seq =0 ; seq < data.numSequences(); seq ++){
+			tree.create_suffix(seq);
+		}
 	}
-//	tree.make_a_tree();
-//	tree.count_paths();
+	tree.make_a_tree();
+	tree.count_paths();
 //	tree.get_first_parent();
-//	merg.merg_value();	
+	merg.merg_gain_value();	
 
 
 

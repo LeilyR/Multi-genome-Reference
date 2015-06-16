@@ -35,7 +35,7 @@ void initial_alignment_set<T>::lazy_split_insert_step(overlap & ovrlp, size_t le
 	local_gain = 0;
 	if(av_al_gain > 0) {
 		splitpoints spl(*al, ovrlp, data);
-		spl.nonrecursive_splits();
+		spl.nonrecursive_splits();//instead of calling split function
 		// std::sets of alignments that need to be removed and inserted if we want the current alignment (necessary for undo operation after recursion)
 		alset remove_als; // remove alignments are pointers to objects contained in the overlap structure
 		std::vector<pw_alignment> insert_als;
@@ -1647,7 +1647,7 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment *al,std::ofstream
 		}
 	}
 	void suffix_tree::count_paths(){
-	/*	for(size_t seq =0; seq < data.numSequences(); seq++){
+		for(size_t seq =0; seq < data.numSequences(); seq++){
 			create_suffix(seq);
 			for(size_t i = 0; i < suffixes.size(); i++){
 				string current = suffixes.at(i);
@@ -1719,7 +1719,7 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment *al,std::ofstream
 			cout<< " number "<<it->second;
 			cout << " " <<endl;
 			
-		}*/
+		}
 	}
 	std::vector<std::string> suffix_tree::get_nodes()const{
 		return nodes;
@@ -1742,19 +1742,20 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment *al,std::ofstream
 	}
 	merging_centers::merging_centers(finding_centers & cent , suffix_tree & t):centers(cent),tree(t){}
 	merging_centers::~merging_centers(){}
-	void merging_centers::merg_value(){
-	/*	vector<string> nodes = tree.get_nodes();
+	void merging_centers::merg_gain_value(){
+	//	tree.get_first_parent();
+		vector<string> nodes = tree.get_nodes();
 		cout<< "size: " << nodes.size()<<endl;
-		map<vector<size_t> , size_t> counts = tree.get_count();
-		map<vector<size_t>, size_t> tree_gains;	// just enter the updated gain values
+		map<vector<size_t> , size_t> counts = tree.get_count();//vector<size_t> shows a path and size_t is its number of happening.
+		map<vector<size_t>, size_t> tree_gains;	// Just final gain values are added, vector<size_t> a path (long center) and size_t its gain.
 		cout<< "first parent size: "<< tree.get_first_parent().size()<<endl;
-		for(size_t i =0; i < tree.get_first_parent().size();i++){
-			cout << "i "<< i <<endl;
-			size_t current_parent = tree.get_first_parent().at(i);
-			map<vector<size_t>, size_t> subtree_gains;//old gain values
+		//for(size_t i =0; i < tree.get_first_parent().size();i++){
+		//	cout << "i "<< i <<endl;
+		//	size_t firstparent = tree.get_first_parent().at(i);
+			map<vector<size_t>, size_t> subtree_gains;//gain values
 			for(map<vector<size_t> , size_t>::iterator it = counts.begin(); it != counts.end(); it++){
 				vector<size_t> br = it->first;
-				if(br.at(0)== current_parent){
+			//	if(br.at(0)== firstparent){
 					size_t number = it->second;
 					string centers;
 					int gain = 0;
@@ -1767,52 +1768,52 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment *al,std::ofstream
 					}
 					cout << " " <<endl;
 					gain = number*(centers.size())-(number+centers.size());
-					if(gain > 0){
 						subtree_gains.insert(make_pair(br,gain));
 						cout<< "gain "<<gain <<endl;
-					}else{//branches with negative gain values, their gain may change later to a positive one, so I better insert them to the map as well.
-						subtree_gains.insert(make_pair(br,0));
-						cout<< "gain "<<gain <<endl;	
-					}
-				}
+			//	}
 			}
 			size_t highest_gain=0;
 			vector<size_t>highest_path;
 			for(map<vector<size_t>, size_t>::iterator it = subtree_gains.begin(); it != subtree_gains.end(); it++){
-					if(it->second > highest_gain){
+				if(it->second > highest_gain){
 						highest_gain = it->second;
 						highest_path = it->first;
-					}else continue;
+				}else continue;
 			}
 			if(highest_gain > 0){
-				cout<< "highest path"<<endl;
-				for(size_t j = 0; j < highest_path.size(); j++){
-					cout<< highest_path.at(j);
-				}
-				cout<< " " <<endl;
-				map<vector<size_t>, size_t>::iterator it = counts.find(highest_path);
-				assert(it != counts.end());
-				size_t number_of_merged_centers = 0;
-				for(size_t j = 0 ; j < it->first.size(); j++){
-					number_of_merged_centers += nodes.at(it->first.at(j)).size();
+				for(map<vector<size_t>, size_t>::iterator it = subtree_gains.begin(); it != subtree_gains.end(); it++){
+					vector<size_t>common_path;
+					if(it->first.size() > highest_path.size()){
+						for(size_t i=0; i < highest_path.size(); i++){
+							if(it->first.at(i)==highest_path.at(i)){
+								common_path.push_back(it->first.at(i));
+							}else break;
+						}
+						if(common_path.size() == highest_path.size()){
+							map<vector<size_t>, size_t>::iterator it2 = counts.find(highest_path);
+							assert(it2 != counts.end());
+							size_t number_of_merged_centers = 0;
+							for(size_t j = 0 ; j < it2->first.size(); j++){
+								number_of_merged_centers += nodes.at(it2->first.at(j)).size();
+							}
+							size_t number = it->second;
+							string centers;
+							size_t gain = 0;
+							for(size_t j = 0 ; j < it->first.size(); j++){
+								centers += nodes.at(it->first.at(j));
+							}
+							gain = number*(centers.size())-(number+centers.size()-number_of_merged_centers);
+							subtree_gains.insert(make_pair(it->first,gain));
+						}
+					}			
 				}
 				for(map<vector<size_t>, size_t>::iterator it = subtree_gains.begin(); it != subtree_gains.end(); it++){
-					map<vector<size_t>,size_t>::iterator it1 = counts.find(it->first);
-					if(it->first.size()>highest_path.size()){
-						size_t number = it1->second;
-						string centers;
-						size_t gain = 0;
-						for(size_t j = 0 ; j < it1->first.size(); j++){
-							centers += nodes.at(it1->first.at(j));
-						}
-						gain = number*(centers.size())-(number+centers.size()-number_of_merged_centers);
-						tree_gains.insert(make_pair(it1->first,gain));
-					}else{
-						tree_gains.insert(make_pair(highest_path,highest_gain));
+					if(it->second > 0){
+						tree_gains.insert(make_pair(it->first,it->second));
 					}
 				}
-			}			
-		}
+			}
+	//	}
 		for(map<vector<size_t>,size_t>::iterator it = tree_gains.begin(); it != tree_gains.end(); it++){
 			cout<< "path"<<endl;
 			merged_centers.push_back(it->first);
@@ -1821,7 +1822,7 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment *al,std::ofstream
 			}
 			cout << " "<<endl;
 			cout<< " gain " << it->second << endl;
-		}*/
+		}
 	}
 
 	void merging_centers::merg_alignments(map<string, vector<pw_alignment> > & al_of_a_ccs){

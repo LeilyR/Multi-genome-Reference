@@ -83,7 +83,7 @@
 	//	outs.close();
 	}
 	std::string encoder::associatedMember(std::string & center, size_t & modificationPattern, size_t & position){
-		std::string member;
+		std::string member = "";
 		if(modificationPattern<5){
 			char base = dnastring::index_to_base(modificationPattern);
 			member += base;
@@ -92,7 +92,8 @@
 
 		}
 		if(modificationPattern>=5 && modificationPattern<5+NUM_DELETE){
-
+			std::cout<<"deletion happened!"<<std::endl;
+			return member;
 		}
 		if(modificationPattern>=5+NUM_DELETE && modificationPattern<5+NUM_KEEP+NUM_DELETE){
 			size_t length = model.modification_length(modificationPattern);
@@ -111,6 +112,8 @@
 			return member;
 
 		}
+		assert(0);
+		return "";
 	}
 	void encoder::calculating_clusters_high(std::map<std::string, unsigned int> & weight){
 		size_t max_bit = 8;
@@ -611,7 +614,7 @@
 						}
 						s<<p;
 						s>>current_pattern;
-						std::cout<< "current pattern: " << current_pattern<<std::endl;
+					//	std::cout<< "current pattern: " << current_pattern<<std::endl;
 						std::map<std::string, std::vector<unsigned int> >::const_iterator it1=model.get_high(i).find(current_pattern);
 						assert(it1 != model.get_high(i).end());
 						for(size_t j=0; j<5; j++){
@@ -638,7 +641,7 @@
 						}
 						dec.decode(low.at(base),high.at(base));
 						wrappers.decode(low.at(base),high.at(base),total);
-						std::cout<<"base: "<<base<<std::endl;
+					//	std::cout<<"base: "<<base<<std::endl;
 						pattern = current_pattern;
 						target = dec.get_target(total);	
 						std::cout << "target2: "<<target<<std::endl;
@@ -795,7 +798,7 @@
 							dec.decode(al_low.at(modification),al_high.at(modification));
 							wrappers.decode(al_low.at(modification),al_high.at(modification),total);
 							modify = modification;
-							std::cout<< " modify: " << modify << std::endl;
+						//	std::cout<< " modify: " << modify << std::endl;
 						//	string cur_pattern;
 						//	stringstream s;
 						//	if(Alignment_level > 1){
@@ -807,24 +810,26 @@
 						//	s>>cur_pattern;
 						//	al_pattern=cur_pattern;
 							al_pattern = modification;
+							std::cout<<"al_pattern: ";
+							for(size_t al = 0; al < al_pattern.size();al++){
+								std::cout<< int(al_pattern.at(al));
+							}
+							std::cout<<" " << std::endl;
 							if(reverse_center>0 || reverse_both > 0){
 								std::string rev_decodedCenter;
 								for(size_t rev = 0; rev< decodedCenter.size(); rev++){
 									char chr= dnastring::complement(decodedCenter.at(decodedCenter.size()-1-rev));	
 									rev_decodedCenter +=chr;
 								}
-								member += associatedMember(rev_decodedCenter,modification,pos);							
 								std::cout << "associatedMem_both reverse "<<std::endl;
+
+								member += associatedMember(rev_decodedCenter,modification,pos);							
 							}else{
-								member += associatedMember(decodedCenter,modification,pos);
 								std::cout << "associatedMem_else "<<std::endl;
 
+								member += associatedMember(decodedCenter,modification,pos);
+
 							}
-							std::cout<<"al_pattern: ";
-							for(size_t al = 0; al < al_pattern.size();al++){
-								std::cout<< int(al_pattern.at(al));
-							}
-							std::cout<<" " << std::endl;
 							assert(pos < decodedCenter.size());
 							pos += model.modification_length(modification);
 							std::cout<< "position on center: " << pos << std::endl;
