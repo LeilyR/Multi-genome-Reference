@@ -484,13 +484,14 @@ int do_mc_model(int argc, char * argv[]) {
 //	typedef clustering<use_model> use_clustering;
 	typedef initial_alignment_set<use_model> use_ias;
 	typedef affpro_clusters<use_model> use_affpro;
-	if(argc < 5) {
+	if(argc < 6) {
 		usage();
 		cerr << "Program: model" << std::endl;
 		cerr << "Parameters:" << std::endl;
 		cerr << "* fasta file from fasta_prepare" << std::endl;
 		cerr << "* maf file containing alignments of sequences contained in the fasta file" << std::endl;
 		cerr << "* output maf file for the graph" << std::endl;
+		cerr << "* output binary compressed file (use 'noencode' to skip encoding step)" << std::endl;
 		cerr << "* number of threads to use (optional, default 10)" << std::endl;
 	}
 
@@ -501,10 +502,11 @@ int do_mc_model(int argc, char * argv[]) {
 	std::string maffile(argv[3]);
 	std::string graphout(argv[4]);
 	size_t num_threads = 1;
-	if(argc == 6) {
-		num_threads = atoi(argv[5]);
+	if(argc == 7) {
+		num_threads = atoi(argv[6]);
 	}
-	std::ofstream outs("encode",std::ofstream::binary);
+	std::string encoding_out(argv[5]);
+	std::ofstream outs(encoding_out.c_str(),std::ofstream::binary);
 // Read all data
 	all_data data;
 	data.read_fasta_maf(fastafile, maffile);
@@ -983,6 +985,7 @@ int do_mc_model(int argc, char * argv[]) {
 
 	*/
 //Data compression:
+	if(0!=encoding_out.compare("noencode")) {
 	std::cout<< "weight size: "<< weight.size()<<std::endl;
 //	en.arithmetic_encoding_alignment(weight,member_of_cluster,alignments_in_a_cluster,outs);
 //	en.write_to_stream(alignments_in_a_cluster,outs);
@@ -992,22 +995,13 @@ int do_mc_model(int argc, char * argv[]) {
 //	en.calculate_high_in_partition(weight,alignments_in_a_cluster);
 //	en.arithmetic_encoding_centers(alignments_in_a_cluster,outs);
 //	en.arithmetic_encoding_alignment(weight,member_of_cluster,alignments_in_a_cluster,outs,*enc);
-//	en.al_encoding(weight,member_of_cluster,alignments_in_a_cluster,outs,*enc);
+	en.al_encoding(weight,member_of_cluster,alignments_in_a_cluster,outs,*enc);
 	delete enc;
 	outs.close();
 //	test.encode();
 
+	}
 
-//	test.decode();
-//	test.compare();
-	std::ifstream in("encode",std::ifstream::binary);
-//	en.read_from_stream(in);
-	dlib::entropy_decoder_kernel_1  dec;
-//	en.al_decoding(in,dec);
-//	test.compare();
-//	en.arithmetic_decoding_centers(in);
-//	en.test_al_decoding(in,dec);
-//	test.compare();
 	arithmetic_encoding_time = clock() - arithmetic_encoding_time;
 	
 	std::cout << "Initial alignments sets summary:" << std::endl;
