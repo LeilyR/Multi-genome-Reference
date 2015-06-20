@@ -696,7 +696,9 @@ void pw_alignment::print()const{
 
 
 
-bool compare_pw_alignment::operator()(const pw_alignment *const &a, const pw_alignment *const &b) const {
+bool compare_pw_alignment::operator()(const pw_alignment &ar, const pw_alignment &br) const {
+	const pw_alignment * a = &ar;
+	const pw_alignment * b = &br;
 	size_t asmaller = 0;
 	size_t abigger = 1;
 	if(a->getreference(0) > a->getreference(1)) {
@@ -778,6 +780,46 @@ double pw_alignment::get_modify2() const {
 }
 
 
+bool pw_alignment::equals(const pw_alignment & al) const {
+	if(al.getreference1()==references.at(0) && al.getreference2()==references.at(1)) {
+		if(
+			al.getbegin1() == begins.at(0) &&
+			al.getend1() == ends.at(0) &&
+			al.getbegin2() == begins.at(1) &&
+			al.getend2() == ends.at(1)		
+		) {
+			return true;
+		}
+	
+	} else if(al.getreference2()==references.at(0) && al.getreference1()==references.at(1)) {
+		if(
+			al.getbegin1() == begins.at(1) &&
+			al.getend1() == ends.at(1) &&
+			al.getbegin2() == begins.at(0) &&
+			al.getend2() == ends.at(0)	
+		) {
+			return true;
+		} 	
+	} 
+	return false;
+}
+
+
+pw_alignment & pw_alignment::operator=(const pw_alignment & al) {
+	if(&al!=this) {
+		samples = al.samples;
+		begins = al.begins;
+		ends = al.ends;
+		references = al.references;
+
+		create_costs = al.create_costs;
+		modify_costs = al.modify_costs;
+		costs_cached = al.costs_cached;
+	
+	}
+
+	return *this;
+}
 
         wrapper::wrapper():encodeout("enc.txt"),decodeout("dec.txt"),al_encode("al_encode.txt"),al_decode("al_decode.txt"){
         }

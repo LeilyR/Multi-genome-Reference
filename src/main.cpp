@@ -520,7 +520,7 @@ int do_mc_model(int argc, char * argv[]) {
 // Find connected components of alignments with some overlap
 	clock_t initial_cc_time = clock();
 	compute_cc cccs(data);
-	std::vector<std::set< const pw_alignment *, compare_pw_alignment> > ccs;
+	std::vector<std::set< pw_alignment , compare_pw_alignment> > ccs;
 	cccs.compute(ccs); //fill in ccss, order by size(Notice that they are just connected to each other if they have overlap!)
 	initial_cc_time = clock() - initial_cc_time;
 /*	std::cout << " Found " << ccs.size() << " connected components" << std::endl;
@@ -528,8 +528,12 @@ int do_mc_model(int argc, char * argv[]) {
 		std::cout << "Connected component "<< i << " contains " << ccs.at(i).size() << " alignments" << std::endl;
 	}*/
 // Train the model on all data
+
+	clock_t train_models_time = clock();
 	use_model m(data);
 	m.train(outs);
+
+	train_models_time = clock() - train_models_time;
 //	double sum = 0;
 //	double c1;
 //	double c2;
@@ -593,7 +597,7 @@ int do_mc_model(int argc, char * argv[]) {
 //		std::cout << " on initial CC " << i << " size " << ccs.at(i).size() << std::endl;
 }
 		clock_t ias_time_local = clock();
-		std::set< const pw_alignment *, compare_pw_alignment> & cc = ccs.at(i);
+		std::set< pw_alignment, compare_pw_alignment> & cc = ccs.at(i);
 		use_ias ias(data,cc, m, cluster_base_cost);
 		ias.compute(cc_overlap.at(i));
 		ias_time_local = clock() - ias_time_local;
@@ -613,7 +617,7 @@ int do_mc_model(int argc, char * argv[]) {
 	//	std::cout << " number of alignments " << cc_overlap.at(i).size() << std::endl;
 		// TODO this can be done a lot faster because there is no partial overlap here
 		clock_t second_cc_time_local = clock();
-		std::vector< std::set<const pw_alignment *, compare_pw_alignment> > cc_cluster_in; //has shorter length than original sequence pieces
+		std::vector< std::set<pw_alignment , compare_pw_alignment> > cc_cluster_in; //has shorter length than original sequence pieces
 		compute_cc occ(cc_overlap.at(i), data.numSequences());
 		occ.compute(cc_cluster_in);
 		second_cc_time_local = clock() - second_cc_time_local;
@@ -685,22 +689,22 @@ int do_mc_model(int argc, char * argv[]) {
 				unsigned int left = atoi(center_parts.at(1).c_str());
 
 				// look at all input alignments and determine which cluster it belongs to
-				for(std::set<const pw_alignment*, compare_pw_alignment>::iterator it2 = cc_cluster_in.at(j).begin(); it2!=cc_cluster_in.at(j).end(); ++it2){
-					const pw_alignment * al = *it2;
+				for(std::set<pw_alignment, compare_pw_alignment>::iterator it2 = cc_cluster_in.at(j).begin(); it2!=cc_cluster_in.at(j).end(); ++it2){
+					const pw_alignment & al = *it2;
 			//		std::cout<< "alignment in cc cluster in at " << j << std::endl;
 			//		al->print();
 			//		double g1;
 			//		double g2;
 			//		m.gain_function(*al,g1,g2,outs);
 			//		std::cout<< "g1: "<<g1 << " g2: "<< g2 <<std::endl;
-					size_t ref1 = al->getreference1();
-					size_t ref2 = al->getreference2();
+					size_t ref1 = al.getreference1();
+					size_t ref2 = al.getreference2();
 					size_t left1;
 					size_t left2;
 					size_t right1;
 					size_t right2;
-					al->get_lr1(left1,right1);
-					al->get_lr2(left2,right2);
+					al.get_lr1(left1,right1);
+					al.get_lr2(left2,right2);
 					if(ref1 == ref && left1 == left){
 						for(size_t k = 0; k < it->second.size();k++){
 							std::vector<std::string> member_parts;
@@ -708,7 +712,7 @@ int do_mc_model(int argc, char * argv[]) {
 							unsigned int mem_ref = atoi(member_parts.at(0).c_str());
 							unsigned int mem_left = atoi(member_parts.at(1).c_str());
 							if(ref2 == mem_ref && left2 == mem_left){
-								it1->second.push_back(*al);
+								it1->second.push_back(al);
 							}else continue;
 						}
 					}else if(ref2 == ref && left2 == left){
@@ -718,7 +722,7 @@ int do_mc_model(int argc, char * argv[]) {
 								unsigned int mem_ref = atoi(member_parts.at(0).c_str());
 								unsigned int mem_left = atoi(member_parts.at(1).c_str());
 								if(ref1 == mem_ref && left1 == mem_left){
-									it1->second.push_back(*al);
+									it1->second.push_back(al);
 								}else continue;
 							}
 					}else continue;
@@ -1014,6 +1018,7 @@ int do_mc_model(int argc, char * argv[]) {
 #if TIMING
 	std::cout << "Time overview: " << std::endl;
 	std::cout << "Read data " << (double)read_data_time/CLOCKS_PER_SEC << std::endl;
+	std::cout << "Train models " << (double)train_models_time/CLOCKS_PER_SEC << std::endl;
 	std::cout << "Compute initial connected components " << (double)initial_cc_time/CLOCKS_PER_SEC << std::endl;
 	std::cout << "Compute initial alignments set + remove partial overlap " << (double)ias_time/CLOCKS_PER_SEC << std::endl;
 	std::cout << "Test functions " << (double)test_function_time/CLOCKS_PER_SEC << std::endl;

@@ -4,15 +4,167 @@
 #define MODEL_CPP
 
 
-// TODO why does ias need an output stream (the gain function should also not need one)
 template<typename T>
 void initial_alignment_set<T>::compute(overlap & o) {
 
-	compute_simple_lazy_splits(o);
+//	compute_simple_lazy_splits(o);
 //	compute_simple(o);
-//	compute_vcover_clarkson(o);
+	compute_vcover_clarkson(o);
 
 }
+
+
+
+
+/*
+	Insert remove dynamics:
+	we never want to insert an alignment that was just removed (in same function level)
+	alignments that were just inserted, might be removed by the next call. In that case we can permanentely delete
+
+*/
+template<typename T>
+void initial_alignment_set<T>::insert_alignment_sets(overlap & ovrlp, std::set<pw_alignment, compare_pw_alignment> & all_ins, std::set<pw_alignment, compare_pw_alignment> & all_rem, std::vector<pw_alignment> & this_ins, std::vector<pw_alignment> & this_rem) {
+
+	for(size_t i=0; i<this_ins.size(); ++i) {
+		all_ins.insert(this_ins.at(i));
+	}
+
+	for(size_t i=0; i<this_rem.size(); ++i) {
+		std::set<pw_alignment>::iterator findr = all_ins.find(this_rem.at(i));
+		if(findr!=all_ins.end()) {
+			pw_alignment al = this_rem.at(i);
+			all_ins.erase(al);
+			all_rem.erase(al);
+			ovrlp.remove_alignment(al); 
+		} else {
+			all_rem.insert(this_rem.at(i));
+		}
+
+	}
+}
+
+
+template<typename T>
+void initial_alignment_set<T>::local_undo(overlap & ovrlp, std::set<pw_alignment, compare_pw_alignment> & all_inserted, std::set<pw_alignment , compare_pw_alignment> & all_removed) {
+	for(std::set<pw_alignment, compare_pw_alignment >::iterator it = all_inserted.begin(); it!=all_inserted.end(); ++it) {
+		ovrlp.remove_alignment(*it);
+	}
+
+	for(std::set<pw_alignment, compare_pw_alignment >::iterator it = all_removed.begin(); it!= all_removed.end(); ++it ) {
+		const pw_alignment & ral = *it;
+		ovrlp.insert_without_partial_overlap(ral);
+	}
+
+}
+
+template<typename T>
+void initial_alignment_set<T>::all_push_back(std::vector<pw_alignment> & inserted_alignments, vector<pw_alignment> & removed_alignments, std::set<pw_alignment, compare_pw_alignment> & all_inserted, std::set<pw_alignment, compare_pw_alignment> & all_removed ) {
+	for(std::set<pw_alignment>::iterator it = all_inserted.begin(); it!=all_inserted.end(); ++it) {
+		inserted_alignments.push_back(*it);
+	}
+
+	for(std::set<pw_alignment>::iterator it = all_removed.begin(); it!= all_removed.end(); ++it ) {
+		removed_alignments.push_back(*it);
+	}
+
+}
+
+template<typename T>
+void initial_alignment_set<T>::lazy_split_full_insert_step(overlap & ovrlp, size_t level, size_t & rec_calls, pw_alignment alin, std::vector<pw_alignment> & inserted_alignments, vector<pw_alignment> & removed_alignments, double & local_gain) {
+
+	std::cout << " full insert step on level " << level  << std::endl;
+
+	std::set<pw_alignment, compare_pw_alignment> remove_als; 
+	std::vector<pw_alignment> insert_als;
+	splitpoints spl2(alin, ovrlp, data);
+	spl2.recursive_splits();
+	spl2.split_all(remove_als, insert_als);
+
+
+	size_t inserted_counter = 0;
+	if(remove_als.empty()) {
+		local_gain = 0;
+		for(size_t i=0; i<insert_als.size(); ++i) {
+			double g1;
+			double g2;
+			common_model.gain_function(insert_als.at(i), g1, g2);
+			double avg = (g1 + g2) / 2.0 - base_cost;
+			if(avg > 0) {
+				ovrlp.insert_without_partial_overlap(insert_als.at(i));
+				inserted_alignments.push_back(insert_als.at(i));
+				local_gain+=avg;
+				inserted_counter++;
+			}
+		}		
+		std::cout << "full insert: " << level << " on al length " << alin.alignment_length() << " finally inserted pieces: " << inserted_counter << " real local gain " << local_gain << std::endl;		
+	// insert pieces for recursion:
+	} else {
+		std::set<pw_alignment, compare_pw_alignment> all_removed;
+		double lost_gain = 0;
+		for(std::set<pw_alignment, compare_pw_alignment>::iterator it = remove_als.begin(); it!=remove_als.end(); ++it) {
+			const pw_alignment & ral = *it;
+			double gain1, gain2;
+			common_model.gain_function(ral, gain1, gain2);
+			double rav_gain = (gain1 + gain2)/2 - base_cost;
+			lost_gain += rav_gain;
+
+			ovrlp.remove_alignment(ral);
+			all_removed.insert(ral);
+		//			std::cout << "REM2 " << std::endl;
+		//	       		ral->print();
+		//			std::cout << std::endl;	
+		}
+
+		double max_parts_gain = 0;
+		std::multimap<double, pw_alignment> ordered_parts;
+		for(size_t i=0; i<insert_als.size(); ++i) {
+			double gain1, gain2;
+			common_model.gain_function(insert_als.at(i), gain1, gain2);
+			double iav_gain = (gain1 + gain2)/2 - base_cost;
+			if(iav_gain > 0) {
+				ordered_parts.insert(std::make_pair(iav_gain, insert_als.at(i)));
+				max_parts_gain+=iav_gain;
+			}
+
+		}
+		std::cout << "2nd split: " << level << " on al length " << alin.alignment_length() <<  " new remove " << remove_als.size() << " lost gain " << lost_gain <<
+		       	" new insert " << ordered_parts.size() << " gain "<<  max_parts_gain << std::endl;
+
+		double sum_of_gain = 0;
+		size_t alnum = 0;
+
+		std::set<pw_alignment, compare_pw_alignment> all_inserted;
+
+		for(std::multimap<double, pw_alignment>::reverse_iterator it = ordered_parts.rbegin(); it!=ordered_parts.rend(); ++it) {
+			double thisgain;
+			std::vector<pw_alignment> this_inserted;
+			std::vector<pw_alignment> this_removed;
+			pw_alignment thisal = it->second;
+
+			std::cout <<"full insert function level "<< level << " start rec "<< alnum << " on al length " << thisal.alignment_length() << std::endl; 
+			// this function only changes ovrlp if this was locally good. We may need to undo the changes if they were globally bad
+			lazy_split_insert_step(ovrlp, level + 1, rec_calls,  thisal, this_inserted, this_removed, thisgain);
+			insert_alignment_sets(ovrlp, all_inserted, all_removed, this_inserted, this_removed);
+			sum_of_gain += thisgain;
+
+			alnum++;
+		}
+
+
+		if(lost_gain > sum_of_gain) {
+		// Undo whole function call if it did not pay off
+			local_gain = 0;
+			local_undo(ovrlp, all_inserted, all_removed);
+		
+		} else {
+		// take this step
+			all_push_back(inserted_alignments, removed_alignments, all_inserted, all_removed);
+			local_gain = sum_of_gain - lost_gain;
+		}
+	}
+}
+
+
 
 /*
 
@@ -22,23 +174,23 @@ then we split al and the removed alignments (without induced splits)
 the gain of all new pieces with positive gain - the gain of all removed pieces is an upper bound of 
 the information gain of inserting al. If this upper bound is positive we continue and try to recursively insert all pieces
 Afterwards, we have to compute the actual gain. If it is negative we undo the local recursive insert operation
-TODO remove outs
 
 */
 template<typename T>
-void initial_alignment_set<T>::lazy_split_insert_step(overlap & ovrlp, size_t level, const pw_alignment * al, std::vector<const pw_alignment*> & inserted_alignments, vector<const pw_alignment *> & removed_alignments, double & local_gain) {
+void initial_alignment_set<T>::lazy_split_insert_step(overlap & ovrlp, size_t level, size_t & rec_calls, pw_alignment al, std::vector<pw_alignment> & inserted_alignments, vector<pw_alignment> & removed_alignments, double & local_gain) {
 // start with computing gain of al
+	rec_calls++; // count number of calls
 	double gain1;
 	double gain2;
-	common_model.gain_function(*(al), gain1, gain2);
+	common_model.gain_function(al, gain1, gain2);
 	double av_al_gain = (gain1 + gain2) / 2 - base_cost;
 	// we continue if information gain is possible from the current alignment
 	local_gain = 0;
 	if(av_al_gain > 0) {
-		splitpoints spl(*al, ovrlp, data);
+		splitpoints spl(al, ovrlp, data);
 		spl.nonrecursive_splits();
-		// std::sets of alignments that need to be removed and inserted if we want the current alignment (necessary for undo operation after recursion)
-		alset remove_als; // remove alignments are pointers to objects contained in the overlap structure
+		// sets of alignments that need to be removed and inserted if we want the current alignment 
+		std::set<pw_alignment, compare_pw_alignment> remove_als; // remove alignments are pointers to objects contained in the overlap structure
 		std::vector<pw_alignment> insert_als;
 		spl.split_all(remove_als, insert_als);
 
@@ -46,18 +198,16 @@ void initial_alignment_set<T>::lazy_split_insert_step(overlap & ovrlp, size_t le
 	
 		// we evaluate an upper bound of information gain for the current alignment
 		double lost_information_gain = 0;
-		for(alset::iterator it = remove_als.begin(); it!=remove_als.end(); ++it) {
-			const pw_alignment * ral = *it;
-			common_model.gain_function((*ral), gain1, gain2);
+		for(std::set<pw_alignment, compare_pw_alignment>::iterator it = remove_als.begin(); it!=remove_als.end(); ++it) {
+			const pw_alignment & ral = *it;
+			common_model.gain_function(ral, gain1, gain2);
 			double rav_gain = (gain1 + gain2)/2 - base_cost;
 			lost_information_gain += rav_gain;
 
 //			std::cout << "REM " << std::endl;
 //		       	ral->print();
 //			std::cout << std::endl;	
-		
 		}
-
 		std::multimap<double, pw_alignment> ordered_parts;
 		double max_parts_gain = 0;
 		for(size_t i=0; i<insert_als.size(); ++i) {
@@ -67,90 +217,26 @@ void initial_alignment_set<T>::lazy_split_insert_step(overlap & ovrlp, size_t le
 				max_parts_gain += iav_gain;
 				ordered_parts.insert(std::make_pair(iav_gain, insert_als.at(i)));
 			}
-
 //			std::cout << "INS " << std::endl;
 //			insert_als.at(i).print();
 //			std::cout << std::endl;
 		}
 
-		std::cout << "splits: level " << level << " on al length " << al->alignment_length() << " gain " << av_al_gain << " causes to remove " << remove_als.size() << " alignments with " << lost_information_gain << 
+		std::cout << "splits: level " << level << " on al length " << al.alignment_length() << " gain " << av_al_gain << " causes to remove " << remove_als.size() << " alignments with " << lost_information_gain << 
 			" gain. We could insert " << ordered_parts.size() << " small pieces. Upper bound of gain is " << max_parts_gain << std::endl;
 
-		// here: we actually decide to insert a small part (it does not induce any more splits)
-		// TODO rem and ins gets changed, only if it stays good we do insert and return,
-		// otherwise go on with recursion
+		// here: we actually decide to insert a small part (in the next function we check more carefully for indirectly induced splits)
 		if(remove_als.empty() && ordered_parts.size() == 1) {
-			std::cout << " PART INSERTED????" << std::endl;
-			pw_alignment alin = insert_als.at(0);
-			insert_als.clear();
-			splitpoints spl2(alin, ovrlp, data);
-			spl2.recursive_splits();
-			// TODO check does split all add to remove_als
-			spl2.split_all(remove_als, insert_als);
-			size_t inserted_counter = 0;
-			if(remove_als.empty()) {
-				for(size_t i=0; i<insert_als.size(); ++i) {
-					double g1;
-					double g2;
-					common_model.gain_function(insert_als.at(i), g1, g2);
-					double avg = (g1 + g2) / 2.0 - base_cost;
-					if(avg > 0) {
-						pw_alignment * ins =  ovrlp.insert_without_partial_overlap(insert_als.at(i));
-						inserted_alignments.push_back(ins);
-						local_gain+=avg;
-						inserted_counter++;
-					}
-				}
-			
-
-
-
-				std::cout << "insert: " << level << " on al length " << al->alignment_length() << " gain " << av_al_gain << " finally inserted pieces: " << inserted_counter << " real local gain " << local_gain << std::endl;
-				return; 
-			// insert pieces for recursion:
-			} else {
-				ordered_parts.clear();
-
-				for(alset::iterator it = remove_als.begin(); it!=remove_als.end(); ++it) {
-					const pw_alignment * ral = *it;
-					common_model.gain_function((*ral), gain1, gain2);
-					double rav_gain = (gain1 + gain2)/2 - base_cost;
-					lost_information_gain += rav_gain;
-
-		//			std::cout << "REM2 " << std::endl;
-		//	       		ral->print();
-		//			std::cout << std::endl;	
-		
-				}
-
-				max_parts_gain = 0;
-				for(size_t i=0; i<insert_als.size(); ++i) {
-					common_model.gain_function(insert_als.at(i), gain1, gain2);
-					double iav_gain = (gain1 + gain2)/2 - base_cost;
-					if(iav_gain > 0) {
-						ordered_parts.insert(std::make_pair(iav_gain, insert_als.at(i)));
-						max_parts_gain+=iav_gain;
-					}
-		//			std::cout << "1 level " << level << " on al length " << al->alignment_length() << " 
-		//			std::cout << "INS for later" << std::endl;
-		//			insert_als.at(i).print();
-		//			std::cout << std::endl;
-
-
-				}
-
-			
-				std::cout << "2nd split: " << level << " on al length " << al->alignment_length() << " gain " << av_al_gain << " new remove " << remove_als.size() << " lost gain " << lost_information_gain <<
-				       	" new insert " << insert_als.size() << " gain "<<  max_parts_gain << std::endl;
-
-			
-			}
-
-
-
-			
-
+			pw_alignment nal = ordered_parts.begin()->second;
+			// full split step, we can just copy local gain
+			lazy_split_full_insert_step(ovrlp, level, rec_calls, nal, inserted_alignments, removed_alignments, local_gain);
+			return;
 		}
+
+
+
+
+
 		// if it is possible to increase information gain by inserting this alignment, we 
 		// recursively insert all small pieces
 		// we start with the high gain pieces, because they have more potential to loose information gain, which can be used to abort the current insert
@@ -160,21 +246,19 @@ void initial_alignment_set<T>::lazy_split_insert_step(overlap & ovrlp, size_t le
 			double total_recursive_gain = 0; // total gain of all subtrees processed so far
 
 			// all_ins/rem accumulated over all recursive steps below current. If we take current step, those are tranferred to inserted_alignments/removed_alignments
-			std::vector<const pw_alignment*> all_inserted;
-			std::vector<const pw_alignment*> all_removed;
+			std::set<pw_alignment, compare_pw_alignment> all_inserted;
+			std::set<pw_alignment, compare_pw_alignment> all_removed;
 
 			// remove before recursion
 			size_t remove_count = 0;
-			for(alset::iterator it = remove_als.begin(); it!=remove_als.end(); ++it) {
-				const pw_alignment * pwa = *it;
-				removed_alignments.push_back(pwa);				
-				
+			for(std::set<pw_alignment, compare_pw_alignment>::iterator it = remove_als.begin(); it!=remove_als.end(); ++it) {
+				const pw_alignment & pwa = *it;
+				all_removed.insert(pwa); 			
 	//			std::cout <<"level " << level << "REMOVE NOW: " << std::endl;
 	//			pwa->print();
 	//			std::cout << " ovrlp size " << ovrlp.size() << std::endl;
 				
-				
-				ovrlp.remove_alignment_nodelete(pwa);
+				ovrlp.remove_alignment(pwa);
 
 
 				remove_count++;
@@ -185,8 +269,8 @@ void initial_alignment_set<T>::lazy_split_insert_step(overlap & ovrlp, size_t le
 			for(std::map<double, pw_alignment>::reverse_iterator it = ordered_parts.rbegin(); it!=ordered_parts.rend(); ++it) {
 				double ub_of_thisgain = it->first;
 				double thisgain;
-				std::vector<const pw_alignment*> this_inserted;
-				std::vector<const pw_alignment*> this_removed;
+				std::vector<pw_alignment> this_inserted;
+				std::vector<pw_alignment> this_removed;
 				pw_alignment thisal = it->second;
 
 			//	thisal.print();
@@ -194,35 +278,24 @@ void initial_alignment_set<T>::lazy_split_insert_step(overlap & ovrlp, size_t le
 
 				std::cout <<"start recursion: level "<< level << " start rec "<< alnum << " on al length " << thisal.alignment_length() << std::endl; 
 				// this function only changes ovrlp if this was locally good. We may need to undo the changes if they were globally bad
-				lazy_split_insert_step(ovrlp, level + 1, &(thisal), this_inserted, this_removed, thisgain);
+				lazy_split_insert_step(ovrlp, level + 1, rec_calls,  thisal, this_inserted, this_removed, thisgain);
 				double lost_gain = ub_of_thisgain - thisgain; // we have stepped down that much from the previous upper bound of gain
 				all_lost_gain += lost_gain;
 				total_recursive_gain += thisgain;
 
 
 				std::cout <<"end recursion: level "<< level << " end rec "<< alnum << " on al length " << thisal.alignment_length() << " subtree local gain " << thisgain << " ub was " << ub_of_thisgain << " lost gain is " << lost_gain << " total lost gain is " << all_lost_gain << " total gain of this level until now: " << total_recursive_gain <<  " ub is " << upper_bound_of_gain << std::endl; 
-				for(size_t i=0; i<this_inserted.size(); ++i) {
-					all_inserted.push_back(this_inserted.at(i));
-				}
-				for(size_t i=0; i<this_removed.size(); ++i) {
-					all_removed.push_back(this_removed.at(i));
-				}
+			
+
+				insert_alignment_sets(ovrlp, all_inserted, all_removed, this_inserted, this_removed);
 
 				// if we have lost more than we may gain, we undo the entire recursive insertion subtree from here
 				if(all_lost_gain > upper_bound_of_gain) {
-					// the remove_alignment function requires identical address of the alignment to be removed from overlap
-					// it does remove that alignment from overlap and calls delete
-					for(size_t i=0; i<all_inserted.size(); ++i) {
-						// after recursion we can remove with delete
-						ovrlp.remove_alignment(all_inserted.at(i));
-					}
+					
+					local_undo(ovrlp, all_inserted, all_removed);
 
-					for(size_t i=0; i<all_removed.size(); ++i) {
-						// reinsert same pointer
-						ovrlp.insert_without_partial_overlap_p((pw_alignment*)all_removed.at(i));
-					}
 
-					std::cout << "undo subtree: level " << level << " on al length " << al->alignment_length() << " gain " << av_al_gain << " ABORT because of low upper bound of gain" << std::endl;
+					std::cout << "undo subtree: level " << level << " on al length " << al.alignment_length() << " gain " << av_al_gain << " ABORT because of low upper bound of gain" << std::endl;
 					// gain of this subtree is 0 because we do not insert
 					local_gain = 0;
 
@@ -236,42 +309,23 @@ void initial_alignment_set<T>::lazy_split_insert_step(overlap & ovrlp, size_t le
 			if(total_recursive_gain > lost_information_gain) {
 				local_gain = total_recursive_gain - lost_information_gain;
 
-				for(size_t i=0; i<all_inserted.size(); ++i) {
-					inserted_alignments.push_back(all_inserted.at(i));
-				}
-				for(size_t i=0; i<all_removed.size(); ++i) {
-					removed_alignments.push_back(all_removed.at(i));
-				}
+				all_push_back(inserted_alignments, removed_alignments, all_inserted, all_removed);
 
-
-	std::cout << "take subtree: level " << level << " on al length " << al->alignment_length() << " gain " << av_al_gain << " causes to remove " << all_removed.size() << " alignments with " << lost_information_gain << 
+	std::cout << "take subtree: level " << level << " on al length " << al.alignment_length() << " gain " << av_al_gain << " causes to remove " << all_removed.size() << " alignments with " << lost_information_gain << 
 			" gain. We want to insert " << all_inserted.size() << " small pieces. TOTAL gain is " << local_gain << std::endl;
 
 				return;
 			
+			} else {
+				local_gain = 0;
+				local_undo(ovrlp, all_inserted, all_removed);
 			}
-		
-		
-			// if we have not been able to achieve a global gain, we undo all changes
-			for(size_t i=0; i<all_inserted.size(); ++i) {
-				// remove with delete
-				ovrlp.remove_alignment(all_inserted.at(i));
-			}
-			for(size_t i=0; i<all_removed.size(); ++i) {
-			//	std::cout << " level "<< level <<" reinsert removed alignment" << std::endl;
-			//	all_removed.at(i).print();
-			//	std::cout << std::endl;
-
-				ovrlp.insert_without_partial_overlap_p((pw_alignment*)all_removed.at(i));
-			}
-		
-		
-		}
+		} // upper bound gain pos
 
 	
 
 
-	}
+	} // pos gain
 
 }
 
@@ -286,32 +340,33 @@ void initial_alignment_set<T>::compute_simple_lazy_splits(overlap & o) {
 	size_t pcs_rem = 0;
 
 	for (size_t i=0; i<sorted_original_als.size(); ++i) {
-		const pw_alignment * al = sorted_original_als.at(i);
+		const pw_alignment & al = sorted_original_als.at(i);
 		double gain_of_al = 0;
 
 		cout << " start recursive lazy insert tree on " << endl;
-		al->print();
+		al.print();
 		cout << endl;
 
-		std::vector<const pw_alignment*> ins_als;
-		std::vector<const pw_alignment*> rem_als;
-		lazy_split_insert_step(o,0, al, ins_als, rem_als, gain_of_al);
+		std::vector<pw_alignment> ins_als;
+		std::vector<pw_alignment> rem_als;
+		size_t count_rec_calls = 0;
+		lazy_split_insert_step(o,0, count_rec_calls,  al, ins_als, rem_als, gain_of_al);
 		
 		double gain1;
 		double gain2;
-		common_model.gain_function(*(al), gain1, gain2);
+		common_model.gain_function(al, gain1, gain2);
 		double vgain = (gain1 + gain2) / 2 - base_cost;
 
 
 		double rgain = 0;
 		double igain = 0;
 		for(size_t j=0; j<ins_als.size(); ++j) {
-			common_model.gain_function(*ins_als.at(j), gain1, gain2);
+			common_model.gain_function(ins_als.at(j), gain1, gain2);
 			vgain = (gain1+gain2)/2 - base_cost;
 			igain+=vgain;
 		}
 		for(size_t j=0; j<rem_als.size(); ++j) {
-			common_model.gain_function(*rem_als.at(j), gain1, gain2);
+			common_model.gain_function(rem_als.at(j), gain1, gain2);
 			vgain = (gain1+gain2)/2 - base_cost;
 			rgain+=vgain;
 		}
@@ -330,18 +385,12 @@ void initial_alignment_set<T>::compute_simple_lazy_splits(overlap & o) {
 			std::cout << " alignment not taken " << std::endl;
 		}
 		
-		std::cout << " on alignment " << i << " length " << al->alignment_length() << " gain " << vgain << " recursive lazy split insert results:" << std::endl;
+		std::cout << " on alignment " << i << " length " << al.alignment_length() << " gain " << vgain << " recursive lazy split insert results:" << std::endl;
 		std::cout << " al " << i << " gain in " << vgain << " gain out " << gain_of_al << " check gain (ins - rem) " << checkgain << std::endl;
 		std::cout << " out: " << rem_als.size() << " gain " << rgain << " in: " << ins_als.size() << " gain " << igain << std::endl;
-		std::cout << " total gain until here: " << total_gain << std::endl;
+		std::cout << " total gain until here: " << total_gain << " needed " << count_rec_calls<< " recursive lazy split insert calls " << std::endl;
 		
 		
-		// delete removed alignments
-		for(size_t j=0; j<rem_als.size(); ++j) {
-			delete rem_als.at(j);
-		}
-
-	
 	}
 	result_gain = total_gain;
 	used_alignments = used;
@@ -379,7 +428,7 @@ void initial_alignment_set<T>::compute_simple(overlap & o) {
 //		std::cout << std::endl;
 
 
-		alset remove_als;
+		std::set<pw_alignment, compare_pw_alignment> remove_als;
 		std::vector<pw_alignment> insert_als;
 
 //		// TODO
@@ -394,10 +443,10 @@ void initial_alignment_set<T>::compute_simple(overlap & o) {
 		spl.split_all(remove_als, insert_als);
 		std::vector<double> insert_gains(insert_als.size(), 0);
 
-		for(alset::const_iterator it = remove_als.begin(); it!=remove_als.end(); ++it) {
+		for(std::set<pw_alignment, compare_pw_alignment>::const_iterator it = remove_als.begin(); it!=remove_als.end(); ++it) {
 			double g1;
 			double g2;
-			common_model.gain_function(*(*it), g1, g2);
+			common_model.gain_function(*it, g1, g2);
 		//	if(g2<g1) g1 = g2;
 			g1-=base_cost;
 	//		std::cout << "r " << (*it)->alignment_length() << " g " << g1 << std::endl;
@@ -427,7 +476,7 @@ void initial_alignment_set<T>::compute_simple(overlap & o) {
 //		std::cout << " al " << i << " rem " << remove_als.size() << " insert " << insert_als.size() << " gain " << gain_of_al << std::endl;	
 		if(gain_of_al>=0) {
 			used++;
-			for(alset::const_iterator it = remove_als.begin(); it!=remove_als.end(); ++it) {
+			for(std::set<pw_alignment, compare_pw_alignment>::const_iterator it = remove_als.begin(); it!=remove_als.end(); ++it) {
 				o.remove_alignment(*it);
 				pcs_rem++;
 			}	
@@ -475,13 +524,13 @@ void initial_alignment_set<T>::overlap_graph(std::vector<std::set<size_t> > & ed
 
 	// all alignment left pos into a vector of multimaps
 	for(size_t i=0; i<sorted_original_als.size(); ++i) {
-		const pw_alignment * al = sorted_original_als.at(i);
-		size_t r1 = al->getreference1();
-		size_t r2 = al->getreference2();
+		const pw_alignment & al = sorted_original_als.at(i);
+		size_t r1 = al.getreference1();
+		size_t r2 = al.getreference2();
 		size_t left, right;
-		al->get_lr1(left, right);
+		al.get_lr1(left, right);
 		all_left_pos.at(r1).insert(std::make_pair(left, i));
-		al->get_lr2(left, right);
+		al.get_lr2(left, right);
 		all_left_pos.at(r2).insert(std::make_pair(left, i));
 	}
 
@@ -489,14 +538,14 @@ void initial_alignment_set<T>::overlap_graph(std::vector<std::set<size_t> > & ed
 
 	// for each alignment: if there is overlap, we will find a left pos of another alignment between it left and right (or the other way around)
 	for(size_t i=0; i<sorted_original_als.size(); ++i) {
-		const pw_alignment * al = sorted_original_als.at(i);
-		size_t r1 = al->getreference1();
-		size_t r2 = al->getreference2();
+		const pw_alignment & al = sorted_original_als.at(i);
+		size_t r1 = al.getreference1();
+		size_t r2 = al.getreference2();
 		size_t left, right;
 	//	cout << " on al " << i << endl;
-		al->get_lr1(left, right);
+		al.get_lr1(left, right);
 		search_area(left, right, all_left_pos.at(r1), edges.at(i));
-		al->get_lr2(left, right);
+		al.get_lr2(left, right);
 		search_area(left, right, all_left_pos.at(r2), edges.at(i));
 	}
 
@@ -608,9 +657,9 @@ void initial_alignment_set<T>::compute_vcover_clarkson(overlap & o) {
 	vector<double> orig_weights(sorted_original_als.size());
 	double total_in_weight = 0;
 	for(size_t i=0; i<edges.size(); ++i) {
-		const pw_alignment * al = sorted_original_als.at(i);
+		pw_alignment  al = sorted_original_als.at(i);
 		double gain1, gain2;
-		common_model.gain_function(*al, gain1, gain2);
+		common_model.gain_function(al, gain1, gain2);
 		double vgain = (gain1+gain2)/2 - base_cost;
 	//	cout << " al " << i << " gain " << vgain <<  " at " << al << endl;
 		assert(vgain >= 0);
@@ -657,7 +706,7 @@ void initial_alignment_set<T>::compute_vcover_clarkson(overlap & o) {
 	}
 
 	
-	std::vector<const pw_alignment *> backup_soa(sorted_original_als);
+	std::vector<pw_alignment > backup_soa(sorted_original_als);
 
 	// add independent set
 	size_t at = 0;
@@ -685,7 +734,7 @@ void initial_alignment_set<T>::compute_vcover_clarkson(overlap & o) {
 	cout << " found an INDEPENDENT SET of " << indep_set_size << " alignments with total gain " << weight_in_independent_set <<endl;
 	cout << " remainder contains " << removed.size() << " alignments with total gain of " << remainder_weight << endl;
 
-
+/*
 	cout << endl << "New ordering: " << endl;
 	for(size_t i=0; i<sorted_original_als.size(); ++i) {
 		const pw_alignment * al = sorted_original_als.at(i);
@@ -698,7 +747,7 @@ void initial_alignment_set<T>::compute_vcover_clarkson(overlap & o) {
 		cout << endl;
 	
 	}
-
+*/
 	compute_simple_lazy_splits(o);
 
 
@@ -708,7 +757,7 @@ void initial_alignment_set<T>::compute_vcover_clarkson(overlap & o) {
 compute_cc::compute_cc(const all_data & dat): als_on_reference(dat.numSequences()), last_pos(dat.numSequences(), 0) {
 	max_al_ref_length = 0;
 	for(size_t i=0; i<dat.numAlignments(); ++i) {
-		const pw_alignment * a = &(dat.getAlignment(i));
+		const pw_alignment & a = dat.getAlignment(i);
 		alignments.insert(a);
 		add_on_mmaps(a);
 	}
@@ -716,25 +765,25 @@ compute_cc::compute_cc(const all_data & dat): als_on_reference(dat.numSequences(
 }
 
 
-void compute_cc::add_on_mmaps(const pw_alignment * pwa) {
-	size_t ref1 = pwa->getreference1();
-	size_t ref2 = pwa->getreference2();
+void compute_cc::add_on_mmaps(const pw_alignment & pwa) {
+	size_t ref1 = pwa.getreference1();
+	size_t ref2 = pwa.getreference2();
 /*	
 	std::cout << "INS " <<std::endl;
 	pwa->print();
 	std::cout << std::endl;	
 */
-	als_on_reference.at(ref1).insert(std::make_pair(pwa->getbegin1(), pwa));
-	als_on_reference.at(ref1).insert(std::make_pair(pwa->getend1(), pwa));
-	als_on_reference.at(ref2).insert(std::make_pair(pwa->getbegin2(), pwa));
-	als_on_reference.at(ref2).insert(std::make_pair(pwa->getend2(), pwa));
+	als_on_reference.at(ref1).insert(std::make_pair(pwa.getbegin1(), pwa));
+	als_on_reference.at(ref1).insert(std::make_pair(pwa.getend1(), pwa));
+	als_on_reference.at(ref2).insert(std::make_pair(pwa.getbegin2(), pwa));
+	als_on_reference.at(ref2).insert(std::make_pair(pwa.getend2(), pwa));
 
 	size_t left, right;
-	pwa->get_lr1(left, right);
+	pwa.get_lr1(left, right);
 	size_t length = right - left + 1;
 	if(length > max_al_ref_length) max_al_ref_length = length;
 	if(right > last_pos.at(ref1)) last_pos.at(ref1) = right;
-	pwa->get_lr2(left, right);
+	pwa.get_lr2(left, right);
 	length = right - left + 1;
 	if(length > max_al_ref_length) max_al_ref_length = length;
 	if(right > last_pos.at(ref2)) last_pos.at(ref2) = right;
@@ -742,42 +791,42 @@ void compute_cc::add_on_mmaps(const pw_alignment * pwa) {
 }
 
 
-void compute_cc::remove_on_mmaps(const pw_alignment * al) {
-	size_t ref1 = al->getreference1();
+void compute_cc::remove_on_mmaps(const pw_alignment & al) {
+	size_t ref1 = al.getreference1();
 	size_t left, right;
-	al->get_lr1(left, right);
+	al.get_lr1(left, right);
 
-	std::pair<std::multimap<size_t, const pw_alignment *>::iterator, std::multimap<size_t, const pw_alignment*>::iterator > l1 = 
+	std::pair<std::multimap<size_t, pw_alignment>::iterator, std::multimap<size_t, pw_alignment>::iterator > l1 = 
 		als_on_reference.at(ref1).equal_range(left);
-	for(std::multimap<size_t, const pw_alignment*>::iterator it = l1.first; it!=l1.second; ++it) {
-		if(it->second == al) {
+	for(std::multimap<size_t, pw_alignment>::iterator it = l1.first; it!=l1.second; ++it) {
+		if(al.equals(it->second)) {
 			als_on_reference.at(ref1).erase(it);
 			break;
 		}	
 	}
-	std::pair<std::multimap<size_t, const pw_alignment *>::iterator, std::multimap<size_t, const pw_alignment*>::iterator  > r1 = 
+	std::pair<std::multimap<size_t, pw_alignment>::iterator, std::multimap<size_t, pw_alignment>::iterator  > r1 = 
 		als_on_reference.at(ref1).equal_range(left);
-	for(std::multimap<size_t, const pw_alignment*>::iterator it = r1.first; it!=r1.second; ++it) {
-		if(it->second == al) {
+	for(std::multimap<size_t, pw_alignment>::iterator it = r1.first; it!=r1.second; ++it) {
+		if(al.equals(it->second)) {
 			als_on_reference.at(ref1).erase(it);
 			break;
 		}	
 	}
 
-	size_t ref2 = al->getreference2();
-	al->get_lr2(left, right);
-	std::pair<std::multimap<size_t, const pw_alignment *>::iterator, std::multimap<size_t, const pw_alignment*>::iterator  > l2 = 
+	size_t ref2 = al.getreference2();
+	al.get_lr2(left, right);
+	std::pair<std::multimap<size_t, pw_alignment>::iterator, std::multimap<size_t, pw_alignment>::iterator  > l2 = 
 		als_on_reference.at(ref2).equal_range(left);
-	for(std::multimap<size_t, const pw_alignment*>::iterator it = l2.first; it!=l2.second; ++it) {
-		if(it->second == al) {
+	for(std::multimap<size_t, pw_alignment>::iterator it = l2.first; it!=l2.second; ++it) {
+		if(al.equals(it->second)) {
 			als_on_reference.at(ref2).erase(it);
 			break;
 		}	
 	}
-	std::pair<std::multimap<size_t, const pw_alignment *>::iterator, std::multimap<size_t, const pw_alignment*>::iterator  > r2 = 
+	std::pair<std::multimap<size_t, pw_alignment>::iterator, std::multimap<size_t, pw_alignment>::iterator  > r2 = 
 		als_on_reference.at(ref2).equal_range(left);
-	for(std::multimap<size_t, const pw_alignment*>::iterator it = r2.first; it!=r2.second; ++it) {
-		if(it->second == al) {
+	for(std::multimap<size_t, pw_alignment>::iterator it = r2.first; it!=r2.second; ++it) {
+		if(al.equals(it->second)) {
 			als_on_reference.at(ref2).erase(it);
 			break;
 		}	
@@ -786,23 +835,23 @@ void compute_cc::remove_on_mmaps(const pw_alignment * al) {
 }
 
 
-void compute_cc::compute(std::vector<std::set< const pw_alignment *, compare_pw_alignment> > & ccs) {
-	std::set <const pw_alignment *, compare_pw_alignment> seen;
-	std::multimap<size_t , std::set<const pw_alignment *, compare_pw_alignment> > sorter; // sorts ccs to give largest first
-	for(std::set<const pw_alignment *, compare_pw_alignment>::iterator it = alignments.begin(); it!=alignments.end(); ++it) {
-		const pw_alignment * al = *it;
-		std::set<const pw_alignment *, compare_pw_alignment>::iterator seenal = seen.find(al);
+void compute_cc::compute(std::vector<std::set< pw_alignment , compare_pw_alignment> > & ccs) {
+	std::set <pw_alignment, compare_pw_alignment> seen;
+	std::multimap<size_t , std::set<pw_alignment, compare_pw_alignment> > sorter; // sorts ccs to give largest first
+	for(std::set<pw_alignment, compare_pw_alignment>::iterator it = alignments.begin(); it!=alignments.end(); ++it) {
+		const pw_alignment & al = *it;
+		std::set<pw_alignment, compare_pw_alignment>::iterator seenal = seen.find(al);
 	//	std::cout << " seen " << seen.size() << std::endl;
 		if(seenal == seen.end()) {
 	//		std::cout << " getcc" << std::endl;
-			std::set<const pw_alignment *, compare_pw_alignment> cc;
+			std::set<pw_alignment, compare_pw_alignment> cc;
 			get_cc(al, cc, seen);
 	//		std::cout << "FOUND CC size " << cc.size() << std::endl;
 			sorter.insert(std::make_pair(cc.size(), cc));
 		}
 	
 	}
-	for(std::multimap<size_t , std::set<const pw_alignment *, compare_pw_alignment> >::reverse_iterator it = sorter.rbegin(); it!=sorter.rend(); ++it) {
+	for(std::multimap<size_t , std::set<pw_alignment, compare_pw_alignment> >::reverse_iterator it = sorter.rbegin(); it!=sorter.rend(); ++it) {
 		ccs.push_back(it->second);
 	}
 
@@ -810,25 +859,25 @@ void compute_cc::compute(std::vector<std::set< const pw_alignment *, compare_pw_
 
 }
 
-void compute_cc::get_cc(const pw_alignment * al, std::set <const pw_alignment *, compare_pw_alignment> & cc, std::set <const pw_alignment *, compare_pw_alignment> & seen) {
+void compute_cc::get_cc(const pw_alignment & al, std::set <pw_alignment, compare_pw_alignment> & cc, std::set <pw_alignment, compare_pw_alignment> & seen) {
 	
 	size_t left, right;
-	al->get_lr1(left, right);
-	cc_step(al->getreference1(), left, right, cc, seen);
-	al->get_lr2(left, right);
-	cc_step(al->getreference2(), left, right, cc, seen);
+	al.get_lr1(left, right);
+	cc_step(al.getreference1(), left, right, cc, seen);
+	al.get_lr2(left, right);
+	cc_step(al.getreference2(), left, right, cc, seen);
 }
 
 
 
 
 // TODO further improvements to this function are possible if we store intervals on the references in which all alignments were already processed
-void compute_cc::cc_step(size_t ref, size_t left, size_t right, std::set <const pw_alignment *, compare_pw_alignment> & cc, std::set <const pw_alignment *, compare_pw_alignment>  & seen ) {
+void compute_cc::cc_step(size_t ref, size_t left, size_t right, std::set <pw_alignment, compare_pw_alignment> & cc, std::set <pw_alignment , compare_pw_alignment>  & seen ) {
 	// search bounds (where could other alignments which overlap with the current one start or end)
 	// leftbound: all alignments starting at leftbound or ealier either have the end in the search interval or no overlap with the search interval
 //	std::cout << " cc step " << ref << " fr " << left << " to " << right << " seen is " << seen.size() << " we are on " << alignments.size() << " alignments" <<  std::endl; 
-	std::multimap<size_t, const pw_alignment *>::iterator searchbegin;
-	std::multimap<size_t, const pw_alignment *>::iterator searchend;
+	std::multimap<size_t, pw_alignment>::iterator searchbegin;
+	std::multimap<size_t, pw_alignment>::iterator searchend;
 	if(right > max_al_ref_length) {
 		size_t leftbound = right - max_al_ref_length;
 		searchbegin = als_on_reference.at(ref).upper_bound(leftbound);
@@ -846,25 +895,25 @@ void compute_cc::cc_step(size_t ref, size_t left, size_t right, std::set <const 
 		searchend = als_on_reference.at(ref).end();
 	}
 
-	std::set <const pw_alignment *, compare_pw_alignment> seen1;
-	std::set <const pw_alignment *, compare_pw_alignment> seen2;
+	std::set <pw_alignment, compare_pw_alignment> seen1;
+	std::set <pw_alignment, compare_pw_alignment> seen2;
 
 
 	// search for overlap first, then do all recursive calls after overlapping alignments have been put to seen 
 	// this reduces the maximal recursion level
 	size_t numseen = 0;
-	for(std::multimap<size_t, const pw_alignment *>::iterator it = searchbegin; it!=searchend; ++it) {
-		const pw_alignment * al = it->second;
+	for(std::multimap<size_t, pw_alignment >::iterator it = searchbegin; it!=searchend; ++it) {
+		const pw_alignment & al = it->second;
 
 
 //		std::cout << " at " << it->first << std::endl;
-		std::set <const pw_alignment *, compare_pw_alignment>::iterator seenal = seen.find(al);
+		std::set <pw_alignment , compare_pw_alignment>::iterator seenal = seen.find(al);
 		if(seenal == seen.end()) { // if current al not contained in any connected component
 //			std::cout << " not seen" << std::endl;
 			size_t aleft, aright;	
 	//		size_t leftmost_point_of_al_on_ref = numeric_limits<size_t>::max(); 
-			if(al->getreference1()==ref) {
-				al->get_lr1(aleft, aright);
+			if(al.getreference1()==ref) {
+				al.get_lr1(aleft, aright);
 				if(aright >= left && aleft <= right) {
 					seen.insert(al);
 					seen1.insert(al);
@@ -878,8 +927,8 @@ void compute_cc::cc_step(size_t ref, size_t left, size_t right, std::set <const 
 		//			 leftmost_point_of_al_on_ref = aleft;
 		//		}
 			}
-			if(al->getreference2()==ref) {
-				al->get_lr2(aleft, aright);
+			if(al.getreference2()==ref) {
+				al.get_lr2(aleft, aright);
 				if(aright >= left && aleft <= right) {
 					seen.insert(al);
 					seen2.insert(al);
@@ -906,10 +955,10 @@ void compute_cc::cc_step(size_t ref, size_t left, size_t right, std::set <const 
 
 	// now remove all seen alignments to be faster
 
-	for(std::set<const pw_alignment *>::iterator it = seen1.begin(); it!=seen1.end(); ++it) {
+	for(std::set<pw_alignment, compare_pw_alignment>::iterator it = seen1.begin(); it!=seen1.end(); ++it) {
 		remove_on_mmaps(*it);
 	}
-	for(std::set<const pw_alignment *>::iterator it = seen2.begin(); it!=seen2.end(); ++it) {
+	for(std::set<pw_alignment, compare_pw_alignment>::iterator it = seen2.begin(); it!=seen2.end(); ++it) {
 		remove_on_mmaps(*it);
 	}
 
@@ -919,17 +968,17 @@ void compute_cc::cc_step(size_t ref, size_t left, size_t right, std::set <const 
 	}
 //	std::cout << " mmaps length " <<debugsum << std::endl;
 
-	for(std::set<const pw_alignment *>::iterator it = seen1.begin(); it!=seen1.end(); ++it) {
-		const pw_alignment * al = *it;
+	for(std::set<pw_alignment, compare_pw_alignment>::iterator it = seen1.begin(); it!=seen1.end(); ++it) {
+		const pw_alignment & al = *it;
 		size_t aleft, aright;	
-		al->get_lr2(aleft, aright);
-		cc_step(al->getreference2(), aleft, aright, cc, seen);
+		al.get_lr2(aleft, aright);
+		cc_step(al.getreference2(), aleft, aright, cc, seen);
 	} 	
-	for(std::set<const pw_alignment *>::iterator it = seen2.begin(); it!=seen2.end(); ++it) {
-		const pw_alignment * al = *it;
+	for(std::set<pw_alignment, compare_pw_alignment>::iterator it = seen2.begin(); it!=seen2.end(); ++it) {
+		const pw_alignment & al = *it;
 		size_t aleft, aright;	
-		al->get_lr1(aleft, aright);
-		cc_step(al->getreference1(), aleft, aright, cc, seen);
+		al.get_lr1(aleft, aright);
+		cc_step(al.getreference1(), aleft, aright, cc, seen);
 	} 	
 	
 }
@@ -1084,17 +1133,17 @@ template<typename tmodel>
 
 
 template<typename tmodel>
-void affpro_clusters<tmodel>::add_alignment(const pw_alignment *al,std::ofstream& outs) {
+void affpro_clusters<tmodel>::add_alignment(const pw_alignment & al) {
 	// Get identifiers for both parts of the pairwise alignment
 	std::stringstream sstr1;
 //	std::cout<<"data1 ad in add_al: "<< & dat << std::endl;	
 	size_t left1, right1;
-	al->get_lr1(left1, right1);
-	sstr1 << al->getreference1()<<":"<<left1;
+	al.get_lr1(left1, right1);
+	sstr1 << al.getreference1()<<":"<<left1;
 	std::stringstream sstr2;
 	size_t left2, right2;
-	al->get_lr2(left2, right2);
-	sstr2 << al->getreference2()<<":"<<left2;
+	al.get_lr2(left2, right2);
+	sstr2 << al.getreference2()<<":"<<left2;
 	std::string ref1name = sstr1.str();
 	std::string ref2name = sstr2.str();
 
@@ -1140,7 +1189,7 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment *al,std::ofstream
 //	std::cout<<"data3 ad in add_al: "<< & dat << std::endl;	
 //	dat.numAcc();
 //	std::cout << " dat adress " << & dat<< std::endl;
-	model.cost_function(*al, c1, c2, m1, m2);
+	model.cost_function(al, c1, c2, m1, m2);
 	// preferences
 	simmatrix.at(ref1idx).at(ref1idx) = -c1 - base_cost;
 	simmatrix.at(ref2idx).at(ref2idx) = -c2 - base_cost;
@@ -1271,13 +1320,16 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment *al,std::ofstream
 					}
 				}
 			}
-		}
+		} 
+		/*
 		for(size_t i = 0; i < centersOfASequence.size(); i ++){
 			cout<< " centers on sequence " << i << " are " <<endl;
 			for(size_t j =0 ; j < centersOfASequence.at(i).size(); j++){
 				cout<< centersOfASequence.at(i).at(j) <<endl;
 			}
 		}
+		*/
+
 	}
 	std::vector<size_t>  finding_centers::get_center(size_t seq_id)const{
 		return centersOfASequence.at(seq_id);

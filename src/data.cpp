@@ -721,6 +721,7 @@ all_data::~all_data() {
 	const std::map< std::string, size_t>& all_data::getLongname2seqidx()const{
 		return longname2seqidx;
 	}
+
 	int all_data::findIdAlignment(std::string name,int start, int end){ // declare in graph or data ?
 		for(std::vector<pw_alignment>::iterator it = alignments.begin(); it != alignments.end(); ++it){
 			size_t idReference = it->getreference1();
@@ -791,7 +792,8 @@ all_data::~all_data() {
 }
 
 
-bool all_data::alignment_fits_ref(const pw_alignment * al) const {
+bool all_data::alignment_fits_ref(const pw_alignment & alr) const {
+	const pw_alignment * al = &alr;
 	const dnastring & ref1 = getSequence(al->getreference1());
 	const dnastring & ref2 = getSequence(al->getreference2());
 	bool gapOnSample1 = true;
@@ -986,66 +988,60 @@ overlap::overlap(const overlap & o): data(o.data), als_on_reference(o.data.numSe
 
 
 	
-	overlap::~overlap(){
-		for(std::set<pw_alignment*, compare_pw_alignment>::iterator it = alignments.begin(); it!=alignments.end(); ++it) {
-			delete *it;
-		}
-	}
+overlap::~overlap(){
+}
 
-	void overlap::remove_alignment_nodelete(const pw_alignment * remove){
-		std::pair< std::multimap<size_t, pw_alignment*>::iterator, std::multimap<size_t, pw_alignment*>::iterator > eqrb1 =
-		als_on_reference.at(remove->getreference1()).equal_range(remove->getbegin1());
-		for(std::multimap<size_t, pw_alignment*>::iterator it = eqrb1.first; it!=eqrb1.second; ++it) {
-			if ( it->second == remove ) {
-				als_on_reference.at(remove->getreference1()).erase(it);
-				break;
-			}		
-		}
-		std::pair< std::multimap<size_t, pw_alignment*>::iterator, std::multimap<size_t, pw_alignment*>::iterator > eqre1 =
-		als_on_reference.at(remove->getreference1()).equal_range(remove->getend1());
-		for(std::multimap<size_t, pw_alignment*>::iterator it = eqre1.first; it!=eqre1.second; ++it) {
-			if ( (it->second) == remove ) {
-				als_on_reference.at(remove->getreference1()).erase(it);
-				break;
-			}		
-		}
-		std::pair< std::multimap<size_t, pw_alignment*>::iterator, std::multimap<size_t, pw_alignment*>::iterator > eqrb2 =
-		als_on_reference.at(remove->getreference2()).equal_range(remove->getbegin2());
-		for(std::multimap<size_t, pw_alignment*>::iterator it = eqrb2.first; it!=eqrb2.second; ++it) {
-			if ( (it->second) == remove ) {
-				als_on_reference.at(remove->getreference2()).erase(it);
-				break;
-			}		
-		}
-		std::pair< std::multimap<size_t, pw_alignment*>::iterator, std::multimap<size_t, pw_alignment*>::iterator > eqre2 =
-		als_on_reference.at(remove->getreference2()).equal_range(remove->getend2());
-		for(std::multimap<size_t, pw_alignment*>::iterator it = eqre2.first; it!=eqre2.second; ++it) {
-			if ( (it->second) == remove ) {
-				als_on_reference.at(remove->getreference2()).erase(it);
-				break;
-			}		
-		}
-		pw_alignment * rem = const_cast<pw_alignment *>(remove);
-		std::set<pw_alignment*, compare_pw_alignment>::iterator findr = alignments.find(rem);
+void overlap::remove_alignment(const pw_alignment & removeR){
+	const pw_alignment * remove = &removeR;
+
+	std::pair< std::multimap<size_t, pw_alignment>::iterator, std::multimap<size_t, pw_alignment>::iterator > eqrb1 =
+	als_on_reference.at(remove->getreference1()).equal_range(remove->getbegin1());
+	for(std::multimap<size_t, pw_alignment>::iterator it = eqrb1.first; it!=eqrb1.second; ++it) {
+		if ( removeR.equals(it->second) ) {
+			als_on_reference.at(remove->getreference1()).erase(it);
+			break;
+		}		
+	}
+	std::pair< std::multimap<size_t, pw_alignment>::iterator, std::multimap<size_t, pw_alignment>::iterator > eqre1 =
+	als_on_reference.at(remove->getreference1()).equal_range(remove->getend1());
+	for(std::multimap<size_t, pw_alignment>::iterator it = eqre1.first; it!=eqre1.second; ++it) {
+		if ( removeR.equals(it->second) ) {
+			als_on_reference.at(remove->getreference1()).erase(it);
+			break;
+		}		
+	}
+	std::pair< std::multimap<size_t, pw_alignment>::iterator, std::multimap<size_t, pw_alignment>::iterator > eqrb2 =
+	als_on_reference.at(remove->getreference2()).equal_range(remove->getbegin2());
+	for(std::multimap<size_t, pw_alignment>::iterator it = eqrb2.first; it!=eqrb2.second; ++it) {
+		if ( removeR.equals(it->second) ) {
+			als_on_reference.at(remove->getreference2()).erase(it);
+			break;
+		}		
+	}
+	std::pair< std::multimap<size_t, pw_alignment>::iterator, std::multimap<size_t, pw_alignment>::iterator > eqre2 =
+	als_on_reference.at(remove->getreference2()).equal_range(remove->getend2());
+	for(std::multimap<size_t, pw_alignment>::iterator it = eqre2.first; it!=eqre2.second; ++it) {
+		if ( removeR.equals(it->second) ) {
+			als_on_reference.at(remove->getreference2()).erase(it);
+			break;
+		}		
+	}
+	std::set<pw_alignment, compare_pw_alignment>::iterator findr = alignments.find(removeR);
 	//	remove->print();
-		assert(findr!=alignments.end());
-		alignments.erase(findr);
+//	assert(findr!=alignments.end()); // TODO check again
+	alignments.erase(removeR);
 
-	}
-	void overlap::remove_alignment(const pw_alignment * remove){
-		remove_alignment_nodelete(remove);
-		delete remove;
-	}
+}
 
 
 void overlap::test_all() const {
 
-	for(std::set<pw_alignment*, compare_pw_alignment>::iterator it = alignments.begin(); it!=alignments.end(); ++it) {
-		pw_alignment * al = *it;
+	for(std::set<pw_alignment, compare_pw_alignment>::iterator it = alignments.begin(); it!=alignments.end(); ++it) {
+		const pw_alignment & al = *it;
 		bool alok = data.alignment_fits_ref(al);
 		if(!alok) {
 			std::cout << " test all failed " << std::endl;
-			al->print();
+			al.print();
 			exit(1);
 		}
 		
@@ -1057,8 +1053,8 @@ void overlap::test_all() const {
 
 
 void overlap::print_all_alignment() const {
-	for(std::set<pw_alignment*, compare_pw_alignment>::const_iterator it = alignments.begin(); it!=alignments.end(); ++it ) {
-		const pw_alignment * al = * it;
+	for(std::set<pw_alignment, compare_pw_alignment>::const_iterator it = alignments.begin(); it!=alignments.end(); ++it ) {
+		const pw_alignment * al = &(*it);
 		//std::cout << " x " << al << std::endl;
 		al->print();
 		std::cout << std::endl;
@@ -1068,103 +1064,94 @@ void overlap::print_all_alignment() const {
 
 void overlap::test_multimaps() {
 
-		for(std::set<pw_alignment*, compare_pw_alignment>::const_iterator it = alignments.begin(); it!=alignments.end(); ++it ) {
-			const pw_alignment * remove = * it;
-			std::pair< std::multimap<size_t, pw_alignment*>::iterator, std::multimap<size_t, pw_alignment*>::iterator > eqrb1 =
-			als_on_reference.at(remove->getreference1()).equal_range(remove->getbegin1());
-			size_t found =0;
-			for(std::multimap<size_t, pw_alignment*>::iterator it = eqrb1.first; it!=eqrb1.second; ++it) {
-			if ( it->second == remove ) {
+	for(std::set<pw_alignment, compare_pw_alignment>::const_iterator it = alignments.begin(); it!=alignments.end(); ++it ) {
+		const pw_alignment * remove = &(*it);
+		std::pair< std::multimap<size_t, pw_alignment>::iterator, std::multimap<size_t, pw_alignment>::iterator > eqrb1 =
+		als_on_reference.at(remove->getreference1()).equal_range(remove->getbegin1());
+		size_t found =0;
+		for(std::multimap<size_t, pw_alignment>::iterator it = eqrb1.first; it!=eqrb1.second; ++it) {
+			if ( remove->equals(it->second) ) {
 				found++;
 				break;
 			}		
-			}
-			std::pair< std::multimap<size_t, pw_alignment*>::iterator, std::multimap<size_t, pw_alignment*>::iterator > eqre1 =
-			als_on_reference.at(remove->getreference1()).equal_range(remove->getend1());
-			for(std::multimap<size_t, pw_alignment*>::iterator it = eqre1.first; it!=eqre1.second; ++it) {
-				if ( (it->second) == remove ) {
-				found++;
-				break;
-			}		
-			}
-
-			std::pair< std::multimap<size_t, pw_alignment*>::iterator, std::multimap<size_t, pw_alignment*>::iterator > eqrb2 =
-			als_on_reference.at(remove->getreference2()).equal_range(remove->getbegin2());
-			for(std::multimap<size_t, pw_alignment*>::iterator it = eqrb2.first; it!=eqrb2.second; ++it) {
-			if ( (it->second) == remove ) {
-				found++;
-				break;
-			}		
-			}
-
-			std::pair< std::multimap<size_t, pw_alignment*>::iterator, std::multimap<size_t, pw_alignment*>::iterator > eqre2 =
-			als_on_reference.at(remove->getreference2()).equal_range(remove->getend2());
-			for(std::multimap<size_t, pw_alignment*>::iterator it = eqre2.first; it!=eqre2.second; ++it) {
-			if ( (it->second) == remove ) {
-				found++;
-				break;
-			}		
-			}
-			assert(found==4);
-
 		}
-		for(size_t s=0; s<data.numSequences(); s++) {
-			for(std::multimap< size_t, pw_alignment *>::const_iterator it = als_on_reference.at(s).begin(); it!=als_on_reference.at(s).end(); ++it) {
-				std::cout << it->second << std::endl;
-				pw_alignment * p = const_cast<pw_alignment *>(it->second);
-				//std::cout << p << std::endl;
-				std::set<pw_alignment*, compare_pw_alignment>::iterator findp = alignments.find(p);
-				if(findp==alignments.end()){
-					std::cout<<"wrong one: "<<p<<std::endl;
-					p->print();
-				}
-				assert(findp!=alignments.end());
-			}
-
+		std::pair< std::multimap<size_t, pw_alignment>::iterator, std::multimap<size_t, pw_alignment>::iterator > eqre1 =
+		als_on_reference.at(remove->getreference1()).equal_range(remove->getend1());
+		for(std::multimap<size_t, pw_alignment>::iterator it = eqre1.first; it!=eqre1.second; ++it) {
+			if ( remove->equals(it->second) ) {
+				found++;
+				break;
+			}		
 		}
+
+		std::pair< std::multimap<size_t, pw_alignment>::iterator, std::multimap<size_t, pw_alignment>::iterator > eqrb2 =
+		als_on_reference.at(remove->getreference2()).equal_range(remove->getbegin2());
+		for(std::multimap<size_t, pw_alignment>::iterator it = eqrb2.first; it!=eqrb2.second; ++it) {
+			if ( remove->equals(it->second) ) {
+				found++;
+				break;
+			}		
+		}
+
+		std::pair< std::multimap<size_t, pw_alignment>::iterator, std::multimap<size_t, pw_alignment>::iterator > eqre2 =
+		als_on_reference.at(remove->getreference2()).equal_range(remove->getend2());
+		for(std::multimap<size_t, pw_alignment>::iterator it = eqre2.first; it!=eqre2.second; ++it) {
+			if ( remove->equals(it->second) ) {
+				found++;
+				break;
+			}		
+		}
+		assert(found==4);
+
+	}
+	for(size_t s=0; s<data.numSequences(); s++) {
+		for(std::multimap< size_t, pw_alignment>::const_iterator it = als_on_reference.at(s).begin(); it!=als_on_reference.at(s).end(); ++it) {
+			const pw_alignment & p = it->second;
+	
+			//std::cout << p << std::endl;
+			std::set<pw_alignment, compare_pw_alignment>::iterator findp = alignments.find(p);
+			if(findp==alignments.end()){
+				std::cout<<"wrong one: "<<std::endl;
+				p.print();
+			}
+			assert(findp!=alignments.end());
+		}
+
+	}
 		
 }
 
 
 
-void overlap::insert_without_partial_overlap_p(pw_alignment * np){
+void overlap::insert_without_partial_overlap(const pw_alignment & p){
 
 	//std::cout << " insert " << np << std::endl;
-	assert(alignments.find(np) == alignments.end());
-	alignments.insert(np);
-
+	assert(alignments.find(p) == alignments.end());
+	std::pair<std::set<pw_alignment, compare_pw_alignment>::iterator, bool > npp = alignments.insert(p);
+	std::set<pw_alignment, compare_pw_alignment>::iterator npi = npp.first;
+	const pw_alignment & np = *(npi);
  	
-	std::multimap<size_t , pw_alignment *> & alignment_on_reference1 = als_on_reference.at(np->getreference1());
+	std::multimap<size_t , pw_alignment> & alignment_on_reference1 = als_on_reference.at(np.getreference1());
+	std::multimap<size_t , pw_alignment> & alignment_on_reference2 = als_on_reference.at(np.getreference2());
 
-	
-//	if(np->getreference2()!=np->getreference1()) {
-		std::multimap<size_t , pw_alignment *> & alignment_on_reference2 = als_on_reference.at(np->getreference2());
-		std::pair<size_t,  pw_alignment *> begin2(np->getbegin2(),np);
-		alignment_on_reference2.insert(begin2);
-		std::pair<size_t, pw_alignment *> end2(np->getend2(),np);
-		alignment_on_reference2.insert(end2);
-//	}
+	std::pair<size_t, pw_alignment> begin2(np.getbegin2(),np);
+	alignment_on_reference2.insert(begin2);
+	std::pair<size_t, pw_alignment> end2(np.getend2(),np);
+	alignment_on_reference2.insert(end2);
 
-	std::pair<size_t,  pw_alignment *> begin1(np->getbegin1(),np);
-		alignment_on_reference1.insert(begin1);
-	std::pair<size_t,  pw_alignment *> end1(np->getend1(),np);
-		alignment_on_reference1.insert(end1);
+	std::pair<size_t, pw_alignment > begin1(np.getbegin1(),np);
+	alignment_on_reference1.insert(begin1);
+	std::pair<size_t, pw_alignment > end1(np.getend1(),np);
+	alignment_on_reference1.insert(end1);
 
 }
-	
-pw_alignment * overlap::insert_without_partial_overlap(const pw_alignment & p){
-	pw_alignment * np = new pw_alignment(p);
-	insert_without_partial_overlap_p(np);
-
-	return np;
-}
-
 
 const pw_alignment * overlap::get_al_at_left_end(size_t ref1, size_t ref2, size_t left1, size_t left2) const {
-		const std::multimap<size_t, pw_alignment *> & r1map = als_on_reference.at(ref1);
-		std::pair<std::multimap<size_t, pw_alignment *>::const_iterator,std::multimap<size_t, pw_alignment *>::const_iterator> eqr = r1map.equal_range(left1);
-		for( std::multimap<size_t, pw_alignment *>::const_iterator it = eqr.first; it!= eqr.second; ++it) {
-			const pw_alignment * cal = it->second;
+		const std::multimap<size_t, pw_alignment> & r1map = als_on_reference.at(ref1);
+		std::pair<std::multimap<size_t, pw_alignment >::const_iterator,std::multimap<size_t, pw_alignment>::const_iterator> eqr = r1map.equal_range(left1);
+		for( std::multimap<size_t, pw_alignment>::const_iterator it = eqr.first; it!= eqr.second; ++it) {
+			const pw_alignment & calr = it->second;
+			const pw_alignment * cal = & calr;
 			if(cal->getreference1()==ref1) {
 				size_t cal_left1 = cal->getbegin1();
 				if(cal->getend1() < cal_left1) cal_left1 = cal->getend1();
@@ -1191,13 +1178,16 @@ const pw_alignment * overlap::get_al_at_left_end(size_t ref1, size_t ref2, size_
 		return NULL;
 }
 
-std::multimap<size_t, pw_alignment*> &  overlap::get_als_on_reference(size_t sequence)  {
+std::multimap<size_t, pw_alignment> &  overlap::get_als_on_reference(size_t sequence)  {
 	return als_on_reference.at(sequence);
 }
-const std::multimap<size_t, pw_alignment*> &  overlap::get_als_on_reference_const(size_t sequence) const {
+const std::multimap<size_t, pw_alignment> &  overlap::get_als_on_reference_const(size_t sequence) const {
 	return als_on_reference.at(sequence);
 }
 
+
+
+// TODO why not used
 void overlap::test_all_part()const{
 	
 	/*std::set < const pw_alignment*, compare_pw_alignment> alignment_parts;
@@ -1257,8 +1247,9 @@ void overlap::test_all_part()const{
 }
 
 void overlap::test_overlap()const{
-	for(std::set<pw_alignment*, compare_pw_alignment>::iterator it1 = alignments.begin(); it1!=alignments.end(); ++it1){	
-		pw_alignment * al1 = *it1;
+	for(std::set<pw_alignment, compare_pw_alignment>::iterator it1 = alignments.begin(); it1!=alignments.end(); ++it1){	
+		const pw_alignment & alr = *it1;
+		const pw_alignment * al1 = &alr;
 		size_t l1ref1 = al1->getbegin1();
 		size_t r1ref1 = al1->getend1();
 		size_t l1ref2 = al1->getbegin2();
@@ -1271,8 +1262,9 @@ void overlap::test_overlap()const{
 			l1ref2 = al1->getend2();
 			r1ref2 = al1->getbegin2();		
 		}
-		for(std::set<pw_alignment*, compare_pw_alignment>::iterator it2 = alignments.begin(); it2!=alignments.end(); ++it2){
-			pw_alignment * al2 = *it2;
+		for(std::set<pw_alignment, compare_pw_alignment>::iterator it2 = alignments.begin(); it2!=alignments.end(); ++it2){
+			const pw_alignment & alr2 = *it2;
+			const pw_alignment * al2 = &alr2;
 			size_t l2ref1 = al2->getbegin1();
 			size_t r2ref1 = al2->getend1();
 			size_t l2ref2 = al2->getbegin2();
@@ -1302,8 +1294,8 @@ void overlap::test_overlap()const{
 	}	
 }
 	
-bool overlap::checkAlignments(pw_alignment* const p)const{
-	std::set<pw_alignment*,compare_pw_alignment>::iterator it=alignments.find(p);
+bool overlap::checkAlignments(const pw_alignment & p)const{
+	std::set<pw_alignment, compare_pw_alignment>::iterator it=alignments.find(p);
 	if(it !=alignments.end()) return true;	
 	else return false;	
 }
@@ -1319,7 +1311,7 @@ size_t overlap::size() const {
 	return alignments.size();
 }
 		
-const std::set<pw_alignment*, compare_pw_alignment> & overlap::get_all() const {
+const std::set<pw_alignment, compare_pw_alignment> & overlap::get_all() const {
 	return alignments;
 }
 
@@ -1344,7 +1336,7 @@ void overlap::test_partial_overlap_set(std::set< const pw_alignment *, compare_p
 	overlap::test_partial_overlap_vec(all);
 }
 
-
+// TODO ???
 void overlap::test_partial_overlap_vec(std::vector< const pw_alignment *> & all) {
 	for(size_t i=0; i<all.size(); ++i) {
 		for(size_t j=i+1; j<all.size(); ++j) {
@@ -1412,8 +1404,8 @@ void overlap::test_partial_overlap_vec(std::vector< const pw_alignment *> & all)
 void overlap::test_partial_overlap() const {
 
 	std::vector<const pw_alignment *> all;
-	for(std::set<pw_alignment *, compare_pw_alignment>::iterator it = alignments.begin(); it!=alignments.end(); ++it) {
-		const pw_alignment * al = *it;
+	for(std::set<pw_alignment, compare_pw_alignment>::const_iterator it = alignments.begin(); it!=alignments.end(); ++it) {
+		const pw_alignment * al = &(*it);
 		all.push_back(al);
 	}
 
@@ -1440,19 +1432,20 @@ splitpoints::splitpoints(const pw_alignment & p, const overlap & o, const all_da
 splitpoints::~splitpoints() {}
 
 void splitpoints::find_initial_split_points_nonrecursive(size_t sequence, size_t left, size_t right) {
-		const std::multimap<size_t , pw_alignment *> & alignments_on_reference = overl.get_als_on_reference_const(sequence);
+		const std::multimap<size_t , pw_alignment > & alignments_on_reference = overl.get_als_on_reference_const(sequence);
 
 #if SPLITPRINT		
 		std::cout << " seach for initial split points on " << sequence << " from " << left << std::endl;
 		size_t count = 0;
 #endif
 
-		for( std::multimap<size_t, pw_alignment *>::const_iterator it=alignments_on_reference.lower_bound(left);it!=alignments_on_reference.end(); ++it){
-			const pw_alignment * al = it->second;
+		for( std::multimap<size_t, pw_alignment>::const_iterator it=alignments_on_reference.lower_bound(left);it!=alignments_on_reference.end(); ++it){
+			const pw_alignment & alr = it->second;
+			const pw_alignment * al = &alr;
 			
 #if SPLITPRINT
 			std::cout << count++ <<" See " << std::endl;
-			al->print();
+			alr.print();
 			std::cout << std::endl;
 #endif
 
@@ -1570,15 +1563,16 @@ void splitpoints::find_initial_split_points_nonrecursive(size_t sequence, size_t
 }
 
 void splitpoints::find_initial_split_points(size_t sequence, size_t left, size_t right) {
-		const std::multimap<size_t , pw_alignment *> & alignments_on_reference = overl.get_als_on_reference_const(sequence);
+		const std::multimap<size_t , pw_alignment > & alignments_on_reference = overl.get_als_on_reference_const(sequence);
 
 #if SPLITPRINT		
 		std::cout << " seach for initial split points on " << sequence << " from " << left << std::endl;
 		size_t count = 0;
 #endif
 
-		for( std::multimap<size_t, pw_alignment *>::const_iterator it=alignments_on_reference.lower_bound(left);it!=alignments_on_reference.end(); ++it){
-			const pw_alignment * al = it->second;
+		for( std::multimap<size_t, pw_alignment >::const_iterator it=alignments_on_reference.lower_bound(left);it!=alignments_on_reference.end(); ++it){
+			const pw_alignment & alr = it->second;
+			const pw_alignment * al = &alr;
 			
 #if SPLITPRINT
 			std::cout << count++ <<" See " << std::endl;
@@ -1820,8 +1814,8 @@ void splitpoints::insert_split_point(size_t sequence, size_t position) {
 
 
 				// do splitted parts have only gaps one of their reference sequences
-				bool fgaps = onlyGapSample(&fp);
-				bool sgaps = onlyGapSample(&sp);
+				bool fgaps = onlyGapSample(fp);
+				bool sgaps = onlyGapSample(sp);
 					
 				// find split part alignment ends on reference after removing end gaps
 				size_t fpeleft2= (size_t) -1;
@@ -1879,8 +1873,8 @@ void splitpoints::insert_split_point(size_t sequence, size_t position) {
 				pw_alignment spe;
 				
 				// do splitted parts have only gaps one of their reference sequences
-				bool fgaps = onlyGapSample(&fp);
-				bool sgaps = onlyGapSample(&sp);
+				bool fgaps = onlyGapSample(fp);
+				bool sgaps = onlyGapSample(sp);
 					
 				// find split part alignment ends on reference after removing end gaps
 				size_t fpeleft1 = (size_t) -1;
@@ -1931,9 +1925,10 @@ void splitpoints::insert_split_point(size_t sequence, size_t position) {
 
 
 
-		const std::multimap<size_t, pw_alignment *> & alonref = overl.get_als_on_reference_const(sequence);
-		for(std::multimap<size_t, pw_alignment *>::const_iterator it = alonref.lower_bound(position); it!=alonref.end(); ++it) {
-			const pw_alignment * al = it-> second;
+		const std::multimap<size_t, pw_alignment > & alonref = overl.get_als_on_reference_const(sequence);
+		for(std::multimap<size_t, pw_alignment >::const_iterator it = alonref.lower_bound(position); it!=alonref.end(); ++it) {
+			const pw_alignment & alr = it-> second;
+			const pw_alignment * al = &alr;
 				
 				
 	//			std::cout << " in ins " << sequence << " : " << position << " see: " << std::endl;
@@ -1984,8 +1979,8 @@ void splitpoints::insert_split_point(size_t sequence, size_t position) {
 
 
 				// do splitted parts have only gaps one of their reference sequences
-				bool fgaps = onlyGapSample(&fp);
-				bool sgaps = onlyGapSample(&sp);
+				bool fgaps = onlyGapSample(fp);
+				bool sgaps = onlyGapSample(sp);
 					
 				// find split part alignment ends on reference after removing end gaps
 				if(!fgaps) {
@@ -2068,8 +2063,8 @@ void splitpoints::insert_split_point(size_t sequence, size_t position) {
 					pw_alignment fpe;
 					pw_alignment spe;
 					// do splitted parts have only gaps one of their reference sequences
-					bool fgaps = onlyGapSample(&fp);
-					bool sgaps = onlyGapSample(&sp);
+					bool fgaps = onlyGapSample(fp);
+					bool sgaps = onlyGapSample(sp);
 					
 					// find split part alignment ends on reference after removing end gaps
 					size_t fpeleft2 = (size_t) -1;
@@ -2127,8 +2122,8 @@ void splitpoints::insert_split_point(size_t sequence, size_t position) {
 					pw_alignment spe;
 					
 			// do splitted parts have only gaps one of their reference sequences
-					bool fgaps = onlyGapSample(&fp);
-					bool sgaps = onlyGapSample(&sp);
+					bool fgaps = onlyGapSample(fp);
+					bool sgaps = onlyGapSample(sp);
 					
 					// find split part alignment ends on reference after removing end gaps
 					size_t fpeleft1 = (size_t) -1;
@@ -2186,7 +2181,7 @@ void splitpoints::insert_split_point(size_t sequence, size_t position) {
 	}
 
 
-	void splitpoints::split_all(std::set<const pw_alignment*,compare_pw_alignment> & remove_alignments, std::vector<pw_alignment> & insert_alignments ){
+	void splitpoints::split_all(std::set<pw_alignment, compare_pw_alignment> & remove_alignments, std::vector<pw_alignment> & insert_alignments ){
 
 #if SPLITPRINT		
 		std::cout << " All split points " << std::endl;
@@ -2206,13 +2201,14 @@ void splitpoints::insert_split_point(size_t sequence, size_t position) {
 #if SPLITPRINT			
 			std::cout << "REFERENCE " << i << std::endl;
 #endif
-			const std::multimap<size_t, pw_alignment *> & als_on_ref = overl.get_als_on_reference_const(i);
+			const std::multimap<size_t, pw_alignment> & als_on_ref = overl.get_als_on_reference_const(i);
 			for(std::set<size_t>::iterator split = split_points.at(i).begin(); split!= split_points.at(i).end(); ++split){
 #if SPLITPRINT
 				std::cout << "SPLIT " << *split << std::endl;
 #endif
-				for(std::multimap<size_t, pw_alignment*>::const_iterator it =als_on_ref.lower_bound(*split); it!=als_on_ref.end(); ++it){
-					pw_alignment * p = it-> second;
+				for(std::multimap<size_t, pw_alignment>::const_iterator it =als_on_ref.lower_bound(*split); it!=als_on_ref.end(); ++it){
+					const pw_alignment & pr = it-> second;
+					const pw_alignment * p = & pr;
 
 
 //					p->print();
@@ -2223,7 +2219,7 @@ void splitpoints::insert_split_point(size_t sequence, size_t position) {
 						size_t pright1;
 						p->get_lr1(pleft1,pright1);
 						if( pleft1<*split && pright1>=*split){
-							remove_alignments.insert(p);
+							remove_alignments.insert(pr);
 #if SPLITPRINT
 							std::cout<<"remove alignment1: "<<std::endl;
 							p->print();
@@ -2237,7 +2233,7 @@ void splitpoints::insert_split_point(size_t sequence, size_t position) {
 						p->get_lr2(pleft2,pright2);
 						if( pleft2<*split && pright2>=*split){
 							//	pw_alignment *np = new pw_alignment(*p);
-							remove_alignments.insert(p);
+							remove_alignments.insert(pr);
 #if SPLITPRINT
 							std::cout<<"remove alignment2: "<<std::endl;
 									p->print();
@@ -2250,22 +2246,22 @@ void splitpoints::insert_split_point(size_t sequence, size_t position) {
 
 	//	std::cout << " in split all "<< remove_alignments.size() << " remove_alignments " << std::endl;
 		std::vector<pw_alignment>  split_pieces;
-		splits(&newal, split_pieces);	
-		for(std::set<const pw_alignment*,compare_pw_alignment>::iterator removed = remove_alignments.begin(); removed != remove_alignments.end(); ++removed){
+		splits(newal, split_pieces);	
+		for(std::set<pw_alignment,compare_pw_alignment>::iterator removed = remove_alignments.begin(); removed != remove_alignments.end(); ++removed){
 			splits(*removed, split_pieces);			
 		}
 	//	std::cout<<"split_pieces: "<<std::endl;
 	//	for(size_t i = 0 ; i < split_pieces.size();i++){split_pieces.at(i).print();}	
 //		std::cout<<"size of split pieces"<<split_pieces.size()<<std::endl;
-		std::set<pw_alignment*,compare_pw_alignment> inserted_pieces;
+		std::set<pw_alignment,compare_pw_alignment> inserted_pieces;
 		for(size_t i = 0; i<split_pieces.size();i++) {
 #ifndef NDEBUG
-				if(!data.alignment_fits_ref(&split_pieces.at(i))) {
+				if(!data.alignment_fits_ref(split_pieces.at(i))) {
 				//	std::cout<<"fails here!"<<std::endl;
 					exit(1);
 				}
 #endif
-			if(!onlyGapSample(&split_pieces.at(i))){	
+			if(!onlyGapSample(split_pieces.at(i))){	
 				pw_alignment noendgaps;
 				split_pieces.at(i).remove_end_gaps(noendgaps);
 #if SPLITPRINT
@@ -2275,31 +2271,26 @@ void splitpoints::insert_split_point(size_t sequence, size_t position) {
 				noendgaps.print();
 				std::cout << std::endl;
 #endif
-				std::set<pw_alignment*,compare_pw_alignment>::const_iterator it = inserted_pieces.find(&noendgaps);
-				if (overl.checkAlignments(&noendgaps)) {}
+				std::set<pw_alignment,compare_pw_alignment>::const_iterator it = inserted_pieces.find(noendgaps);
+				if (overl.checkAlignments(noendgaps)) {}
 				else if ( it != inserted_pieces.end()){}
 				else {
 					insert_alignments.push_back(noendgaps);
-				
-					pw_alignment * ipp = new pw_alignment(noendgaps); //&(insert_alignments.at(insert_alignments.size()-1));
-
-					inserted_pieces.insert(ipp);
+					inserted_pieces.insert(noendgaps);
 				}
 			}
 		}
 		
-		for(std::set<pw_alignment*,compare_pw_alignment>::iterator it = inserted_pieces.begin(); it!=inserted_pieces.end(); ++it) {
-			delete *it;
-		}
-			
+					
 	}
-	void splitpoints::splits(const pw_alignment * p,  std::vector<pw_alignment> & insert_alignments){
+	void splitpoints::splits(const pw_alignment & pr,  std::vector<pw_alignment> & insert_alignments){
+		pw_alignment p = pr;
 #if SPLITPRINT	
 		std::cout << "SPL" << std::endl;
-		p->print();
+		p.print();
 		std::cout << std::endl;
 
-		std::cout << " split on " << p->getreference1() << std::endl;
+		std::cout << " split on " << p.getreference1() << std::endl;
 #endif
 
 		pw_alignment p1;
@@ -2308,31 +2299,31 @@ void splitpoints::insert_split_point(size_t sequence, size_t position) {
 		size_t right1;	
 //		size_t left2;
 //		size_t right2;
-		p->get_lr1(left1,right1);
+		p.get_lr1(left1,right1);
 //		p->get_lr2(left2,right2);
-		for(std::set<size_t>::iterator splitp = split_points.at(p->getreference1()).upper_bound(left1); splitp!= split_points.at(p->getreference1()).end(); splitp++){
+		for(std::set<size_t>::iterator splitp = split_points.at(p.getreference1()).upper_bound(left1); splitp!= split_points.at(p.getreference1()).end(); splitp++){
 			if(right1>=*splitp){
 #if SPLITPRINT
 				std::cout << "sp " << *splitp << std::endl;
 #endif
-				p->split(true,*splitp,p1,p2);
-				if(p->getbegin1() < p->getend1()) {
-					p = &p2;
+				p.split(true,*splitp,p1,p2);
+				if(p.getbegin1() < p.getend1()) {
+					p = p2;
 
 #if SPLITPRINT
 					p1.print();
 #endif
-					if(!onlyGapSample(&p1) && p1.alignment_length() >1 &&p1.getbegin1()!=p1.getend1() && p1.getbegin2()!=p1.getend2()) {
+					if(!onlyGapSample(p1) && p1.alignment_length() >1 &&p1.getbegin1()!=p1.getend1() && p1.getbegin2()!=p1.getend2()) {
 						insert_alignments.push_back(p1);
 					}
-				} else if(p->getbegin1() > p->getend1()) {
-					p = &p1;
+				} else if(p.getbegin1() > p.getend1()) {
+					p = p1;
 
 #if SPLITPRINT
 					p2.print();
 #endif
 
-					if(!onlyGapSample(&p2) && p2.alignment_length()>1 && p2.getbegin1()!=p2.getend1() && p2.getbegin2()!=p2.getend2() ){	
+					if(!onlyGapSample(p2) && p2.alignment_length()>1 && p2.getbegin1()!=p2.getend1() && p2.getbegin2()!=p2.getend2() ){	
 						insert_alignments.push_back(p2);
 					}
 					
@@ -2343,22 +2334,22 @@ void splitpoints::insert_split_point(size_t sequence, size_t position) {
 
 #if SPLITPRINT
 		std::cout << " last part" << std::endl;
-		p->print();
+		p.print();
 		std::cout << std::endl;
 #endif
 
-		if(!onlyGapSample(p)&& p->alignment_length()>1 && p->getbegin1()!=p->getend1() && p->getbegin2()!=p->getend2() ){	
-			insert_alignments.push_back(*p);		
+		if(!onlyGapSample(p)&& p.alignment_length()>1 && p.getbegin1()!=p.getend1() && p.getbegin2()!=p.getend2() ){	
+			insert_alignments.push_back(p);		
 		}
 	}
 
-	bool splitpoints::onlyGapSample(const pw_alignment* p){
+	bool splitpoints::onlyGapSample(const pw_alignment & p) const {
 		bool gapOnSample1 = true;
 		bool gapOnSample2 = true;
-		for(size_t i = 0; i< p->alignment_length();i++){
+		for(size_t i = 0; i< p.alignment_length();i++){
 			char p1char = 'X';
 			char p2char = 'X';
-			p->alignment_col(i, p1char, p2char);	
+			p.alignment_col(i, p1char, p2char);	
 			if(p1char !='-' ) gapOnSample1 = false;
 			if(p2char !='-' ) gapOnSample2 = false;			
 			if(! gapOnSample1 && !gapOnSample2) {
@@ -2368,11 +2359,15 @@ void splitpoints::insert_split_point(size_t sequence, size_t position) {
 		return gapOnSample1 || gapOnSample2;
 	}
 
-
+/*
 	std::vector<pw_alignment>  splitpoints::get_insert()const{
 		return insert_alignments;
 	}
-		
+*/
+
+
+
+
 	model::model(all_data & d): data(d),cost_on_acc (5, std::vector<double>(data.numAcc(),1)),modification(data.numAcc(), vector<vector<vector<double> > >(data.numAcc(),vector<vector<double> > (6, vector<double>(6,1) ))) {}
 
 	model::~model(){}

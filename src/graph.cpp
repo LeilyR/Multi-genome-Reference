@@ -485,10 +485,8 @@ void Graph::lookPrevious(std::string partOfRead,Graph::Vertex it, all_data& data
 		size_t incl_end2 =  it.getStartOnRead() -1;// -1 ?
 		pw_alignment al(resultNeedleman.first,resultNeedleman.second, startOnPreviousNode,start, incl_end1,incl_end2, idx1, idx2);
 		// Does the alignment is ok ?
-		pw_alignment *tmp;
-		tmp = &al;
-		data.alignment_fits_ref(tmp);
-		data.add_pw_alignment(*tmp);
+		data.alignment_fits_ref(al);
+		data.add_pw_alignment(al);
 		int idOnNewGraph =  data.findIdAlignment(it.getName(),it.getStartOnRead(), it.getEndOnRead());
 		previousNode.setStartOnRead(start);
 		previousNode.setEndOnRead(end);
@@ -528,11 +526,9 @@ void Graph::lookNext(std::string partOfRead,Graph::Vertex it, all_data& data, Gr
 		size_t endOnRead =  startOnRead + lengthToLook-1;
 		pw_alignment al(resultNeedleman.first,resultNeedleman.second, startToExtract,startOnRead,endToExtract,endOnRead, idx1, idx2);
 		// Does the alignment is ok ?
-		pw_alignment *tmp;
-		tmp = &al;
 	//	al.print();
-		data.alignment_fits_ref(tmp);
-		data.add_pw_alignment(*tmp);
+		data.alignment_fits_ref(al);
+		data.add_pw_alignment(al);
 		int idOnNewGraph =  data.findIdAlignment(it.getName(),it.getStartOnRead(), it.getEndOnRead());
 		nextNode.setStartOnRead(startOnRead);
 		nextNode.setEndOnRead(endOnRead);
@@ -600,11 +596,9 @@ void Graph::lookGap(std::string partOfRead, Graph::Vertex v1, int idEnd, all_dat
 		size_t endOnRead =  startOnRead + lengthToLook-1;
 		pw_alignment al(resultNeedleman.first,resultNeedleman.second, startToExtract,startOnRead,endToExtract,endOnRead, idx1, idx2);
 		// Does the alignment is ok ?
-		pw_alignment *tmp;
-		tmp = &al;
 		al.print();
-		data.alignment_fits_ref(tmp);
-		data.add_pw_alignment(*tmp);
+		data.alignment_fits_ref(al);
+		data.add_pw_alignment(al);
 		int idOnNewGraph =  data.findIdAlignment(v1.getName(),v1.getStartOnRead(), v1.getEndOnRead());
 		nextNode.setStartOnRead(startOnRead);
 		nextNode.setEndOnRead(endOnRead);
