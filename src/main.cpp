@@ -788,7 +788,6 @@ int do_mc_model(int argc, char * argv[]) {
 	}
 	tree.make_a_tree();
 	tree.count_paths();
-//	tree.get_first_parent();
 	merg.merg_gain_value();	
 
 
