@@ -76,7 +76,7 @@ class all_data {
 		size_t numSequences() const;
 		size_t numAlignments() const;
 		const size_t numAcc() const;
-		bool alignment_fits_ref(const pw_alignment * al) const;
+		bool alignment_fits_ref(const pw_alignment & al) const;
 		void print_ref(const pw_alignment * al)const;
 		const std::vector<size_t> & getAcc(size_t acc)const;//return the vector of all sequences for a certain acc.
 		size_t accNumber(size_t sequence_id) const;
@@ -111,30 +111,26 @@ class all_data {
 
 
 class compute_cc;
-
 class overlap{
 public:
 	overlap(const all_data&);
 	overlap(const overlap & o);
 	~overlap();
-	// insert p into overlap data structure, return pointer to inserted alignment
-	pw_alignment * insert_without_partial_overlap(const pw_alignment & p);
-	void insert_without_partial_overlap_p(pw_alignment * p);
+	void insert_without_partial_overlap(const pw_alignment & p);
 	// This function removes an alignment with adress identity to remove from overlap, then deletes remove
-	void remove_alignment(const pw_alignment  *remove);
-	void remove_alignment_nodelete(const pw_alignment * remove);
+	void remove_alignment(const pw_alignment & remove);
 
 	void test_all() const;
 	void test_all_part()const;// Change it later to check all those pieces with gap in one sample. Put them all in a std::set and check if the only missed parts of coverage are those parts.
 	void test_overlap()const;
 	void print_all_alignment() const;
 	const pw_alignment * get_al_at_left_end(size_t ref1, size_t ref2, size_t left1, size_t left2) const;
-	std::multimap<size_t, pw_alignment*>& get_als_on_reference(size_t sequence) ;
-	const std::multimap<size_t, pw_alignment*>& get_als_on_reference_const(size_t sequence) const ;
+	std::multimap<size_t, pw_alignment >& get_als_on_reference(size_t sequence) ;
+	const std::multimap<size_t, pw_alignment>& get_als_on_reference_const(size_t sequence) const ;
 	void test_multimaps()  ;
-	bool checkAlignments(pw_alignment* const p)const;
+	bool checkAlignments(const pw_alignment & p)const;
 
-	const std::set<pw_alignment*, compare_pw_alignment> & get_all() const;
+	const std::set<pw_alignment, compare_pw_alignment> & get_all() const;
 
 	void test_partial_overlap() const;
 	static void test_partial_overlap_set(std::set< const pw_alignment *, compare_pw_alignment> & als);
@@ -145,8 +141,8 @@ public:
 	size_t size() const;
 private:
 	const all_data & data;
-	std::set<pw_alignment*, compare_pw_alignment> alignments;
-	std::vector< std::multimap< size_t, pw_alignment *> > als_on_reference; // sequence index -> pos on that sequence -> alignment reference
+	std::set<pw_alignment, compare_pw_alignment> alignments;
+	std::vector< std::multimap< size_t, pw_alignment> > als_on_reference; // sequence index -> pos on that sequence -> alignment reference
 
 
 	
@@ -164,10 +160,11 @@ class splitpoints {
 	void nonrecursive_splits(); // initial split points only 
 	void insert_split_point(size_t sequence, size_t position);//recursively find the other split points
 	void insert_split_point_nonrecursive(size_t sequence, size_t position);//insert without recursion
-	void split_all(std::set<const pw_alignment*, compare_pw_alignment> & remove_alignments, std::vector<pw_alignment> & insert_alignments);
-	void splits(const pw_alignment * p,  std::vector<pw_alignment> & insert_alignments);
-	bool onlyGapSample(const pw_alignment* p);
-	 std::vector<pw_alignment>  get_insert () const;
+	void split_all(std::set<pw_alignment, compare_pw_alignment> & remove_alignments, std::vector<pw_alignment> & insert_alignments);
+	void splits(const pw_alignment & p,  std::vector<pw_alignment> & insert_alignments);
+	bool onlyGapSample(const pw_alignment & p) const;
+
+	// std::vector<pw_alignment>  get_insert () const;
 
 	private:
 	const overlap & overl;

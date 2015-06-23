@@ -67,6 +67,10 @@ class pw_alignment {
 	double get_modify1() const;
 	double get_modify2() const;
 
+	bool equals(const pw_alignment & al) const;
+
+	pw_alignment & operator=(const pw_alignment & al);
+
 	private:
 	std::vector<std::vector<bool> > samples;
 	std::vector<size_t> begins;
@@ -85,7 +89,7 @@ class pw_alignment {
 
 class compare_pw_alignment {
 	public:
-	bool operator()(const pw_alignment *const &a, const pw_alignment *const &b) const ;
+	bool operator()(const pw_alignment &a, const pw_alignment &b) const ;
 };
 class sort_pw_alignment{
 	public:
