@@ -332,7 +332,7 @@ void initial_alignment_set<T>::lazy_split_insert_step(overlap & ovrlp, size_t le
 
 
 template<typename T>
-void initial_alignment_set<T>::compute_simple_lazy_splits(overlap & o) {
+void initial_alignment_set<T>::compute_simple_lazy_splits(overlap & o){
 	size_t used = 0;
 	size_t not_used = 0;
 	double total_gain = 0;

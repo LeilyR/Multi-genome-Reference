@@ -8,6 +8,7 @@
 #include <vector>
 #include "pw_alignment.hpp"
 #include "data.hpp"
+#include "dynamic_mc.hpp"
 #include "model.hpp"
 #include "encoder.hpp"
 #include "test.hpp"
@@ -151,16 +152,18 @@ int do_fasta_prepare(int argc, char * argv[]) {
 		}
 
 		for(size_t i=0; i<inputs.size(); ++i) {
-
-
 			std::string str;
+			size_t j = 0;
 			while(getline((*(inputs.at(i))), str)) {
 				if(str.length()>0) { // ignore empty lines
 				if(str.at(0)=='>') {
-					std::string nname = str.substr(1);
+				//	std::string nname = str.substr(1);//original code
 					std::stringstream nhead;
-					nhead << ">" << names.at(i) << ":" << nname;
-					outf << nhead.str() << std::endl;
+					nhead << ">" << i << ":" << j;
+				//	nhead << ">" << names.at(i) << ":" << nname;//original code
+				//	outf << nhead.str() << std::endl;//original code
+					outf << nhead.str();
+					j = j +1;
 
 						
 						
@@ -175,7 +178,8 @@ int do_fasta_prepare(int argc, char * argv[]) {
 */	
 
 				} else {
-					outf << str << std::endl;
+					outf << str;
+				//	outf << str << std::endl; original code
 				}
 				}
 			}
@@ -475,15 +479,14 @@ void write_graph_maf(const std::string & graphout, const std::map<string, std::v
 	gout.close();
 
 }
-void write_encoded_seq(ofstream & outs){
-
-}
 
 int do_mc_model(int argc, char * argv[]) {
 	typedef mc_model use_model;
+//	typedef dynamic_mc_model use_model;
 //	typedef clustering<use_model> use_clustering;
 	typedef initial_alignment_set<use_model> use_ias;
 	typedef affpro_clusters<use_model> use_affpro;
+	typedef encoder<use_model> use_encode;
 	if(argc < 6) {
 		usage();
 		cerr << "Program: model" << std::endl;
@@ -507,6 +510,9 @@ int do_mc_model(int argc, char * argv[]) {
 	}
 	std::string encoding_out(argv[5]);
 	std::ofstream outs(encoding_out.c_str(),std::ofstream::binary);
+
+
+
 // Read all data
 	all_data data;
 	data.read_fasta_maf(fastafile, maffile);
@@ -516,6 +522,12 @@ int do_mc_model(int argc, char * argv[]) {
 	read_data_time = clock() - read_data_time;
 //	encoding_functor functor1(data);
 
+
+//	size_t all_length =0;
+//	for(size_t i=0; i<data.numSequences(); i++) {
+//		all_length+= data.getSequence(i).length();
+//	}
+//	std::cout<< "all sequence bases " << all_length << std::endl;
 
 // Find connected components of alignments with some overlap
 	clock_t initial_cc_time = clock();
@@ -530,9 +542,18 @@ int do_mc_model(int argc, char * argv[]) {
 // Train the model on all data
 
 	clock_t train_models_time = clock();
+//	dynamic_mc_model dy_model(data);
+//	dy_model.train(outs);
 	use_model m(data);
 	m.train(outs);
-
+	size_t total = 0;
+	for(size_t i =0; i < data.numAlignments();i++){
+		const pw_alignment & al = data.getAlignment(i);
+		double g1 ,g2;
+		m.gain_function(al,g1,g2);
+		total += g1 + g2;
+	}
+	std::cout << "total gain " << total << std::endl;
 	train_models_time = clock() - train_models_time;
 //	double sum = 0;
 //	double c1;
@@ -563,7 +584,7 @@ int do_mc_model(int argc, char * argv[]) {
 //	counting_functor functor(data);
 //	encoder en(data,m);
 //	use_clustering clust(ol,data,m);
-	encoder en(data,m,wrap);
+	use_encode en(data,m,wrap);
 	std::vector<overlap> cc_overlap(ccs.size(), overlap(data));// An overlap class object is needed for each connected component, thus we cannot use ol
 	// base cost to use an alignment (information need for its adress)
 	double cluster_base_cost = log2(data.numAlignments());
@@ -777,22 +798,22 @@ int do_mc_model(int argc, char * argv[]) {
 		} // for cluster_in set  
 		std::cout << std::endl;
 //new code for long centers can be used here!(al_of_a_ccs is used for running mergingCenters class functions)
-	finding_centers centers(data);
-	suffix_tree tree(data,centers);
-	merging_centers merg(centers,tree);
-	for(std::map<std::string, std::vector<pw_alignment> >::iterator  al = al_of_a_ccs.begin(); al !=al_of_a_ccs.end();al++){
-		std::string cent = al->first;
-		std::cout<< "cent: " << al->first << "al_size: "<< al->second.size()<<std::endl;
-	}
-	if(al_of_a_ccs.size()>0){
-		centers.center_frequency(al_of_a_ccs);
-		for(size_t seq =0 ; seq < data.numSequences(); seq ++){
-			tree.create_suffix(seq);
-		}
-	}
-	tree.make_a_tree();
-	tree.count_paths();
-	merg.merg_gain_value();	
+//	finding_centers centers(data);
+//	suffix_tree tree(data,centers);
+//	merging_centers merg(centers,tree);
+//	for(std::map<std::string, std::vector<pw_alignment> >::iterator  al = al_of_a_ccs.begin(); al !=al_of_a_ccs.end();al++){
+//		std::string cent = al->first;
+//		std::cout<< "cent: " << al->first << "al_size: "<< al->second.size()<<std::endl;
+//	}
+//	if(al_of_a_ccs.size()>0){
+//		centers.center_frequency(al_of_a_ccs);
+//		for(size_t seq =0 ; seq < data.numSequences(); seq ++){
+//			tree.create_suffix(seq);
+//		}
+//	}
+//	tree.make_a_tree();
+//	tree.count_paths();
+//	merg.merg_gain_value();	
 
 
 
@@ -946,47 +967,7 @@ int do_mc_model(int argc, char * argv[]) {
 //						std::cout<< " "<< std::endl;
 
 //	}
-/*	for(size_t i = 0 ; i < data.numAlignments(); i++){
-		const pw_alignment & p = data.getAlignment(i);
-		size_t left1;
-		size_t left2;
-		size_t right1;
-		size_t right2;
-		p.get_lr1(left1,right1);
-		p.get_lr2(left2,right2);
-		if(p.getreference1() == 1 && p.getreference2() == 25 && left2 == 70424){
-			std::cout<< "left is 70424 and ref 2 is 25"<<std::endl;
-			std::cout<< "left 1 is " << left1 << std::endl;
-		//	p.print();
-			double g1;
-			double g2;
-			double c1;
-			double c2;
-			double m1;
-			double m2;
-			m.cost_function(p,c1,c2,m1,m2,outs);
-			std::cout << "m1: "<< m1 << " m2: "<< m2<< " c1: "<< c1<< " c2: "<< c2 << std::endl;
-			m.gain_function(p,g1,g2,outs);
-			std::cout<< "g1: "<<g1 << " g2: "<< g2 <<std::endl;
-		}
-		if (p.getreference1() == 25&&p.getreference2()==1&&left1 == 70424){
-			std::cout<< "left is 70424 and ref 1 is 25"<<std::endl;
-			std::cout<< "left 2 is " << left2 << std::endl;
-		//	p.print();
-			double g1;
-			double g2;
-			double c1;
-			double c2;
-			double m1;
-			double m2;
-			m.cost_function(p,c1,c2,m1,m2,outs);
-			std::cout << "m1: "<< m1 << " m2: "<< m2<< " c1: "<< c1<< " c2: "<< c2 << std::endl;
-			m.gain_function(p,g1,g2,outs);
-			std::cout<< "g1: "<<g1 << " g2: "<< g2 <<std::endl;
-		}
-	}
 
-	*/
 //Data compression:
 	if(0!=encoding_out.compare("noencode")) {
 	std::cout<< "weight size: "<< weight.size()<<std::endl;
@@ -998,10 +979,20 @@ int do_mc_model(int argc, char * argv[]) {
 //	en.calculate_high_in_partition(weight,alignments_in_a_cluster);
 //	en.arithmetic_encoding_centers(alignments_in_a_cluster,outs);
 //	en.arithmetic_encoding_alignment(weight,member_of_cluster,alignments_in_a_cluster,outs,*enc);
+//	en.write_to_stream(alignments_in_a_cluster,outs);
 	en.al_encoding(weight,member_of_cluster,alignments_in_a_cluster,outs,*enc);
 	delete enc;
 	outs.close();
+//	std::ifstream in(encoding_out.c_str(),std::ifstream::binary);
+//	en.read_from_stream(in);
+//	dlib::entropy_decoder_kernel_1  dec;
+//	en.al_decoding(in,dec);
+//	cout<< "decoding is done!"<<endl;
+
 //	test.encode();
+//	test.decode();
+//	test.compare();
+//	test.context_compare();
 
 	}
 
@@ -1031,34 +1022,387 @@ int do_mc_model(int argc, char * argv[]) {
 
 	return 0;
 }
-int do_decoding(int argc, char * argv[]){
-	typedef mc_model use_model;
-	if(argc < 3){
+int do_dynamic_mc_model(int argc, char * argv[]) {
+	typedef dynamic_mc_model use_model;
+	typedef initial_alignment_set<use_model> use_ias;
+	typedef affpro_clusters<use_model> use_affpro;
+	typedef encoder<use_model> use_encode;
+	if(argc < 6) {
 		usage();
-		cerr << "Program: model" << endl;
-		cerr << "Parameters:" << endl;
-		cerr << "* output is fasta file for decoding" << endl;
+		cerr << "Program: dy_model" << std::endl;
+		cerr << "Parameters:" << std::endl;
+		cerr << "* fasta file from fasta_prepare" << std::endl;
+		cerr << "* maf file containing alignments of sequences contained in the fasta file" << std::endl;
+		cerr << "* output maf file for the graph" << std::endl;
+		cerr << "* output binary compressed file (use 'noencode' to skip encoding step)" << std::endl;
+		cerr << "* number of threads to use (optional, default 10)" << std::endl;
 	}
+
+	clock_t read_data_time = clock();
+	std::string fastafile(argv[2]);
+	std::string maffile(argv[3]);
+	std::string graphout(argv[4]);
+	size_t num_threads = 1;
+	if(argc == 7) {
+		num_threads = atoi(argv[6]);
+	}
+	std::string encoding_out(argv[5]);
+	std::ofstream outs(encoding_out.c_str(),std::ofstream::binary);
+// Read all data
 	all_data data;
-	use_model m(data);
+	data.read_fasta_maf(fastafile, maffile);
+	overlap ol(data);
 	wrapper wrap;
-	encoder en(data,m,wrap);
-//Decompression
-	ifstream in("encode",std::ifstream::binary);
+	test_encoder test;
+	read_data_time = clock() - read_data_time;
+// Find connected components of alignments with some overlap
+	clock_t initial_cc_time = clock();
+	compute_cc cccs(data);
+	std::vector<std::set< pw_alignment , compare_pw_alignment> > ccs;
+	cccs.compute(ccs); //fill in ccss, order by size(Notice that they are just connected to each other if they have overlap!)
+	initial_cc_time = clock() - initial_cc_time;
+// Train the model on all data
+
+	clock_t train_models_time = clock();
+	use_model m(data);
+	m.train(outs);
+	train_models_time = clock() - train_models_time;
+	size_t total = 0;
+	for(size_t i =0; i < data.numAlignments();i++){
+		const pw_alignment & al = data.getAlignment(i);
+		double g1 ,g2;
+		m.gain_function(al,g1,g2);
+		total += g1 + g2;
+		std::cout << "total gain " << total << std::endl;
+	}
+	use_encode en(data,m,wrap);
+	std::vector<overlap> cc_overlap(ccs.size(), overlap(data));// An overlap class object is needed for each connected component, thus we cannot use ol
+	// base cost to use an alignment (information need for its adress)
+	double cluster_base_cost = log2(data.numAlignments());
+// Select an initial alignment std::set for each connected component (in parallel)
+	// TODO put the next two into a single data structure
+	std::map<std::string, std::vector<string> > global_results;//for each center returns all its cluster members TODO needed?
+	std::map<std::string, std::vector<pw_alignment> > alignments_in_a_cluster;//string ---> center of a cluster, vector ---> alignments with that center
+
+	size_t num_clusters = 0;
+	size_t num_cluster_members_al = 0;
+	size_t num_cluster_seq = 0;
+	size_t num_cluster_inputs_al = 0;
+#if TIMING
+	clock_t ias_time = 0;
+	clock_t test_function_time = 0;
+	clock_t second_cc_time = 0;
+	clock_t ap_time = 0;
+#endif
+
+	double all_gain = 0;
+	double all_gain_in_ias = 0;
+	size_t all_used_input_alignments = 0;
+	size_t all_npo_alignments = 0;
+
+#pragma omp parallel for num_threads(num_threads) schedule(dynamic)
+	for(size_t i=0; i<ccs.size(); ++i) {
+#pragma omp critical(print)
+{
+//		std::cout << " on initial CC " << i << " size " << ccs.at(i).size() << std::endl;
+}
+		clock_t ias_time_local = clock();
+		std::set< pw_alignment, compare_pw_alignment> & cc = ccs.at(i);
+		use_ias ias(data,cc, m, cluster_base_cost);
+		ias.compute(cc_overlap.at(i));
+		ias_time_local = clock() - ias_time_local;
+
+		clock_t test_time_local = clock();
+		cc_overlap.at(i).test_partial_overlap(); // TODO remove slow test function
+		test_time_local = clock() - test_time_local;
+#pragma omp critical(gain_statistics)
+{
+		all_gain+=ias.get_max_gain();
+		all_gain_in_ias+=ias.get_result_gain();
+		all_used_input_alignments+=ias.get_used_alignments();
+		all_npo_alignments += cc_overlap.at(i).size();
+}
+
+
+		// TODO this can be done a lot faster because there is no partial overlap here
+		clock_t second_cc_time_local = clock();
+		std::vector< std::set<pw_alignment , compare_pw_alignment> > cc_cluster_in; //has shorter length than original sequence pieces
+		compute_cc occ(cc_overlap.at(i), data.numSequences());
+		occ.compute(cc_cluster_in);
+		second_cc_time_local = clock() - second_cc_time_local;
+#if TIMING
+#pragma omp critical(time)
+{
+		ias_time += ias_time_local;
+		test_function_time += test_time_local;
+		second_cc_time += second_cc_time_local;
+}
+#endif
+	std::vector<std::string> all_centers;
+	map<string, vector<pw_alignment> >al_of_a_ccs;// it is used for creating long centers
+	for(size_t j=0; j<cc_cluster_in.size(); ++j) {
+		clock_t ap_time_local = clock();
+		use_affpro uaf(cc_cluster_in.at(j), m, cluster_base_cost,outs);
+		std::map<std::string, std::vector<string> >cluster_result;
+		uaf.run(cluster_result);
+		ap_time_local = clock() - ap_time_local;
+#if TIMING
+#pragma omp critical(aptime) 
+{
+		ap_time += ap_time_local;
+}
+
+#endif
+		std::map<std::string, std::vector<pw_alignment> > local_al_in_a_cluster;
+		size_t counter =0;
+		for(std::map<std::string,std::vector<string> >::iterator it=cluster_result.begin();it !=cluster_result.end();it++){
+			counter++;
+			std::string center = it->first;
+			std::map<std::string, std::vector<pw_alignment> >::iterator it1 = local_al_in_a_cluster.find(center);
+			if(it1 == local_al_in_a_cluster.end()){
+				local_al_in_a_cluster.insert(make_pair(center, std::vector<pw_alignment>()));
+				it1 = local_al_in_a_cluster.find(center);
+			}
+			std::vector<std::string> center_parts;
+			strsep(center, ":" , center_parts);
+			unsigned int ref = atoi(center_parts.at(0).c_str());
+			unsigned int left = atoi(center_parts.at(1).c_str());
+			// look at all input alignments and determine which cluster it belongs to
+			for(std::set<pw_alignment, compare_pw_alignment>::iterator it2 = cc_cluster_in.at(j).begin(); it2!=cc_cluster_in.at(j).end(); ++it2){
+				const pw_alignment & al = *it2;
+				size_t ref1 = al.getreference1();
+				size_t ref2 = al.getreference2();
+				size_t left1;
+				size_t left2;
+				size_t right1;
+				size_t right2;
+				al.get_lr1(left1,right1);
+				al.get_lr2(left2,right2);
+				if(ref1 == ref && left1 == left){
+					for(size_t k = 0; k < it->second.size();k++){
+						std::vector<std::string> member_parts;
+						strsep(it->second.at(k), ":" , member_parts);
+						unsigned int mem_ref = atoi(member_parts.at(0).c_str());
+						unsigned int mem_left = atoi(member_parts.at(1).c_str());
+						if(ref2 == mem_ref && left2 == mem_left){
+							it1->second.push_back(al);
+						}else continue;
+					}
+				}else if(ref2 == ref && left2 == left){
+						for(size_t k = 0; k < it->second.size();k++){
+							std::vector<std::string> member_parts;
+							strsep(it->second.at(k), ":" , member_parts);
+							unsigned int mem_ref = atoi(member_parts.at(0).c_str());
+							unsigned int mem_left = atoi(member_parts.at(1).c_str());
+							if(ref1 == mem_ref && left1 == mem_left){
+								it1->second.push_back(al);
+							}else continue;
+						}
+				}else continue;
+			} // for cluster_in std::set
+		}
+#pragma omp critical 
+{
+			num_clusters += cluster_result.size();
+			num_cluster_inputs_al += cc_cluster_in.at(j).size();
+			for(std::map<std::string, std::vector<pw_alignment> >::iterator it = local_al_in_a_cluster.begin(); it!=local_al_in_a_cluster.end(); ++it) {
+				alignments_in_a_cluster.insert(*it);
+				if(it->second.size()!=0){
+					al_of_a_ccs.insert(*it);
+				}
+				num_cluster_members_al += 1 + it->second.size();			
+			}
+}
+#pragma omp critical
+{
+			for(std::map<std::string,std::vector<string> >::iterator it=cluster_result.begin();it != cluster_result.end();it++){
+				std::string center = it->first;
+				num_cluster_seq+= 1 + it->second.size();
+				std::map<std::string,std::vector<string> >::iterator it1 = global_results.find(center);
+				if(it1 == global_results.end()){
+					global_results.insert(make_pair(center, std::vector<std::string>()));
+					it1 = global_results.find(center);
+				}
+				for(size_t i =0; i < it->second.size();i++){
+					it1->second.push_back(it->second.at(i));
+				}
+			}
+}
+		} // for cluster_in set  
+		std::cout << std::endl;
+	} // for connected components
+	clock_t graph_ma_time = clock();
+	// TODO better separation of the different applications of our program: create/read model, compress/decompress sequences, create graph
+	// write graph result in maf format
+	write_graph_maf(graphout, alignments_in_a_cluster, data);//includes clusters with no associated member.
+	graph_ma_time = clock() - graph_ma_time;
+	clock_t arithmetic_encoding_time = clock();
+	std::set<std::string> intermediate_center;
+	for(std::map<std::string, std::vector<pw_alignment> >::iterator it = alignments_in_a_cluster.begin(); it!=alignments_in_a_cluster.end();it++){
+		if(it->second.size()==0){
+			intermediate_center.insert(it->first);
+		}
+	}
+	for(std::set<std::string>::iterator it = intermediate_center.begin();it !=intermediate_center.end();it++){
+		std::string cent = *it;
+		std::map<std::string, std::vector<pw_alignment> >::iterator it1 = alignments_in_a_cluster.find(cent);
+		alignments_in_a_cluster.erase(it1);				
+	}
+	//Defining weights of global clustering results! 
+	std::map<std::string, unsigned int>weight;
+	size_t max_bit = 8;	
+	size_t max_members = 0;//Returns the largest cluster
+	for(std::map<std::string, std::vector<string> >::iterator it=global_results.begin(); it !=global_results.end(); it++){	
+        	if(it->second.size()> max_members){		
+			max_members = it->second.size();
+		}
+		
+	}	
+	for(std::map<std::string, std::vector<string> >::iterator it=global_results.begin(); it !=global_results.end(); it++){
+		std::string cluster = it ->first;
+		std::map<std::string, std::vector<pw_alignment> >::iterator cent = alignments_in_a_cluster.find(cluster);
+		if(cent != alignments_in_a_cluster.end()){//Removing the centers with no associated member
+			std::map<std::string, unsigned int >::iterator it1 = weight.find(cluster);
+			if(it1 == weight.end()){
+				weight.insert(make_pair(cluster,0));
+				it1 = weight.find(cluster);
+			}
+			it1->second = (unsigned int)(it->second.size()*((m.get_powerOfTwo().at(max_bit)-1)/(double)max_members));
+			if(it1 ->second == 0){
+				it1->second = 1;
+			}
+		}else continue;
+	}
+	size_t no_al = 0;
+	for(std::map<std::string, std::vector<string> >::iterator it=global_results.begin();it !=global_results.end();it++){
+			no_al += it->second.size();
+	}
+	std::map<std::string, std::vector<string> >membersOfCluster;//first string represents center and vector of strings are associated members
+	for(std::map<std::string, std::vector<pw_alignment> >::iterator it = alignments_in_a_cluster.begin();it != alignments_in_a_cluster.end();it++){
+		std::map<std::string, std::vector<string> >::iterator it1 = membersOfCluster.find(it->first);
+		for(size_t j =0; j < it->second.size();j++){
+			size_t left_1; 
+			size_t left_2;
+			size_t right_1;
+			size_t right_2;
+			size_t ref1;
+			size_t ref2;
+			pw_alignment p = it->second.at(j);
+			p.get_lr1(left_1,right_1);
+			p.get_lr2(left_2,right_2);
+			ref1 = p.getreference1();
+			ref2 = p.getreference2();
+			if(it1 == membersOfCluster.end()){
+				membersOfCluster.insert(make_pair(it->first,std::vector<std::string>()));
+				it1 = membersOfCluster.find(it->first);
+			}
+			std::stringstream sample1;
+			std::stringstream sample2;
+			sample1 << ref1 << ":" << left_1;
+			sample2 << ref2 << ":" << left_2;
+			it1->second.push_back(sample1.str());
+			it1->second.push_back(sample2.str());
+		}
+	}
+	std::map<std::string, string>member_of_cluster;// first string is a associated one and the second one is its center
+	for(std::map<std::string, std::vector<pw_alignment> >::iterator it = alignments_in_a_cluster.begin();it != alignments_in_a_cluster.end();it++){
+		for(size_t j =0; j < it->second.size();j++){
+			size_t left_1; 
+			size_t left_2;
+			size_t right_1;
+			size_t right_2;
+			size_t ref1;
+			size_t ref2;
+			pw_alignment p = it->second.at(j);
+			p.get_lr1(left_1,right_1);
+			p.get_lr2(left_2,right_2);
+			ref1 = p.getreference1();
+			ref2 = p.getreference2();
+			std::stringstream sample1;
+			std::stringstream sample2;
+			sample1 << ref1 << ":" << left_1;
+			sample2 << ref2 << ":" << left_2;
+			if(sample1.str() != it->first){
+				member_of_cluster.insert(make_pair(sample1.str(),it->first));
+			}else{
+				member_of_cluster.insert(make_pair(sample2.str(), it->first));
+			}
+		}
+		member_of_cluster.insert(make_pair(it->first, it->first));		
+	}
+//Data compression:
+/*	if(0!=encoding_out.compare("noencode")) {
+	dlib::entropy_encoder_kernel_1 * enc = new dlib::entropy_encoder_kernel_1();
+	en.al_encoding(weight,member_of_cluster,alignments_in_a_cluster,outs,*enc);
+	delete enc;
+	outs.close();
+	std::ifstream in(encoding_out.c_str(),std::ifstream::binary);
 	dlib::entropy_decoder_kernel_1  dec;
 	en.al_decoding(in,dec);
 	cout<< "decoding is done!"<<endl;
+
+//	test.encode();
+//	test.decode();
+//	test.compare();
+//	test.context_compare();
+	}*/
+
+//	arithmetic_encoding_time = clock() - arithmetic_encoding_time;
+
+	std::cout<< "size of memeber_of_cluster is : "<< member_of_cluster.size()<<std::endl;
+	std::cout << "Initial alignments sets summary:" << std::endl;
+	std::cout << "Of " << data.numAlignments() << " pairwise alignments with total gain of " << all_gain << " we could use " << all_used_input_alignments << std::endl;
+	std::cout << "to create " << all_npo_alignments << " pieces without pairwise overlap, with a total gain of " << all_gain_in_ias << std::endl; 
+	std::cout << "inital alignment sets efficiency is " << all_gain_in_ias/all_gain<<std::endl;
+	std::cout << "Clustering summary: " << std::endl;
+	std::cout << "Input: " << num_cluster_inputs_al << " pw alignments on " << num_cluster_seq <<" sequence pieces " <<std::endl;
+	std::cout << "Output: " << num_clusters << " clusters containing " << num_cluster_members_al << " alignments " << std::endl;
+#if TIMING
+	std::cout << "Time overview: " << std::endl;
+	std::cout << "Read data " << (double)read_data_time/CLOCKS_PER_SEC << std::endl;
+	std::cout << "Train models " << (double)train_models_time/CLOCKS_PER_SEC << std::endl;
+	std::cout << "Compute initial connected components " << (double)initial_cc_time/CLOCKS_PER_SEC << std::endl;
+	std::cout << "Compute initial alignments set + remove partial overlap " << (double)ias_time/CLOCKS_PER_SEC << std::endl;
+	std::cout << "Test functions " << (double)test_function_time/CLOCKS_PER_SEC << std::endl;
+	std::cout << "Compute second connected components " << (double)second_cc_time/CLOCKS_PER_SEC << std::endl;
+	std::cout << "Affinity propagation clustering " << (double)ap_time/CLOCKS_PER_SEC << std::endl;
+	std::cout << "Write MSA-maf graph " << (double)graph_ma_time/CLOCKS_PER_SEC << std::endl;
+	std::cout << "Write compressed file " << (double)arithmetic_encoding_time/CLOCKS_PER_SEC << std::endl;
+#endif
 	return 0;
 
-	
-
-
+}
+int do_decoding(int argc, char * argv[]){
+	typedef mc_model use_model;
+	typedef encoder<use_model> use_encode;
+	if(argc < 5){
+		usage();
+		cerr << "Program: decoding" << endl;
+		cerr << "Parameters:" << endl;
+		cerr << "* fasta file from fasta_prepare" << std::endl;
+		cerr << "* maf file containing alignments of sequences contained in the fasta file" << std::endl;
+		cerr << "* input binary compressed file from model" << std::endl;		
+	}
+	std::string fastafile(argv[2]);
+	std::string maffile(argv[3]);
+	std::string encoding_out(argv[4]);
+	std::ifstream in(encoding_out.c_str(),std::ifstream::binary);
+	all_data data;
+	data.read_fasta_maf(fastafile, maffile);
+	use_model m(data);
+	wrapper wrap;
+	use_encode en(data,m,wrap);
+//Decompression
+	dlib::entropy_decoder_kernel_1  dec;
+	en.al_decoding(in,dec);
+	cout<< "decoding is done!"<<endl;
+	return 0;	
 }
 int do_model_seq(int argc, char * argv[]){
 	typedef model use_model;
 	if(argc < 5) {
 		usage();
-		cerr << "Program: model" << std::endl;
+		cerr << "Program: simple_model" << std::endl;
 		cerr << "Parameters:" << std::endl;
 		cerr << "* fasta file from fasta_prepare" << std::endl;
 		cerr << "* maf file containing alignments of sequences contained in the fasta file" << std::endl;
@@ -1084,17 +1428,19 @@ int do_model_seq(int argc, char * argv[]){
 //std::ofstream outs("encode",std::ofstream::binary);
 //Train all the sequences:
 	use_model m(data);
-//	encoder en(data,m,wrapp);
-	m.train();//outs o ham bardashtam
+	m.train();
 	double sum = 0;
 	double g1;
 	double g2;
-	for(size_t i = 0 ; i< data.numAlignments() ; i++){
-		const pw_alignment & p = data.getAlignment(i);
-		m.gain_function(p, g1,g2);
-		sum +=g1+g2;
-	}
-	std::cout<< "sum is "<<sum <<std::endl;
+//	for(size_t i = 0 ; i< data.numAlignments() ; i++){
+//		const pw_alignment & p = data.getAlignment(i);
+//		m.gain_function(p, g1,g2);
+//		sum +=g1+g2;
+//	}
+//	std::cout<< "sum is "<<sum <<std::endl;
+	size_t information;
+	m.total_information(information);
+	std::cout << "total information: "<<information << std::endl;
 // Find connected components of alignments with some overlap
 //	compute_cc cccs(data);
 //	std::vector<std::set< const pw_alignment *, compare_pw_alignment> > ccs;
@@ -1124,11 +1470,16 @@ int main(int argc, char * argv[]) {
 	else if(0==program.compare("model")){
 		return do_mc_model(argc, argv);
 	}
-//	if(0==program.compare("decoding"))
-//		return do_decoding(argc,argv);
-/*	else if(0==program.compare("model")){
+	else if(0==program.compare("decoding")){
+		return do_decoding(argc,argv);
+	}
+	else if(0==program.compare("simple_model")){
 		return do_model_seq(argc,argv);
-	}*/
+	}
+	else if(0==program.compare("dy_model")){
+		return do_dynamic_mc_model(argc,argv);
+	}
+
 	else {
 		usage();
 	}

@@ -24,8 +24,6 @@
 #include "GenomeSequence.h"
 #include <SamFlag.h>
 
-#include "pw_alignment.hpp"
-
 #include <boost/iostreams/stream.hpp>
 #include <boost/tokenizer.hpp>
 typedef boost::tokenizer<boost::char_separator<char> > btokenizer;
@@ -192,7 +190,7 @@ public:
 	void cost_function(pw_alignment& p) const;
 	void cost_function(const pw_alignment& p, double & c1, double & c2, double & m1, double & m2) const ;
 	void gain_function(const pw_alignment& p, double & g1, double & g2) const;
-
+	void total_information(size_t&);
 	void train();
 
 private:
@@ -211,7 +209,6 @@ class abstract_context_functor {
 	abstract_context_functor();
 	virtual void see_context(size_t acc1, size_t acc2,const pw_alignment& p, size_t pos, std::string context, char last_char);
 	virtual void see_entire_context(size_t acc1, size_t acc2, std::string entireContext);
-	
 
 };
 
@@ -220,13 +217,14 @@ class counting_functor : public abstract_context_functor {
 	public:
 	counting_functor(all_data &);
 	virtual void see_context(size_t acc1, size_t acc2, const pw_alignment & p, size_t pos, std::string context, char last_char);
-	const std::map<std::string, std::vector<double> > & get_context(size_t acc1, size_t acc2)const;
+	const std::map<std::string, std::vector<size_t> > & get_context(size_t acc1, size_t acc2)const;
 	void total_context();
+	void total_context(size_t &, size_t &);
 	double get_total(size_t acc1, size_t acc2, std::string context)const;
 	void create_context(size_t acc1, size_t acc2, std::string context);
 	private:
 	all_data & data;
-	std::vector<std::vector<std::map<std::string, std::vector<double> > > >successive_modification;
+	std::vector<std::vector<std::map<std::string, std::vector<size_t> > > >successive_modification;
 	std::vector<std::vector<std::map <std::string, double > > > total;	
 
 
@@ -234,7 +232,6 @@ class counting_functor : public abstract_context_functor {
 
 };
 class mc_model;
-
 class cost_functor : public abstract_context_functor {
 	public:
 	cost_functor(all_data &, const std::vector<vector<std::map<std::string, vector<double> > > >&);
@@ -255,7 +252,7 @@ class adding_functor : public abstract_context_functor {
 };
 class encoding_functor : public abstract_context_functor {
 	public:
-	encoding_functor(all_data& , mc_model*, wrapper &, dlib::entropy_encoder_kernel_1 &);
+	encoding_functor(all_data& , mc_model* model, wrapper &, dlib::entropy_encoder_kernel_1 &);
 	virtual void see_context(size_t acc1, size_t acc2,const pw_alignment& p, size_t pos, std::string context, char last_char);	
 	virtual void see_entire_context(size_t acc1, size_t acc2, std::string entireContext);
 	const std::map<std::string, std::vector<double> > & get_alignment_context()const;
@@ -273,7 +270,6 @@ class encoding_functor : public abstract_context_functor {
 class clustering_functor : public abstract_context_functor{
 	public:
 	virtual void see_context(size_t acc1, size_t acc2, const pw_alignment& p, size_t pos, std::string context, char last_char);//computing_modification_oneToTwo is used to fill in the map of modification between center and its associated member.
-	//fek konam hamoon encoding_functor ok bashe, lazem nist ino benvisim
 
 	private:
 	std::map<std::string, std::vector<double> >modification;
@@ -288,9 +284,9 @@ class decoding_functor : public abstract_context_functor {
 class mc_model{
 	public:
 		mc_model(all_data&);
-		~mc_model();	
+		~mc_model();
 		void markov_chain();
-		void markov_chain_alignment(std::ofstream&);
+		void markov_chain_alignment();
 		const std::vector<std::vector<std::map <std::string, vector<double> > > >& get_mod_cost()const;
 		void cost_function(const pw_alignment& p, double & c1, double & c2, double & m1, double & m2)const ;
 		void gain_function(const pw_alignment& p, double & g1, double & g2)const ;
@@ -318,11 +314,8 @@ class mc_model{
 		std::vector<size_t> get_powerOfTwo()const;
 		std::string get_firstPattern()const;
 		std::string get_firstAlignmentPattern() const;
-		const std::map<std::string, std::vector<double> > & get_alignment_context(size_t al_id, size_t seq_id, encoding_functor & functor)const;
 		const std::map<std::string, std::vector<unsigned int> >& get_highValue(size_t acc1, size_t acc2)const;
 		void computing_modification_in_cluster(std::string center, std::string member)const;
-		const std::map<std::string, std::vector<double> > & get_cluster_member_context(pw_alignment & al, size_t center_id, encoding_functor & functor)const;
-	//	void print_modification(char enc)const;
 		size_t modification_length(char mod)const;
 		void get_encoded_member(pw_alignment & al, size_t center_ref, size_t center_left, encoding_functor & functor,std::ofstream&)const;
 	private:
@@ -332,23 +325,14 @@ class mc_model{
 	std::vector<size_t> powersOfTwo;
 	std::vector<std::vector<std::map<std::string, std::vector<double> > > >mod_cost; // alignment modificaton information cost
 	std::vector<std::map<std::string, std::vector<unsigned int> > > high;//sequences patterns
-	std::map<std::string,std::vector<double> > all_the_patterns; // TODO vector<double> part is wrong (independent of accession)
-
+	std::map<std::string,std::vector<double> > all_the_patterns; // TODO vector<double> part is wrong (independent of accession) --- it is because at the beginning all the values are set to 0. And then later on in high we set them accession dependent. I need to make a better way to represent all the pattern
 	std::set<std::string> all_alignment_patterns; // all possible alignment patterns
 	std::vector<std::vector<std::map<std::string , std::vector<unsigned int> > > >highValue;//alignments patterns
+
 		
 
 };
 
-/*
-class encoding{
-	public:
-	encoding(all_data&);
-	~encoding();
-	void calculate_bounds();
-	private:
-	all_data & data;	
-};
-*/	
+
 
 #endif

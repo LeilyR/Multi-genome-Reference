@@ -20,6 +20,7 @@
 		void encode();
 		void decode();
 		void compare();
+		void context_compare();
 		private:
 		vector<unsigned int>low;
 		vector<unsigned int>high;
