@@ -256,7 +256,7 @@ void initial_alignment_set<T>::lazy_split_insert_step(overlap & ovrlp, size_t le
 				all_removed.insert(pwa); 			
 	//			std::cout <<"level " << level << "REMOVE NOW: " << std::endl;
 	//			pwa->print();
-	//			std::cout << " ovrlp size " << ovrlp.size() << std::endl;
+				std::cout << " ovrlp size " << ovrlp.size() << std::endl;
 				
 				ovrlp.remove_alignment(pwa);
 
@@ -332,7 +332,7 @@ void initial_alignment_set<T>::lazy_split_insert_step(overlap & ovrlp, size_t le
 
 
 template<typename T>
-void initial_alignment_set<T>::compute_simple_lazy_splits(overlap & o) {
+void initial_alignment_set<T>::compute_simple_lazy_splits(overlap & o){
 	size_t used = 0;
 	size_t not_used = 0;
 	double total_gain = 0;
@@ -985,10 +985,10 @@ void compute_cc::cc_step(size_t ref, size_t left, size_t right, std::set <pw_ali
 /*
 template<typename tmodel>
 clustering<tmodel>::clustering(overlap & o, all_data & d,tmodel & m):overl(o),data(d),model(m),als_on_ref(data.numSequences()),gain(data.numSequences(),std::vector<vector<double> >(data.numSequences(),vector<double>(500000,0))),ava(data.numSequences(),vector<vector<double> >(data.numSequences(),vector<double>(500000,0))),res(data.numSequences(),vector<vector<double> >(data.numSequences(),vector<double>(500000,0))){
-	/*	for(size_t i=0; i<data.numAlignments(); ++i) {
+		for(size_t i=0; i<data.numAlignments(); ++i) {
 			const pw_alignment * a = &(data.getAlignment(i));
 			alignments.insert(a);
-		}*
+		}
 
 	}
 template<typename tmodel>
@@ -996,7 +996,7 @@ clustering<tmodel>::~clustering(){}
 
 template<typename tmodel>
 void clustering<tmodel>::als_on_reference(const pw_alignment * p) {
-/*	size_t ref1 = p->getreference1();
+	size_t ref1 = p->getreference1();
 	size_t ref2 = p->getreference2();
 
 	als_on_ref.at(ref1).insert(make_pair(p->getbegin1(), p));
@@ -1075,7 +1075,7 @@ template<typename tmodel>
 
 template<typename tmodel>
 	void clustering<tmodel>::update_clusters(size_t acc){
-	/*	size_t iteration = 100;
+		size_t iteration = 100;
 		double damp_value = 0.6;
 		std::vector<size_t> examplar(data.numAcc(),0); //examplars of the class of acc, acc will be the center.
 		for(size_t i = 0; i<data.numAcc(); i++){
@@ -1091,7 +1091,7 @@ template<typename tmodel>
 				}
 
 			}
-		}*
+		}
 		
 	}
 
@@ -1394,37 +1394,50 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment & al) {
 			}
 		}
 	}
-	void suffix_tree::find_next_sibling(size_t current_node, size_t next_sibling){
-	//	
-
-	}
-	void suffix_tree::find_next_firstparent(size_t node_index, size_t next_first_parent){
-		for(size_t i = node_index+1; i <nodes.size(); i++){
-			std::map<std::string, size_t>::iterator it = firstParent.find(nodes.at(i));
-			if(it != firstParent.end() && it->second == i){
-				next_first_parent = i;
-			}
-		}
-	}
-/*	void suffix_tree::find_parent_path(size_t node_index,vector<size_t> path){
-		size_t parent_position;
-		vector<size_t> first_path;
-		for(map<vector<size_t>,size_t>::iterator it = branch_counter.begin();it !=branch_counter.end(); it++){
-			first_path = it->first;
-			for(size_t i =0; i < first_path.size(); i++){
-				if(first_path.at(i) == node_index){
-					parent_position = i;
+	void suffix_tree::find_sibling(size_t& current_node, vector<size_t>& siblings){
+		size_t CommonPar;
+		for(std::multimap<size_t,size_t>::iterator par =nodes_relation.begin();par!=nodes_relation.end();par++){
+			size_t common_par = par->first;
+			pair<std::multimap<size_t,size_t>::iterator , std::multimap<size_t,size_t>::iterator > it = nodes_relation.equal_range(common_par);
+			for(std::multimap<size_t,size_t>::iterator it1 = it.first ; it1 != it.second; it1++){
+				if(it1->second == current_node){
+					CommonPar = common_par;	
 					break;
 				}
 			}
-			break;
 		}
-		for(size_t i =0; i < parent_position; i++){
-			path.push_back(first_path.at(i));
+		pair<std::multimap<size_t,size_t>::iterator , std::multimap<size_t,size_t>::iterator > it = nodes_relation.equal_range(CommonPar);
+		for(std::multimap<size_t,size_t>::iterator it1 = it.first ; it1 != it.second; it1++){
+			siblings.push_back(it1->second)	;
 		}
-		size_t firstparent_index = path.at(0);
-		cout<< "first parent: "<< firstparent_index <<endl;
-	}*/
+	}
+	void suffix_tree::find_parent(size_t & node_index, size_t & parent){
+		for(std::multimap<size_t,size_t>::iterator par =nodes_relation.begin();par!=nodes_relation.end();par++){
+			size_t common_par = par->first;
+			pair<std::multimap<size_t,size_t>::iterator , std::multimap<size_t,size_t>::iterator > it = nodes_relation.equal_range(common_par);
+			for(std::multimap<size_t,size_t>::iterator it1 = it.first ; it1 != it.second; it1++){
+				if(it1->second == node_index){
+					parent = common_par;	
+					break;
+				}
+			}
+		}
+
+	}
+	void suffix_tree::delete_relation(size_t & parent, size_t & child_node){
+		pair<std::multimap<size_t,size_t>::iterator , std::multimap<size_t,size_t>::iterator > it = nodes_relation.equal_range(parent);
+			for(std::multimap<size_t,size_t>::iterator it1 = it.first ; it1 != it.second; it1++){
+				if(it1->second == child_node){
+					nodes_relation.erase(it1);
+					std::cout<<"child_node:"<< child_node << it1->second <<std::endl;
+					break;
+				}
+			}
+			std::cout<<"nodes relation: "<<std::endl;
+				for(std::multimap<size_t , size_t>::iterator it = nodes_relation.begin(); it != nodes_relation.end(); it++){
+					std::cout << it->first <<" "<< it->second << std::endl;
+			}
+	}
 	void suffix_tree::make_a_tree(){
 		size_t active_length = 0;
 		size_t active_node = 0;
@@ -1435,6 +1448,18 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment & al) {
 			for(size_t i = 0; i < suffixes.size(); i++){
 				std::cout<< "suffix i " << i << std::endl;
 				std::string current = suffixes.at(i);
+				std::cout<<"nodes relation: "<<std::endl;
+				for(std::multimap<size_t , size_t>::iterator it = nodes_relation.begin(); it != nodes_relation.end(); it++){
+					std::cout << it->first <<" "<< it->second << std::endl;
+				}
+std::cout << " first parent map: "<<std::endl;
+		for(std::map<std::string, size_t>::iterator it = firstParent.begin();it != firstParent.end(); it++){
+			std::string parent = it->first;
+			for(size_t i =0; i< parent.size();i++){
+				std::cout<< int(parent.at(i))<< " ";
+			}
+			std::cout << " , " << it->second << std::endl;
+		}
 				size_t temp = active_node;
 				size_t last_common_index = 0;
 				if(first_parent.size()!= 0){
@@ -1460,8 +1485,10 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment & al) {
 								cout << "n_index: "<< n_index<<endl;
 								pair<std::multimap<size_t, size_t>::iterator, std::multimap<size_t, size_t>::iterator > p1 = nodes_relation.equal_range(n_index);
 								size_t biggest_child =0;
+								vector<size_t> all_children;
 								for(std::multimap<size_t, size_t>::iterator it = p1.first; it!=p1.second; ++it){
 									if(it != nodes_relation.end()){
+										all_children.push_back(it->second);
 										if(it->second > biggest_child){
 											biggest_child = it->second;
 										}else continue;
@@ -1481,21 +1508,22 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment & al) {
 								if(first_index_after_parent == current_parent.size()){//Parent doesn't break
 									//It checkes if the current parent already has a kid!
 									if(biggest_child > 0){
-										for(size_t child_node = node_index+1; child_node <= biggest_child;child_node ++){
-											if(nodes.at(child_node).at(0)== current.at(first_index_after_parent)){
+										for(size_t child_node = 0; child_node < all_children.size();child_node ++){
+											size_t ChildNode = all_children.at(child_node);
+											if(nodes.at(ChildNode).at(0)== current.at(first_index_after_parent)){
 												adding_a_child ++;
 												string updated_current;
 												for(size_t update =first_index_after_parent; update< current.size(); update ++){
 													updated_current += current.at(update);
 												}
 												current = updated_current;
-												cout << "child node: "<<child_node << endl;
-												current_parent = nodes.at(child_node);
+												cout << "ChildNode: "<<ChildNode << endl;
+												current_parent = nodes.at(ChildNode);
 												break;
 											}else continue;
 										}
 									}
-									if(adding_a_child == 0){//Creating a new child node(*)//inja eshkal dare!
+									if(adding_a_child == 0){//Creating a new child node
 										cout << "here!"<<endl;
 										for(size_t shift = node_index+1; shift <nodes.size(); shift++){
 											std::map<std::string, size_t>::iterator it = firstParent.find(nodes.at(shift));
@@ -1514,7 +1542,7 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment & al) {
 										}
 										nodes.at(node_index+1)=updated_current;
 										if(biggest_child > 0){
-											for(size_t shift = nodes.size()-2; shift > biggest_child;shift--){
+											for(size_t shift = nodes.size()-2; shift > node_index;shift--){
 												pair<std::multimap<size_t,size_t>::iterator , std::multimap<size_t,size_t>::iterator > p1 = nodes_relation.equal_range(shift);
 												std::vector<size_t> counter;
 												std::multimap<size_t,size_t> intermediate;
@@ -1535,9 +1563,16 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment & al) {
 														nodes_relation.insert(make_pair(it->first, it->second));
 													}
 												}
+												size_t ItsParent;
+												find_parent(shift,ItsParent);
+												if(ItsParent == node_index){
+													delete_relation(ItsParent,shift);
+													nodes_relation.insert(make_pair(ItsParent,shift+1));
+													std::cout<< "shifting children"<<endl;
+													std::cout << ItsParent<< " " <<shift+1 <<std::endl;
+												}
 											}
-											nodes_relation.insert(make_pair(node_index,biggest_child+1));
-											std::cout<< "node index: "<< node_index << " biggest_child+1 "<<biggest_child+1 << std::endl;
+											nodes_relation.insert(make_pair(node_index,node_index+1));
 											for(size_t m = 0; m < nodes.size(); m++){
 												string node = nodes.at(m);
 												std::cout << "nodes at " << m << " : ";
@@ -1584,10 +1619,14 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment & al) {
 											nodes_relation.insert(std::make_pair(node_index,node_index+1));
 											nodes_relation.insert(std::make_pair(node_index,node_index+2));
 											std::cout<< "node index: "<< node_index << " node index+1 "<<node_index+1<< " node index +2  " << node_index +2 << std::endl;
+											current = updated_current;
+											nodes.at(node_index+2)=current;
+											num_kid = 1;
+											std::cout<< "here num kid is changed to 1"<<endl;
 										}
 										current = updated_current;
 										break;
-										//need to break while loop here!inam check kon!
+										//need to break while loop here!inam check kon!How?
 									}
 								}else{//when we need to break the current parent and make a new branch with extra context, make current kids kids of this new child(**)
 									num_kid = 1;
@@ -1627,14 +1666,13 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment & al) {
 											std::map<std::string, size_t>::iterator it1 = firstParent.find(current_parent);
 											if(it1 != firstParent.end()){
 												firstParent.erase(it1);
-										//	
+											}
 												std::map<std::string, size_t>::iterator it = firstParent.find(common_part);
 												if(it == firstParent.end()){
 													firstParent.insert(std::make_pair(common_part,node_index));
 												}else{
 													it->second = node_index;
 												}
-											}
 										}
 										for(size_t shift = nodes.size()-1; shift >= node_index;shift--){
 											pair<std::multimap<size_t,size_t>::iterator , std::multimap<size_t,size_t>::iterator > p1 = nodes_relation.equal_range(shift);
@@ -1801,7 +1839,16 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment & al) {
 											}
 											std::cout << " " <<std::endl;
 										//	new_relation = true;
-										}	
+										}
+std::cout << " first parent map: "<<std::endl;
+		for(std::map<std::string, size_t>::iterator it = firstParent.begin();it != firstParent.end(); it++){
+			std::string parent = it->first;
+			for(size_t i =0; i< parent.size();i++){
+				std::cout<< int(parent.at(i))<< " ";
+			}
+			std::cout << " , " << it->second << std::endl;
+		}
+	
 										if(node_index == nodes.size()-1){
 											std::cout << "when we are at if"<<std::endl;
 											nodes.push_back(other_branch);
@@ -1825,16 +1872,21 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment & al) {
 											std::cout<< "if we are at else"<<std::endl;
 											std::string last_node = nodes.at(nodes.size()-1);
 											std::string second_last_node = nodes.at(nodes.size()-2);
-										//	find_next_firstparent(node_index,next_first_parent);//If there is no first parent after that it stays 0
-											//here is the place to add that shifting function
-										//	shift_paths(next_first_parent,2);
-											for(size_t shift = node_index+1; shift <nodes.size(); shift++){//inja!
+											std::map<std::string,size_t> InterMediate;
+											for(size_t shift = node_index+1; shift <nodes.size(); shift++){
 												std::map<std::string, size_t>::iterator it = firstParent.find(nodes.at(shift));
 												if(it != firstParent.end() && it->second == shift){
-													it->second = it->second+2;
-													std::cout<< "it->second + 2 "<<it->second+2 << " " << int(it->first.at(0))<<std::endl;
+													InterMediate.insert(make_pair(nodes.at(shift),it->second+2));
 												}
 											}
+											for(std::map<std::string , size_t>::iterator p1 = InterMediate.begin(); p1 != InterMediate.end(); p1++){
+												std::map<std::string , size_t>::iterator p2 = firstParent.find(p1->first);
+												firstParent.erase(p2);
+											}
+											for(std::map<std::string , size_t>::iterator p1 = InterMediate.begin(); p1 != InterMediate.end(); p1++){
+												firstParent.insert(make_pair(p1->first,p1->second));
+											}
+
 											pair < std::multimap<size_t,size_t>::iterator, std::multimap<size_t,size_t>::iterator > check_kids = nodes_relation.equal_range(node_index);
 											size_t kid_count = 0;
 										//	if(new_relation==true){
@@ -1878,6 +1930,20 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment & al) {
 													}
 													for(std::multimap<size_t, size_t>::iterator it =intermediate.begin();it !=intermediate.end();it++){
 														nodes_relation.insert(make_pair(it->first,it->second));
+													}
+												}
+												if(counter.size()==0){
+													vector<size_t> siblings;
+													size_t ItsParent;
+													find_sibling(node_index,siblings);
+													find_parent(node_index,ItsParent);
+													for(size_t s = 0; s < siblings.size(); s++){
+														if(siblings.at(s)==shift && siblings.at(s)> node_index){
+															delete_relation(ItsParent,siblings.at(s));
+															nodes_relation.insert(make_pair(ItsParent,siblings.at(s)+2));
+															std::cout<< "shifting bigger siblings"<<endl;
+															std::cout << ItsParent<< " " <<siblings.at(s)+2 <<std::endl;
+														}
 													}
 												}
 											}
@@ -1959,9 +2025,11 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment & al) {
 		}
 	}
 	void suffix_tree::count_paths(){
-	/*	for(size_t seq =0; seq < data.numSequences(); seq++){
+		for(size_t seq =0; seq < data.numSequences(); seq++){
 			create_suffix(seq);
+			std::cout << "seq: "<<seq<<std::endl;
 			for(size_t i = 0; i < suffixes.size(); i++){
+				std::cout<< "i: "<<i << std::endl;
 				string current = suffixes.at(i);
 				vector<size_t> branch;//insert this vector to the branch _counter map
 				for(map<string,size_t>::iterator it = firstParent.begin();it!=firstParent.end();it++){
@@ -1969,7 +2037,7 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment & al) {
 					if(first_parent.at(0)==current.at(0)){
 						string updated_current;
 						if(first_parent.size()==current.size()){
-
+							std::cout<<"No kid!"<<std::endl;
 						}else{
 							for(size_t j =first_parent.size() ; j < current.size(); j++){
 								updated_current+=current.at(j);
@@ -1998,24 +2066,27 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment & al) {
 										break;
 									}
 								}
-							} else break;
+							} else{ 
+								std::cout<< "has no kid"<<std::endl;
+								break;
+								}
 						}
 						break;
 					}
 				}
 				cout<< "branch size: "<< branch.size() << endl;
-				for(size_t i = 0; i < branch.size(); i ++){
+				for(size_t i = 0; i < branch.size(); i++){
 					vector<size_t>sub_branch;
-					cout<< " push back to sub branch: " <<endl;
+					std::cout<< " push back to sub branch: " <<std::endl;
 					for(size_t j = i; j< branch.size();j++){
 						sub_branch.push_back(branch.at(j));
-						cout<< branch.at(j)<<endl;
-						map<vector<size_t>,size_t>::iterator it = branch_counter.find(sub_branch);
-						if(it == branch_counter.end()){
+						std::cout<< branch.at(j)<<std::endl;
+						map<vector<size_t>,size_t>::iterator it1 = branch_counter.find(sub_branch);
+						if(it1 == branch_counter.end()){
 							branch_counter.insert(make_pair(sub_branch,0));
-							it = branch_counter.find(sub_branch);
+							it1 = branch_counter.find(sub_branch);
 						}
-						it->second = it->second +1;
+						it1->second = it1->second +1;
 					}
 				}
 				
@@ -2031,7 +2102,7 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment & al) {
 			cout<< " number "<<it->second;
 			cout << " " <<endl;
 			
-		}*/
+		}
 	}
 	std::vector<std::string> suffix_tree::get_nodes()const{
 		return nodes;
@@ -2054,19 +2125,20 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment & al) {
 	}
 	merging_centers::merging_centers(finding_centers & cent , suffix_tree & t):centers(cent),tree(t){}
 	merging_centers::~merging_centers(){}
-	void merging_centers::merg_value(){
-	/*	vector<string> nodes = tree.get_nodes();
+	void merging_centers::merg_gain_value(){
+	//	tree.get_first_parent();
+		vector<string> nodes = tree.get_nodes();
 		cout<< "size: " << nodes.size()<<endl;
-		map<vector<size_t> , size_t> counts = tree.get_count();
-		map<vector<size_t>, size_t> tree_gains;	// just enter the updated gain values
+		map<vector<size_t> , size_t> counts = tree.get_count();//vector<size_t> shows a path and size_t is its number of happening.
+	//	map<vector<size_t>, size_t> tree_gains;	// Just final gain values are added, vector<size_t> a path (long center) and size_t its gain.
 		cout<< "first parent size: "<< tree.get_first_parent().size()<<endl;
-		for(size_t i =0; i < tree.get_first_parent().size();i++){
-			cout << "i "<< i <<endl;
-			size_t current_parent = tree.get_first_parent().at(i);
-			map<vector<size_t>, size_t> subtree_gains;//old gain values
+		//for(size_t i =0; i < tree.get_first_parent().size();i++){
+		//	cout << "i "<< i <<endl;
+		//	size_t firstparent = tree.get_first_parent().at(i);
+			map<vector<size_t>, size_t> subtree_gains;//gain values
 			for(map<vector<size_t> , size_t>::iterator it = counts.begin(); it != counts.end(); it++){
 				vector<size_t> br = it->first;
-				if(br.at(0)== current_parent){
+			//	if(br.at(0)== firstparent){
 					size_t number = it->second;
 					string centers;
 					int gain = 0;
@@ -2079,53 +2151,69 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment & al) {
 					}
 					cout << " " <<endl;
 					gain = number*(centers.size())-(number+centers.size());
-					if(gain > 0){
 						subtree_gains.insert(make_pair(br,gain));
 						cout<< "gain "<<gain <<endl;
-					}else{//branches with negative gain values, their gain may change later to a positive one, so I better insert them to the map as well.
-						subtree_gains.insert(make_pair(br,0));
-						cout<< "gain "<<gain <<endl;	
-					}
-				}
+			//	}
 			}
 			size_t highest_gain=0;
 			vector<size_t>highest_path;
 			for(map<vector<size_t>, size_t>::iterator it = subtree_gains.begin(); it != subtree_gains.end(); it++){
+				if(it->second > highest_gain){
+						highest_gain = it->second;
+						highest_path = it->first;
+				}else continue;
+			}
+			while(highest_gain > 0){
+				for(map<vector<size_t>, size_t>::iterator it = subtree_gains.begin(); it != subtree_gains.end(); it++){
+				//	vector<size_t>common_path;
+					string center_index;
+					string highest_index;
+					for(size_t i =0; i < highest_path.size(); i++){
+						highest_index += nodes.at(highest_path.at(i));
+					}
+					for(size_t i =0; i < it->first.size(); i++){
+						center_index += nodes.at(it->first.at(i));
+					}
+					std::cout << "center_index: "<< endl;
+					for(size_t i = 0; i < center_index.size(); i++){
+						std::cout << center_index.at(i);
+					}
+					std::cout << "" <<std::endl;
+					if(center_index.size() >= highest_index.size()){
+						size_t common_id = center_index.size();
+						for(size_t i=0; i < center_index.size(); i++){
+							if(center_index.at(i)==highest_index.at(0)){
+								common_id = i;
+								break;
+							}else continue;
+						}
+						string common_path;
+						if(common_id < center_index.size()){
+							for(size_t i=0; i < highest_index.size(); i++){
+								if(center_index.at(common_id+i)==highest_index.at(i)){
+									common_path += center_index.at(i);
+								}else break;
+							}
+							if(common_path.size() == highest_index.size()){
+								map<vector<size_t>, size_t>::iterator it2 = counts.find(it->first);
+								assert(it2 != counts.end());
+								size_t number = it->second;
+								size_t gain = 0;
+								gain = number*(center_index.size())-(number+center_index.size()-highest_index.size());
+								subtree_gains.insert(make_pair(it->first,gain));
+							}
+						}
+					}			
+				}
+				for(map<vector<size_t>, size_t>::iterator it = subtree_gains.begin(); it != subtree_gains.end(); it++){
 					if(it->second > highest_gain){
 						highest_gain = it->second;
 						highest_path = it->first;
 					}else continue;
+				}
 			}
-			if(highest_gain > 0){
-				cout<< "highest path"<<endl;
-				for(size_t j = 0; j < highest_path.size(); j++){
-					cout<< highest_path.at(j);
-				}
-				cout<< " " <<endl;
-				map<vector<size_t>, size_t>::iterator it = counts.find(highest_path);
-				assert(it != counts.end());
-				size_t number_of_merged_centers = 0;
-				for(size_t j = 0 ; j < it->first.size(); j++){
-					number_of_merged_centers += nodes.at(it->first.at(j)).size();
-				}
-				for(map<vector<size_t>, size_t>::iterator it = subtree_gains.begin(); it != subtree_gains.end(); it++){
-					map<vector<size_t>,size_t>::iterator it1 = counts.find(it->first);
-					if(it->first.size()>highest_path.size()){
-						size_t number = it1->second;
-						string centers;
-						size_t gain = 0;
-						for(size_t j = 0 ; j < it1->first.size(); j++){
-							centers += nodes.at(it1->first.at(j));
-						}
-						gain = number*(centers.size())-(number+centers.size()-number_of_merged_centers);
-						tree_gains.insert(make_pair(it1->first,gain));
-					}else{
-						tree_gains.insert(make_pair(highest_path,highest_gain));
-					}
-				}
-			}			
-		}
-		for(map<vector<size_t>,size_t>::iterator it = tree_gains.begin(); it != tree_gains.end(); it++){
+	//	}
+	/*	for(map<vector<size_t>,size_t>::iterator it = tree_gains.begin(); it != tree_gains.end(); it++){
 			cout<< "path"<<endl;
 			merged_centers.push_back(it->first);
 			for(size_t i = 0 ; i < it->first.size(); i++){

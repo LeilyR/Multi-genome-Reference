@@ -102,8 +102,8 @@ class wrapper{
 		~wrapper();
 		void encode(unsigned int&, unsigned int &, unsigned int&);
 		void decode(unsigned int &, unsigned int &, unsigned int&);
-		void context(size_t &, int &);
-		void decodeContext(size_t &, int &);
+		void context(int &);
+		void decodeContext(int &);
 		
 	private:
 		std::ofstream encodeout;

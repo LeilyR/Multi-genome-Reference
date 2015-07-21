@@ -821,24 +821,26 @@ pw_alignment & pw_alignment::operator=(const pw_alignment & al) {
 	return *this;
 }
 
-        wrapper::wrapper():encodeout("enc.txt"),decodeout("dec.txt"),al_encode("al_encode.txt"),al_decode("al_decode.txt"){
+        wrapper::wrapper():encodeout("enc1.txt"),decodeout("dec1.txt"),al_encode("al_encode1.txt"),al_decode("al_decode1.txt"){
         }
         wrapper::~wrapper(){}
         void wrapper::encode(unsigned int& low, unsigned int& high, unsigned int & total){
                 encodeout << "l"<< low << "h"<< high;
-                al_encode << " low: "<< low << " high: "<< high <<std::endl;
+            //    al_encode << " low: "<< low << " high: "<< high <<std::endl;
 
         }
         void wrapper::decode(unsigned int& low, unsigned int& high, unsigned int & total){
                 decodeout << "l"<< low << "h"<< high;
-                al_decode << " low: "<< low << " high: "<< high <<std::endl;
+           //     al_decode << " low: "<< low << " high: "<< high <<std::endl;
 
         }
-        void wrapper::context(size_t & pos , int & context){
-                al_encode << "position: " << pos << " context: " <<  context <<std::endl;
+        void wrapper::context(int & context){
+		al_encode<<"c"<<context;
+             //   al_encode << "position: " << pos << " context: " <<  context <<std::endl;
 
         }
-        void wrapper::decodeContext(size_t & pos, int & context){
-                al_decode << "position: " << pos << " context: " <<  context <<std::endl;
+        void wrapper::decodeContext(int & context){
+		al_decode<<"c"<<context;
+            //    al_decode << "position: " << pos << " context: " <<  context <<std::endl;
         }
 

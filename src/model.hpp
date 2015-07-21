@@ -509,8 +509,9 @@ class suffix_tree{
 	~suffix_tree();
 	void create_suffix(size_t);
 	void find_a_node(size_t& ,size_t&, std::string&);
-	void find_next_sibling(size_t, size_t);
-	void find_next_firstparent(size_t, size_t);
+	void find_sibling(size_t&, vector<size_t>&);
+	void find_parent(size_t&, size_t&);
+	void delete_relation(size_t & , size_t& );
 	void make_a_tree();
 	void insert_node(std::string);
 	void count_paths();
@@ -533,7 +534,7 @@ class merging_centers{
 	public:
 		merging_centers(finding_centers &, suffix_tree &);
 		~merging_centers();
-		void merg_value();
+		void merg_gain_value();
 		void merg_alignments(std::map<std::string,std::vector<pw_alignment> > &);
 	private:
 		finding_centers & centers;
