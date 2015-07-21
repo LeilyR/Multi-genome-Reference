@@ -984,9 +984,9 @@ int do_mc_model(int argc, char * argv[]) {
 	delete enc;
 	outs.close();
 //	std::ifstream in(encoding_out.c_str(),std::ifstream::binary);
-//	en.read_from_stream(in);
+//	std::ofstream decoding_out("decoding_output",std::ofstream::binary);
 //	dlib::entropy_decoder_kernel_1  dec;
-//	en.al_decoding(in,dec);
+//	en.al_decoding(in,dec,decoding_out);
 //	cout<< "decoding is done!"<<endl;
 
 //	test.encode();
@@ -1375,27 +1375,30 @@ int do_dynamic_mc_model(int argc, char * argv[]) {
 int do_decoding(int argc, char * argv[]){
 	typedef mc_model use_model;
 	typedef encoder<use_model> use_encode;
-	if(argc < 5){
+	if(argc < 4){
 		usage();
 		cerr << "Program: decoding" << endl;
 		cerr << "Parameters:" << endl;
-		cerr << "* fasta file from fasta_prepare" << std::endl;
-		cerr << "* maf file containing alignments of sequences contained in the fasta file" << std::endl;
-		cerr << "* input binary compressed file from model" << std::endl;		
+		cerr << "* input binary compressed file from model" << std::endl;
+		cerr << " * output binary for saving retrievd sequences" << std::endl;		
 	}
-	std::string fastafile(argv[2]);
-	std::string maffile(argv[3]);
-	std::string encoding_out(argv[4]);
+	std::string encoding_out(argv[2]);
+	std::string decoding_out(argv[3]);
 	std::ifstream in(encoding_out.c_str(),std::ifstream::binary);
+	std::ofstream out(decoding_out.c_str(),std::ofstream::binary);
 	all_data data;
-	data.read_fasta_maf(fastafile, maffile);
 	use_model m(data);
+	test_encoder test;
 	wrapper wrap;
 	use_encode en(data,m,wrap);
 //Decompression
 	dlib::entropy_decoder_kernel_1  dec;
-	en.al_decoding(in,dec);
+	en.al_decoding(in,dec,out);
 	cout<< "decoding is done!"<<endl;
+	test.encode();
+	test.decode();
+	test.compare();
+	test.context_compare();
 	return 0;	
 }
 int do_model_seq(int argc, char * argv[]){
@@ -1491,8 +1494,8 @@ int main(int argc, char * argv[]) {
 
 
 #endif
+#include "encoder.cpp"
 #include "model.cpp"
-
 
 
 

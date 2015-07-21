@@ -96,7 +96,6 @@ class all_data {
 		std::map< std::string, std::vector< size_t> > acc_sequences; // acc name -> sequences of that acc
 		std::vector<size_t> sequence_to_accession; // sequence id -> accession id
 		std::map<std::string, size_t> accession_name; // accession name -> accession id
-
 		std::map< std::string, size_t> longname2seqidx; // long sequence name ("Accession:sequence name") -> sequence index
 
 		
@@ -232,6 +231,9 @@ class counting_functor : public abstract_context_functor {
 
 };
 class mc_model;
+//template <typename T> class dynamic_mc_model; 
+
+
 class cost_functor : public abstract_context_functor {
 	public:
 	cost_functor(all_data &, const std::vector<vector<std::map<std::string, vector<double> > > >&);
@@ -250,16 +252,17 @@ class adding_functor : public abstract_context_functor {
 	public:
 
 };
+//template<class T>
 class encoding_functor : public abstract_context_functor {
 	public:
-	encoding_functor(all_data& , mc_model* model, wrapper &, dlib::entropy_encoder_kernel_1 &);
+	encoding_functor(all_data& , mc_model* , wrapper &, dlib::entropy_encoder_kernel_1 &);
 	virtual void see_context(size_t acc1, size_t acc2,const pw_alignment& p, size_t pos, std::string context, char last_char);	
 	virtual void see_entire_context(size_t acc1, size_t acc2, std::string entireContext);
 	const std::map<std::string, std::vector<double> > & get_alignment_context()const;
 //	std::vector<std::string> & get_alignment_context(pw_alignment& p)const;
 	private:
 	all_data & data;
-	mc_model * model;	
+	mc_model * model;
 	wrapper& wrappers;
 	dlib::entropy_encoder_kernel_1 & enc;
 	std::string alignment_pattern;//shayadam behtar bashe ye std::vector of string tarif konam

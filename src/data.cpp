@@ -738,7 +738,7 @@ all_data::~all_data() {
 
 	void all_data::set_accession(const std::string & acc){
 		accession_name.insert(std::make_pair(acc, accession_name.size()));
-	//	std::cout<<"accession name size: " << accession_name.size() <<std::endl;
+		std::cout<< "acc "<< acc <<" accession name size: " << accession_name.size() <<std::endl;
 	}
 	void all_data::insert_sequence(const std::string & acc, const std::string & seq_name, const std::string & dna) {
 	size_t seq_id = sequences.size();
@@ -2555,7 +2555,7 @@ void splitpoints::insert_split_point(size_t sequence, size_t position) {
 		alignment_modification();
 	}
 
-mc_model::mc_model(all_data & d):data(d), sequence_successive_bases(d.numAcc()), create_cost(d.numAcc(),std::vector<double>(5,1)),mod_cost(d.numAcc(),vector<std::map<std::string, vector<double> > >(d.numAcc())),high(d.numAcc()),highValue(d.numAcc(),std::vector<std::map<std::string, std::vector<unsigned int> > >(d.numAcc())){
+mc_model::mc_model(all_data & d):data(d), sequence_successive_bases(d.numAcc()), create_cost(d.numAcc(),std::vector<double>(5,1)),mod_cost(d.numAcc(),vector<std::map<std::string, vector<double> > >(d.numAcc())),high(d.numOfAcc()),highValue(d.numAcc(),std::vector<std::map<std::string, std::vector<unsigned int> > >(d.numAcc())){
 	size_t numberOfPowers = 32;
 //	size_t numberOfPowers = NUM_DELETE;
 	if(NUM_KEEP>numberOfPowers) {
@@ -2891,27 +2891,32 @@ void mc_model::gain_function(const pw_alignment& p, double & g1, double & g2)con
 }
 
 void mc_model::write_parameters(std::ofstream & outs){
-		make_all_the_patterns();
-	//	std::ofstream outs("encode",std::ofstream::binary);
-	//	if(outs.is_open()){
-			for(size_t i = 0 ; i < data.numAcc(); i++){
-				outs << data.get_acc(i);
-				std::cout<<"acc: "<<data.get_acc(i)<<std::endl;
-				outs<< (char)0;
-				for(std::map<std::string, std::vector<double> >::iterator it= all_the_patterns.begin(); it != all_the_patterns.end() ; it++){
-					std::string pattern = it ->first;
-					std::map<std::string,std::vector<double> >::iterator it1=sequence_successive_bases.at(i).find(pattern);
-					if(it1 != sequence_successive_bases.at(i).end()){
-						for(size_t n = 0; n <5; n ++){
-							it->second.at(n) = it1 ->second.at(n);
-						}
-					}else{
-						for(size_t n =0; n < 5 ; n++)
-							it -> second.at(n) = -log2(0.2);
-					}
+	for(size_t i = 0 ; i < data.numAcc(); i++){
+		outs << data.get_acc(i);
+		std::cout<<"acc: "<<data.get_acc(i)<<std::endl;
+		outs<< (char)0;
+	}
+	outs<<(char)8;
+	make_all_the_patterns();
+	for(size_t i = 0 ; i < data.numAcc(); i++){
+		outs<< (char)0;
+		outs << i;
+		outs << (char)0;
+		std::cout<<"acc: "<<i<<std::endl;
+		for(std::map<std::string, std::vector<double> >::iterator it= all_the_patterns.begin(); it != all_the_patterns.end() ; it++){
+			std::string pattern = it ->first;
+			std::map<std::string,std::vector<double> >::iterator it1=sequence_successive_bases.at(i).find(pattern);
+			if(it1 != sequence_successive_bases.at(i).end()){
+				for(size_t n = 0; n <5; n ++){
+					it->second.at(n) = it1 ->second.at(n);
 				}
-				std::map <std::string, std::vector<unsigned int> >lower_bound;
-				for(std::map<std::string, std::vector<double> >::iterator it= all_the_patterns.begin(); it != all_the_patterns.end() ; it++){	
+			}else{
+				for(size_t n =0; n < 5 ; n++)
+					it -> second.at(n) = -log2(0.2);
+				}
+			}
+			std::map <std::string, std::vector<unsigned int> >lower_bound;
+			for(std::map<std::string, std::vector<double> >::iterator it= all_the_patterns.begin(); it != all_the_patterns.end() ; it++){	
 					std::vector<double> num(5,0);
 					std::vector<bool> bit_to_byte(0);
 					std::vector<unsigned int> low(5,0);
@@ -3149,31 +3154,40 @@ void mc_model::make_all_alignments_patterns(){
 		}
 
 	}
-
 	void mc_model::set_patterns(std::ifstream& in){
 		make_all_the_patterns();
 		size_t bit = 12;
 //		std::ifstream in("encode", std::ifstream::binary);
+		std::map<std::string,std::vector<unsigned int> > values;
 		char c;
-		char h;
-		c= in.get();	
+		c = in.get();
 		while(c != 8){
-		//	std::cout << " here2"<<std::endl;
-			size_t accession = 0;
 			std::string acc;
 			std::stringstream s;
 			while(c != 0){
-		//	std::cout<< "c: " << int(c)<<std::endl;
-		//	std::cout << " here3"<<std::endl;
 				s << c;
 				c = in.get();
 			}
 			s >> acc;
+			std::cout << " acc " << acc <<std::endl;
 			data.set_accession(acc);//since in decoding we have no access to our fasta file we need to set accession names in data class
-			accession = data.get_acc_id(acc);
-		//	std::cout<<"acc name: "<< acc <<std::endl;
+			high.push_back(values);//initializing the high vector
+			c = in.get();
+		}
+		std::vector<std::map<std::string , std::vector<unsigned int> > > al_values (data.numOfAcc());
+		for(size_t i =0; i < data.numOfAcc(); i++){
+			highValue.push_back(al_values);
+		}
+		char h;
+		c = in.get();
+		while(c != 8){
+			unsigned int accession = 0;
+			in >> accession;
+			c = in.get();
 			for(std::map<std::string,std::vector<double> >::const_iterator it= all_the_patterns.begin(); it!= all_the_patterns.end();it++){
 				std::string pattern = it ->first;
+				std::cout << "pattern: "<<pattern <<std::endl;
+				std::cout<< "accession " << accession << "high size: " << high.size() << " numOfAcc "<< data.numOfAcc() << std::endl;
 				high.at(accession).insert(std::make_pair(pattern, std::vector<unsigned int>(5,0)));
 			}
 			for(std::map<std::string,std::vector<unsigned int> >::iterator it= high.at(accession).begin(); it!= high.at(accession).end();it++){
@@ -3885,7 +3899,6 @@ void mc_model::make_all_alignments_patterns(){
 //		}
 
 	}
-
 	void mc_model ::get_encoded_member(pw_alignment & al,size_t center_ref,size_t center_left, encoding_functor & functor,std::ofstream& outs)const{
 		size_t acc1 = data.accNumber(al.getreference1());
 		size_t accession = data.accNumber(center_ref);
@@ -4063,9 +4076,8 @@ double counting_functor::get_total(size_t acc1, size_t acc2, std::string context
 		}
 		return modify;
 	}
-	encoding_functor::encoding_functor(all_data & d, mc_model * m, wrapper & wrap, dlib::entropy_encoder_kernel_1 & encode ):data(d),model(m),wrappers(wrap),enc(encode){
+	encoding_functor::encoding_functor(all_data & d, mc_model * a_model, wrapper & wrap, dlib::entropy_encoder_kernel_1 & encode ):data(d),model(a_model),wrappers(wrap),enc(encode){
 	}
-	
 	void encoding_functor::see_context(size_t acc1, size_t acc2,const pw_alignment & p, size_t pos, std::string context, char last_char){//last_char is infact a pattern!
 		size_t bit = 13;
 	//	dlib::entropy_encoder_kernel_1 * enc = new dlib::entropy_encoder_kernel_1();
@@ -4106,16 +4118,14 @@ double counting_functor::get_total(size_t acc1, size_t acc2, std::string context
 	//	delete enc;
 	}
 
-
-
 	void encoding_functor::see_entire_context(size_t acc1, size_t acc2, std::string entireContext){
 		alignment_pattern = entireContext;
 	}
 	const std::map<std::string, std::vector<double> > & encoding_functor::get_alignment_context()const{
 		for(std::map<std::string, std::vector<double> >::const_iterator it = alignment_context.begin(); it !=alignment_context.end(); it++){
-		/*	for(size_t n =0; n < NUM_DELETE+NUM_KEEP+10; n++){
-				std::cout << "counts: "<< it->second.at(n)<<std::endl;
-			}*/
+		//	for(size_t n =0; n < NUM_DELETE+NUM_KEEP+10; n++){
+		//		std::cout << "counts: "<< it->second.at(n)<<std::endl;
+		//	}
 		}
 		return alignment_context;
 	}

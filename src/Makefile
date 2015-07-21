@@ -29,7 +29,7 @@ LIBARGS =   apclusterunix64.so -L../dlib_build -ldlib  libStatGen-1.0.13/libStat
 # include libStatGen-1.0.13/Makefiles/Makefile.include
 
 PROGS = graph
-OBJS = pw_alignment.o data.o  dynamic_mc.o test.o graph.o encoder.o needleman.o #model.o
+OBJS = pw_alignment.o data.o dynamic_mc.o test.o graph.o  needleman.o #model.o encoder.o 
 
 
 # .DEFAULT_GOAL := graph 
@@ -53,8 +53,8 @@ data.o: data.cpp pw_alignment.hpp data.hpp
 dynamic_mc.o: dynamic_mc.cpp dynamic_mc.hpp  data.hpp
 	$(CXX) -o dynamic_mc.o $(CXXFLAGS) $(INCLUDEARGS) -c dynamic_mc.cpp
 
-encoder.o: encoder.cpp encoder.hpp data.hpp 
-	$(CXX) -o encoder.o $(CXXFLAGS) $(INCLUDEARGS) -c encoder.cpp
+#encoder.o: encoder.cpp encoder.hpp data.hpp 
+#	$(CXX) -o encoder.o $(CXXFLAGS) $(INCLUDEARGS) -c encoder.cpp
 
 test.o: test.cpp test.hpp 
 
