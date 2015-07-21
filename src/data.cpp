@@ -3551,7 +3551,7 @@ void mc_model::make_all_alignments_patterns(){
 		}
 	//	std::cout<<p.alignment_length()<<std::endl;
 		for (size_t i = 0; i< p.alignment_length(); i++){
-			size_t n = 0;
+			size_t n = 0; // number of alignment columns we look at
 			int modify_base =-1;
 			int num_delete=-1;
 			int insert_base=-1;
