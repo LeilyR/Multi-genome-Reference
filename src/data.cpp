@@ -979,6 +979,21 @@ std::string all_data::get_seq_name(size_t s) const {
 size_t all_data::get_seq_size(size_t s) const {
 	return sequences.at(s).length();
 }
+void all_data::compare_seq_with_decoding(std::ifstream & in){
+	char c;
+	for(size_t i = 0 ; i < numSequences();i++){
+		unsigned int n;
+		in >> n;
+		assert( n == i);
+		dnastring sequence = sequences.at(i);
+		std::cout<< "length: "<<sequence.length()<<std::endl;
+		for(size_t j =0 ; j < sequence.length(); j++){
+			c = in.get();
+			std::cout<< "seq "<< i << " at " << j << " is " << sequence.at(j) << " and c is " << c <<std::endl;
+			assert(sequence.at(j)== c);
+		}
+	}
+}
 
 overlap::overlap(const all_data & d): data(d), als_on_reference(d.numSequences()){
 

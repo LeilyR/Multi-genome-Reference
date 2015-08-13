@@ -41,6 +41,9 @@ class pw_alignment {
 	size_t getend(size_t id)const;
 	size_t getreference(size_t id)const;
 
+	static void get_bits(char&, bool&, bool&, bool&)const;
+	static void get_base(char&, bool&, bool&, bool&)const;
+
 	std::string get_al_ref1() const;
 	std::string get_al_ref2() const;
 	
@@ -101,14 +104,21 @@ class wrapper{
 		wrapper();
 		~wrapper();
 		void encode(unsigned int&, unsigned int &, unsigned int&);
-		void decode(unsigned int &, unsigned int &, unsigned int&);
 		void context(int &);
-		void decodeContext(int &);
-		
+				
 	private:
 		std::ofstream encodeout;
-		std::ofstream decodeout;
 		std::ofstream al_encode;
+	};
+
+class decoding_wrapper{
+	public:
+		decoding_wrapper();
+		~decoding_wrapper();
+		void decode(unsigned int &, unsigned int &, unsigned int&);
+		void decodeContext(int &);
+	private:
+		std::ofstream decodeout;
 		std::ofstream al_decode;
 };
 		

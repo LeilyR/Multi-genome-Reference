@@ -85,43 +85,6 @@
 	//	outs.close();
 	}
 	template<typename T>
-	std::string encoder<T>::associatedMember(std::string & center, size_t & modificationPattern, size_t & position){
-		std::string member = "";
-		if(modificationPattern<5){
-			char base = dnastring::index_to_base(modificationPattern);
-			member += base;	
-			std::cout<< "modification"<<std::endl;
-		//	std::cout<< "member is "<<member<<std::endl;
-			return member;
-
-		}
-		if(modificationPattern>=5 && modificationPattern<5+NUM_DELETE){
-			std::cout<<"deletion happened!"<<std::endl;
-			return member;
-		}
-		if(modificationPattern>=5+NUM_DELETE && modificationPattern<5+NUM_KEEP+NUM_DELETE){
-			size_t length = model.modification_length(modificationPattern);
-			std::cout << "center length "<< center.size() << " pattern length: "<< length <<" pattern index : "<< modificationPattern << std::endl;
-			for(size_t i = 0 ; i < length;i++){
-				assert(position+ i <center.length());
-				member += center.at(position+i);
-			//	std::cout<< "member is "<<member<<std::endl;
-			}
-			return member;
-		}
-		if(modificationPattern>=5+NUM_KEEP+NUM_DELETE){
-			char base = dnastring::index_to_base(20-modificationPattern);
-			member += base;
-			std::cout<< "insertion"<<std::endl;
-		//	std::cout<< "member is "<<member<<std::endl;
-
-			return member;
-
-		}
-		assert(0);
-		return "";
-	}
-	template<typename T>
 	void encoder<T>::calculating_clusters_high(std::map<std::string, unsigned int> & weight){
 		size_t max_bit = 8;
 		unsigned int h = 0;
@@ -309,37 +272,6 @@
 		return AlignmentsFromClustering.at(seq_id);
 	}
 	template<typename T>
-	void encoder<T>::set_pattern_from_stream(std::ifstream & in){
-	/*	char c;
-		c=in.get();
-		size_t sequence_id=0;
-		while(c != 7){
-			std::map<size_t,std::vector<std::string> >::iterator it =first_pattern_after_al.find(sequence_id);
-			if(it == first_pattern_after_al.end()){
-				first_pattern_after_al.insert(std::make_pair(sequence_id,std::vector<std::string>()));
-			}
-			while(c!=8){
-				std::string pattern;
-				std::stringstream s;
-				while(c!=0){
-					s<<c;
-					c=in.get();
-				}
-				s>>pattern;
-				std::map<size_t,std::vector<std::string> >::iterator it1 =first_pattern_after_al.find(sequence_id);
-				it1->second.push_back(s.str());
-				c=in.get();
-			}
-			sequence_id = sequence_id +1;
-			c=in.get();
-		}
-		for(std::map<size_t,std::vector<std::string> >::iterator it1 = first_pattern_after_al.begin(); it1 != first_pattern_after_al.end(); it1 ++){
-			for(size_t i =0; i< it1->second.size();i++){
-				std::cout<< it1->second.at(i)<<std::endl;
-			}
-		}*/
-	}
-	template<typename T>
 	void encoder<T>::add_partition_high_to_stream(std::ofstream & outs){
 		size_t bit = 32;
 		for(size_t i = 0; i < partitionHigh.size(); i++){
@@ -365,33 +297,260 @@
 		outs << (char) 8;
 	}
 	template<typename T>	
-	void encoder<T>::set_partition_high_from_stream(std::ifstream & in){
-		size_t bit = 32;
-		unsigned char h;
-		char c;
-		c = in.get();
-		unsigned int low = 0;
-		while(c != 8){
-			while(c!=7){
-				std::vector<bool> binary_high_value(0);
-				size_t bound = bit/8;
-				for(size_t j = 0 ; j < bound ; j++){ 
-					h=in.get();
-					for(size_t k = 0; k < 8 ; k++){
-						binary_high_value.push_back(h%2);
-						h = h/2;	
+	void encoder<T>::add_center_to_stream(std::ofstream & outs){
+		size_t bit =32;
+		outs<< (char)0;
+		outs<<partition.size();
+		for(size_t i = 0 ; i < partition.size(); i ++){
+			for(std::map<std::string, std::vector<unsigned int> >::iterator it3 = cluster_high_partition.at(i).begin(); it3 != cluster_high_partition.at(i).end();it3++){
+				std::cout<< "center_write: "<< it3->first<< "low : "<< it3->second.at(0) << "high: "<< it3->second.at(1)<<std::endl;	
+			}
+			for ( std::map<std::string, std::vector<unsigned int> >::iterator it = cluster_high_partition.at(i).begin(); it != cluster_high_partition.at(i).end(); it ++ ){
+				std::string center = it -> first;
+				std::vector<std::string> center_parts;
+				strsep(center, ":" , center_parts);
+				unsigned int cent_ref = atoi(center_parts.at(0).c_str());
+				unsigned int cent_left = atoi(center_parts.at(1).c_str());
+				size_t acc_id = data.accNumber(cent_ref);
+				outs << (char) 0;
+				outs << acc_id;
+				outs << (char) 0;
+				outs << cent_ref;
+				outs<< (char) 0;
+				outs<< cent_left;
+				outs << (char)0;
+				std::vector<bool> bit_to_byte(0);
+				int high = it->second.at(1);
+				for(size_t i = 0 ; i < bit; i++){
+					bit_to_byte.push_back(high%2);
+					high = high/2;
+				}
+			//	for(size_t n = 0 ; n < bit_to_byte.size();n++){
+			//		std::cout<< " "<< bit_to_byte.at(n);
+			//	}
+			//		std::cout<< "" << std::endl;
+			//	std::cout<<"bit to byte: "<< bit_to_byte.size() <<std::endl;
+				for(size_t n = 0; n < bit_to_byte.size(); n++){
+					unsigned char a = 0;
+					for(size_t m = n; m <n+8; m++){
+						a+= model.get_powerOfTwo().at(m-n)* bit_to_byte.at(m);
+					}
+					n= n+7;
+					outs<< a;
+				}
+			}
+			outs << (char) 7;
+		}
+		outs << (char) 8;
+	}
+//	void encoder::add_acc_to_stream(std::map<std::string,std::vector<pw_alignment> > & alignmentsOfClusters,std::ofstream & outs){
+	template<typename T>
+	void encoder<T>::add_acc_to_stream(std::ofstream & outs){	
+	//	std::ofstream outs("encode",std::ofstream::binary);
+			for(std::map<std::string, std::vector<unsigned int> >::iterator it = cluster_high.begin(); it != cluster_high.end(); it++){
+			//	assert(it->second.size() != 0);
+				std::string center = it ->first;
+				std::vector<std::string> center_parts;
+				strsep(center, ":" , center_parts);
+				unsigned int cent_ref = atoi(center_parts.at(0).c_str());
+				unsigned int cent_left = atoi(center_parts.at(1).c_str());
+				size_t acc_id = data.accNumber(cent_ref);
+				outs << (char) 0;
+				outs << acc_id;
+				outs << (char) 0;
+				outs << cent_ref;
+				outs<< (char) 0;
+				outs<< cent_left;
+				outs << (char)0;
+		//		std::map<std::string, std::vector<unsigned int> >::iterator it1 = cluster_high.find(center);
+				std::vector<bool> bit_to_byte(0);
+				int high = it->second.at(1);
+			//	std::cout<< "center1: "<< it->first<< "low : "<< it->second.at(0) << "high: "<< it->second.at(1)<<std::endl;	
+				for(size_t i = 0 ; i < 32; i++){
+					bit_to_byte.push_back(high%2);
+					high = high/2;
+				}
+			/*	for(size_t n = 0 ; n < bit_to_byte.size();n++){
+					std::cout<< " "<< bit_to_byte.at(n);
+				}
+					std::cout<< "" << std::endl;*/
+			//	std::cout<<"bit to byte: "<< bit_to_byte.size() <<std::endl;
+				size_t count =0;
+				for(size_t n = 0; n < bit_to_byte.size(); n++){
+					unsigned char a = 0;
+					for(size_t m = n; m <n+8; m++){
+						a+= model.get_powerOfTwo().at(m-n)* bit_to_byte.at(m);
+						count = count +1;
+					}
+			//		std::cout<< "a: "<< int(a) << std::endl;					
+					n= n+7;
+					outs<< a;
+				}
+			//	std::cout << "count: "<< count << std::endl;
+			}
+			outs << (char) 8 ;
+	}
+template<typename T>
+	void encoder<T>::arithmetic_encoding_centers(std::map<std::string, std::vector<pw_alignment> > & alignmentOfCluster, std::ofstream & outs, dlib::entropy_encoder_kernel_1 & enc){// after partitioning the clusters (New one!)
+	//	arithmetic_encoding_centId(alignmentOfCluster,outs);
+		add_center_to_stream(outs);//center id, its acc and high
+		add_partition_high_to_stream(outs);
+		setOfAlignments(alignmentOfCluster);
+		size_t bit = 13;
+		unsigned int t = model.get_powerOfTwo().at(bit) + 10;
+	//	dlib::entropy_encoder_kernel_1 * enc = new dlib::entropy_encoder_kernel_1();
+		enc.set_stream(outs);
+	//	std::cout<< "size of  cluster_high_partition: "<<  cluster_high_partition.size()<<std::endl;
+		for(size_t i = 0 ; i < cluster_high_partition.size(); i++){
+		//	for(size_t j = 0 ; j < data.numAcc(); j++)
+			for(std::map<std::string, std::vector<unsigned int> >::iterator it = cluster_high_partition.at(i).begin();it != cluster_high_partition.at(i).end(); it++){
+				std::string center = it ->first;
+				std::vector<std::string> split;
+				strsep(center, ":" , split);
+				size_t cent_right = 0;
+				size_t cent_ref = atoi(split.at(0).c_str());
+				size_t cent_left = atoi(split.at(1).c_str());
+				//if(data.accNumber(cent_ref) == j)
+				std::map<std::string,std::vector<pw_alignment> >::iterator it1 = alignmentOfCluster.find(center);
+				assert(it1 != alignmentOfCluster.end());
+				pw_alignment * p = & it1->second.at(0);
+				const dnastring & seq = data.getSequence(cent_ref);
+				size_t left1;
+				size_t right1;
+				size_t left2;
+				size_t right2;
+				p->get_lr1(left1,right1);
+				p->get_lr2(left2,right2);
+				std::cout<< "id of cent in enc: " << center <<std::endl;
+				if(cent_ref == p->getreference1()&& cent_left == left1){
+				//	std::cout<< "encoded center1: "<< it->first << " its al length: "<< p->alignment_length()<<std::endl;
+					if(p->getbegin1() < p->getend1()){//Encode the sequence itself
+						std::cout<< "id of cent in enc1: " << center <<std::endl;
+						cent_right = p->getend1();
+						for(size_t k = cent_left; k < cent_right+1;k++){
+							size_t base = dnastring::base_to_index(seq.at(k));				
+						//	std::cout<<"base _enc: "<<base <<std::endl;
+							unsigned int l = 0;
+							unsigned int h = model.get_center_high_at_position(cent_ref,cent_left,k).at(base);
+							if(base !=0){
+								l = model.get_center_high_at_position(cent_ref,cent_left,k).at(base-1);
+							}else l = 0;
+							if(base == 4){
+								h=  model.get_powerOfTwo().at(bit);
+							}
+							enc.encode(l,h,t);
+						//	std::cout << "l: " << l << " h: "<< h << " base: " << base << std::endl;
+						}
+					//	std::cout<<"cent length1: "<< cent_right - cent_left << std::endl;
+					}else{ //Encode the reverse complement of the sequence
+						cent_right = p->getbegin1();
+					/*	std::cout<< "id of cent in enc2: " << center <<std::endl;
+						for(size_t k = cent_right; k >= cent_left;k--){
+							size_t base = dnastring::base_to_index(seq.at(k));
+							char co_base = dnastring::complement(seq.at(k));
+							size_t com_base = dnastring::base_to_index(co_base);	
+						//	std::cout<<"base _enc: "<<base <<std::endl;
+						//	std::cout<< "com_base_enc: "<< com_base <<std::endl;
+							unsigned int l = 0;
+							unsigned int h = model.get_reverse_center_high_at_position(cent_ref,cent_right,k).at(com_base);
+							if(com_base !=0){
+								l = model.get_reverse_center_high_at_position(cent_ref,cent_right,k).at(com_base-1);
+							}else l = 0;
+							if(com_base == 4){
+								h=  model.get_powerOfTwo().at(bit);
+							}
+							enc.encode(l,h,t);
+						//	std::cout << "l: " << l << " h: "<< h << " base: " << base << std::endl;
+						}
+					//	std::cout<<"cent length2: "<< cent_right - cent_left << std::endl;*/
+						std::cout<< "id of cent in enc2: " << center <<std::endl;
+						for(size_t k = cent_left; k < cent_right+1;k++){
+							size_t base = dnastring::base_to_index(seq.at(k));
+							size_t com_base = dnastring::base_to_index(base);				
+							unsigned int l = 0;
+							unsigned int h = model.get_center_high_at_position(cent_ref,cent_left,k).at(base);
+							if(base !=0){
+								l = model.get_center_high_at_position(cent_ref,cent_left,k).at(base-1);
+							}else l = 0;
+							if(base == 4){
+								h=  model.get_powerOfTwo().at(bit);
+							}
+							enc.encode(l,h,t);
+						}
+
 					}
 				}
-				unsigned int high_value = 0;		
-				for(size_t i = 0; i < binary_high_value.size();i++){
-					high_value += binary_high_value.at(i)*model.get_powerOfTwo().at(i);
+				if(cent_ref == p->getreference2()&& cent_left == left2){
+				//	std::cout<< "encoded center2: "<< it->first << " its al length: "<< p->alignment_length()<<std::endl;				
+					if(p->getbegin2()<p->getend2()){//Encode the sequence itself
+						cent_right = p->getend2();
+						std::cout<< "id of cent in enc3: " << center <<std::endl;
+						for(size_t k = cent_left; k < cent_right+1;k++){
+							size_t base = dnastring::base_to_index(seq.at(k));				
+						//	std::cout<<"base _enc: "<<base <<std::endl;
+							unsigned int l = 0;
+							unsigned int h = model.get_center_high_at_position(cent_ref,cent_left,k).at(base);
+							if(base !=0){
+								l = model.get_center_high_at_position(cent_ref,cent_left,k).at(base-1);
+							}else l = 0;
+							if(base == 4){
+								h=  model.get_powerOfTwo().at(bit);
+							}
+							enc.encode(l,h,t);
+					//		std::cout << "l: " << l << " h: "<< h << " base: " << base << std::endl;
+						}
+					//	std::cout<<"cent length3: "<< cent_right - cent_left << std::endl;
+					}else{ //Encode the reverse complement of the sequence
+						cent_right = p->getbegin2();
+						std::cout<< "id of cent in enc4: " << center <<std::endl;
+						for(size_t k = cent_left; k < cent_right+1;k++){
+							size_t base = dnastring::base_to_index(seq.at(k));
+							size_t com_base = dnastring::base_to_index(base);				
+							unsigned int l = 0;
+							unsigned int h = model.get_center_high_at_position(cent_ref,cent_left,k).at(base);
+							if(base !=0){
+								l = model.get_center_high_at_position(cent_ref,cent_left,k).at(base-1);
+							}else l = 0;
+							if(base == 4){
+								h=  model.get_powerOfTwo().at(bit);
+							}
+							enc.encode(l,h,t);
+						}
+					}
 				}
-				partitionHigh.push_back(high_value);
-			//	std::cout<< "high_read: "<< high_value<<std::endl;
-				c=in.get();
+		//		std::cout<<"end of a center!"<<std::endl;
+				unsigned int l1	= model.get_powerOfTwo().at(bit);
+				unsigned int h1 = model.get_powerOfTwo().at(bit)+5;					
+				unsigned int t1 = model.get_powerOfTwo().at(bit)+10;
+				enc.encode(l1,h1,t1); 
 			}
-			c=in.get();
+			unsigned int l1	= model.get_powerOfTwo().at(bit)+5;
+			unsigned int h1 = model.get_powerOfTwo().at(bit)+10;					
+			unsigned int t1 = model.get_powerOfTwo().at(bit)+10;
+			enc.encode(l1,h1,t1); 
+		//	std::cout<< "partition: " << i <<std::endl;
 		}
+	//	delete enc; 
+	//	std::cout<<"end of cent encoding!"<<std::endl;
+	}
+	template<typename T>
+	void encoder<T>::arithmetic_encoding_centId(std::map<std::string, std::vector<pw_alignment> > & alignmentOfCluster, std::ofstream & outs){
+	/*	add_center_to_stream(outs);
+		setOfAlignments(alignmentOfCluster);
+		// TODO wrong!
+		dlib::entropy_encoder_kernel_1 * enc = new dlib::entropy_encoder_kernel_1();
+		enc -> set_stream(outs);
+		for(size_t j =0 ; j < partition.size(); j++){
+			for(std::map<std::string, std::vector<unsigned int> >::iterator it = cluster_high_partition.at(j).begin(); it != cluster_high_partition.at(j).end(); it++){
+				std::string center = it->first;
+				unsigned int l = it ->second.at(0);
+				unsigned int h = it->second.at(1);
+				unsigned int total =  model.get_powerOfTwo().at(19);
+			//	std::cout<< "cent_id_enc"<<center<< " low: "<< it->second.at(0) << " high: "<< it->second.at(1)<< std::endl;		
+				enc -> encode(l,h,total);
+			}
+		}
+		delete enc;*/
 	}
 	template<typename T>
 	void encoder<T>:: al_encoding(std::map<std::string, unsigned int> & weight, std::map<std::string, std::string > & cluster_members, std::map<std::string, std::vector<pw_alignment> > & alignmentOfCluster, std::ofstream &outs,dlib::entropy_encoder_kernel_1 & enc ){
@@ -556,11 +715,226 @@
 		std::cout<< "encoding is finished!"<<std::endl;
 	}
 	template<typename T>
-	void encoder<T>::al_decoding(std::ifstream & in, dlib::entropy_decoder_kernel_1 & dec, std::ofstream & out){
+	const std::map<std::string, std::vector<unsigned int> >& encoder<T>:: get_center_high() const{
+		return cluster_high;
+	}
+	template<typename T>
+	void encoder<T>::encoding_seq_test(){
+	/*	unsigned int low = 0;
+		unsigned int high = 0;
+		unsigned int total = 0;
+		std::vector<double> num(5,0);
+		std::string seq = "";
+	//	std::string seq1 = "ATAATAAA";
+	//	for(size_t n= 0; n< 1000; n++){
+	//		seq+=seq1;	
+	//	}
+		const dnastring seq = data.getSequence(15);
+		std::cout<< "seq length: "<< seq.length()<<std::endl;
+		for(size_t i = 0; i < seq.length();i++){
+			size_t base = dnastring::base_to_index(seq.at(i));
+			num.at(base)++;	
+		}
+		for(size_t j = 0; j < 5; j++){
+			total += num.at(j);	
+		}
+		for(size_t k=0; k<5; k++){
+			lower_bound.at(k)=low;
+			high += num.at(k);
+			low = high;
+			upper_bound.at(k)=high;
+		}
+		std::ofstream outs("test", std::ofstream::binary);
+		dlib::entropy_encoder_kernel_1 * enc = new dlib::entropy_encoder_kernel_1() ;
+		enc->std::set_stream(outs);
+		for(size_t i = 0; i < seq.length(); i++){
+			size_t base = dnastring::base_to_index(seq.at(i));	
+			unsigned int l = lower_bound.at(base);
+			unsigned int h = upper_bound.at(base);
+			unsigned int t = total;
+			enc->encode(l, h, t);
+		}
+		for(size_t i=0; i<5; i++) {
+			std::cout<< "low " << lower_bound.at(i) << " | high " << upper_bound.at(i) << "  " << total <<std::endl;
+			std::cout<<"ratio: "<< (upper_bound.at(i)-lower_bound.at(i))/total <<std::endl;
+
+		}
+		std::cout<< "sequence: "<<std::endl;
+		for(size_t k =0; k < 50; k++){
+			std::cout<< seq.at(k)<<std::endl;
+		}	
+		delete enc;
+		decoding_seq(total);*/		
+	}
+	template<typename T>
+	void encoder<T>::write_to_stream( std::map<std::string, std::vector<pw_alignment> > & alignmentOfCluster ,std::ofstream & outs){		
+		add_center_to_stream(outs);
+		add_partition_high_to_stream(outs);
+		setOfAlignments(alignmentOfCluster);
+	}
+	template<typename T>
+	void encoder<T>::size_calculator( size_t & file_size,std::map<std::string, std::vector<pw_alignment> > & alignmentOfCluster, std::map<std::string, std::string> & cluster_members ){
+		for(size_t i = 0; i< data.numAcc(); i++){
+			for(size_t k = 0; k <data.getAcc(i).size(); k++){
+				const dnastring & sequence = data.getSequence(data.getAcc(i).at(k));
+				size_t sequenceId = data.getAcc(i).at(k);
+				for(size_t n= 0; n < sequence.length(); n++){
+					std::multimap<size_t, pw_alignment* >::iterator it = AlignmentsFromClustering.at(sequenceId).find(n);
+					if(it != AlignmentsFromClustering.at(sequenceId).end()){//If there is an alignment on that position
+			//+creating cost of center( + modification cost of its correspondence associated member)
+						pw_alignment *p = it->second;
+						double c1,c2,m1,m2;
+						model.cost_function(*p, c1, c2, m1, m2);
+						size_t left_1,left_2,right_1,right_2; 
+						p->get_lr1(left_1,right_1);
+						p->get_lr2(left_2,right_2);		
+						std::stringstream mem;
+						mem << sequenceId << ":" << n;
+						std::map<std::string, std::string>::iterator cl = cluster_members.find(mem.str());
+						assert(cl != cluster_members.end());
+						std::string center = cl->second;
+						std::vector<std::string> center_parts;
+						strsep(center, ":" , center_parts);
+						unsigned int cent_ref = atoi(center_parts.at(0).c_str());
+						unsigned int cent_left = atoi(center_parts.at(1).c_str());
+						if(p->getreference1()== sequenceId && cent_ref == sequenceId && cent_left == n){
+							file_size += c1;
+							n = right_1;
+						}
+						else if(p->getreference2()==sequenceId && cent_ref == sequenceId && cent_left == n){
+							file_size += c2;
+							n = right_2;
+						}
+						else{
+							if(p->getreference1()==sequenceId){
+								file_size += c2 + m2;
+								n = right_1;
+							}else{
+								file_size +=c1+m1;
+								n = right_2;
+							}
+						}
+				
+					}else{//If there is no alignment in that position
+			//+creating cost of sequnce.at(n)
+						size_t base = dnastring::base_to_index(sequence.at(n));
+						size_t creating_cost = model.get_create_cost(i).at(base);
+						file_size +=creating_cost;
+					}
+				}
+			}
+		}
+
+	}
+	template<typename T>
+	decoder<T>::decoder(all_data & d, T & a_model, decoding_wrapper & wrap):data(d), model(a_model),wrappers(wrap){}
+	template<typename T>
+	decoder<T>::~decoder(){}
+template<typename T>
+	std::string decoder<T>::associatedMember(std::string & center, size_t & modificationPattern, size_t & position){
+		std::string member = "";
+		if(modificationPattern<5){
+			char base = dnastring::index_to_base(modificationPattern);
+			member += base;	
+			std::cout<< "modification"<<std::endl;
+		//	std::cout<< "member is "<<member<<std::endl;
+			return member;
+
+		}
+		if(modificationPattern>=5 && modificationPattern<5+NUM_DELETE){
+			std::cout<<"deletion happened!"<<std::endl;
+			return member;
+		}
+		if(modificationPattern>=5+NUM_DELETE && modificationPattern<5+NUM_KEEP+NUM_DELETE){
+			size_t length = model.modification_length(modificationPattern);
+			std::cout << "center length "<< center.size() << " pattern length: "<< length <<" pattern index : "<< modificationPattern << std::endl;
+			for(size_t i = 0 ; i < length;i++){
+				assert(position+ i <center.length());
+				member += center.at(position+i);
+			//	std::cout<< "member is "<<member<<std::endl;
+			}
+			return member;
+		}
+		if(modificationPattern>=5+NUM_KEEP+NUM_DELETE){
+			char base = dnastring::index_to_base(modificationPattern-20);
+			member += base;
+			std::cout<< "insertion"<<std::endl;
+		//	std::cout<< "member is "<<member<<std::endl;
+
+			return member;
+
+		}
+		assert(0);
+		return "";
+	}
+	template<typename T>
+	void decoder<T>::set_pattern_from_stream(std::ifstream & in){
+	/*	char c;
+		c=in.get();
+		size_t sequence_id=0;
+		while(c != 7){
+			std::map<size_t,std::vector<std::string> >::iterator it =first_pattern_after_al.find(sequence_id);
+			if(it == first_pattern_after_al.end()){
+				first_pattern_after_al.insert(std::make_pair(sequence_id,std::vector<std::string>()));
+			}
+			while(c!=8){
+				std::string pattern;
+				std::stringstream s;
+				while(c!=0){
+					s<<c;
+					c=in.get();
+				}
+				s>>pattern;
+				std::map<size_t,std::vector<std::string> >::iterator it1 =first_pattern_after_al.find(sequence_id);
+				it1->second.push_back(s.str());
+				c=in.get();
+			}
+			sequence_id = sequence_id +1;
+			c=in.get();
+		}
+		for(std::map<size_t,std::vector<std::string> >::iterator it1 = first_pattern_after_al.begin(); it1 != first_pattern_after_al.end(); it1 ++){
+			for(size_t i =0; i< it1->second.size();i++){
+				std::cout<< it1->second.at(i)<<std::endl;
+			}
+		}*/
+	}
+	template<typename T>	
+	void decoder<T>::set_partition_high_from_stream(std::ifstream & in){
+		size_t bit = 32;
+		unsigned char h;
+		char c;
+		c = in.get();
+		unsigned int low = 0;
+		while(c != 8){
+			while(c!=7){
+				std::vector<bool> binary_high_value(0);
+				size_t bound = bit/8;
+				for(size_t j = 0 ; j < bound ; j++){ 
+					h=in.get();
+					for(size_t k = 0; k < 8 ; k++){
+						binary_high_value.push_back(h%2);
+						h = h/2;	
+					}
+				}
+				unsigned int high_value = 0;		
+				for(size_t i = 0; i < binary_high_value.size();i++){
+					high_value += binary_high_value.at(i)*model.get_powerOfTwo().at(i);
+				}
+				partitionHigh.push_back(high_value);
+			//	std::cout<< "high_read: "<< high_value<<std::endl;
+				c=in.get();
+			}
+			c=in.get();
+		}
+	}
+	template<typename T>
+	void decoder<T>::al_decoding(std::ifstream & in, dlib::entropy_decoder_kernel_1 & dec, std::ofstream & out){
 		arithmetic_decoding_centers(in,dec);
 		std::cout<<"decoding the center has been done!"<<std::endl;
 		size_t bit = 13;
 		size_t base = 0;
+		size_t sequence_counter = 0;
+		out << 0;
 		unsigned int total = model.get_powerOfTwo().at(bit)+20;
 		std::string first_al_pattern = model.get_firstAlignmentPattern();
 		std::string first_pattern = model.get_firstPattern();
@@ -603,6 +977,8 @@
 							break;
 						}
 					}
+					char p = dnastring::index_to_base(base);
+					out<<p;	
 					dec.decode(low.at(base),high.at(base));	
 					wrappers.decode(low.at(base),high.at(base),total);
 					int base_int = base;
@@ -627,7 +1003,7 @@
 					size_t reverse_member = 0;
 					size_t reverse_both = 0;
 					while(target<flag){//If there is no alignment on that position (see if i can move it to the else of alignment if)
-						char p = dnastring::index_to_base(base);	
+						char p = dnastring::index_to_base(base);
 						std::stringstream s;
 						std::string current_pattern;
 						if(Sequence_level > 1){// TODO: Make a function in model class which returns the current pattern!
@@ -667,6 +1043,8 @@
 								break;
 							}
 						}
+						char p1 = dnastring::index_to_base(base);
+						out<<p1;
 						dec.decode(low.at(base),high.at(base));
 						wrappers.decode(low.at(base),high.at(base),total);
 						int base_int = base;
@@ -677,6 +1055,8 @@
 					//	std::cout << "target2: "<<target<<std::endl;
 						if(target> flag){
 							std::cout<< "starting of an alignemnt's flag!"<<std::endl;
+						//	out<<std::endl;
+						//	out<< "start of an al" <<std::endl;
 						}
 					}
 					if(flag<=target && target < flag+10){
@@ -705,7 +1085,7 @@
 								break;
 							}
 						}
-						dec.decode(low_par,high_par);
+						dec.decode(low_par,high_par);//Dont need to be added to the 'out'
 						wrappers.decode(low_par,high_par,total);
 						target = dec.get_target(total);
 						for(std::map<std::string, std::vector<unsigned int> >::iterator it2 = cluster_high_partition.at(number_of_par).begin(); it2!= cluster_high_partition.at(number_of_par).end();it2++){
@@ -762,7 +1142,7 @@
 						}
 						size_t modify = 0;
 						std::string member;
-						while(target < flag){// the way a context is created doesn't work if the alignment_level is greater than 1!!
+						while(target < flag){// the way a context is created doesn't work if the alignment_level is greater than 1!!(TODO Can't remember why I wrote it. Check it!)
 							std::vector<unsigned int>al_high(NUM_KEEP+NUM_DELETE+10,0);
 							std::vector<unsigned int>al_low(NUM_KEEP+NUM_DELETE+10,0);
 							size_t last_base;
@@ -858,6 +1238,7 @@
 								std::cout << "associatedMem_else "<<std::endl;
 
 								member += associatedMember(decodedCenter,modification,pos);
+								std::cout<< "member "<< member << " modification "<<modification<<std::endl;
 
 							}
 							assert(pos < decodedCenter.size());
@@ -883,6 +1264,8 @@
 									char chr= dnastring::complement(member.at(member.size()-1-rev));	
 									rev_member +=chr;
 								}
+								out<<rev_member;
+								std::cout<< "add to the 'out' 1"<<endl;								
 								for(size_t mem =0; mem<rev_member.length();mem++){
 									std::cout<<rev_member.at(mem);
 								}
@@ -893,9 +1276,11 @@
 								pattern = temp; 
 								base = dnastring::base_to_index(rev_member.at(rev_member.length()-1));
 							}else{
+								std::cout<< "add to the 'out' 2"<<endl;
 								for(size_t mem =0; mem<member.length();mem++){
 									std::cout<< member.at(mem);
 								}
+								out<<member;
 								std::cout << " " << std::endl;
 								for(size_t sl =Sequence_level; sl>0; sl--){
 									temp += member.at(member.length()-1-sl);
@@ -904,6 +1289,8 @@
 								base = dnastring::base_to_index(member.at(member.length()-1));
 							}
 						}else{
+							std::cout<< "add to the 'out' 3"<<endl;
+							out << decodedCenter;
 							for(size_t sl=Sequence_level; sl > 0; sl--){
 								//reverse complement!
 							//	std::cout<<"here!"<<std::endl;
@@ -939,6 +1326,9 @@
 					dec.decode(low.at(7),high.at(7));
 					wrappers.decode(low.at(7),high.at(7),total);
 					std::cout << " End of a sequence! "<<std::endl;
+				//	out << std::endl;
+					out << sequence_counter + 1;
+					sequence_counter = sequence_counter + 1;
 				}else std::cout<<"there is something wrong here!"<<std::endl;
 				target = dec.get_target(total);		
 			}	
@@ -1071,102 +1461,8 @@
 		unsigned int h1 = model.get_powerOfTwo().at(bit) +10;
 		dec.decode(l1,h1);
 	}*/
-	template<typename T>	
-	void encoder<T>::add_center_to_stream(std::ofstream & outs){
-		size_t bit =32;
-		outs<< (char)0;
-		outs<<partition.size();
-		for(size_t i = 0 ; i < partition.size(); i ++){
-			for(std::map<std::string, std::vector<unsigned int> >::iterator it3 = cluster_high_partition.at(i).begin(); it3 != cluster_high_partition.at(i).end();it3++){
-				std::cout<< "center_write: "<< it3->first<< "low : "<< it3->second.at(0) << "high: "<< it3->second.at(1)<<std::endl;	
-			}
-			for ( std::map<std::string, std::vector<unsigned int> >::iterator it = cluster_high_partition.at(i).begin(); it != cluster_high_partition.at(i).end(); it ++ ){
-				std::string center = it -> first;
-				std::vector<std::string> center_parts;
-				strsep(center, ":" , center_parts);
-				unsigned int cent_ref = atoi(center_parts.at(0).c_str());
-				unsigned int cent_left = atoi(center_parts.at(1).c_str());
-				size_t acc_id = data.accNumber(cent_ref);
-				outs << (char) 0;
-				outs << acc_id;
-				outs << (char) 0;
-				outs << cent_ref;
-				outs<< (char) 0;
-				outs<< cent_left;
-				outs << (char)0;
-				std::vector<bool> bit_to_byte(0);
-				int high = it->second.at(1);
-				for(size_t i = 0 ; i < bit; i++){
-					bit_to_byte.push_back(high%2);
-					high = high/2;
-				}
-			//	for(size_t n = 0 ; n < bit_to_byte.size();n++){
-			//		std::cout<< " "<< bit_to_byte.at(n);
-			//	}
-			//		std::cout<< "" << std::endl;
-			//	std::cout<<"bit to byte: "<< bit_to_byte.size() <<std::endl;
-				for(size_t n = 0; n < bit_to_byte.size(); n++){
-					unsigned char a = 0;
-					for(size_t m = n; m <n+8; m++){
-						a+= model.get_powerOfTwo().at(m-n)* bit_to_byte.at(m);
-					}
-					n= n+7;
-					outs<< a;
-				}
-			}
-			outs << (char) 7;
-		}
-		outs << (char) 8;
-	}
-//	void encoder::add_acc_to_stream(std::map<std::string,std::vector<pw_alignment> > & alignmentsOfClusters,std::ofstream & outs){
 	template<typename T>
-	void encoder<T>::add_acc_to_stream(std::ofstream & outs){	
-	//	std::ofstream outs("encode",std::ofstream::binary);
-			for(std::map<std::string, std::vector<unsigned int> >::iterator it = cluster_high.begin(); it != cluster_high.end(); it++){
-			//	assert(it->second.size() != 0);
-				std::string center = it ->first;
-				std::vector<std::string> center_parts;
-				strsep(center, ":" , center_parts);
-				unsigned int cent_ref = atoi(center_parts.at(0).c_str());
-				unsigned int cent_left = atoi(center_parts.at(1).c_str());
-				size_t acc_id = data.accNumber(cent_ref);
-				outs << (char) 0;
-				outs << acc_id;
-				outs << (char) 0;
-				outs << cent_ref;
-				outs<< (char) 0;
-				outs<< cent_left;
-				outs << (char)0;
-		//		std::map<std::string, std::vector<unsigned int> >::iterator it1 = cluster_high.find(center);
-				std::vector<bool> bit_to_byte(0);
-				int high = it->second.at(1);
-			//	std::cout<< "center1: "<< it->first<< "low : "<< it->second.at(0) << "high: "<< it->second.at(1)<<std::endl;	
-				for(size_t i = 0 ; i < 32; i++){
-					bit_to_byte.push_back(high%2);
-					high = high/2;
-				}
-			/*	for(size_t n = 0 ; n < bit_to_byte.size();n++){
-					std::cout<< " "<< bit_to_byte.at(n);
-				}
-					std::cout<< "" << std::endl;*/
-			//	std::cout<<"bit to byte: "<< bit_to_byte.size() <<std::endl;
-				size_t count =0;
-				for(size_t n = 0; n < bit_to_byte.size(); n++){
-					unsigned char a = 0;
-					for(size_t m = n; m <n+8; m++){
-						a+= model.get_powerOfTwo().at(m-n)* bit_to_byte.at(m);
-						count = count +1;
-					}
-			//		std::cout<< "a: "<< int(a) << std::endl;					
-					n= n+7;
-					outs<< a;
-				}
-			//	std::cout << "count: "<< count << std::endl;
-			}
-			outs << (char) 8 ;
-	}
-	template<typename T>
-	void encoder<T>::set_acc_from_stream(std::ifstream & in){
+	void decoder<T>::set_acc_from_stream(std::ifstream & in){
 		size_t bit = 32;
 		char c ; 
 		unsigned char h;
@@ -1232,7 +1528,7 @@
 		}*/
 	}
 	template<typename T>
-	void encoder<T>::set_center_from_stream(std::ifstream & in){
+	void decoder<T>::set_center_from_stream(std::ifstream & in){
 		size_t bit = 32;
 		size_t partition_size = 0;
 		char c ; 
@@ -1248,7 +1544,6 @@
 		while(c != 8){
 			unsigned int low = 0;
 			while(c != 7){
-				std::cout << "here!"<<std::endl;
 				size_t id;
 				in >> id;
 				std::map<size_t , std::vector<std::string> >::iterator it = acc_of_center.find(id);
@@ -1267,11 +1562,11 @@
 				std::map<size_t , std::vector<std::string> >::iterator it1 = acc_of_center.find(id);
 				it1 ->second.push_back(center_id.str());
 				c = in.get();
-				std::cout << "cluster high size: "<<cluster_high_partition.size()<<std::endl;
 				std::map<std::string, std::vector<unsigned int> >::iterator it2 = cluster_high_partition.at(i).find(center_id.str());
 				if(it2 == cluster_high_partition.at(i).end()){
-					cluster_high_partition.at(i).insert(std::make_pair(center,std::vector<unsigned int>(2,0)));
-					it2 = cluster_high_partition.at(i).find(center);	
+					std::cout << "center: " << center_id.str() <<std::endl;
+					cluster_high_partition.at(i).insert(std::make_pair(center_id.str(),std::vector<unsigned int>(2,0)));
+					it2 = cluster_high_partition.at(i).find(center_id.str());	
 				}
 				std::vector<bool> binary_high_value(0);
 					size_t bound = bit/8;
@@ -1315,171 +1610,14 @@
 	/*	for(std::map<size_t, std::vector<std::string> >::iterator it = acc_of_center.begin();it!=acc_of_center.end();it++){
 			std::cout<<"acc std::set in the map: "<<it->first<<std::endl;
 		}*/
-	}
-	template<typename T>
-	void encoder<T>::arithmetic_encoding_centers(std::map<std::string, std::vector<pw_alignment> > & alignmentOfCluster, std::ofstream & outs, dlib::entropy_encoder_kernel_1 & enc){// after partitioning the clusters (New one!)
-	//	arithmetic_encoding_centId(alignmentOfCluster,outs);
-		add_center_to_stream(outs);//center id, its acc and high
-		add_partition_high_to_stream(outs);
-		setOfAlignments(alignmentOfCluster);
-		size_t bit = 13;
-		unsigned int t = model.get_powerOfTwo().at(bit) + 10;
-	//	dlib::entropy_encoder_kernel_1 * enc = new dlib::entropy_encoder_kernel_1();
-		enc.set_stream(outs);
-	//	std::cout<< "size of  cluster_high_partition: "<<  cluster_high_partition.size()<<std::endl;
-		for(size_t i = 0 ; i < cluster_high_partition.size(); i++){
-		//	for(size_t j = 0 ; j < data.numAcc(); j++)
-			for(std::map<std::string, std::vector<unsigned int> >::iterator it = cluster_high_partition.at(i).begin();it != cluster_high_partition.at(i).end(); it++){
-				std::string center = it ->first;
-				std::vector<std::string> split;
-				strsep(center, ":" , split);
-				size_t cent_right = 0;
-				size_t cent_ref = atoi(split.at(0).c_str());
-				size_t cent_left = atoi(split.at(1).c_str());
-				//if(data.accNumber(cent_ref) == j)
-				std::map<std::string,std::vector<pw_alignment> >::iterator it1 = alignmentOfCluster.find(center);
-				assert(it1 != alignmentOfCluster.end());
-				pw_alignment * p = & it1->second.at(0);
-				const dnastring & seq = data.getSequence(cent_ref);
-				size_t left1;
-				size_t right1;
-				size_t left2;
-				size_t right2;
-				p->get_lr1(left1,right1);
-				p->get_lr2(left2,right2);
-				std::cout<< "id of cent in enc: " << center <<std::endl;
-				if(cent_ref == p->getreference1()&& cent_left == left1){
-				//	std::cout<< "encoded center1: "<< it->first << " its al length: "<< p->alignment_length()<<std::endl;
-					if(p->getbegin1() < p->getend1()){//Encode the sequence itself
-						std::cout<< "id of cent in enc1: " << center <<std::endl;
-						cent_right = p->getend1();
-						for(size_t k = cent_left; k < cent_right+1;k++){
-							size_t base = dnastring::base_to_index(seq.at(k));				
-						//	std::cout<<"base _enc: "<<base <<std::endl;
-							unsigned int l = 0;
-							unsigned int h = model.get_center_high_at_position(cent_ref,cent_left,k).at(base);
-							if(base !=0){
-								l = model.get_center_high_at_position(cent_ref,cent_left,k).at(base-1);
-							}else l = 0;
-							if(base == 4){
-								h=  model.get_powerOfTwo().at(bit);
-							}
-							enc.encode(l,h,t);
-						//	std::cout << "l: " << l << " h: "<< h << " base: " << base << std::endl;
-						}
-					//	std::cout<<"cent length1: "<< cent_right - cent_left << std::endl;
-					}else{ //Encode the reverse complement of the sequence
-						cent_right = p->getbegin1();
-					/*	std::cout<< "id of cent in enc2: " << center <<std::endl;
-						for(size_t k = cent_right; k >= cent_left;k--){
-							size_t base = dnastring::base_to_index(seq.at(k));
-							char co_base = dnastring::complement(seq.at(k));
-							size_t com_base = dnastring::base_to_index(co_base);	
-						//	std::cout<<"base _enc: "<<base <<std::endl;
-						//	std::cout<< "com_base_enc: "<< com_base <<std::endl;
-							unsigned int l = 0;
-							unsigned int h = model.get_reverse_center_high_at_position(cent_ref,cent_right,k).at(com_base);
-							if(com_base !=0){
-								l = model.get_reverse_center_high_at_position(cent_ref,cent_right,k).at(com_base-1);
-							}else l = 0;
-							if(com_base == 4){
-								h=  model.get_powerOfTwo().at(bit);
-							}
-							enc.encode(l,h,t);
-						//	std::cout << "l: " << l << " h: "<< h << " base: " << base << std::endl;
-						}
-					//	std::cout<<"cent length2: "<< cent_right - cent_left << std::endl;*/
-						std::cout<< "id of cent in enc2: " << center <<std::endl;
-						for(size_t k = cent_left; k < cent_right+1;k++){
-							size_t base = dnastring::base_to_index(seq.at(k));
-							size_t com_base = dnastring::base_to_index(base);				
-							unsigned int l = 0;
-							unsigned int h = model.get_center_high_at_position(cent_ref,cent_left,k).at(base);
-							if(base !=0){
-								l = model.get_center_high_at_position(cent_ref,cent_left,k).at(base-1);
-							}else l = 0;
-							if(base == 4){
-								h=  model.get_powerOfTwo().at(bit);
-							}
-							enc.encode(l,h,t);
-						}
-
-					}
-				}
-				if(cent_ref == p->getreference2()&& cent_left == left2){
-				//	std::cout<< "encoded center2: "<< it->first << " its al length: "<< p->alignment_length()<<std::endl;				
-					if(p->getbegin2()<p->getend2()){//Encode the sequence itself
-						cent_right = p->getend2();
-						std::cout<< "id of cent in enc3: " << center <<std::endl;
-						for(size_t k = cent_left; k < cent_right+1;k++){
-							size_t base = dnastring::base_to_index(seq.at(k));				
-						//	std::cout<<"base _enc: "<<base <<std::endl;
-							unsigned int l = 0;
-							unsigned int h = model.get_center_high_at_position(cent_ref,cent_left,k).at(base);
-							if(base !=0){
-								l = model.get_center_high_at_position(cent_ref,cent_left,k).at(base-1);
-							}else l = 0;
-							if(base == 4){
-								h=  model.get_powerOfTwo().at(bit);
-							}
-							enc.encode(l,h,t);
-					//		std::cout << "l: " << l << " h: "<< h << " base: " << base << std::endl;
-						}
-					//	std::cout<<"cent length3: "<< cent_right - cent_left << std::endl;
-					}else{ //Encode the reverse complement of the sequence
-						cent_right = p->getbegin2();
-						std::cout<< "id of cent in enc4: " << center <<std::endl;
-						for(size_t k = cent_left; k < cent_right+1;k++){
-							size_t base = dnastring::base_to_index(seq.at(k));
-							size_t com_base = dnastring::base_to_index(base);				
-							unsigned int l = 0;
-							unsigned int h = model.get_center_high_at_position(cent_ref,cent_left,k).at(base);
-							if(base !=0){
-								l = model.get_center_high_at_position(cent_ref,cent_left,k).at(base-1);
-							}else l = 0;
-							if(base == 4){
-								h=  model.get_powerOfTwo().at(bit);
-							}
-							enc.encode(l,h,t);
-						}
-					}
-				}
-		//		std::cout<<"end of a center!"<<std::endl;
-				unsigned int l1	= model.get_powerOfTwo().at(bit);
-				unsigned int h1 = model.get_powerOfTwo().at(bit)+5;					
-				unsigned int t1 = model.get_powerOfTwo().at(bit)+10;
-				enc.encode(l1,h1,t1); 
-			}
-			unsigned int l1	= model.get_powerOfTwo().at(bit)+5;
-			unsigned int h1 = model.get_powerOfTwo().at(bit)+10;					
-			unsigned int t1 = model.get_powerOfTwo().at(bit)+10;
-			enc.encode(l1,h1,t1); 
-		//	std::cout<< "partition: " << i <<std::endl;
-		}
-	//	delete enc; 
-	//	std::cout<<"end of cent encoding!"<<std::endl;
-	}
-	template<typename T>
-	void encoder<T>::arithmetic_encoding_centId(std::map<std::string, std::vector<pw_alignment> > & alignmentOfCluster, std::ofstream & outs){
-	/*	add_center_to_stream(outs);
-		setOfAlignments(alignmentOfCluster);
-		// TODO wrong!
-		dlib::entropy_encoder_kernel_1 * enc = new dlib::entropy_encoder_kernel_1();
-		enc -> set_stream(outs);
-		for(size_t j =0 ; j < partition.size(); j++){
-			for(std::map<std::string, std::vector<unsigned int> >::iterator it = cluster_high_partition.at(j).begin(); it != cluster_high_partition.at(j).end(); it++){
-				std::string center = it->first;
-				unsigned int l = it ->second.at(0);
-				unsigned int h = it->second.at(1);
-				unsigned int total =  model.get_powerOfTwo().at(19);
-			//	std::cout<< "cent_id_enc"<<center<< " low: "<< it->second.at(0) << " high: "<< it->second.at(1)<< std::endl;		
-				enc -> encode(l,h,total);
+		for(size_t i =0; i <  cluster_high_partition.size(); i++){
+			for(std::map<std::string, vector<unsigned int> >::iterator it =  cluster_high_partition.at(i).begin(); it !=  cluster_high_partition.at(i).end(); it++){
+				std::cout<< "memeber" <<it->first <<std::endl;
 			}
 		}
-		delete enc;*/
 	}
-	template<typename T>
-	void encoder<T>::arithmetic_decoding_centId(std::ifstream& in, dlib::entropy_decoder_kernel_1& dec){
+		template<typename T>
+	void decoder<T>::arithmetic_decoding_centId(std::ifstream& in, dlib::entropy_decoder_kernel_1& dec){
 	/*	model.set_patterns(in);
 		model.set_alignment_pattern(in);
 		set_center_from_stream(in);
@@ -1511,11 +1649,7 @@
 	//	}*/
 	}
 	template<typename T>
-	const std::map<std::string, std::vector<unsigned int> >& encoder<T>:: get_center_high() const{
-		return cluster_high;
-	}
-	template<typename T>
-	void encoder<T>::arithmetic_decoding_centers(std::ifstream & in, dlib::entropy_decoder_kernel_1 & dec){// After partitioning the cluster! (new one!)
+	void decoder<T>::arithmetic_decoding_centers(std::ifstream & in, dlib::entropy_decoder_kernel_1 & dec){// After partitioning the cluster! (new one!)
 		std::ofstream save1;
 		save1.open("decode.txt");
 	//	arithmetic_decoding_centId(in,dec);
@@ -1552,7 +1686,7 @@
 		//	while(acc < data.numOfAcc())
 			target = dec.get_target(total);
 			while(target<flag+5){//end of all sequences of a partition
-		//		std::cout << " m "<< m <<std::endl;
+				std::cout << " m "<< m <<std::endl;
 				std::string c_id = centerOfAPartition.at(m);
 				for(std::map<size_t, std::vector<std::string> >::iterator it = acc_of_center.begin();it != acc_of_center.end(); it ++){	
 					for(size_t k = 0; k < it->second.size();k++){		
@@ -1610,7 +1744,7 @@
 						s<<p;
 						s>>current_pattern;
 					}
-					std::cout<<"current pattern: "<< current_pattern<<std::endl;
+				//	std::cout<<"current pattern: "<< current_pattern<<std::endl;
 					std::map<std::string, std::vector<unsigned int> >::const_iterator it1=model.get_high(acc).find(current_pattern);
 					assert(it1 != model.get_high(acc).end());
 					for(size_t j=0; j<5; j++){
@@ -1684,55 +1818,7 @@
 		save1.close();
 	}
 	template<typename T>
-	void encoder<T>::encoding_seq_test(){
-	/*	unsigned int low = 0;
-		unsigned int high = 0;
-		unsigned int total = 0;
-		std::vector<double> num(5,0);
-		std::string seq = "";
-	//	std::string seq1 = "ATAATAAA";
-	//	for(size_t n= 0; n< 1000; n++){
-	//		seq+=seq1;	
-	//	}
-		const dnastring seq = data.getSequence(15);
-		std::cout<< "seq length: "<< seq.length()<<std::endl;
-		for(size_t i = 0; i < seq.length();i++){
-			size_t base = dnastring::base_to_index(seq.at(i));
-			num.at(base)++;	
-		}
-		for(size_t j = 0; j < 5; j++){
-			total += num.at(j);	
-		}
-		for(size_t k=0; k<5; k++){
-			lower_bound.at(k)=low;
-			high += num.at(k);
-			low = high;
-			upper_bound.at(k)=high;
-		}
-		std::ofstream outs("test", std::ofstream::binary);
-		dlib::entropy_encoder_kernel_1 * enc = new dlib::entropy_encoder_kernel_1() ;
-		enc->std::set_stream(outs);
-		for(size_t i = 0; i < seq.length(); i++){
-			size_t base = dnastring::base_to_index(seq.at(i));	
-			unsigned int l = lower_bound.at(base);
-			unsigned int h = upper_bound.at(base);
-			unsigned int t = total;
-			enc->encode(l, h, t);
-		}
-		for(size_t i=0; i<5; i++) {
-			std::cout<< "low " << lower_bound.at(i) << " | high " << upper_bound.at(i) << "  " << total <<std::endl;
-			std::cout<<"ratio: "<< (upper_bound.at(i)-lower_bound.at(i))/total <<std::endl;
-
-		}
-		std::cout<< "sequence: "<<std::endl;
-		for(size_t k =0; k < 50; k++){
-			std::cout<< seq.at(k)<<std::endl;
-		}	
-		delete enc;
-		decoding_seq(total);*/		
-	}
-	template<typename T>
-	void encoder<T>::arithmetic_decoding_seq_test(int t){
+	void decoder<T>::arithmetic_decoding_seq_test(int t){
 
 		dlib::entropy_decoder_kernel_1  dec;
 		std::ifstream in("test", std::ifstream::binary);
@@ -1755,7 +1841,7 @@
 
 	}
 	template<typename T>
-	void encoder<T>::arithmetic_decoding_seq(){
+	void decoder<T>::arithmetic_decoding_seq(){
 		std::ifstream in("encode",std::ifstream::binary);
 		size_t bit =12;
 		model.set_patterns(in);//returns high values we saved in the stream is called "in"
@@ -1898,72 +1984,12 @@
 		}
 	}
 	template<typename T>
-	void encoder<T>::write_to_stream( std::map<std::string, std::vector<pw_alignment> > & alignmentOfCluster ,std::ofstream & outs){		
-		add_center_to_stream(outs);
-		add_partition_high_to_stream(outs);
-		setOfAlignments(alignmentOfCluster);
-	}
-	template<typename T>
-	void encoder<T>::read_from_stream(std::ifstream & in){
+	void decoder<T>::read_from_stream(std::ifstream & in){
 		model.set_patterns(in);
 		model.set_alignment_pattern(in);
 		set_center_from_stream(in);
 		set_partition_high_from_stream(in);
 	}
-	template<typename T>
-	void encoder<T>::size_calculator( size_t & file_size,std::map<std::string, std::vector<pw_alignment> > & alignmentOfCluster, std::map<std::string, std::string> & cluster_members ){
-		for(size_t i = 0; i< data.numAcc(); i++){
-			for(size_t k = 0; k <data.getAcc(i).size(); k++){
-				const dnastring & sequence = data.getSequence(data.getAcc(i).at(k));
-				size_t sequenceId = data.getAcc(i).at(k);
-				for(size_t n= 0; n < sequence.length(); n++){
-					std::multimap<size_t, pw_alignment* >::iterator it = AlignmentsFromClustering.at(sequenceId).find(n);
-					if(it != AlignmentsFromClustering.at(sequenceId).end()){//If there is an alignment on that position
-			//+creating cost of center( + modification cost of its correspondence associated member)
-						pw_alignment *p = it->second;
-						double c1,c2,m1,m2;
-						model.cost_function(*p, c1, c2, m1, m2);
-						size_t left_1,left_2,right_1,right_2; 
-						p->get_lr1(left_1,right_1);
-						p->get_lr2(left_2,right_2);		
-						std::stringstream mem;
-						mem << sequenceId << ":" << n;
-						std::map<std::string, std::string>::iterator cl = cluster_members.find(mem.str());
-						assert(cl != cluster_members.end());
-						std::string center = cl->second;
-						std::vector<std::string> center_parts;
-						strsep(center, ":" , center_parts);
-						unsigned int cent_ref = atoi(center_parts.at(0).c_str());
-						unsigned int cent_left = atoi(center_parts.at(1).c_str());
-						if(p->getreference1()== sequenceId && cent_ref == sequenceId && cent_left == n){
-							file_size += c1;
-							n = right_1;
-						}
-						else if(p->getreference2()==sequenceId && cent_ref == sequenceId && cent_left == n){
-							file_size += c2;
-							n = right_2;
-						}
-						else{
-							if(p->getreference1()==sequenceId){
-								file_size += c2 + m2;
-								n = right_1;
-							}else{
-								file_size +=c1+m1;
-								n = right_2;
-							}
-						}
-				
-					}else{//If there is no alignment in that position
-			//+creating cost of sequnce.at(n)
-						size_t base = dnastring::base_to_index(sequence.at(n));
-						size_t creating_cost = model.get_create_cost(i).at(base);
-						file_size +=creating_cost;
-					}
-				}
-			}
-		}
-
-	}
-
+	
 
 #endif

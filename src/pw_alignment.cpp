@@ -630,6 +630,13 @@ size_t pw_alignment::getreference(size_t id)const{
 	return references.at(id);
 }
 
+void pw_alignment::get_bits(char& base, bool& bit1, bool& bit2, bool& bit3)const{
+
+
+}
+void pw_alignment::get_base(char & base, bool& bit1, bool& bit2, bool& bit3)const{
+
+}
 std::string pw_alignment::get_al_ref1() const {
 	std::stringstream res;
 	for(size_t i=0; i<alignment_length(); ++i) {
@@ -821,7 +828,7 @@ pw_alignment & pw_alignment::operator=(const pw_alignment & al) {
 	return *this;
 }
 
-        wrapper::wrapper():encodeout("enc1.txt"),decodeout("dec1.txt"),al_encode("al_encode1.txt"),al_decode("al_decode1.txt"){
+        wrapper::wrapper():encodeout("enc1.txt"),al_encode("al_encode1.txt"){
         }
         wrapper::~wrapper(){}
         void wrapper::encode(unsigned int& low, unsigned int& high, unsigned int & total){
@@ -829,18 +836,21 @@ pw_alignment & pw_alignment::operator=(const pw_alignment & al) {
             //    al_encode << " low: "<< low << " high: "<< high <<std::endl;
 
         }
-        void wrapper::decode(unsigned int& low, unsigned int& high, unsigned int & total){
-                decodeout << "l"<< low << "h"<< high;
-           //     al_decode << " low: "<< low << " high: "<< high <<std::endl;
-
-        }
         void wrapper::context(int & context){
 		al_encode<<"c"<<context;
              //   al_encode << "position: " << pos << " context: " <<  context <<std::endl;
 
         }
-        void wrapper::decodeContext(int & context){
+       	decoding_wrapper::decoding_wrapper():decodeout("dec1.txt"),al_decode("al_decode1.txt"){}
+	decoding_wrapper::~decoding_wrapper(){}
+	void decoding_wrapper::decode(unsigned int& low, unsigned int& high, unsigned int & total){
+                decodeout << "l"<< low << "h"<< high;
+           //     al_decode << " low: "<< low << " high: "<< high <<std::endl;
+        }
+        void decoding_wrapper::decodeContext(int & context){
 		al_decode<<"c"<<context;
             //    al_decode << "position: " << pos << " context: " <<  context <<std::endl;
         }
+
+	
 

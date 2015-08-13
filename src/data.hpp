@@ -86,6 +86,7 @@ class all_data {
 		size_t numOfAcc() const;
 		const std::map< std::string, size_t>& getLongname2seqidx()const;
 		int findIdAlignment(std::string name,int start, int end);
+		void compare_seq_with_decoding(std::ifstream &);
 	
 	private:
 		// data

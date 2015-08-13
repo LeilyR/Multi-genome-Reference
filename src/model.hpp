@@ -493,12 +493,15 @@ class finding_centers{
 	void findMemberOfClusters(std::map<std::string,std::vector<pw_alignment> > & );
 	void center_frequency(std::map<std::string,std::vector<pw_alignment> > &);
 	std::vector<size_t> get_center(size_t)const;
+	size_t get_number_of_centers()const;
+	std::string find_center_name(size_t &)const;
 
 	private:
 	all_data & data;
 	std::vector< std::multimap<size_t , pw_alignment*> >AlignmentsFromClustering;
 	std::map<std::string,std::string> memberOfCluster; //first string is assocciated member and second one is its center
 	std::vector<std::vector<size_t> >centersOfASequence;//all the centers that happen on each sequence.
+	std::vector<std::string> center_index;
 
 
 
@@ -514,32 +517,40 @@ class suffix_tree{
 	void delete_relation(size_t & , size_t& );
 	void make_a_tree();
 	void insert_node(std::string);
-	void count_paths();
+	void count_branches();
 	std::vector<std::string> get_nodes()const;
 	std::map<std::vector<size_t>, size_t> get_count()const;
 	std::vector<size_t> get_first_parent()const;
-	
+	void read_first_parents(std::string &, std::string &);
+	void find_child_nodes(size_t &, vector<size_t> &);
+	void create_tree();
 	private:
 	all_data & data;
 	finding_centers & centers;
 	std::vector<std::string>suffixes;//all the suffixes of a sequence at the time
 	std::vector<std::string> nodes;
 	std::multimap<size_t , size_t> nodes_relation; //first size_t shows the parent and second one shows kids
-	std::map<std::string, size_t>firstParent; // size_t shows its index
+	std::map<std::string, size_t>firstParent; // size_t shows its node index
 	std::map<std::vector<size_t>,size_t>branch_counter;//vector represents all nodes of a branch , size_t shows the number of that branch is happening
 		
 };
 
 class merging_centers{
 	public:
-		merging_centers(finding_centers &, suffix_tree &);
+		merging_centers(all_data &, finding_centers &, suffix_tree &);
 		~merging_centers();
-		void merg_gain_value();
-		void merg_alignments(std::map<std::string,std::vector<pw_alignment> > &);
+		void updating_centers(std::string & , size_t &);
+		void merg_gain_value( );
+		void merg_alignments(vector<vector<std::string> > &, std::map<std::string, std::vector<pw_alignment> > &, std::map<std::string, std::vector<std::string> > &, std::map<vector<std::string>,std::vector<pw_alignment> > &);
+		void adding_new_centers(vector<vector<std::string> >&);// Saves new centers in the 'long_centers' vector in main. It gives a unique id to each of them(Their row in the outer vector). vector<string> includes are the centers in the new one. they are saved in the form of ref:left.
 	private:
+		all_data & data;
 		finding_centers & centers;
 		suffix_tree & tree;
-		std::vector<std::vector<size_t> > merged_centers;//merged nodes
+		std::map<std::string , size_t> merged_centers;//merged centers, string ----> megerd centers , size_t ----> its new index
+		std::map<std::string, int >gains; // string ----> series of centers, int ----> gain of it. It includes the last combination of centers
+		std::map<std::string, size_t>updated_counts;//number of the string happening
+		
 
 
 

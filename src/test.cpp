@@ -61,11 +61,11 @@
 			i = i + 1;
 		}
 	}
-	void test_encoder::compare(){
+	void test_encoder::compare(){//TODO  is wrong and should be fixed.
 		ifstream read;	
 		char c;
-		vector<unsigned int>low_dec;
-		vector<unsigned int>high_dec;
+		low_dec.clear();
+		high_dec.clear();
 		read.open("dec1.txt");
 		while(read.good()){
 			c = read.get();
@@ -92,12 +92,17 @@
 			unsigned int hi;
 			read1 >> hi;
 			high.push_back(hi);
+
+
 		}
 		
 	/*	for(size_t i =0 ; i < high.size();i++){
 			cout << "high at " << i << " is " << high.at(i) << endl;
 		}*/
-		cout<< "low_dec size: "<< low_dec.size() << "low size "<< low.size()<< endl;
+		
+		std::cout<< "low_dec size: "<< low_dec.size() << "low size "<< low.size()<< std::endl;
+		std::cout<< "high_dec size: "<< high_dec.size() << "high size "<< high.size()<< std::endl;
+
 		for(size_t i = 0; i < low_dec.size(); i++){
 			if(low.at(i)!=low_dec.at(i)){
 				cout<< "low values at " << i << " are different" << low.at(i) << " " << low_dec.at(i) <<endl;
@@ -116,7 +121,7 @@
 		std::cout << "end of control!"<<std::endl;
 		
 	}
-	void test_encoder::context_compare(){
+	void test_encoder::context_compare(){//TODO is wrong and should be fixed
 		char c;
 		vector<size_t> enc_context;
 		vector<size_t> dec_context;
