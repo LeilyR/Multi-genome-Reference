@@ -535,7 +535,7 @@ int do_mc_model(int argc, char * argv[]) {
 	clock_t initial_cc_time = clock();
 	compute_cc cccs(data);
 	std::vector<std::set< pw_alignment , compare_pw_alignment> > ccs;
-	cccs.compute(ccs); //fill in ccss, order by size(Notice that they are just connected to each other if they have overlap!)
+	cccs.compute(ccs); //fill in ccs, order by size(Notice that they are just connected to each other if they have overlap!)
 	initial_cc_time = clock() - initial_cc_time;
 /*	std::cout << " Found " << ccs.size() << " connected components" << std::endl;
 	for(size_t i=0; i<ccs.size(); i++) {
@@ -586,9 +586,6 @@ int do_mc_model(int argc, char * argv[]) {
 //	}
 //	std::cout<< "sum is "<<sum <<std::endl;
 //	std::cout<< "len times two: "<< len*2 <<std::endl;
-//	counting_functor functor(data);
-//	encoder en(data,m);
-//	use_clustering clust(ol,data,m);
 	use_encode en(data,m,wrap);
 	std::vector<overlap> cc_overlap(ccs.size(), overlap(data));// An overlap class object is needed for each connected component, thus we cannot use ol
 	// base cost to use an alignment (information need for its adress)
@@ -598,7 +595,6 @@ int do_mc_model(int argc, char * argv[]) {
 	// TODO put the next two into a single data structure
 	std::map<std::string, std::vector<string> > global_results;//for each center returns all its cluster members TODO needed?
 	std::map<std::string, std::vector<pw_alignment> > alignments_in_a_cluster;//string ---> center of a cluster, vector ---> alignments with that center
-	vector<vector<std::string> > long_centers;
 	std::map<vector<std::string>, vector<pw_alignment> > new_centers;
 	size_t num_clusters = 0;
 	size_t num_cluster_members_al = 0;
@@ -616,8 +612,7 @@ int do_mc_model(int argc, char * argv[]) {
 	double all_gain_in_ias = 0;
 	size_t all_used_input_alignments = 0;
 	size_t all_npo_alignments = 0;
-
-#pragma omp parallel for num_threads(num_threads) schedule(dynamic)
+	#pragma omp parallel for num_threads(num_threads) schedule(dynamic)
 	for(size_t i=0; i<ccs.size(); ++i) {
 #pragma omp critical(print)
 {
@@ -656,11 +651,11 @@ int do_mc_model(int argc, char * argv[]) {
 		second_cc_time += second_cc_time_local;
 }
 #endif
-
 		std::cout<< "cc_cluster_in size: "<< cc_cluster_in.size()<<std::endl;
 		std::cout << "cc " << i << ": from " << cc.size() << " original als with total gain " << ias.get_max_gain() << " we made " << cc_overlap.at(i).size() << " pieces with total gain " << ias.get_result_gain() <<  std::endl; 
 	//	std::cout << " components for clustering: " << std::endl;
-		map<string, vector<pw_alignment> >al_of_a_ccs;// It is a local map and only have centers of the current round. It is filled with all the centers and is used for creating long centers als.(string ---> center, vector<pw_al> ---> alignments of a cluster)
+		map<string, vector<pw_alignment> >al_of_a_ccs;//It is filled with all the centers and is used for creating long centers & their als.(string ---> center, vector<pw_al> ---> alignments of a cluster)
+		vector<vector<std::string> > long_centers;
 		for(size_t j=0; j<cc_cluster_in.size(); ++j) {
 
 			std::cout << " run affpro at " << j << " on " << cc_cluster_in.at(j).size()<<std::endl;
@@ -763,36 +758,19 @@ int do_mc_model(int argc, char * argv[]) {
 					}else continue;
 				} // for cluster_in set
 			}
-			//new code for long centers:
-			finding_centers centers(data);
-			suffix_tree tree(data,centers);
-			merging_centers merg(data, centers, tree);
-
 #pragma omp critical 
 {
 			num_clusters += cluster_result.size();
 			num_cluster_inputs_al += cc_cluster_in.at(j).size();
 			
 			for(std::map<std::string, std::vector<pw_alignment> >::iterator it = local_al_in_a_cluster.begin(); it!=local_al_in_a_cluster.end(); ++it) {
+				if(it->second.size() != 0){
+					al_of_a_ccs.insert(*it);
+				}
 				alignments_in_a_cluster.insert(*it);// Globally saves all the als.
 				num_cluster_members_al += 1 + it->second.size();					
 			}
-			centers.center_frequency(local_al_in_a_cluster);
-			for(size_t seq =0 ; seq < data.numSequences(); seq ++){
-				tree.create_suffix(seq);
-			}
-			tree.create_tree();
-			tree.count_branches();
-			merg.adding_new_centers(long_centers);	
-			std::cout << "long centers: " << std::endl;
-			for(size_t j  =0; j < long_centers.size();j++){
-				for(size_t k =0; k < long_centers.at(j).size();k++){
-					std::cout << long_centers.at(j).at(k)<< " ";
-				}
-			std::cout << " " <<std::endl;
-			}
-			// New centers (longer ones) are added to a separate map.
-
+			
 }
 
 				
@@ -815,6 +793,31 @@ int do_mc_model(int argc, char * argv[]) {
 		} // for cluster_in set  
 		std::cout << std::endl;
 
+		//Long centers are created:
+		finding_centers centers(data);
+		suffix_tree tree(data,centers);
+		merging_centers merg(data, centers, tree);
+		centers.center_frequency(al_of_a_ccs);
+		for(size_t seq =0 ; seq < data.numSequences(); seq ++){
+			tree.create_suffix(seq);
+		}
+		tree.create_tree();
+		tree.count_branches();
+		merg.adding_new_centers(long_centers);	
+		// New centers (longer ones) are added to a separate map.
+		std::cout << "long centers: " << std::endl;
+		for(size_t j  =0; j < long_centers.size();j++){
+			for(size_t k =0; k < long_centers.at(j).size();k++){
+				std::cout << long_centers.at(j).at(k)<< " ";
+			}
+			std::cout << " " <<std::endl;
+		}
+		for(std::map<std::string, std::vector<pw_alignment> >::iterator it = al_of_a_ccs.begin(); it!=al_of_a_ccs.end(); ++it){
+			std::cout << it->first<< std::endl;
+		}
+		merg.merg_alignments(long_centers,al_of_a_ccs,global_results,new_centers);
+
+
 
 /*	for(std::map<std::string, std::vector<pw_alignment> >::iterator it=alignments_in_a_cluster.begin(); it != alignments_in_a_cluster.end();it++){
 		for(size_t h=0; h< it->second.size();h++){
@@ -835,7 +838,6 @@ int do_mc_model(int argc, char * argv[]) {
 	//	std::cout << " initial CC " << i << " done " << std::endl << flush;
 //}
 	} // for connected components
-
 	
 	clock_t graph_ma_time = clock();
 	// TODO better separation of the different applications of our program: create/read model, compress/decompress sequences, create graph

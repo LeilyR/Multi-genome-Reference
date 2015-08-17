@@ -2604,7 +2604,7 @@ std::cout << " first parent map: "<<std::endl;
 		std::cout << " " <<std::endl;
 		return first_parent;
 	}
-	merging_centers::merging_centers(all_data & d, finding_centers & cent , suffix_tree & t):data(d), pw_al(align), centers(cent),tree(t){}
+	merging_centers::merging_centers(all_data & d, finding_centers & cent , suffix_tree & t):data(d), centers(cent),tree(t){}
 	merging_centers::~merging_centers(){}
 	void merging_centers::updating_centers(std::string & center_string, size_t & index){//replace 'center_string' with 'index' where ever center_sting occurs on the tree and updates the number of happening.
 		std::map<std::string , int> intermediate;
@@ -2840,31 +2840,47 @@ std::cout << " first parent map: "<<std::endl;
 			long_centers.push_back(sequence_of_centers);
 			sequence_of_centers.clear();
 		}
-
-
 	}
-	void merging_centers::merg_alignments(vector<vector<std::string> > & long_centers, std::map<std::string, std::vector<pw_alignment> > & local_al_in_a_cluster, std::map<std::string, std::vector<std::string> > & cluster_result, std::map<vector<std::string>, std::vector<pw_alignment> > & new_centers){//new_centers has new centers and their als, it should contains all the centers of all rounds.
+	void merging_centers::merg_alignments(vector<vector<std::string> > & long_centers, std::map<std::string, std::vector<pw_alignment> > & al_of_a_ccs, std::map<std::string, std::vector<std::string> > & cluster_result, std::map<vector<std::string>, std::vector<pw_alignment> > & new_centers){//new_centers has new centers and their als, it should contains all the centers of all rounds.
+		size_t counter = 0;
 		for(size_t i =0; i < long_centers.size(); i ++){
+			std::cout << " i "<< i <<std::endl;
 			vector<std::string> long_center = long_centers.at(i);
 			std::map<vector<std::string>, vector<pw_alignment> >::iterator new_cent = new_centers.find(long_center);
 			if(new_cent == new_centers.end()){
 				new_centers.insert(make_pair(long_center,vector<pw_alignment>()));
 			}
-			for(size_t j = 0; j < long_center.size()-1; j++){//TODO modify the for loop! because we may get als with different length. though not sure we suppose to keep them.
+			std::map<std::vector<std::string>, std::vector<pw_alignment> > temp;
+			size_t temp_center_ref;
+			size_t temp_center_left;
+			for(size_t j = 0; j < long_center.size(); j++){
 				std::string center = long_center.at(j);
-				std::map<std::string, std::vector<pw_alignment> >::iterator it = local_al_in_a_cluster.find(center);
-				if(it->second.size() != 0){
-					std::vector<std::string> cent_parts;
-					strsep(center, ":" , cent_parts);
-					unsigned int center_ref = atoi(cent_parts.at(0).c_str());
-					unsigned int center_left = atoi(cent_parts.at(1).c_str());
-					std::map<std::string, std::vector<pw_alignment> >::iterator it1 = local_al_in_a_cluster.find(long_center.at(j+1));
-					vector<pw_alignment> als = it1->second;
-					if(als.size()!=0){
-						std::vector<std::string> center_parts;
-						strsep(long_center.at(j+1), ":" , center_parts);
-						unsigned int cent_ref = atoi(center_parts.at(0).c_str());
-						unsigned int cent_left = atoi(center_parts.at(1).c_str());
+				std::cout << "center: "<< center << std::endl;
+				std::map<std::string, std::vector<pw_alignment> >::iterator it = al_of_a_ccs.find(center);
+				assert(it != al_of_a_ccs.end());
+				std::vector<std::string> center_parts;
+				strsep(center, ":" , center_parts);
+				unsigned int center_ref = atoi(center_parts.at(0).c_str());
+				unsigned int center_left = atoi(center_parts.at(1).c_str());
+				std::vector<std::string> current_string_of_centers;
+				pw_alignment al;
+				if(j == 0){
+					std::vector<std::string> first_center;
+					first_center.push_back(center);
+					temp.insert(make_pair(first_center, it->second));
+					temp_center_ref = center_ref;
+					temp_center_left= center_left;	
+					std::cout << "if j is 0 " << std::endl;				
+				}else{
+					for(size_t m = 0; m < j ; m++){
+						current_string_of_centers.push_back(long_center.at(m));
+						std::cout << long_center.at(m) <<std::endl;
+					}
+					std::map<std::vector<std::string>, std::vector<pw_alignment> >::iterator temporary = temp.find(current_string_of_centers);
+					std::cout << " size of temp->second " << temporary->second.size() <<std::endl;
+					if(temporary != temp.end() && temporary->second.size() != 0){
+						std::cout << "temporary != temp.end()"<<std::endl;
+						vector<pw_alignment> als = it->second;
 						for(size_t k = 0; k < als.size(); k++){
 							pw_alignment & p = als.at(k);
 							size_t left1,right1,left2,right2;
@@ -2872,19 +2888,19 @@ std::cout << " first parent map: "<<std::endl;
 							p.get_lr2(left2, right2);
 							size_t ref1 = p.getreference1();
 							size_t ref2 = p.getreference2();
-							if(ref1 != cent_ref && left1 != cent_left){//center is on ref2 of alignment
+							size_t left, right, ref,id;
+							if(ref1 != center_ref && left1 != center_left){//center is on the ref2 of alignment
 								unsigned int closest_one = 0;
 								bool closest_left_is_found = false;
-								pw_alignment & p1 = it->second.at(0);
-								size_t left, right, ref,id;
-								for(size_t n =0; n < it->second.size(); n++){
-									p1 = it->second.at(n);
+								pw_alignment & p1 = temporary->second.at(0);
+								for(size_t n =0; n < temporary->second.size(); n++){
+									p1 = temporary->second.at(n);
 									size_t left_1,right_1,left_2,right_2;
 									p1.get_lr1(left_1, right_1);
 									p1.get_lr2(left_2, right_2);
 									size_t ref_1 = p1.getreference1();
 									size_t ref_2 = p1.getreference2();
-									if(ref_1 != center_ref && left_1 != center_left){//center is on ref2
+									if(ref_1 != temp_center_ref && left_1 != temp_center_left){//center from temp is on ref2 of its al.
 										left = left_1;
 										right = right_1;
 										ref = ref_1;
@@ -2903,48 +2919,174 @@ std::cout << " first parent map: "<<std::endl;
 									}
 								}
 								if(closest_left_is_found == true){ //translate and translate back bits
-									if(cent_ref == center_ref){//when both centers are on the same reference
-										pw_alignment al;
-										std::vector<bool> sample_p1 = p1.getsample(id);
-										std::vector<bool> sample_p = p.getsample(0);
-										size_t length = p1.alignment_length()+(left1-right+1)+p.alignment_length();
-										std::vector<bool> sample1(3*length);
-										std::vector<bool> sample2(3*length);
-										for(size_t m = 0 ; m <p1.alignment_length(); m++){//TODO (get_base)
-											sample1.at(3*m)= sample_p1.at(3*m);
-										}
-										for(size_t m = right+1 ; m < left1 ; m++){
-											char base = data.getSequence(ref1).at(m);
-											bool bit1;
-											bool bit2;
-											bool bit3;
-											pw_alignment::get_bits(base, bit1, bit2, bit3);
-										}
-										for(size_t m = left1 ; m <= right1; m++){
-											sample1.at(3*m) = sample_p.at(3*m);
-										}
-										al.setreference1(cent_ref);
-										al.setreference2(ref2);
-										al.setbegin1(center_left);
-										al.setend1(cent_left + p.alignment_length());
-										al.setbegin2(closest_one);//to solve the problem of reverse or forward just left and right are considered.
-										al.setend2(right1);
-										al.set_alignment_bits(sample1,sample2);//set bits
-
-									}else{//make an artificial reference
-
-
+									std::vector<bool> sample_p1 = p1.getsample(id);
+									std::vector<bool> sample_temp_center = p1.getsample(1-id);
+									std::vector<bool> sample_p = p.getsample(0);
+									std::vector<bool> sample_cent = p.getsample(1);
+									std::vector<bool> sample1;
+									std::vector<bool> sample2;
+									for(size_t m = 0 ; m <sample_p1.size(); m++){
+										sample1.push_back(sample_p1.at(m));
+										sample2.push_back(sample_temp_center.at(m));
 									}
+									vector<bool> middle_part_of_sample;
+									std::cout << "distance between two als " << left1-(right+1) << std::endl;
+									for(size_t m = right+1 ; m < left1 ; m++){
+										char base = data.getSequence(ref1).at(m);
+										vector<bool> bits(3);
+										pw_alignment::get_bits(base,bits);
+										for(size_t n = 0; n < 3; n++){
+											middle_part_of_sample.push_back(bits.at(n));
+										}
+									}
+									std::cout<< "size of middle part is " << middle_part_of_sample.size() << std::endl;
+									for(size_t m = 0 ; m < middle_part_of_sample.size();m++){
+										sample1.push_back(middle_part_of_sample.at(m));
+										sample2.push_back(middle_part_of_sample.at(m));
+									}
+									for(size_t m = 0 ; m < sample_p.size(); m++){
+										sample1.push_back(sample_p.at(m));
+										sample2.push_back(sample_cent.at(m));
+									}
+									al.setreference1(ref1);
+									al.setbegin1(closest_one);//to solve the problem of reverse or forward just left and right are considered.
+									al.setend1(right1);
+									if(temp_center_ref == center_ref){
+										al.setreference2(ref2);
+										al.setbegin2(temp_center_left);
+										al.setend2(right2);
+									}else{
+										if(temp_center_ref > data.numSequences()){
+											al.setreference2(temp_center_ref);
+											std::cout<< "temp center ref " << temp_center_ref << std::endl;
+										}else{
+											counter = counter + 1;
+											al.setreference2(data.numSequences()+counter);
+										}
+										al.setbegin2(0);
+										al.setend2(p1.alignment_length()+(left1-(right+1))+p.alignment_length());
+									}
+									al.set_alignment_bits(sample1,sample2);//set bits
+									std::cout << "center is on ref 2 " <<std::endl;
+									al.print();
+									temp_center_ref = al.getreference2();
+									size_t Left_2,Right_2;
+									al.get_lr2(Left_2, Right_2);
+									temp_center_left = Left_2;
 								}
 							}else{//if center is on ref1 of alignment
-
-
+								unsigned int closest_one = 0;
+								bool closest_left_is_found = false;
+								pw_alignment & p1 = temporary->second.at(0);
+								for(size_t n =0; n < temporary->second.size(); n++){// if it goes over temp instead it may work
+									p1 = temporary->second.at(n);
+									size_t left_1,right_1,left_2,right_2;
+									p1.get_lr1(left_1, right_1);
+									p1.get_lr2(left_2, right_2);
+									size_t ref_1 = p1.getreference1();
+									size_t ref_2 = p1.getreference2();
+									if(ref_1 != temp_center_ref && left_1 != temp_center_left){//center from temp is on ref2 of its al.
+										left = left_1;
+										right = right_1;
+										ref = ref_1;
+										id = 0;
+									}else{
+										left = left_2;
+										right = right_2;
+										ref = ref_2;
+										id = 1;
+									}									
+									if(ref == ref2 && left < left2){
+										if(left >= closest_one){
+											closest_one = left;
+											closest_left_is_found = true;
+										}
+									}
+								}
+								if(closest_left_is_found == true){ //translate and translate back bits
+									std::vector<bool> sample_p1 = p1.getsample(id);
+									std::vector<bool> sample_temp_center = p1.getsample(1-id);
+									std::vector<bool> sample_p = p.getsample(1);
+									std::vector<bool> sample_cent = p.getsample(0);
+									std::vector<bool> sample1;
+									std::vector<bool> sample2;
+									for(size_t m = 0 ; m <sample_p1.size(); m++){
+										sample1.push_back(sample_temp_center.at(m));
+										sample2.push_back(sample_p1.at(m));
+									}
+									vector<bool> middle_part_of_sample;
+									for(size_t m = right+1 ; m < left2 ; m++){
+										char base = data.getSequence(ref2).at(m);
+										vector<bool> bits(3);
+										pw_alignment::get_bits(base,bits);
+										for(size_t n = 0; n < 3; n++){
+											middle_part_of_sample.push_back(bits.at(n));
+										}
+									}
+									for(size_t m = 0 ; m < middle_part_of_sample.size();m++){
+										sample1.push_back(middle_part_of_sample.at(m));
+										sample2.push_back(middle_part_of_sample.at(m));
+									}
+									for(size_t m = 0 ; m < sample_p.size(); m++){
+										sample1.push_back(sample_cent.at(m));
+										sample2.push_back(sample_p.at(m));
+									}
+									if(temp_center_ref == center_ref){
+										al.setreference1(ref1);
+										al.setbegin1(temp_center_left);
+										al.setend1(right1);
+									}else{
+										if(temp_center_ref > data.numSequences()){
+											al.setreference1(temp_center_ref);
+										}else{
+											counter = counter + 1;
+											al.setreference1(data.numSequences()+counter);
+										}
+										al.setbegin1(0);
+										al.setend2(p1.alignment_length()+(left2-(right+1))+p.alignment_length());
+									}
+									al.setreference2(ref2);
+									al.setbegin2(closest_one);//to solve the problem of reverse or forward just left and right are considered.
+									al.setend2(right2);
+									al.set_alignment_bits(sample1,sample2);//set bits
+									std::cout << "center is on ref 1 " <<std::endl;
+									al.print();
+									temp_center_ref = al.getreference1();
+									size_t Left_1,Right_1;
+									al.get_lr1(Left_1, Right_1);
+									temp_center_left = Left_1;
+								}
 							}
-							//Insert the concatenated center and its members
 						}
 					}
-				}else continue;
-			}			
+				}//else	(j != 0)
+				//Insert the concatenated center and its members to the temp map
+				current_string_of_centers.push_back(long_center.at(j));
+				std::cout << "size of current string of centers is " << current_string_of_centers.size() <<std::endl;
+				for(size_t m = 0; m < current_string_of_centers.size(); m++){
+					std::cout << current_string_of_centers.at(m) << " ";
+				}
+				std::cout << " " <<endl;
+				std::map<std::vector<std::string>, std::vector<pw_alignment> >::iterator it_temp = temp.find(current_string_of_centers);
+				if(it_temp == temp.end()){
+					temp.insert(make_pair(current_string_of_centers,std::vector<pw_alignment>()));
+					it_temp = temp.find(current_string_of_centers);
+				}
+				if(al.alignment_length() != 0){
+					it_temp->second.push_back(al);
+					std::cout << "al: " <<std::endl;
+					al.print();
+				}
+			}
+			std::map<std::vector<std::string>, std::vector<pw_alignment> >::iterator temporary = temp.find(long_center);
+			if(temporary != temp.end()){
+				std::map<std::vector<std::string>, std::vector<pw_alignment> >::iterator it1 = new_centers.find(long_center);
+				if(it1 != new_centers.end()){
+					std::cout<< "add to new center! "<<std::endl;
+					it1->second = temporary ->second;
+					std::cout << "number of added als: "<< it1->second.size() << std::endl;
+				}
+			}
 		}
 	}
 

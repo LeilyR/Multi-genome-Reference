@@ -3135,10 +3135,10 @@ void mc_model::make_all_alignments_patterns(){
 // TODO do we want to make markov chain levels dependent on input sequence length?
 	void mc_model::train(std::ofstream & outs){
 		make_all_the_patterns();
-		markov_chain();
-		markov_chain_alignment();
 		write_parameters(outs);
 		write_alignments_pattern(outs);
+		markov_chain();
+		markov_chain_alignment();
 	}
 	
 	void mc_model::make_all_the_patterns(){

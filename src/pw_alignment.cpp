@@ -630,11 +630,17 @@ size_t pw_alignment::getreference(size_t id)const{
 	return references.at(id);
 }
 
-void pw_alignment::get_bits(char& base, bool& bit1, bool& bit2, bool& bit3)const{
-
+void pw_alignment::get_bits(char& base, std::vector<bool> & three_bits){
+	bool b1;
+	bool b2;
+	bool b3;
+	base_translate(base,b1,b2,b3);
+	three_bits.push_back(b1);
+	three_bits.push_back(b2);
+	three_bits.push_back(b3);
 
 }
-void pw_alignment::get_base(char & base, bool& bit1, bool& bit2, bool& bit3)const{
+void pw_alignment::get_base(char & base, bool& bit1, bool& bit2, bool& bit3){
 
 }
 std::string pw_alignment::get_al_ref1() const {
