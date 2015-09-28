@@ -111,7 +111,7 @@ void dynamic_mc_model::train_sequence_model(){//TODO What should i do in case of
 			}
 		}
 		accLevel.push_back(best_level);
-		calculate_sequence_high(acc, best_counts);	
+		calculate_sequence_high(acc, context_counter);	
 	}
 /*
    TODO go on to compute high values
@@ -262,7 +262,7 @@ void dynamic_mc_model::calculate_sequence_high(size_t & accession, const std::ma
 
 	}
 }
-void dynamic_mc_model::make_all_patterns(const size_t& level, ){
+void dynamic_mc_model::make_all_patterns(const size_t& level){
 	std::string seq = "";
 	std::set<std::string> pattern;
 	assert(level !=0 );
@@ -452,7 +452,7 @@ void dynamic_mc_model::recursive_al_model(){//TODO again the same question about
 		}
 	}
 }
-void dynamic_mc_model::make_all_alignment_pattern(size_t & level){ // it is only used when level > 0
+void dynamic_mc_model::make_all_alignment_pattern(const size_t & level){ // it is only used when level > 0
 	assert(level != 0);
 	std::string context; 
 	std::set<std::string>pattern;
@@ -1038,9 +1038,9 @@ size_t dynamic_mc_model::get_al_level(size_t& acc1 , size_t & acc2)const{
 void dynamic_mc_model::set_al_level(size_t& acc1 , size_t & acc2, size_t & level){
 	al_level.at(acc1).at(acc2) = level;
 }
-std::vector<size_t> dynamic_mc_model::get_powerOfTwo()const{
-	return powersOfTwo;
-}	
+//std::vector<size_t> dynamic_mc_model::get_powerOfTwo()const{
+//	return powersOfTwo;
+//}	
 const std::map<std::string, std::vector<unsigned int> >&  dynamic_mc_model::get_high(size_t acc)const{
 	return high.at(acc);
 }

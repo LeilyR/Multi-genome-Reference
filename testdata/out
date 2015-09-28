@@ -1,0 +1,501 @@
+export LD_LIBRARY_PATH=/ebio/abt6/lrabbani/programs/graph/src
+/ebio/abt6/lrabbani/programs/graph/src/graph model simple_test.fasta simple_test.maf graph.maf noencode
+loaded 3 sequences
+Loaded: 3 sequences and 5 pairwise alignments 
+3 self alignments were skipped
+5 alternative alignments of identical regions were skipped
+All the sequence patterns are made! 
+acc: simple_fake_genomes
+All the sequence patterns are made! 
+acc: 0
+pattern: AA
+pattern: AC
+pattern: AG
+pattern: AN
+pattern: AT
+pattern: CA
+pattern: CC
+pattern: CG
+pattern: CN
+pattern: CT
+pattern: GA
+pattern: GC
+pattern: GG
+pattern: GN
+pattern: GT
+pattern: NA
+pattern: NC
+pattern: NG
+pattern: NN
+pattern: NT
+pattern: TA
+pattern: TC
+pattern: TG
+pattern: TN
+pattern: TT
+all the alignment patterns are written! 
+total gain 4634
+ base cost 2.32193
+ start recursive lazy insert tree on 
+al1 seq 0 b 2 e 449 l 448
+al2 seq 2 b 2 e 449
+
+al in lazy split 
+al1 seq 0 b 2 e 449 l 448
+al2 seq 2 b 2 e 449
+split all!
+split all!
+split all!
+split all!
+new al 
+al1 seq 0 b 2 e 449 l 448
+al2 seq 2 b 2 e 449
+size of split pieces1
+initial: level 0 positive gain: 762.448 split res rem 0 ins 1
+splits: level 0 on al length 448 gain 762.448 causes to remove 0 alignments with 0 gain. We could insert 1 small pieces. Upper bound of gain is 762.448
+ full insert step on level 0
+split all!
+split all!
+split all!
+split all!
+new al 
+al1 seq 0 b 2 e 449 l 448
+al2 seq 2 b 2 e 449
+size of split pieces1
+avg 762.448
+al1 seq 0 b 2 e 449 l 448
+al2 seq 2 b 2 e 449
+ 
+ insert 
+full insert: 0 on al length 448 finally inserted pieces: 1 real local gain 762.448
+ alignment taken 
+ on alignment 0 length 448 gain 762.448 recursive lazy split insert results:
+ al 0 gain in 762.448 gain out 762.448 check gain (ins - rem) 762.448
+ out: 0 gain 0 in: 1 gain 762.448
+ total gain until here: 762.448 needed 1 recursive lazy split insert calls 
+ start recursive lazy insert tree on 
+al1 seq 0 b 50 e 449 l 400
+al2 seq 1 b 150 e 549
+
+al in lazy split 
+al1 seq 0 b 50 e 449 l 400
+al2 seq 1 b 150 e 549
+split all!
+al1 seq 0 b 2 e 449 l 448
+al2 seq 2 b 2 e 449
+
+split all!
+split all!
+split all!
+new al 
+al1 seq 0 b 50 e 449 l 400
+al2 seq 1 b 150 e 549
+size of split pieces3
+initial: level 0 positive gain: 731.847 split res rem 1 ins 3
+splits: level 0 on al length 400 gain 731.847 causes to remove 1 alignments with 762.448 gain. We could insert 3 small pieces. Upper bound of gain is 1474.13
+ ovrlp size 1
+ before recursion, we have removed 1 alignments with gain 762.448 upper bound of gain is 711.681
+start recursion: level 0 start rec 0 on al length 400
+al in lazy split 
+al1 seq 0 b 50 e 449 l 400
+al2 seq 1 b 150 e 549
+split all!
+split all!
+split all!
+split all!
+new al 
+al1 seq 0 b 50 e 449 l 400
+al2 seq 1 b 150 e 549
+size of split pieces1
+initial: level 1 positive gain: 731.847 split res rem 0 ins 1
+splits: level 1 on al length 400 gain 731.847 causes to remove 0 alignments with 0 gain. We could insert 1 small pieces. Upper bound of gain is 731.847
+ full insert step on level 1
+split all!
+split all!
+split all!
+split all!
+new al 
+al1 seq 0 b 50 e 449 l 400
+al2 seq 1 b 150 e 549
+size of split pieces1
+avg 731.847
+al1 seq 0 b 50 e 449 l 400
+al2 seq 1 b 150 e 549
+ 
+ insert 
+full insert: 1 on al length 400 finally inserted pieces: 1 real local gain 731.847
+end recursion: level 0 end rec 0 on al length 400 subtree local gain 731.847 ub was 731.847 lost gain is 0 total lost gain is 0 total gain of this level until now: 731.847 ub is 711.681
+start recursion: level 0 start rec 1 on al length 400
+al in lazy split 
+al1 seq 0 b 50 e 449 l 400
+al2 seq 2 b 50 e 449
+split all!
+al1 seq 0 b 50 e 449 l 400
+al2 seq 1 b 150 e 549
+
+al1 seq 0 b 50 e 449 l 400
+al2 seq 1 b 150 e 549
+
+split all!
+split all!
+split all!
+new al 
+al1 seq 0 b 50 e 449 l 400
+al2 seq 2 b 50 e 449
+size of split pieces1
+initial: level 1 positive gain: 670.454 split res rem 0 ins 1
+splits: level 1 on al length 400 gain 670.454 causes to remove 0 alignments with 0 gain. We could insert 1 small pieces. Upper bound of gain is 670.454
+ full insert step on level 1
+split all!
+al1 seq 0 b 50 e 449 l 400
+al2 seq 1 b 150 e 549
+
+al1 seq 0 b 50 e 449 l 400
+al2 seq 1 b 150 e 549
+
+split all!
+split all!
+split all!
+new al 
+al1 seq 0 b 50 e 449 l 400
+al2 seq 2 b 50 e 449
+size of split pieces1
+avg 670.454
+al1 seq 0 b 50 e 449 l 400
+al2 seq 2 b 50 e 449
+ 
+al1 seq 0 b 50 e 449 l 400
+al2 seq 1 b 150 e 549
+ insert 
+full insert: 1 on al length 400 finally inserted pieces: 1 real local gain 670.454
+end recursion: level 0 end rec 1 on al length 400 subtree local gain 670.454 ub was 670.454 lost gain is 0 total lost gain is 0 total gain of this level until now: 1402.3 ub is 711.681
+start recursion: level 0 start rec 2 on al length 48
+al in lazy split 
+al1 seq 0 b 2 e 49 l 48
+al2 seq 2 b 2 e 49
+split all!
+al1 seq 0 b 50 e 449 l 400
+al2 seq 1 b 150 e 549
+
+al1 seq 0 b 50 e 449 l 400
+al2 seq 2 b 50 e 449
+
+al1 seq 0 b 50 e 449 l 400
+al2 seq 1 b 150 e 549
+
+al1 seq 0 b 50 e 449 l 400
+al2 seq 2 b 50 e 449
+
+split all!
+al1 seq 0 b 50 e 449 l 400
+al2 seq 1 b 150 e 549
+
+al1 seq 0 b 50 e 449 l 400
+al2 seq 2 b 50 e 449
+
+al1 seq 0 b 50 e 449 l 400
+al2 seq 1 b 150 e 549
+
+al1 seq 0 b 50 e 449 l 400
+al2 seq 2 b 50 e 449
+
+split all!
+al1 seq 0 b 50 e 449 l 400
+al2 seq 2 b 50 e 449
+
+al1 seq 0 b 50 e 449 l 400
+al2 seq 2 b 50 e 449
+
+split all!
+al1 seq 0 b 50 e 449 l 400
+al2 seq 2 b 50 e 449
+
+al1 seq 0 b 50 e 449 l 400
+al2 seq 2 b 50 e 449
+
+new al 
+al1 seq 0 b 2 e 49 l 48
+al2 seq 2 b 2 e 49
+size of split pieces1
+initial: level 1 positive gain: 71.8291 split res rem 0 ins 1
+splits: level 1 on al length 48 gain 71.8291 causes to remove 0 alignments with 0 gain. We could insert 1 small pieces. Upper bound of gain is 71.8291
+ full insert step on level 1
+split all!
+al1 seq 0 b 50 e 449 l 400
+al2 seq 1 b 150 e 549
+
+al1 seq 0 b 50 e 449 l 400
+al2 seq 2 b 50 e 449
+
+al1 seq 0 b 50 e 449 l 400
+al2 seq 1 b 150 e 549
+
+al1 seq 0 b 50 e 449 l 400
+al2 seq 2 b 50 e 449
+
+split all!
+al1 seq 0 b 50 e 449 l 400
+al2 seq 1 b 150 e 549
+
+al1 seq 0 b 50 e 449 l 400
+al2 seq 2 b 50 e 449
+
+al1 seq 0 b 50 e 449 l 400
+al2 seq 1 b 150 e 549
+
+al1 seq 0 b 50 e 449 l 400
+al2 seq 2 b 50 e 449
+
+split all!
+al1 seq 0 b 50 e 449 l 400
+al2 seq 2 b 50 e 449
+
+al1 seq 0 b 50 e 449 l 400
+al2 seq 2 b 50 e 449
+
+split all!
+al1 seq 0 b 50 e 449 l 400
+al2 seq 2 b 50 e 449
+
+al1 seq 0 b 50 e 449 l 400
+al2 seq 2 b 50 e 449
+
+new al 
+al1 seq 0 b 2 e 49 l 48
+al2 seq 2 b 2 e 49
+size of split pieces1
+avg 71.8291
+al1 seq 0 b 2 e 49 l 48
+al2 seq 2 b 2 e 49
+ 
+al1 seq 0 b 50 e 449 l 400
+al2 seq 2 b 50 e 449
+al1 seq 0 b 50 e 449 l 400
+al2 seq 1 b 150 e 549
+ insert 
+full insert: 1 on al length 48 finally inserted pieces: 1 real local gain 71.8291
+end recursion: level 0 end rec 2 on al length 48 subtree local gain 71.8291 ub was 71.8291 lost gain is 0 total lost gain is 0 total gain of this level until now: 1474.13 ub is 711.681
+take subtree: level 0 on al length 400 gain 731.847 causes to remove 1 alignments with 762.448 gain. We want to insert 3 small pieces. TOTAL gain is 711.681
+ alignment taken 
+ on alignment 1 length 400 gain 762.448 recursive lazy split insert results:
+ al 1 gain in 762.448 gain out 711.681 check gain (ins - rem) 711.681
+ out: 1 gain 762.448 in: 3 gain 1474.13
+ total gain until here: 1474.13 needed 4 recursive lazy split insert calls 
+ start recursive lazy insert tree on 
+al1 seq 1 b 150 e 549 l 400
+al2 seq 2 b 50 e 449
+
+al in lazy split 
+al1 seq 1 b 150 e 549 l 400
+al2 seq 2 b 50 e 449
+split all!
+al1 seq 0 b 50 e 449 l 400
+al2 seq 1 b 150 e 549
+
+al1 seq 0 b 50 e 449 l 400
+al2 seq 1 b 150 e 549
+
+split all!
+split all!
+al1 seq 0 b 50 e 449 l 400
+al2 seq 2 b 50 e 449
+
+al1 seq 0 b 50 e 449 l 400
+al2 seq 2 b 50 e 449
+
+split all!
+new al 
+al1 seq 1 b 150 e 549 l 400
+al2 seq 2 b 50 e 449
+size of split pieces1
+initial: level 0 positive gain: 670.442 split res rem 0 ins 1
+splits: level 0 on al length 400 gain 670.442 causes to remove 0 alignments with 0 gain. We could insert 1 small pieces. Upper bound of gain is 670.442
+ full insert step on level 0
+split all!
+al1 seq 0 b 50 e 449 l 400
+al2 seq 1 b 150 e 549
+
+al1 seq 0 b 50 e 449 l 400
+al2 seq 1 b 150 e 549
+
+split all!
+split all!
+al1 seq 0 b 50 e 449 l 400
+al2 seq 2 b 50 e 449
+
+al1 seq 0 b 50 e 449 l 400
+al2 seq 2 b 50 e 449
+
+split all!
+new al 
+al1 seq 1 b 150 e 549 l 400
+al2 seq 2 b 50 e 449
+size of split pieces1
+avg 670.442
+al1 seq 1 b 150 e 549 l 400
+al2 seq 2 b 50 e 449
+ 
+al1 seq 0 b 2 e 49 l 48
+al2 seq 2 b 2 e 49
+al1 seq 0 b 50 e 449 l 400
+al2 seq 2 b 50 e 449
+al1 seq 0 b 50 e 449 l 400
+al2 seq 1 b 150 e 549
+ insert 
+full insert: 0 on al length 400 finally inserted pieces: 1 real local gain 670.442
+ alignment taken 
+ on alignment 2 length 400 gain 670.442 recursive lazy split insert results:
+ al 2 gain in 670.442 gain out 670.442 check gain (ins - rem) 670.442
+ out: 0 gain 0 in: 1 gain 670.442
+ total gain until here: 2144.57 needed 1 recursive lazy split insert calls 
+ start recursive lazy insert tree on 
+al1 seq 1 b 2 e 49 l 48
+al2 seq 2 b 2 e 49
+
+al in lazy split 
+al1 seq 1 b 2 e 49 l 48
+al2 seq 2 b 2 e 49
+split all!
+al1 seq 0 b 50 e 449 l 400
+al2 seq 1 b 150 e 549
+
+al1 seq 1 b 150 e 549 l 400
+al2 seq 2 b 50 e 449
+
+al1 seq 0 b 50 e 449 l 400
+al2 seq 1 b 150 e 549
+
+al1 seq 1 b 150 e 549 l 400
+al2 seq 2 b 50 e 449
+
+split all!
+al1 seq 0 b 50 e 449 l 400
+al2 seq 1 b 150 e 549
+
+al1 seq 1 b 150 e 549 l 400
+al2 seq 2 b 50 e 449
+
+al1 seq 0 b 50 e 449 l 400
+al2 seq 1 b 150 e 549
+
+al1 seq 1 b 150 e 549 l 400
+al2 seq 2 b 50 e 449
+
+split all!
+al1 seq 0 b 2 e 49 l 48
+al2 seq 2 b 2 e 49
+
+al1 seq 0 b 2 e 49 l 48
+al2 seq 2 b 2 e 49
+
+al1 seq 0 b 50 e 449 l 400
+al2 seq 2 b 50 e 449
+
+al1 seq 1 b 150 e 549 l 400
+al2 seq 2 b 50 e 449
+
+al1 seq 0 b 50 e 449 l 400
+al2 seq 2 b 50 e 449
+
+al1 seq 1 b 150 e 549 l 400
+al2 seq 2 b 50 e 449
+
+split all!
+al1 seq 0 b 50 e 449 l 400
+al2 seq 2 b 50 e 449
+
+al1 seq 1 b 150 e 549 l 400
+al2 seq 2 b 50 e 449
+
+al1 seq 0 b 50 e 449 l 400
+al2 seq 2 b 50 e 449
+
+al1 seq 1 b 150 e 549 l 400
+al2 seq 2 b 50 e 449
+
+new al 
+al1 seq 1 b 2 e 49 l 48
+al2 seq 2 b 2 e 49
+size of split pieces1
+new_al is pushed back
+initial: level 0 positive gain: 71.8291 split res rem 0 ins 1
+splits: level 0 on al length 48 gain 71.8291 causes to remove 0 alignments with 0 gain. We could insert 1 small pieces. Upper bound of gain is 71.8291
+ full insert step on level 0
+split all!
+al1 seq 0 b 50 e 449 l 400
+al2 seq 1 b 150 e 549
+
+al1 seq 1 b 150 e 549 l 400
+al2 seq 2 b 50 e 449
+
+al1 seq 0 b 50 e 449 l 400
+al2 seq 1 b 150 e 549
+
+al1 seq 1 b 150 e 549 l 400
+al2 seq 2 b 50 e 449
+
+split all!
+al1 seq 0 b 50 e 449 l 400
+al2 seq 1 b 150 e 549
+
+al1 seq 1 b 150 e 549 l 400
+al2 seq 2 b 50 e 449
+
+al1 seq 0 b 50 e 449 l 400
+al2 seq 1 b 150 e 549
+
+al1 seq 1 b 150 e 549 l 400
+al2 seq 2 b 50 e 449
+
+split all!
+al1 seq 0 b 2 e 49 l 48
+al2 seq 2 b 2 e 49
+
+al1 seq 0 b 2 e 49 l 48
+al2 seq 2 b 2 e 49
+
+al1 seq 0 b 50 e 449 l 400
+al2 seq 2 b 50 e 449
+
+al1 seq 1 b 150 e 549 l 400
+al2 seq 2 b 50 e 449
+
+al1 seq 0 b 50 e 449 l 400
+al2 seq 2 b 50 e 449
+
+al1 seq 1 b 150 e 549 l 400
+al2 seq 2 b 50 e 449
+
+split all!
+al1 seq 0 b 50 e 449 l 400
+al2 seq 2 b 50 e 449
+
+al1 seq 1 b 150 e 549 l 400
+al2 seq 2 b 50 e 449
+
+al1 seq 0 b 50 e 449 l 400
+al2 seq 2 b 50 e 449
+
+al1 seq 1 b 150 e 549 l 400
+al2 seq 2 b 50 e 449
+
+new al 
+al1 seq 1 b 2 e 49 l 48
+al2 seq 2 b 2 e 49
+size of split pieces1
+new_al is pushed back
+avg 71.8291
+al1 seq 1 b 2 e 49 l 48
+al2 seq 2 b 2 e 49
+ 
+al1 seq 0 b 2 e 49 l 48
+al2 seq 2 b 2 e 49
+al1 seq 0 b 50 e 449 l 400
+al2 seq 2 b 50 e 449
+al1 seq 0 b 50 e 449 l 400
+al2 seq 1 b 150 e 549
+al1 seq 1 b 150 e 549 l 400
+al2 seq 2 b 50 e 449
+ insert 
+graph: data.cpp:1158: void overlap::insert_without_partial_overlap(const pw_alignment&): Assertion `alignments.find(p) == alignments.end()' failed.
+Aborted (core dumped)

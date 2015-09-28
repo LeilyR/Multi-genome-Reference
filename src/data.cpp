@@ -2310,9 +2310,10 @@ void splitpoints::insert_split_point(size_t sequence, size_t position) {
 				}
 			}
 		}
-	//	if(insert_alignments.size()==0 && remove_alignments.size()==0){
-	//		insert_alignments.push_back(newal);
-	//	}
+		if(insert_alignments.size()==0 && remove_alignments.size()==0){
+			insert_alignments.push_back(newal);
+			std::cout << "new_al is pushed back" <<std::endl;
+		}
 		
 					
 	}

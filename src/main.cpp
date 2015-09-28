@@ -1331,7 +1331,7 @@ int do_dynamic_mc_model(int argc, char * argv[]) {
 				weight.insert(make_pair(cluster,0));
 				it1 = weight.find(cluster);
 			}
-			it1->second = (unsigned int)(it->second.size()*((m.get_powerOfTwo().at(max_bit)-1)/(double)max_members));
+		//	it1->second = (unsigned int)(it->second.size()*((m.get_powerOfTwo().at(max_bit)-1)/(double)max_members));
 			if(it1 ->second == 0){
 				it1->second = 1;
 			}
