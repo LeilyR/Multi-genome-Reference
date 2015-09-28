@@ -38,6 +38,7 @@ class dnastring {
 
 	char at(size_t pos) const;
 	size_t length() const;
+	std::string str() const;
 
 	static bool found_iupac_ambiguity;
 	static char complement(char c);

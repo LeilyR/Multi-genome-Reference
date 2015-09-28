@@ -161,6 +161,15 @@ size_t dnastring::length() const {
 	return bits.size() / 3;
 }
 
+std::string dnastring::str() const {
+	std::string res("");
+	for(size_t i=0; i<length(); ++i) {
+		res.append(1, at(i)); // TODO faster?
+	}
+	return res;
+}
+
+
 char dnastring::base_translate_back(bool bit1, bool bit2, bool bit3) {
 
 	if(bit1) {

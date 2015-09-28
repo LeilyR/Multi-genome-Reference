@@ -5,20 +5,116 @@
 
 
 dynamic_mc_model::dynamic_mc_model(all_data & d): data(d),create_cost(data.numOfAcc(),vector<double>(5,0.0)),sequence_successive_bases(data.numOfAcc()),mod_cost(data.numOfAcc(),std::vector<std::map <std::string, std::vector<double> > > (data.numOfAcc())),high(data.numOfAcc()),highValue(data.numOfAcc(),std::vector<std::map<std::string , std::vector<unsigned int> > >(data.numOfAcc())),al_level(data.numOfAcc(),std::vector<size_t>(data.numOfAcc())){
+	// use (1<<i) should be faster	
+/*
 	size_t numberOfPowers = 32;
 	powersOfTwo = std::vector<size_t>(numberOfPowers, 1);
 	for(size_t i=1; i< numberOfPowers; ++i) {
 		powersOfTwo.at(i) = powersOfTwo.at(i-1)*2;
 	}
+*/
 }
 dynamic_mc_model::~dynamic_mc_model(){}
 
+
 /*
-   train sequence with a dynamic model
+	computes total cost in that map of counts
+*/
+double dynamic_mc_model::total_sequence_cost(const std::map<std::string, std::vector<size_t> > & all_context_counts) const {
+
+	double information_cost = 0;
+	
+	for(std::map<std::string, std::vector<size_t> >::const_iterator it = all_context_counts.begin(); it!=all_context_counts.end(); ++it) {
+		size_t all = 1;
+		const std::vector<size_t> & counts = it->second;
+		for(size_t i=0; i<5; ++i) {
+			all+=counts.at(i);
+		}
+		for(size_t i=0; i<5; ++i) {
+			information_cost -= counts.at(i) * log2((double)counts.at(i) / (double) all);
+		}
+	}
+	return information_cost;
+}
+
+/*
+	add a count of base num times after context into the map
 
 */
 
-void dynamic_mc_model::recursive_model(){//TODO What should i do in case of level 0? should it even be taken into account? If yes, then i have to think about filling out the map of highi values. I may need a new map just for l = 0. 
+void dynamic_mc_model::context_count(std::map<std::string, std::vector<size_t> > & countmap, const std::string & context, size_t base, size_t num) const {
+	std::map<std::string, std::vector<size_t> >::iterator findc = countmap.find(context);
+	if(findc == countmap.end()) {
+		countmap.insert(std::make_pair(context, std::vector<size_t>(5,1)));
+		findc = countmap.find(context);
+	}
+	findc->second.at(base)+=num;
+}
+
+void dynamic_mc_model::train_sequence_model(){//TODO What should i do in case of level 0? should it even be taken into account? If yes, then i have to think about filling out the map of highi values. I may need a new map just for l = 0. 
+
+	std::string astring("");
+	astring.append(MAX_SEQUENCE_MARKOV_CHAIN_LEVEL, 'A');
+
+	for(size_t acc=0; acc<data.numAcc(); ++acc) {
+		std::map<std::string, std::vector<size_t> > context_counter;
+		std::map<std::string, std::vector<size_t> > best_counter;
+		size_t best_level = 0;
+		double best_cost = std::numeric_limits<double>::max();
+		// for the highest markov chain level we fill the map directly from the sequences
+		for(size_t k = 0; k <data.getAcc(acc).size(); k++){
+			std::string sequence = data.getSequence(data.getAcc(acc).at(k)).str();
+
+			// we look for the base at i, given its sequence context. At the beginning of each sequence we fill contexts from the left with A
+			// first position where we dont need filling is at context length + 1
+
+			for(size_t p=0; p< MAX_SEQUENCE_MARKOV_CHAIN_LEVEL && p < sequence.length() ; ++p) {
+				std::string context(astring, 0, MAX_SEQUENCE_MARKOV_CHAIN_LEVEL - p); // left side A's
+				context.append(sequence.substr(0, p));
+				context_count(context_counter, context, dnastring::base_to_index(sequence.at(p)), 1);
+			}
+			for(size_t p = MAX_SEQUENCE_MARKOV_CHAIN_LEVEL; p<sequence.length(); ++p) {
+				std::string context = sequence.substr(p-MAX_SEQUENCE_MARKOV_CHAIN_LEVEL, MAX_SEQUENCE_MARKOV_CHAIN_LEVEL);
+				context_count(context_counter, context, dnastring::base_to_index(sequence.at(p)), 1);
+			}
+		}
+
+		for(size_t level = MAX_SEQUENCE_MARKOV_CHAIN_LEVEL; level>=0; --level) {
+			size_t max_contexts = 1;
+			for(size_t i=0; i<level; ++i) {
+				max_contexts *= 5;
+			}
+			double parameter_cost = (double)max_contexts * 5*  BITS_PER_SEQUENCE_HIGH_VALUE;
+			double encoding_cost = total_sequence_cost(context_counter);
+			double all_cost = parameter_cost + encoding_cost;
+			std::cout << " on accession " << acc << " level " << level<< " param " << parameter_cost << " enc " << encoding_cost << " total " << all_cost << std::endl;
+
+			if(all_cost < best_cost) {
+				std::cout << " new best!" << std::endl;
+				best_counter = context_counter;
+				best_cost = all_cost;
+				best_level = level;
+			
+			}
+
+			// context_conter one level down:
+			if(level > 0) {	
+				std::map<std::string, std::vector<size_t> > new_counter;							
+				for(std::map<std::string, std::vector<size_t> >::iterator it = context_counter.begin(); it!=context_counter.end(); ++it) {
+					std::string oldcontext = it->first;
+					std::string newcontext = oldcontext.substr(1);
+					for(size_t i=0; i<5; ++i) {
+						context_count(new_counter, newcontext, i, it->second.at(i) );
+					}
+				}
+				context_counter = new_counter;
+			}
+		}
+		accLevel.push_back(best_level);
+		calculate_sequence_high(acc, best_counts);	
+	}
+/*
+   TODO go on to compute high values
 	for(size_t i =0; i < data.numAcc(); i++){
 		double total_cost = 0;
 		//An initial cost for each accession(mc of level 0)
@@ -63,9 +159,10 @@ void dynamic_mc_model::recursive_model(){//TODO What should i do in case of leve
 		sequence_successive_bases.clear();// Only 'seq's that are related to the final level should be kept and the rest should be deleted.
 		markov_chain(i,level-2);
 		std::cout<< "level is "<< level-2 <<std::endl;
-		calculate_sequence_high(i);//TODO At he mmoment doesn't do anything for level 0, need to be added
-	}	
+		calculate_sequence_high(i);	}
+*/	
 }
+/*
 void dynamic_mc_model::markov_chain(size_t & accession, size_t  level){
 	assert(level != 0);
 	for(size_t k = 0; k <data.getAcc(accession).size(); k++){
@@ -109,7 +206,8 @@ void dynamic_mc_model::markov_chain(size_t & accession, size_t  level){
 		}
 	}
 }
-void dynamic_mc_model::calculate_sequence_high(size_t & accession){//TODO level0
+*/
+void dynamic_mc_model::calculate_sequence_high(size_t & accession, const std::map<std::string, std::vector<size_t> > & counts){//TODO level0
 	size_t level = accLevel.at(accession);
 	if(level > 0){
 		make_all_patterns(level);
@@ -164,7 +262,7 @@ void dynamic_mc_model::calculate_sequence_high(size_t & accession){//TODO level0
 
 	}
 }
-void dynamic_mc_model::make_all_patterns(size_t& level){
+void dynamic_mc_model::make_all_patterns(const size_t& level, ){
 	std::string seq = "";
 	std::set<std::string> pattern;
 	assert(level !=0 );
@@ -832,7 +930,7 @@ char dynamic_mc_model::modification_character(int modify_base, int num_delete, i
 }
 
 void dynamic_mc_model::train(std::ofstream & outs){//call it before training mc model to find the best level.
-	recursive_model();	
+	train_sequence_model();	
 	recursive_al_model();
 	write_parameters(outs);
 	write_alignment_parameters(outs);
