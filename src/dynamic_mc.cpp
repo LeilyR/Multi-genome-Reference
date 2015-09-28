@@ -4,7 +4,7 @@
 #define DYNAMIC_MC_CPP
 
 
-dynamic_mc_model::dynamic_mc_model(all_data & d): data(d),create_cost(data.numOfAcc(),vector<double>(5,0.0)),sequence_successive_bases(data.numOfAcc()),mod_cost(data.numOfAcc(),std::vector<std::map <std::string, std::vector<double> > > (data.numOfAcc())),high(data.numOfAcc()),highValue(data.numOfAcc(),std::vector<std::map<std::string , std::vector<unsigned int> > >(data.numOfAcc())),al_level(data.numOfAcc(),std::vector<size_t>(data.numOfAcc())){
+dynamic_mc_model::dynamic_mc_model(all_data & d): data(d),sequence_successive_bases(data.numOfAcc()),mod_cost(data.numOfAcc(),std::vector<std::map <std::string, std::vector<double> > > (data.numOfAcc())),high(data.numOfAcc()),highValue(data.numOfAcc(),std::vector<std::map<std::string , std::vector<unsigned int> > >(data.numOfAcc())),al_level(data.numOfAcc(),std::vector<size_t>(data.numOfAcc())){
 	// use (1<<i) should be faster	
 /*
 	size_t numberOfPowers = 32;
@@ -111,7 +111,7 @@ void dynamic_mc_model::train_sequence_model(){//TODO What should i do in case of
 			}
 		}
 		accLevel.push_back(best_level);
-		calculate_sequence_high(acc, best_counts);	
+//		calculate_sequence_high(acc, best_counts);	
 	}
 /*
    TODO go on to compute high values
@@ -262,6 +262,7 @@ void dynamic_mc_model::calculate_sequence_high(size_t & accession, const std::ma
 
 	}
 }
+/*
 void dynamic_mc_model::make_all_patterns(const size_t& level, ){
 	std::string seq = "";
 	std::set<std::string> pattern;
@@ -288,7 +289,8 @@ void dynamic_mc_model::make_all_patterns(const size_t& level, ){
 		std::string seq3 = *it;
 		all_the_patterns.insert(std::make_pair(seq3,std::vector<double>(5,0)));
 	}	
-}
+}*/
+
 void dynamic_mc_model::write_parameters(std::ofstream & outs){//write accessions, their levels and high values to a file
 	size_t bit = 12;
 	for(size_t i = 0 ; i < data.numAcc(); i++){
@@ -452,7 +454,7 @@ void dynamic_mc_model::recursive_al_model(){//TODO again the same question about
 		}
 	}
 }
-void dynamic_mc_model::make_all_alignment_pattern(size_t & level){ // it is only used when level > 0
+void dynamic_mc_model::make_all_alignment_pattern(const size_t & level){ // it is only used when level > 0
 	assert(level != 0);
 	std::string context; 
 	std::set<std::string>pattern;
@@ -1038,9 +1040,6 @@ size_t dynamic_mc_model::get_al_level(size_t& acc1 , size_t & acc2)const{
 void dynamic_mc_model::set_al_level(size_t& acc1 , size_t & acc2, size_t & level){
 	al_level.at(acc1).at(acc2) = level;
 }
-std::vector<size_t> dynamic_mc_model::get_powerOfTwo()const{
-	return powersOfTwo;
-}	
 const std::map<std::string, std::vector<unsigned int> >&  dynamic_mc_model::get_high(size_t acc)const{
 	return high.at(acc);
 }
