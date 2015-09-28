@@ -630,6 +630,19 @@ size_t pw_alignment::getreference(size_t id)const{
 	return references.at(id);
 }
 
+void pw_alignment::get_bits(char& base, std::vector<bool> & three_bits){
+	bool b1;
+	bool b2;
+	bool b3;
+	base_translate(base,b1,b2,b3);
+	three_bits.push_back(b1);
+	three_bits.push_back(b2);
+	three_bits.push_back(b3);
+
+}
+void pw_alignment::get_base(char & base, bool& bit1, bool& bit2, bool& bit3){
+
+}
 std::string pw_alignment::get_al_ref1() const {
 	std::stringstream res;
 	for(size_t i=0; i<alignment_length(); ++i) {
@@ -680,16 +693,18 @@ void pw_alignment::setreference2(size_t ref2){
 void pw_alignment::print()const{ 
 	std::cout << "al1 seq "<< getreference1() << " b " << getbegin1() << " e " << getend1() <<  " l "  << alignment_length() << std::endl;
 	std::cout << "al2 seq "<< getreference2() << " b " << getbegin2() << " e " << getend2() << std::endl;
-	/*
-	for(size_t col = 0; col < alignment_length(); col++) {
+//	if(alignment_length() > 5){
+//	for(size_t col = 0; col < 5; col++) {	
+/*	for(size_t col = 0; col < alignment_length(); col++) {
 	//	if(col < 3 || (alignment_length() - col < 3)) {
 			char c1;
 			char c2;
 			alignment_col(col, c1, c2);
 			std::cout <<col <<"\t"<< c1<<"\t"<<c2<<std::endl;
 	//	}
-	}
-	*/
+	}*/
+//}
+	
 }
 
 
@@ -821,17 +836,12 @@ pw_alignment & pw_alignment::operator=(const pw_alignment & al) {
 	return *this;
 }
 
-        wrapper::wrapper():encodeout("enc1.txt"),decodeout("dec1.txt"),al_encode("al_encode1.txt"),al_decode("al_decode1.txt"){
+        wrapper::wrapper():encodeout("enc1.txt"),al_encode("al_encode1.txt"){
         }
         wrapper::~wrapper(){}
         void wrapper::encode(unsigned int& low, unsigned int& high, unsigned int & total){
                 encodeout << "l"<< low << "h"<< high;
-            //    al_encode << " low: "<< low << " high: "<< high <<std::endl;
-
-        }
-        void wrapper::decode(unsigned int& low, unsigned int& high, unsigned int & total){
-                decodeout << "l"<< low << "h"<< high;
-           //     al_decode << " low: "<< low << " high: "<< high <<std::endl;
+                al_encode << " low: "<< low << " high: "<< high <<std::endl;
 
         }
         void wrapper::context(int & context){
@@ -839,8 +849,16 @@ pw_alignment & pw_alignment::operator=(const pw_alignment & al) {
              //   al_encode << "position: " << pos << " context: " <<  context <<std::endl;
 
         }
-        void wrapper::decodeContext(int & context){
+       	decoding_wrapper::decoding_wrapper():decodeout("dec1.txt"),al_decode("al_decode1.txt"){}
+	decoding_wrapper::~decoding_wrapper(){}
+	void decoding_wrapper::decode(unsigned int& low, unsigned int& high, unsigned int & total){
+                decodeout << "l"<< low << "h"<< high;
+                al_decode << " low: "<< low << " high: "<< high <<std::endl;
+        }
+        void decoding_wrapper::decodeContext(int & context){
 		al_decode<<"c"<<context;
             //    al_decode << "position: " << pos << " context: " <<  context <<std::endl;
         }
+
+	
 

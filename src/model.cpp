@@ -89,6 +89,7 @@ void initial_alignment_set<T>::lazy_split_full_insert_step(overlap & ovrlp, size
 			double g2;
 			common_model.gain_function(insert_als.at(i), g1, g2);
 			double avg = (g1 + g2) / 2.0 - base_cost;
+			std::cout << "avg "<< avg <<std::endl;
 			if(avg > 0) {
 				ovrlp.insert_without_partial_overlap(insert_als.at(i));
 				inserted_alignments.push_back(insert_als.at(i));
@@ -186,13 +187,15 @@ void initial_alignment_set<T>::lazy_split_insert_step(overlap & ovrlp, size_t le
 	double av_al_gain = (gain1 + gain2) / 2 - base_cost;
 	// we continue if information gain is possible from the current alignment
 	local_gain = 0;
+	std::cout<< "al in lazy split "<< std::endl;
+	al.print();
 	if(av_al_gain > 0) {
 		splitpoints spl(al, ovrlp, data);
 		spl.nonrecursive_splits();
 		// sets of alignments that need to be removed and inserted if we want the current alignment 
 		std::set<pw_alignment, compare_pw_alignment> remove_als; // remove alignments are pointers to objects contained in the overlap structure
 		std::vector<pw_alignment> insert_als;
-		spl.split_all(remove_als, insert_als);
+		spl.split_all(remove_als, insert_als);//TODO
 
 		std::cout <<"initial: level " << level << " positive gain: " << av_al_gain << " split res rem " << remove_als.size() << " ins " << insert_als.size() << std::endl;
 	
@@ -1204,55 +1207,57 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment & al) {
 	size_t affpro_clusters<tmodel>::get_sequence_length(size_t ref_idx)const{	
 		return 	sequence_lengths.at(ref_idx);
 	}
-	finding_centers::finding_centers(all_data & d):data(d),AlignmentsFromClustering(data.numSequences()),centersOfASequence(data.numSequences(),std::vector<size_t>()){
+//Finds all the centers the happen on a sequence:
+	finding_centers::finding_centers(all_data & d):data(d),AlignmentsFromClustering(data.numSequences()),centersOnSequence(data.numSequences()), centersOfASequence(data.numSequences()){
 	}
 	finding_centers::~finding_centers(){}
 	void finding_centers::setOfAlignments(std::map<std::string,std::vector<pw_alignment> > & alignmentsOfClusters){//set alignments of each reference
 		for(size_t i = 0; i < data.numSequences(); i ++){
 			const dnastring sequence = data.getSequence(i);
 			for (std::map<std::string,std::vector<pw_alignment> >::iterator it = alignmentsOfClusters.begin(); it != alignmentsOfClusters.end();it++){
-				assert(it->second.size() != 0);
-				string center = it->first;
-				std::vector<std::string> center_parts;
-				strsep(center, ":" , center_parts);
-				unsigned int center_ref = atoi(center_parts.at(0).c_str());
-				unsigned int center_left = atoi(center_parts.at(1).c_str());
-				for(size_t j = 0; j < it->second.size();j++){
-					pw_alignment * p = & it->second.at(j);
-					size_t left1; 
-					size_t left2;
-					size_t right1;
-					size_t right2;
-					p->get_lr1(left1,right1);
-					p->get_lr2(left2,right2);
-					if(i != center_ref){
-						if(p->getreference1()== i && p->getreference2()== center_ref&&left2==center_left){
-							std::multimap<size_t, pw_alignment*>::iterator it1 = AlignmentsFromClustering.at(i).find(left1);				
-							if(it1 == AlignmentsFromClustering.at(i).end()){
-								AlignmentsFromClustering.at(i).insert(make_pair(left1,p));
+				if(it->second.size() != 0){
+					string center = it->first;
+					std::vector<std::string> center_parts;
+					strsep(center, ":" , center_parts);
+					unsigned int center_ref = atoi(center_parts.at(0).c_str());
+					unsigned int center_left = atoi(center_parts.at(1).c_str());
+					for(size_t j = 0; j < it->second.size();j++){
+						pw_alignment * p = & it->second.at(j);
+						size_t left1; 
+						size_t left2;
+						size_t right1;
+						size_t right2;
+						p->get_lr1(left1,right1);
+						p->get_lr2(left2,right2);
+						if(i != center_ref){
+							if(p->getreference1()== i && p->getreference2()== center_ref&&left2==center_left){
+								std::multimap<size_t, pw_alignment*>::iterator it1 = AlignmentsFromClustering.at(i).find(left1);				
+								if(it1 == AlignmentsFromClustering.at(i).end()){
+									AlignmentsFromClustering.at(i).insert(make_pair(left1,p));
+								}else continue;
+							}else if(p->getreference2()== i && p->getreference1()== center_ref&&left1 == center_left){
+								std::multimap<size_t , pw_alignment*>::iterator it2 = AlignmentsFromClustering.at(i).find(left2);
+								if(it2 == AlignmentsFromClustering.at(i).end()){
+									AlignmentsFromClustering.at(i).insert(make_pair(left2,p));
+								}else continue;
 							}else continue;
-						}else if(p->getreference2()== i && p->getreference1()== center_ref&&left1 == center_left){
-							std::multimap<size_t , pw_alignment*>::iterator it2 = AlignmentsFromClustering.at(i).find(left2);
-							if(it2 == AlignmentsFromClustering.at(i).end()){
-								AlignmentsFromClustering.at(i).insert(make_pair(left2,p));
-							}else continue;
-						}else continue;
-					}
-					if(i == center_ref){
-						if(p->getreference1()== i && p->getreference2()== i){
-							std::multimap<size_t, pw_alignment*>::iterator it = AlignmentsFromClustering.at(i).find(left1);				
-							if(it == AlignmentsFromClustering.at(i).end()){
-								AlignmentsFromClustering.at(i).insert(make_pair(left1,p));
+						}
+						if(i == center_ref){
+							if(p->getreference1()== i && p->getreference2()== i){
+								std::multimap<size_t, pw_alignment*>::iterator it = AlignmentsFromClustering.at(i).find(left1);				
+								if(it == AlignmentsFromClustering.at(i).end()){
+									AlignmentsFromClustering.at(i).insert(make_pair(left1,p));
+								}
+								std::multimap<size_t, pw_alignment*>::iterator it1 = AlignmentsFromClustering.at(i).find(left2);				
+								if(it1 == AlignmentsFromClustering.at(i).end()){
+									AlignmentsFromClustering.at(i).insert(make_pair(left2,p));
+								}
+							}else{
+								std::multimap<size_t, pw_alignment*>::iterator it = AlignmentsFromClustering.at(i).find(center_left);
+								if(it == AlignmentsFromClustering.at(i).end()){
+									AlignmentsFromClustering.at(i).insert(make_pair(center_left,p));
+								}else continue;
 							}
-							std::multimap<size_t, pw_alignment*>::iterator it1 = AlignmentsFromClustering.at(i).find(left2);				
-							if(it1 == AlignmentsFromClustering.at(i).end()){
-								AlignmentsFromClustering.at(i).insert(make_pair(left2,p));
-							}
-						}else{
-							std::multimap<size_t, pw_alignment*>::iterator it = AlignmentsFromClustering.at(i).find(center_left);
-							if(it == AlignmentsFromClustering.at(i).end()){
-								AlignmentsFromClustering.at(i).insert(make_pair(center_left,p));
-							}else continue;
 						}
 					}
 				}
@@ -1261,37 +1266,36 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment & al) {
 	}
 	void finding_centers::findMemberOfClusters(map<string,vector<pw_alignment> > & alignmentsOfClusters){
 		for(std::map<std::string, std::vector<pw_alignment> >::iterator it = alignmentsOfClusters.begin(); it != alignmentsOfClusters.end(); it++){
-			for(size_t i = 0; i < it->second.size(); i++){
-				size_t ref1;
-				size_t ref2;
-				size_t left1;
-				size_t left2;
-				size_t right1;
-				size_t right2;
-				pw_alignment p =it->second.at(i);
-				p.get_lr1(left1,right1);
-				p.get_lr2(left2,right2);
-				ref1 = p.getreference1();
-				ref2 = p.getreference2();
-				stringstream sample1;
-				stringstream sample2;
-				sample1 << ref1 << ":" << left1;
-				sample2 << ref2 << ":" << left2;
-				if(sample1.str()==it->first){
-					memberOfCluster.insert(make_pair(sample2.str(),it->first));
-				}else{
-					memberOfCluster.insert(make_pair(sample1.str(),it->first));
-				}
+			if(it->second.size() != 0){
+				for(size_t i = 0; i < it->second.size(); i++){
+					size_t ref1;
+					size_t ref2;
+					size_t left1;
+					size_t left2;
+					size_t right1;
+					size_t right2;
+					pw_alignment p =it->second.at(i);
+					p.get_lr1(left1,right1);
+					p.get_lr2(left2,right2);
+					ref1 = p.getreference1();
+					ref2 = p.getreference2();
+					stringstream sample1;
+					stringstream sample2;
+					sample1 << ref1 << ":" << left1;
+					sample2 << ref2 << ":" << left2;
+					if(sample1.str()==it->first){
+						memberOfCluster.insert(make_pair(sample2.str(),it->first));
+					}else{
+						memberOfCluster.insert(make_pair(sample1.str(),it->first));
+					}
 					memberOfCluster.insert(make_pair(it->first,it->first));
-
-				
+				}
 			}
 		}
 	}
-	void finding_centers::center_frequency(std::map<std::string,std::vector<pw_alignment> > & alignmentsOfClusters){//it basically returns indices of centers on each sequence.
+	void finding_centers::center_frequency(std::map<std::string,std::vector<pw_alignment> > & alignmentsOfClusters, std::vector<std::map<size_t, std::string> > & centerOnseq){//it basically returns indices of centers on each sequence.
 		setOfAlignments(alignmentsOfClusters);
 		findMemberOfClusters(alignmentsOfClusters);	
-		std::vector<std::string> center_index;
 		for(std::map<std::string, std::vector<pw_alignment> >::iterator it2=alignmentsOfClusters.begin(); it2 != alignmentsOfClusters.end();it2++){
 			string cent = it2->first;
 			center_index.push_back(cent);
@@ -1313,80 +1317,198 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment & al) {
 					for(size_t j =0; j < center_index.size(); j ++){
 						if(center_index.at(j)==center){
 							cent_index = j;
-							centersOfASequence.at(i).push_back(cent_index);
+							//centersOfASequence.at(i).push_back(cent_index);
 							cout<< "cent_index " << cent_index<<endl;
+							centersOnSequence.at(i).insert(make_pair(n,center));
+							centerOnseq.at(i).insert(make_pair(n,center));//TODO add it as an argument!
 							break;
 						}
 					}
 				}
 			}
-		} 
-		/*
-		for(size_t i = 0; i < centersOfASequence.size(); i ++){
-			cout<< " centers on sequence " << i << " are " <<endl;
-			for(size_t j =0 ; j < centersOfASequence.at(i).size(); j++){
-				cout<< centersOfASequence.at(i).at(j) <<endl;
+			size_t last_position;
+			size_t first_position;
+			std::map<size_t, std::vector<size_t> > AllConnectedOnes;
+			vector<size_t> vectorOfcenters;
+			for(std::map<size_t , std::string>::iterator it = centersOnSequence.at(i).begin(); it != centersOnSequence.at(i).end();it++){
+				if(vectorOfcenters.size()==0){
+					last_position = it->first;
+					first_position = it->first;
+				}
+				if(it->first - last_position < 5){
+					std::cout << "smaller than 5! "<<std::endl;
+					size_t index;
+					for(size_t k= 0; k < center_index.size(); k++){
+						if( it->second == center_index.at(k)){
+							index = k;
+							break;
+						}
+					}
+					vectorOfcenters.push_back(index);
+					
+				}else{
+					std::cout<< "bigger than five: " <<std::endl;
+					AllConnectedOnes.insert(make_pair(first_position, vectorOfcenters));
+					vectorOfcenters.clear();
+				}
+				std::multimap<size_t, pw_alignment*>::iterator it1=AlignmentsFromClustering.at(i).find(it->first);
+				pw_alignment * p = it1->second;
+				last_position = it1->first + p->alignment_length()-1;
+			}
+			for(std::map<size_t, std::vector<size_t> >::iterator it = AllConnectedOnes.begin(); it != AllConnectedOnes.end(); it++){
+				if(it->second.size() != 1){
+					 centersOfASequence.at(i).insert(make_pair(it->first, it->second));
+				}
 			}
 		}
-		*/
-
 	}
-	std::vector<size_t>  finding_centers::get_center(size_t seq_id)const{
+	std::map< size_t , std::string> finding_centers::get_sequence_centers(size_t& id)const{
+		return centersOnSequence.at(id);
+	}
+	std::string finding_centers::find_center_name(size_t & centerIndex)const{
+		return center_index.at(centerIndex);
+	}	
+	std::map<size_t, std::vector<size_t> >finding_centers::get_center(size_t seq_id)const{
 		return centersOfASequence.at(seq_id);
 	}
-	suffix_tree::suffix_tree(all_data & d, finding_centers & c):data(d),centers(c){
-	
+	size_t finding_centers::get_number_of_centers()const{
+		return center_index.size();
+	}
+	suffix_tree::suffix_tree(all_data & d, finding_centers & c):data(d),centers(c), successive_centers(data.numSequences()), suffixes(data.numSequences()){
+		size_t numberOfPowers = 32;
+		powerOfTwo = std::vector<size_t>(numberOfPowers, 1);
+		for(size_t i=1; i< numberOfPowers; ++i) {
+			powerOfTwo.at(i) = powerOfTwo.at(i-1)*2;	
+		}
+
 	}
 	suffix_tree::~suffix_tree(){
 	
 	}
 	void suffix_tree::create_suffix(size_t seq_id){
-		suffixes.clear();
-		std::vector<size_t> successive_centers = centers.get_center(seq_id);
-		for(size_t j =0; j < successive_centers.size(); j++){
-			string suffix;
-			for(size_t k =j; k < successive_centers.size();k++){
-				suffix +=successive_centers.at(k);
+		std::cout<< "seq id " << seq_id << std::endl;
+		std::vector<std::vector<std::vector<size_t> > > AllSuffixes;
+		for(std::map<size_t , std::vector<size_t> >::iterator it=successive_centers.at(seq_id).begin(); it != successive_centers.at(seq_id).end(); it++){
+			std::vector<std::vector<size_t> > ItsSuffix;
+			for(size_t j =0; j < it->second.size(); j++){
+				std::vector<size_t> suffix;
+				for(size_t k =j; k < it->second.size();k++){
+					suffix.push_back(it->second.at(k));
+				}
+				ItsSuffix.push_back(suffix);
 			}
-			suffixes.push_back(suffix);
+			AllSuffixes.push_back(ItsSuffix);
 		}
-		if(successive_centers.size() > 1){
-			size_t last_center = successive_centers.at(successive_centers.size()-1);
-			for(size_t i =0; i < successive_centers.size()-1; i ++){
-				size_t current_center = successive_centers.at(i);
-				std::cout<< " current " << current_center << " last center "<< last_center<<std::endl;
-				if(current_center == last_center){
-					for(size_t j =0;j < suffixes.size();j++){
-						string new_suffix = suffixes.at(j) + '#';
-						suffixes.at(j) = new_suffix;
+		size_t counter = 0;
+		for(std::map<size_t , std::vector<size_t> >::iterator it=successive_centers.at(seq_id).begin(); it != successive_centers.at(seq_id).end(); it++){
+			size_t last_center = it->second.at(it->second.size()-1);
+			for(size_t j =0; j < it->second.size()-1; j++){
+				if(it->second.at(j)==last_center){
+					for(size_t m =0; m < AllSuffixes.at(counter).size();m++){
+						std::vector<size_t> new_suffix = AllSuffixes.at(counter).at(m);
+						new_suffix.push_back(powerOfTwo.at(31));
+						AllSuffixes.at(counter).at(m)= new_suffix;
+						std::cout<< "new suffix "<<std::endl;
+						for(size_t n =0; n < new_suffix.size();n++){
+							std::cout<< new_suffix.at(n)<< " ";
+						}
+						std::cout << " " << std::endl;
 					}
-					suffixes.push_back("#");
+					std::vector<size_t> new_suffix;
+					new_suffix.push_back(powerOfTwo.at(31));
+					AllSuffixes.at(counter).push_back(new_suffix);
+					break;
+				}
+			}			
+			std::cout << "counter "<<counter <<std::endl;
+			counter = counter + 1;
+		}
+		suffixes.at(seq_id)=(AllSuffixes);
+/*		if(successive_centers.at(seq_id).size() > 1){//Adding an extar char at the end of each suffix if the last center happens more than once!
+			size_t last_center = successive_centers.at(seq_id).at(successive_centers.at(seq_id).size()-1);
+			for(size_t i =0; i < successive_centers.at(seq_id).size()-1; i ++){
+				size_t current_center = successive_centers.at(seq_id).at(i);
+			//	std::cout<< " current " << current_center << " last center "<< last_center<<std::endl;
+				if(current_center == last_center){
+					for(size_t j =0;j < suffixes.at(seq_id).size();j++){
+						std::vector<size_t> new_suffix = suffixes.at(seq_id).at(j);
+						new_suffix.push_back(powerOfTwo.at(31));
+						suffixes.at(seq_id).at(j) = new_suffix;
+					}
+					std::vector<size_t> new_suffix;
+					new_suffix.push_back(powerOfTwo.at(31));
+					suffixes.at(seq_id).push_back(new_suffix);
 					break;
 				}
 			}
 		}
 		if(successive_centers.size()==1){
-			for(size_t j =0;j < suffixes.size();j++){
-				string new_suffix = suffixes.at(j) + '#';
-				suffixes.at(j) = new_suffix;
+			for(size_t j =0;j < suffixes.at(seq_id).size();j++){
+				std::vector<size_t> new_suffix = suffixes.at(seq_id).at(j);
+						new_suffix.push_back(powerOfTwo.at(31));
+						suffixes.at(seq_id).at(j) = new_suffix;
 			}
-			suffixes.push_back("#");
+			std::vector<size_t> new_suffix;
+			new_suffix.push_back(powerOfTwo.at(31));
+			suffixes.at(seq_id).push_back(new_suffix);
 		}
-		if(suffixes.size() > 0){
+		std::cout<< "seq id "<< seq_id <<std::endl;
+		if(suffixes.at(seq_id).size() > 0){
 			std::cout << " suffixes are " << std::endl;
-			for(size_t i =0; i < suffixes.size();i++){
-				string suf = suffixes.at(i);
+			for(size_t i =0; i < suffixes.at(seq_id).size();i++){
+				std::vector<std::size_t> suf = suffixes.at(seq_id).at(i);
 				for( size_t j =0; j < suf.size() ; j ++){
-					std::cout << int(suf.at(j))<< " ";
+					std::cout << suf.at(j)<< " ";
 				}
 					std::cout<< " " << std::endl;
 			}
+		}*/
+		std::cout<< "all the suffixes: "<<std::endl;
+		for(size_t i =0; i < suffixes.at(seq_id).size(); i++){
+			for(size_t j =0; j < suffixes.at(seq_id).at(i).size(); j++){
+				for(size_t  k =0; k < suffixes.at(seq_id).at(i).at(j).size();k++){
+					std::cout << suffixes.at(seq_id).at(i).at(j).at(k) << " ";
+				}
+				std::cout<< " " <<std::endl;
+			}
 		}
 	}
-	void suffix_tree::find_a_node(size_t& node_number,size_t& parent_node, std::string& node){
+	void suffix_tree::update_successive_centers(std::vector<size_t> & highest_path,size_t & index ,size_t & seq){
+		for(std::map<size_t, std::vector<size_t> >::iterator it = successive_centers.at(seq).begin();it != successive_centers.at(seq).end();it++){
+			std::vector<size_t> centers = it->second;
+			for(size_t k =0; k < centers.size();k++){
+				if(centers.at(k) == highest_path.at(0)&& ((centers.size()-k)>= highest_path.size())){
+					size_t first_common_index;
+					std::vector<size_t> common;
+					for(size_t i = 0; i < highest_path.size();i++){
+						first_common_index = k;
+						if(centers.at(i+k)== highest_path.at(i)){
+							common.push_back( highest_path.at(i));
+						}else break;
+					}
+					if(common.size() == highest_path.size()){
+						std::vector<size_t> new_center;
+						for(size_t m = 0; m < first_common_index ;m++){
+							new_center.push_back(centers.at(m));
+						}
+						new_center.push_back(index);
+						for(size_t m = first_common_index + common.size(); m < centers.size();m++){
+							new_center.push_back(centers.at(m));
+						}
+						centers=new_center;
+					}
+				}
+			}
+			it->second = centers;
+			for(size_t i = 0; i < it->second.size(); i++){
+				std::cout << it->second.at(i) << std::endl;
+			}
+		}
+	}
+	void suffix_tree::find_a_node(size_t& node_number,size_t& parent_node, std::vector<size_t>& node){
 		for(size_t i = parent_node; i < nodes.size(); i ++){
 		//	std::cout << "size of nodes: " << nodes.size() <<std::endl;
-			std::string current_node = nodes.at(i);
+			std::vector<size_t> current_node = nodes.at(i);
 			if(node == current_node){
 				std::cout << "i "<< i << std::endl;
 				node_number = i;
@@ -1418,683 +1540,782 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment & al) {
 			for(std::multimap<size_t,size_t>::iterator it1 = it.first ; it1 != it.second; it1++){
 				if(it1->second == node_index){
 					parent = common_par;	
+					std::cout<< "parent " << parent <<std::endl;
 					break;
 				}
 			}
 		}
-
 	}
 	void suffix_tree::delete_relation(size_t & parent, size_t & child_node){
 		pair<std::multimap<size_t,size_t>::iterator , std::multimap<size_t,size_t>::iterator > it = nodes_relation.equal_range(parent);
 			for(std::multimap<size_t,size_t>::iterator it1 = it.first ; it1 != it.second; it1++){
 				if(it1->second == child_node){
 					nodes_relation.erase(it1);
-					std::cout<<"child_node:"<< child_node << it1->second <<std::endl;
+					std::cout<<"child_node:"<< child_node<< " " << it1->second <<std::endl;
 					break;
 				}
 			}
-			std::cout<<"nodes relation: "<<std::endl;
-				for(std::multimap<size_t , size_t>::iterator it = nodes_relation.begin(); it != nodes_relation.end(); it++){
-					std::cout << it->first <<" "<< it->second << std::endl;
-			}
+			//std::cout<<"nodes relation: "<<std::endl;
+			//for(std::multimap<size_t , size_t>::iterator it = nodes_relation.begin(); it != nodes_relation.end(); it++){
+			//	std::cout << it->first <<" "<< it->second << std::endl;
+			//}
 	}
-	void suffix_tree::make_a_tree(){
-		size_t active_length = 0;
-		size_t active_node = 0;
-		std::vector<std::string> first_parent;//To Do: remove it and try to use firstParent map instead of this vector, because they are basically the same thing
-		for(size_t seq_id =0; seq_id < data.numSequences(); seq_id++){
-			create_suffix(seq_id);
-			std::cout<< "seq id"<<seq_id<<std::endl;
-			for(size_t i = 0; i < suffixes.size(); i++){
-				std::cout<< "suffix i " << i << std::endl;
-				std::string current = suffixes.at(i);
-				std::cout<<"nodes relation: "<<std::endl;
-				for(std::multimap<size_t , size_t>::iterator it = nodes_relation.begin(); it != nodes_relation.end(); it++){
-					std::cout << it->first <<" "<< it->second << std::endl;
-				}
-std::cout << " first parent map: "<<std::endl;
-		for(std::map<std::string, size_t>::iterator it = firstParent.begin();it != firstParent.end(); it++){
-			std::string parent = it->first;
-			for(size_t i =0; i< parent.size();i++){
-				std::cout<< int(parent.at(i))<< " ";
+	void suffix_tree::read_first_parents(std::vector<size_t> & current , std::vector<size_t> & first_parent){
+		for(std::map<std::vector<size_t>, size_t>::iterator it = firstParent.begin();it != firstParent.end(); it++){
+			std::vector<size_t> parent = it->first;
+			if(current.at(0) == parent.at(0)){
+				first_parent = it->first;
+				std::cout<< "parent index: "<< it->second<<std::endl;
+				break;
 			}
-			std::cout << " , " << it->second << std::endl;
 		}
-				size_t temp = active_node;
-				size_t last_common_index = 0;
-				if(first_parent.size()!= 0){
-					for(size_t j= 0; j< first_parent.size(); j++){
-						if (current.at(0) == first_parent.at(j).at(0)){
-							string current_parent = first_parent.at(j);
-							size_t node_index;//current parent node index
-						//	vector<size_t> parent_path;
-							std::map<std::string, size_t>::iterator it = firstParent.find(current_parent);
-							find_a_node(node_index,it->second,current_parent);
-							cout<< " node_index " << node_index << " from map " << it-> second <<endl;
-							active_node += 1; //It is used to show that the current node have another parent rather than root
-							string common_part;
-							size_t commonIndex = 0;
-							cout<<int(current.at(0)) << " " <<int(first_parent.at(j).at(0))<<endl;
-							cout <<"currentsize "<<current.size() << "currentparentsize "<< current_parent.size()<<endl;
-							size_t num_kid =0;
-							while(current.size()>current_parent.size()&& (current.at(0)==current_parent.at(0))){
-								size_t common_index = 0;
-								size_t common_piece;
-								size_t first_index_after_parent;
-								const size_t n_index = node_index;
-								cout << "n_index: "<< n_index<<endl;
-								pair<std::multimap<size_t, size_t>::iterator, std::multimap<size_t, size_t>::iterator > p1 = nodes_relation.equal_range(n_index);
-								size_t biggest_child =0;
-								vector<size_t> all_children;
-								for(std::multimap<size_t, size_t>::iterator it = p1.first; it!=p1.second; ++it){
-									if(it != nodes_relation.end()){
-										all_children.push_back(it->second);
-										if(it->second > biggest_child){
-											biggest_child = it->second;
-										}else continue;
-										cout << "biggest child: " << biggest_child <<endl;
-									}else{cout<<"it has no kid!"<<endl;}
+		std::cout<< "first parent in read function:" <<std::endl;
+		for(std::map<std::vector<size_t>, size_t>::iterator it = firstParent.begin();it != firstParent.end(); it++){
+			std::vector<size_t> f_parent = it->first;
+			std::cout << "node index is " << it->second << " ";
+			for( size_t j =0; j < f_parent.size() ; j ++){
+				std::cout << f_parent.at(j)<< " ";
+			}
+			std::cout<< " " << std::endl;
+		}
+//		std::cout<< "all the nodes:"<<std::endl;
+//		for(size_t i = 0; i < nodes.size(); i++){
+//			std::string node = nodes.at(i);
+//			std::cout << "node at " << i << " is ";
+//			for(size_t j =0; j < node.size();j++){
+//				std::cout << int(node.at(j)) << " " ;
+//			}
+//			std::cout << " " <<std::endl;
+//		}
+	}
+	void suffix_tree::find_child_nodes(size_t & index, vector<size_t>& childs){
+		childs.clear();
+		pair<std::multimap<size_t,size_t>::iterator , std::multimap<size_t,size_t>::iterator > it = nodes_relation.equal_range(index);
+		for(std::multimap<size_t,size_t>::iterator it1 = it.first ; it1 != it.second; it1++){
+			childs.push_back(it1->second);
+			std::cout << "index "<< index << "children: " << it1->second << std::endl;
+		}
+	}
+	void suffix_tree::first_parent_index(size_t & current_index, size_t & first_parent){
+			size_t index = 0;
+			for(std::map<std::vector<size_t>, size_t>::iterator it = firstParent.begin();it != firstParent.end(); it++){
+				if(it->second <= current_index && index < it->second){
+					index = it->second;
+					first_parent = it->second;
+				}
+			}		
+	}
+	void suffix_tree::create_tree(std::vector<size_t> & center_with_highest_gain, size_t & highest_index ){//makea tree dependent to high_gain. For the first time high_gain == 0 and then it is replaced by new one from merging. For that purpose one may need to difine high_gain vector in main and initialize it with 0 //Is there any better solution than that?
+		nodes.clear();
+		nodes_relation.clear();
+		firstParent.clear();
+		for(size_t seq_id =0; seq_id < data.numSequences(); seq_id++){
+			if(center_with_highest_gain.size()==0){
+				std::cout << "highest is zero! "<<std::endl;
+				successive_centers.at(seq_id) = centers.get_center(seq_id);
+				create_suffix(seq_id);
+			}else{
+				std::cout << "when highest is " << highest_index << std::endl;
+				update_successive_centers(center_with_highest_gain,highest_index,seq_id);
+				create_suffix(seq_id);
+			}
+			if(suffixes.at(seq_id).size() != 0){
+				for(size_t i = 0; i < suffixes.at(seq_id).size(); i++){
+				for(size_t q = 0; q < suffixes.at(seq_id).at(i).size();q++){
+					std::cout << "suffixes at " << i  << " at " << q <<std::endl;
+					std::vector<size_t> first_parent;
+					read_first_parents(suffixes.at(seq_id).at(i).at(q),first_parent);
+					std::cout<< "f_parent "<<std::endl;
+					for(size_t j =0; j < first_parent.size(); j++){
+						std::cout << first_parent.at(j)<< " ";
+					}
+					std::cout << "" << std::endl;
+					if(first_parent.size()==0){
+						std::cout << "if first parent is empty"<<std::endl;
+						nodes.push_back(suffixes.at(seq_id).at(i).at(q));
+						firstParent.insert(make_pair(suffixes.at(seq_id).at(i).at(q),nodes.size()-1));	
+					}else{
+						std::cout << "else "<<std::endl;
+						std::vector<size_t> common_part;
+						size_t length = suffixes.at(seq_id).at(i).at(q).size();
+						if(first_parent.size()<= length){
+							length = first_parent.size();
+						}
+						for(size_t j = 0; j < length ;  j++){
+							if(first_parent.at(j)==suffixes.at(seq_id).at(i).at(q).at(j)){
+								common_part.push_back(first_parent.at(j));
+							}else break;
+						}
+						std::cout << "common part " << std::endl; 
+						for(size_t j =0; j < common_part.size();j++){
+							std::cout<< common_part.at(j)<< " ";
+						}
+						std::cout << " " << std::endl;
+						std::map<std::vector<size_t>, size_t>::iterator it = firstParent.find(first_parent);
+						assert(it!=firstParent.end());
+						size_t node_index = it->second;//It s updated later on in a way that always is equal to the parent node index
+						std::cout << "node index in make tree: "<<node_index<<std::endl;
+						firstParent.erase(it);
+						firstParent.insert(make_pair(common_part,node_index));
+					//	nodes.at(node_index) = common_part;
+						std::vector<size_t> current_parent = first_parent;
+						std::vector<size_t> current_string = suffixes.at(seq_id).at(i).at(q);
+						bool making_tree = true;
+						while(making_tree == true){						
+							//The first case:
+							if(length == current_parent.size() && common_part.size() == length){//Current parent is shorter than the current suffix and current suffix contains all of it
+								std::cout << "first case! "<<std::endl;
+								std::vector<size_t> other;
+								for(size_t j = common_part.size(); j < current_string.size(); j++){
+									other.push_back(current_string.at(j));
 								}
-								for(size_t k = 0 ; k < current_parent.size(); k ++){// it may only makes sense for the case that current suffix is longer than its parent and it doesnt completely fit on it or any of its child nodes.
-									cout<< "parent at " << k << " is " << int(current_parent.at(k))<< " current at " << k << " is " <<int(current.at(k))<<endl;
-									if(current.at(k)==current_parent.at(k)){
-										last_common_index += 1;
-										common_part += current.at(k);
-										first_index_after_parent = k +1;
-									}else break;
+								std::cout << "other " <<std::endl;
+								for(size_t j =0 ; j < other.size(); j++){
+									std::cout << other.at(j) << " " ;
 								}
-								commonIndex = last_common_index;
-								size_t adding_a_child =0;
-								if(first_index_after_parent == current_parent.size()){//Parent doesn't break
-									//It checkes if the current parent already has a kid!
-									if(biggest_child > 0){
-										for(size_t child_node = 0; child_node < all_children.size();child_node ++){
-											size_t ChildNode = all_children.at(child_node);
-											if(nodes.at(ChildNode).at(0)== current.at(first_index_after_parent)){
-												adding_a_child ++;
-												string updated_current;
-												for(size_t update =first_index_after_parent; update< current.size(); update ++){
-													updated_current += current.at(update);
-												}
-												current = updated_current;
-												cout << "ChildNode: "<<ChildNode << endl;
-												current_parent = nodes.at(ChildNode);
+								std::cout << " "<<std::endl;
+								std::vector<size_t> childs;
+								find_child_nodes(node_index,childs);
+								std::cout << "child size "<<childs.size()<<std::endl;
+								if(childs.size() == 0){
+									std::cout << "if it has no child node"<<std::endl;
+									if(node_index == nodes.size()-1){//If it is the last node on the tree
+										if(other.size() != 0){
+											nodes.push_back(other);
+											std::vector<size_t> new_suffix;
+											new_suffix.push_back(powerOfTwo.at(31));
+											nodes.push_back(new_suffix);
+											nodes_relation.insert(make_pair(node_index,node_index+1));
+											nodes_relation.insert(make_pair(node_index,node_index+2));
+										}else{
+											std::vector<size_t> new_suffix;
+											new_suffix.push_back(powerOfTwo.at(31));
+											if(current_parent.at(current_parent.size()-1) != powerOfTwo.at(31)){
+												nodes.push_back(new_suffix);
+												nodes_relation.insert(make_pair(node_index,node_index+1));
+												std::cout << "# is pushed back!" <<std::endl;
+											}else{ // I think i should remove this else!!
+												std::cout<< "we are here ! 35" << std::endl;
+												making_tree = false;
 												break;
-											}else continue;
-										}
-									}
-									if(adding_a_child == 0){//Creating a new child node
-										cout << "here!"<<endl;
-										for(size_t shift = node_index+1; shift <nodes.size(); shift++){
-											std::map<std::string, size_t>::iterator it = firstParent.find(nodes.at(shift));
-											if(it != firstParent.end() && it->second == shift){
-												it->second = it->second+1;
 											}
 										}
-										std::string last_node = nodes.at(nodes.size()-1);
-										for(size_t shift =nodes.size()-1 ; shift > node_index+1; shift --){
-											nodes.at(shift)=nodes.at(shift-1);
-										}
-										nodes.push_back(last_node);
-										std::string updated_current;
-										for(size_t update =first_index_after_parent; update< current.size(); update ++){
-											updated_current += current.at(update);
-										}
-										nodes.at(node_index+1)=updated_current;
-										if(biggest_child > 0){
-											for(size_t shift = nodes.size()-2; shift > node_index;shift--){
+									}else{//Indices of all the nodes after that should be shifted 
+										std::vector<size_t> last_node = nodes.at(nodes.size()-1);
+										std::vector<size_t> second_last_node = nodes.at(nodes.size()-2);
+										if(other.size() != 0){
+											for(size_t j =nodes.size()-1; j > node_index+1; j--){
+												nodes.at(j) = nodes.at(j-2);
+											}
+											nodes.at(node_index +1) =other;
+											std::vector<size_t> new_suffix;
+											new_suffix.push_back(powerOfTwo.at(31));
+											nodes.at(node_index+2) = new_suffix;
+											//The rest of node relation should be updated
+											std::multimap<size_t,size_t> intermediate;
+											for(size_t shift = nodes.size()-1; shift > node_index;shift--){
 												pair<std::multimap<size_t,size_t>::iterator , std::multimap<size_t,size_t>::iterator > p1 = nodes_relation.equal_range(shift);
 												std::vector<size_t> counter;
-												std::multimap<size_t,size_t> intermediate;
 												for(std::multimap<size_t,size_t>::iterator it1 = p1.first ; it1 != p1.second; it1++){
 													if(it1 != nodes_relation.end()){
 														counter.push_back(it1->second);
-														std::cout<<"child in map: "<<it1->second<<std::endl;
 													}
 												}
-												std::cout<< "count: "<<counter.size() <<std::endl;
 												if(counter.size() > 0){
 													nodes_relation.erase(shift);
-													for(size_t in = 0; in < counter.size(); in++){																									intermediate.insert(make_pair(shift+1, counter.at(in)+1));					
-														std::cout << "relation in problematic part"<<std::endl;
-	 													std::cout<< shift+1 << " " << counter.at(in)+1 << std::endl;
+													for(size_t in = 0; in < counter.size(); in++){
+														intermediate.insert(make_pair(shift+2, counter.at(in)+2));					
 													}
-													for(std::multimap<size_t,size_t>::iterator it = intermediate.begin();it != intermediate.end(); it++){
-														nodes_relation.insert(make_pair(it->first, it->second));
-													}
+												}else{//checked!
+													//Having same first parents and no child node!
+													size_t ItsParent = nodes.size();
+													size_t ItsParent1 = nodes.size();
+													size_t ItsParent2 = nodes.size();
+													find_parent(shift,ItsParent2);
+													first_parent_index(shift,ItsParent);
+													first_parent_index(node_index,ItsParent1);
+													std::cout << "shift "<<shift << " nodeIndex "<<node_index <<" shiftParent: "<< ItsParent << " indexParent " << ItsParent1 << "shift parent "<< ItsParent2<<std::endl;
+													if(ItsParent == ItsParent1&& ItsParent != nodes.size()&& ItsParent2 != nodes.size()){
+														std::cout<<"Node had no kids but they have same parent" << "shift + 2 " << shift+2 <<std::endl;
+														delete_relation(ItsParent2,shift);
+														intermediate.insert(make_pair(ItsParent2,shift+2));
+													}	
 												}
-												size_t ItsParent;
-												find_parent(shift,ItsParent);
-												if(ItsParent == node_index){
-													delete_relation(ItsParent,shift);
-													nodes_relation.insert(make_pair(ItsParent,shift+1));
-													std::cout<< "shifting children"<<endl;
-													std::cout << ItsParent<< " " <<shift+1 <<std::endl;
-												}
+											}
+											for(std::multimap<size_t,size_t>::iterator it = intermediate.begin();it != intermediate.end(); it++){
+												nodes_relation.insert(make_pair(it->first, it->second));
 											}
 											nodes_relation.insert(make_pair(node_index,node_index+1));
-											for(size_t m = 0; m < nodes.size(); m++){
-												string node = nodes.at(m);
-												std::cout << "nodes at " << m << " : ";
-												for(size_t l =0; l < node.size();l++){
-													std::cout << int(node.at(l)) << " " ;
-												}
-											}
-											std::cout << " " << std::endl;	
-										}else{//get sure you creat a node with # later!
-											for(size_t shift = node_index+1; shift <nodes.size(); shift++){
-												std::map<std::string, size_t>::iterator it = firstParent.find(nodes.at(shift));
-												if(it != firstParent.end() && it->second == shift){
-													it->second = it->second+1;
-												}
-											}
-											std::string last_node = nodes.at(nodes.size()-1);
-											for(size_t shift =nodes.size()-1 ; shift > node_index+1; shift --){
-												nodes.at(shift)=nodes.at(shift-1);
-											}
-											nodes.push_back(last_node);
-											nodes.at(node_index+1)="#";
-											for(size_t shift = nodes.size()-2; shift >=node_index+1;shift--){
-												std::pair<std::multimap<size_t,size_t>::iterator , std::multimap<size_t,size_t>::iterator > p1 = nodes_relation.equal_range(shift);
-												std::vector<size_t> counter;
-												std::multimap<size_t,size_t> intermediate;
-												for(std::multimap<size_t,size_t>::iterator it1 = p1.first ; it1 != p1.second; it1++){
-													if(it1 != nodes_relation.end()){
-														counter.push_back(it1->second);
-														std::cout<<"child in map: "<<it1->second<<std::endl;
-													}
-												}
-												std::cout<< "count: "<<counter.size() <<std::endl;
-												if(counter.size() > 0){
-													nodes_relation.erase(shift);
-													for(size_t in = 0; in < counter.size(); in++){																									intermediate.insert(make_pair(shift+2, counter.at(in)+2));					
-														std::cout << "relation in problematic part"<<std::endl;
-	 													std::cout<< shift+2 << " " << counter.at(in)+2 << std::endl;
-													}
-													for(std::multimap<size_t,size_t>::iterator it = intermediate.begin();it != intermediate.end(); it++){
-														nodes_relation.insert(std::make_pair(it->first, it->second));
-													}
-												}
-											}
-											nodes_relation.insert(std::make_pair(node_index,node_index+1));
-											nodes_relation.insert(std::make_pair(node_index,node_index+2));
-											std::cout<< "node index: "<< node_index << " node index+1 "<<node_index+1<< " node index +2  " << node_index +2 << std::endl;
-											current = updated_current;
-											nodes.at(node_index+2)=current;
-											num_kid = 1;
-											std::cout<< "here num kid is changed to 1"<<endl;
-										}
-										current = updated_current;
-										break;
-										//need to break while loop here!inam check kon!How?
-									}
-								}else{//when we need to break the current parent and make a new branch with extra context, make current kids kids of this new child(**)
-									num_kid = 1;
-									std::cout<< "problem in else"<<std::endl;
-									std::string updated_current;
-									std::cout<< "updated_current: ";
-									for(size_t update =first_index_after_parent; update< current.size(); update ++){
-										updated_current += current.at(update);
-										std::cout<< int(current.at(update));
-									}
-									std::cout<< " " <<std::endl;
-									std::string extra_part_of_parent;
-									std::cout<< "extra part of parent: ";
-									for(size_t update = first_index_after_parent; update<current_parent.size(); update ++){
-										extra_part_of_parent += current_parent.at(update);
-										std::cout<< int(current_parent.at(update));
-									}
-									std::cout << " " << std::endl;
-									std::cout<< "biggest_child: "<<biggest_child<<std::endl;
-									for(size_t shift = node_index+1; shift <nodes.size(); shift++){
-										std::map<std::string, size_t>::iterator it = firstParent.find(nodes.at(shift));
-										if(it != firstParent.end() && it->second == shift){
-											it->second = shift+2;
-										}
-									}
-									if(biggest_child > 0){
-									//	for(size_t child_node = node_index+1; child_node <= biggest_child;child_node ++)
-									//		nodes.at(child_node) = extra_part_of_parent + nodes.at(child_node);//in ghalate!
-									//	
-										std::string last_node = nodes.at(nodes.size()-1);
-										std::string second_last_node = nodes.at(nodes.size()-2);
-										for(size_t shift =nodes.size()-1 ; shift >= node_index+1; shift --){
-											nodes.at(shift)=nodes.at(shift-2);
-										}
-										if(current_parent == first_parent.at(j)){
-											first_parent.at(j) = common_part;
-											std::map<std::string, size_t>::iterator it1 = firstParent.find(current_parent);
-											if(it1 != firstParent.end()){
-												firstParent.erase(it1);
-											}
-												std::map<std::string, size_t>::iterator it = firstParent.find(common_part);
-												if(it == firstParent.end()){
-													firstParent.insert(std::make_pair(common_part,node_index));
-												}else{
-													it->second = node_index;
-												}
-										}
-										for(size_t shift = nodes.size()-1; shift >= node_index;shift--){
-											pair<std::multimap<size_t,size_t>::iterator , std::multimap<size_t,size_t>::iterator > p1 = nodes_relation.equal_range(shift);
-											std::vector<size_t> counter;
-											std::multimap<size_t,size_t> intermediate;
+											nodes_relation.insert(make_pair(node_index,node_index+2));
+											std::cout << " node relation for node  " << node_index <<std::endl;
+											pair<std::multimap<size_t,size_t>::iterator , std::multimap<size_t,size_t>::iterator > p1 = nodes_relation.equal_range(node_index);
 											for(std::multimap<size_t,size_t>::iterator it1 = p1.first ; it1 != p1.second; it1++){
-												if(it1 != nodes_relation.end()){
-													counter.push_back(it1->second);
-													std::cout<<"child in map: "<<it1->second<<std::endl;
+												std::cout << it1->second << " " ;
+											}
+											std::cout << " " <<std::endl;
+											nodes.push_back(second_last_node);
+											nodes.push_back(last_node);
+											std::cout << "node size " << nodes.size() << std::endl;
+											for(size_t shift = node_index+3; shift <nodes.size(); shift++){//was node_index + 1
+												std::map<std::vector<size_t>, size_t>::iterator it = firstParent.find(nodes.at(shift));//changed it from shift + 1 to shift+3!
+												if(it != firstParent.end() && it->second == shift-2){
+													std::cout << "shift - 2 " << shift-2 <<std::endl;
+													it->second = shift;
 												}
 											}
-											std::cout<< "count: "<<counter.size() <<std::endl;
-											if(counter.size() > 0){
-												nodes_relation.erase(shift);
-												for(size_t in = 0; in < counter.size(); in++){
-													intermediate.insert(make_pair(shift+2, counter.at(in)+2));//First insert them to an intermadiate map
-													std::cout << "relation in problematic part1"<<std::endl;
-	 												std::cout<< shift+2 << " " << counter.at(in)+2 << std::endl;
+											std::map<std::vector<size_t>,size_t>::iterator it = firstParent.find(nodes.at(node_index));
+											if(it != firstParent.end() && it->second == node_index){					
+												firstParent.erase(it);
+												firstParent.insert(make_pair(common_part,node_index));
+												std::cout << "common part is added to the node " << node_index << std::endl;
+											}	
+											nodes.at(node_index) = common_part;
+											std::cout<<"nodes relation1: "<<std::endl;
+											for(std::multimap<size_t , size_t>::iterator it = nodes_relation.begin(); it != nodes_relation.end(); it++){
+												std::cout << it->first <<" "<< it->second << std::endl;
+											}
+										}else{
+											std::vector<size_t> new_suffix;
+											new_suffix.push_back(powerOfTwo.at(31));
+											if(current_parent.at(current_parent.size()-1) != powerOfTwo.at(31)){
+												for(size_t j =nodes.size()-1; j > node_index+1; j--){
+													nodes.at(j) = nodes.at(j-1);
+												}
+												std::cout << "here!"<<std::endl;
+												nodes.at(node_index +1) =new_suffix;
+												//The rest of node relation should be updated
+												std::multimap<size_t,size_t> intermediate;
+												for(size_t shift = nodes.size()-1; shift > node_index;shift--){
+													pair<std::multimap<size_t,size_t>::iterator , std::multimap<size_t,size_t>::iterator > p1 = nodes_relation.equal_range(shift);
+													std::vector<size_t> counter;
+													for(std::multimap<size_t,size_t>::iterator it1 = p1.first ; it1 != p1.second; it1++){
+														if(it1 != nodes_relation.end()){
+															counter.push_back(it1->second);
+														}
+													}
+											//		std::multimap<size_t,size_t>::iterator p2 = nodes_relation.find(shift);
+													if(counter.size() > 0){
+														nodes_relation.erase(shift);
+														for(size_t in = 0; in < counter.size(); in++){
+															intermediate.insert(make_pair(shift+1, counter.at(in)+1));					
+														}
+													}else{
+												//	if(p1.first == nodes_relation.end())//checked!
+														std::cout << "end of the map"<<std::endl;
+														size_t ItsParent = nodes.size();// Replaced it with first parent instead
+														size_t ItsParent1 = nodes.size();
+														size_t ItsParent2 = nodes.size();
+														find_parent(shift,ItsParent2);
+													//	find_parent(shift,ItsParent);
+													//	find_parent(node_index,ItsParent1);
+														first_parent_index(shift,ItsParent);
+														first_parent_index(node_index,ItsParent1);
+														std::cout << "shift "<<shift << " nodeIndex "<<node_index <<" shiftParent: "<< ItsParent << " indexParent " << ItsParent1<< " shift parent "<< ItsParent2 <<std::endl;
+														if(ItsParent == ItsParent1&& ItsParent != nodes.size() && ItsParent2 != nodes.size()){
+															std::cout<<"Node had no kids but they have same parent"<<std::endl;
+															delete_relation(ItsParent2,shift);
+															intermediate.insert(make_pair(ItsParent2,shift+1));
+														}
+													}	
 												}
 												for(std::multimap<size_t,size_t>::iterator it = intermediate.begin();it != intermediate.end(); it++){
 													nodes_relation.insert(make_pair(it->first, it->second));
 												}
+												nodes_relation.insert(make_pair(node_index,node_index+1));
+												nodes.at(node_index) = common_part;// Seems like an extar thing since we already knew the entire parent is covered. 
+												nodes.push_back(last_node);
+												for(size_t shift = node_index+1; shift <nodes.size()-1; shift++){//size -1
+													std::map<std::vector<size_t>, size_t>::iterator it = firstParent.find(nodes.at(shift+1));
+													if(it != firstParent.end() && it->second == shift){
+														it->second = it->second+1;
+													}
+												}
+												std::map<std::vector<size_t>,size_t>::iterator it = firstParent.find(nodes.at(node_index));
+												if(it != firstParent.end() && it->second == node_index){					
+													firstParent.erase(it);
+													firstParent.insert(make_pair(common_part,node_index));
+												}	
+												std::cout << "# is pushed back!" <<std::endl;
+												for(size_t i = 0; i < nodes.size(); i++){
+													std::vector<size_t> node = nodes.at(i);
+													std::cout << "node at " << i << " is ";
+													for(size_t j =0; j < node.size();j++){
+														std::cout << node.at(j) << " " ;
+													}
+													std::cout << " " <<std::endl;
+												}
+
+											}else{// I think i should remove this else!!
+												std::cout<< "we are here 35" << std::endl;
+												making_tree = false;
+												break;
 											}
 										}
-										nodes_relation.insert(make_pair(node_index,node_index+1));
-										nodes_relation.insert(make_pair(node_index,node_index+2));
-										std::cout<< "node index: "<< node_index << " node index+1 "<<node_index+1<< " node index +2  " << node_index +2 << std::endl;
-										nodes.push_back(second_last_node);
-										nodes.push_back(last_node);
-										nodes.at(node_index+2)= extra_part_of_parent;
-										nodes.at(node_index+1)=updated_current;
-										nodes.at(node_index)=common_part;
-				
-									}else{
-										std::string last_node = nodes.at(nodes.size()-1);
-										std::string second_last_node = nodes.at(nodes.size()-2);
-										for(size_t shift =nodes.size()-1 ; shift > node_index+2; shift --){
-											nodes.at(shift)=nodes.at(shift-2);
+
+									}
+									making_tree = false;
+								}else{//if it already has some child nodes, here i need to check all the child nodes for the common context
+									size_t biggest_kid = 0;
+									bool ItIsNotInAnyOfChildren = false;
+									size_t new_parent_index;
+									for(size_t j = 0; j < childs.size();j++){
+										if(childs.at(j)>biggest_kid){
+											biggest_kid = childs.at(j);
 										}
-										nodes.push_back(second_last_node);
-										nodes.push_back(last_node);
-										nodes.at(node_index+2) = extra_part_of_parent;
-										nodes.at(node_index+1) = updated_current;
-										nodes.at(node_index) = common_part;
-										if(current_parent == first_parent.at(j)){
-											first_parent.at(j) = common_part;
-											std::map<std::string, size_t>::iterator it1 = firstParent.find(current_parent);
-											if(it1 != firstParent.end()){
-												firstParent.erase(it1);
+									}
+									for(size_t j = 0; j < childs.size();j++){
+										if(other.size() != 0){
+											if(nodes.at(childs.at(j)).at(0)== other.at(0)){
+												ItIsNotInAnyOfChildren = true;
+												current_parent = nodes.at(childs.at(j));
+												new_parent_index = childs.at(j);
+												break;
 											}
-											std::map<std::string, size_t>::iterator it = firstParent.find(common_part);
-											if(it == firstParent.end()){
-												firstParent.insert(make_pair(common_part,node_index));
+										}
+									}
+									if(ItIsNotInAnyOfChildren == false){ //In this case current string is added as a new child node.
+										std::vector<size_t> last_node = nodes.at(nodes.size()-1);
+										if(other.size() != 0){
+											for(size_t j =nodes.size()-1; j > node_index+1; j--){
+												nodes.at(j) = nodes.at(j-1);
+											}
+											nodes.at(node_index+1)=other;
+										}else{
+											bool AddNoMore = false;
+											for(size_t j = 0; j < childs.size(); j++){
+												std::vector<size_t> new_suffix;
+												new_suffix.push_back(powerOfTwo.at(31));
+												if(nodes.at(childs.at(j))== new_suffix){
+													AddNoMore = true;
+													break;
+												}
+											}
+											if(AddNoMore == true){
+												making_tree = false;
+												break;
 											}else{
-												it->second = node_index;
+												for(size_t j =nodes.size()-1; j > node_index+1; j--){
+													nodes.at(j) = nodes.at(j-1);
+												}
+												std::vector<size_t> new_suffix;
+												new_suffix.push_back(powerOfTwo.at(31));
+												//nodes.push_back(new_suffix);
+												nodes.at(node_index+1)=new_suffix;
 											}
 										}
-										for(size_t shift = nodes.size()-3; shift > node_index;shift--){
+										nodes.push_back(last_node);
+										std::multimap<size_t,size_t> intermediate;
+										for(size_t shift = nodes.size()-2; shift > node_index;shift--){
 											pair<std::multimap<size_t,size_t>::iterator , std::multimap<size_t,size_t>::iterator > p1 = nodes_relation.equal_range(shift);
 											std::vector<size_t> counter;
-											std::multimap<size_t, size_t> intermediate;
 											for(std::multimap<size_t,size_t>::iterator it1 = p1.first ; it1 != p1.second; it1++){
 												if(it1 != nodes_relation.end()){
 													counter.push_back(it1->second);
 												}
 											}
-											std::cout<< "count: "<<counter.size() <<std::endl;
 											if(counter.size() > 0){
 												nodes_relation.erase(shift);
 												for(size_t in = 0; in < counter.size(); in++){
-													intermediate.insert(make_pair(shift+2, counter.at(in)+2));							
-													std::cout << "relation in problematic part2"<<std::endl;
-	 												std::cout<< shift+2 << " " << counter.at(in)+2 << std::endl;
+													std::cout <<"shift+1 " << shift + 1<<std::endl;
+													intermediate.insert(make_pair(shift+1, counter.at(in)+1));					
 												}
-												for(std::multimap<size_t, size_t>::iterator it = intermediate.begin(); it != intermediate.end();it++){
-													nodes_relation.insert(make_pair(it->first,it->second));
+											}else{//checked!
+												size_t ItsParent = nodes.size();
+												size_t ItsParent1 = nodes.size();
+												size_t ItsParent2 = nodes.size();
+												find_parent(shift,ItsParent2);
+												first_parent_index(shift,ItsParent);
+												first_parent_index(node_index,ItsParent1);
+												if(ItsParent == ItsParent1 && ItsParent2 != nodes.size()){
+													delete_relation(ItsParent2,shift);
+													nodes_relation.insert(make_pair(ItsParent2,shift+1));
+													std::cout <<"shift + 1 " << shift + 1<<std::endl;
 												}
 											}
+											
 										}
+										for(std::multimap<size_t,size_t>::iterator it = intermediate.begin();it != intermediate.end(); it++){
+										std::cout << "it -> first " << it->first << " it->second "<< it->second << std::endl;
+										nodes_relation.insert(make_pair(it->first, it->second));
+										}
+										std::cout<< "here!"<<std::endl;
 										nodes_relation.insert(make_pair(node_index,node_index+1));
-										nodes_relation.insert(make_pair(node_index,node_index+2));
-										for(size_t m = 0; m < nodes.size(); m++){
-											std::string node = nodes.at(m);
-											std::cout << "nodes at " << m << " : ";
-											for(size_t l =0; l < node.size();l++){
-												std::cout << int(node.at(l)) << " " ;
-											}
-										}
-										std::cout << " " << std::endl;
-									//	current = updated_current;
-									//	current_parent = common_part;
-									/*	for(size_t shift = node_index+2; shift <nodes.size(); shift++){
-											map<string, size_t>::iterator it = firstParent.find(nodes.at(shift));
+										std::cout <<"node index + 1 " << node_index + 1<<std::endl;
+										for(size_t shift = node_index+1; shift <nodes.size()-1; shift++){
+											std::map<std::vector<size_t>, size_t>::iterator it = firstParent.find(nodes.at(shift+1));		
 											if(it != firstParent.end() && it->second == shift){
-												it->second = it->second+2;
+												std::cout << "shift for first parent: " << shift <<std::endl;
+												it->second = it->second+1;
 											}
-										}*/
+										}
+										std::map<std::vector<size_t>,size_t>::iterator it = firstParent.find(nodes.at(node_index));
+										if(it != firstParent.end() && it->second == node_index){
+											firstParent.erase(it);
+											firstParent.insert(make_pair(common_part,node_index));	
+										}
+										nodes.at(node_index)= common_part;
+										std::cout<<"nodes relation2: "<<std::endl;
+										for(std::multimap<size_t , size_t>::iterator it = nodes_relation.begin(); it != nodes_relation.end(); it++){
+											std::cout << it->first <<" "<< it->second << std::endl;
+										}
+										making_tree = false;
+									}else{//calculate the common_part (This is the only continious condition)
+										std::cout<<"continuous one! "<<std::endl;
+										nodes.at(node_index) = common_part;//This is just before changing the index to the new one
+										std::cout << node_index << std::endl;
+										node_index = new_parent_index;
+										std::cout << node_index << std::endl;
+										current_string = other;
+										length = current_string.size();
+										if(current_parent.size()<= length){
+											length = current_parent.size();
+										}
+										common_part.clear();
+										for(size_t j = 0; j < length ;  j++){
+											if(current_parent.at(j)==current_string.at(j)){
+												common_part.push_back(current_parent.at(j));
+											}else break;
+										}
+									//	if(node_index < biggest_kid){
+									//		size_t ItsParent = nodes.size();
+									//		find_parent(node_index,ItsParent);
+									//		std::cout<< "node index " << node_index << "its parent: " << ItsParent <<std::endl;					
+									//		for(size_t i = node_index + 1 ; i <= biggest_kid; i++){
+									//			delete_relation(ItsParent,i);
+									//			nodes_relation.insert(make_pair(ItsParent,i+2));
+									//			std::cout <<" i + 2 " << i + 2<<std::endl;
+									//		}
+									//	}
+										std::cout<<"common_part:"<<std::endl;
+										for(size_t j =0; j < common_part.size(); j++){
+											std::cout << common_part.at(j)<< " ";
+										}
+										std::cout << " " <<std::endl;
 									}
-									current = updated_current;
-									current_parent = common_part;
-									break;	//break the while loop					
-								}
-								size_t parentInd = node_index;
-								find_a_node(node_index, parentInd, current_parent);
-								std::cout << "node index" << node_index << " , "<< parentInd<<std::endl;// are they the same? No, node index is from updated parent!
-							}//Here is end of while loop!
-							std::cout << "currentsize "<<current.size()<<std::endl;
-							std::cout<< "current parent size: "<<current_parent.size()<<std::endl;
-							std::cout<<"num kid: "<<num_kid<<std::endl;
-							last_common_index =0;
-							std::string commonPart;
-							if(num_kid ==0){
-								for(size_t k = 0 ; k < current.size(); k ++){
-									std::cout<< "parent at " << k << " is " << int(current_parent.at(k))<< " current at " << k << " is " <<int(current.at(k))<<std::endl;
-									if(current.at(k)==current_parent.at(k)){
-										last_common_index += 1;
-										commonPart += current.at(k);
-									}else break;
-								}
-								std::cout<<"last common index "<<last_common_index<<std::endl;
-								if(last_common_index != 0){
-									std::cout << "nodes size: " << nodes.size() << "node index" << node_index << std::endl;
-									nodes.at(node_index)= commonPart;
-									std::cout<< "common: " << std::endl;
-									for(size_t c=0; c< commonPart.size(); c++){
-										std::cout<< int(commonPart.at(c))<< " " ;
-									}
-									std::cout << " " <<std::endl;
-									if(current_parent == first_parent.at(j)){
-										first_parent.at(j) = commonPart;
-										std::map<std::string, size_t>::iterator it1 = firstParent.find(current_parent);
-										if(it1 != firstParent.end()){
-											firstParent.erase(it1);
-										}
-										std::map<std::string, size_t>::iterator it = firstParent.find(commonPart);
-										if(it == firstParent.end()){
-											firstParent.insert(make_pair(commonPart,node_index));
-										}else{
-											it->second = node_index;
-										}
-									}
-									std::string other_branch;
-									if((commonPart == current&&current_parent.size()>current.size())||commonPart.size() < current.size()){
-									//	bool new_relation =false;
-										if(commonPart == current&&current_parent.size()>current.size()){
-											std::cout << "all the current is on the parent!"<<std::endl;
-											for(size_t k = last_common_index; k < current_parent.size();k++){
-												other_branch += current_parent.at(k);
-											}
-											std::cout<< "other1: " << std::endl;
-											for(size_t c=0; c< other_branch.size(); c++){
-												std::cout<< int(other_branch.at(c))<< " " ;
-											}
-											std::cout << " " <<std::endl;	
-										//	new_relation = true;
-										}
-										if(commonPart.size() < current.size()){
-											for(size_t k = last_common_index; k < current_parent.size();k++){
-												other_branch += current_parent.at(k);
-											}
-											std::cout<< "other2: " << std::endl;
-											for(size_t c=0; c< other_branch.size(); c++){
-												std::cout<< int(other_branch.at(c))<< " " ;
-											}
-											std::cout << " " <<std::endl;
-										//	new_relation = true;
-										}
-std::cout << " first parent map: "<<std::endl;
-		for(std::map<std::string, size_t>::iterator it = firstParent.begin();it != firstParent.end(); it++){
-			std::string parent = it->first;
-			for(size_t i =0; i< parent.size();i++){
-				std::cout<< int(parent.at(i))<< " ";
-			}
-			std::cout << " , " << it->second << std::endl;
-		}
-	
-										if(node_index == nodes.size()-1){
-											std::cout << "when we are at if"<<std::endl;
-											nodes.push_back(other_branch);
-											if(i+last_common_index <= suffixes.size()-1){
-												nodes.push_back(suffixes.at(i+last_common_index));
-											}else{
-												nodes.push_back("#");
-											}
-											nodes_relation.insert(make_pair(node_index,nodes.size()-1));
-											nodes_relation.insert(make_pair(node_index,nodes.size()-2));
-											std::cout<< node_index << " " << nodes.size()-1 << " " << nodes.size()-2 << " " << std::endl;
-											for(size_t m = 0; m < nodes.size(); m++){
-												std::string node = nodes.at(m);
-												std::cout << "nodes at " << m << " : ";
-												for(size_t l =0; l < node.size();l++){
-													std::cout << int(node.at(l)) << " " ;
-												}
-											}
-											std::cout << " " << std::endl;	
-										}else{// all the nodes in branch counter should be shifted by two, worth it to creat a new function that does that
-											std::cout<< "if we are at else"<<std::endl;
-											std::string last_node = nodes.at(nodes.size()-1);
-											std::string second_last_node = nodes.at(nodes.size()-2);
-											std::map<std::string,size_t> InterMediate;
-											for(size_t shift = node_index+1; shift <nodes.size(); shift++){
-												std::map<std::string, size_t>::iterator it = firstParent.find(nodes.at(shift));
-												if(it != firstParent.end() && it->second == shift){
-													InterMediate.insert(make_pair(nodes.at(shift),it->second+2));
-												}
-											}
-											for(std::map<std::string , size_t>::iterator p1 = InterMediate.begin(); p1 != InterMediate.end(); p1++){
-												std::map<std::string , size_t>::iterator p2 = firstParent.find(p1->first);
-												firstParent.erase(p2);
-											}
-											for(std::map<std::string , size_t>::iterator p1 = InterMediate.begin(); p1 != InterMediate.end(); p1++){
-												firstParent.insert(make_pair(p1->first,p1->second));
-											}
-
-											pair < std::multimap<size_t,size_t>::iterator, std::multimap<size_t,size_t>::iterator > check_kids = nodes_relation.equal_range(node_index);
-											size_t kid_count = 0;
-										//	if(new_relation==true){
-												for(std::multimap<size_t,size_t>::iterator it1 = check_kids.first ; it1 != check_kids.second; it1++){
-													if(it1 != nodes_relation.end()){
-														kid_count++;
-													}
-												}
-										//	}
-											for(size_t shift =nodes.size()-1 ; shift > node_index+2; shift --){
-												nodes.at(shift)=nodes.at(shift-2);
-											}
-											nodes.push_back(second_last_node);
-											nodes.push_back(last_node);
-											nodes.at(node_index+2) = other_branch;
-											if(i+last_common_index+commonIndex <= suffixes.size()-1){
-												std::cout<< " i "<< i << " i+ last_common_index "<< i+last_common_index << "commonIndex "<< commonIndex <<std::endl;
-												nodes.at(node_index+1) = suffixes.at(i+last_common_index+commonIndex);
-											}else{
-												nodes.at(node_index+1) = '#';
-												std::cout<< "node at " << node_index + 1<< " is "  << nodes.at(node_index+1) <<std::endl;
-											}
-											for(size_t shift = nodes.size()-2; shift >= node_index+1;shift--){
-												std::cout << "shift is: "<<shift<<std::endl;
-												pair<std::multimap<size_t,size_t>::iterator , std::multimap<size_t,size_t>::iterator > p1 = nodes_relation.equal_range(shift);
-												std::vector<size_t> counter;
-												std::multimap<size_t,size_t>intermediate;
-												for(std::multimap<size_t,size_t>::iterator it1 = p1.first ; it1 != p1.second; it1++){
-													if(it1 != nodes_relation.end()){
-														counter.push_back(it1->second);
-														std::cout<< "parent "<< shift << " , "<< it1->first<<"child in map: "<<it1->second<<std::endl;
-													}
-												}
-												std::cout<< "count: "<<counter.size() <<std::endl;
-												if(counter.size() > 0){
-													nodes_relation.erase(shift);
-													for(size_t in = 0; in < counter.size(); in++){
-														intermediate.insert(make_pair(shift+2, counter.at(in)+2));							
-														std::cout << "er"<<std::endl;
-	 													std::cout<< shift+2 << " " << counter.at(in)+2 << std::endl;
-													}
-													for(std::multimap<size_t, size_t>::iterator it =intermediate.begin();it !=intermediate.end();it++){
-														nodes_relation.insert(make_pair(it->first,it->second));
-													}
-												}
-												if(counter.size()==0){
-													vector<size_t> siblings;
-													size_t ItsParent;
-													find_sibling(node_index,siblings);
-													find_parent(node_index,ItsParent);
-													for(size_t s = 0; s < siblings.size(); s++){
-														if(siblings.at(s)==shift && siblings.at(s)> node_index){
-															delete_relation(ItsParent,siblings.at(s));
-															nodes_relation.insert(make_pair(ItsParent,siblings.at(s)+2));
-															std::cout<< "shifting bigger siblings"<<endl;
-															std::cout << ItsParent<< " " <<siblings.at(s)+2 <<std::endl;
-														}
-													}
-												}
-											}
-											std::cout<< "nodeindex: "<< node_index << std::endl;//always check before inserting
-											nodes_relation.insert(make_pair(node_index, node_index+1));
-											nodes_relation.insert(make_pair(node_index, node_index+2));
-											std::cout << "node index +1 " << node_index+1 << " node index +2 "<< node_index+2 <<std::endl;
-											if(kid_count> 0){
-												std::cout<< "has sub kids! "<<std::endl;
-												for(size_t i = 0;  i < kid_count; i++){
-													nodes_relation.insert(make_pair(node_index+2, node_index+3+i));
-													std::cout << "node index +2 " << node_index+2 << " node index +3 +i"<< node_index+3 + i <<std::endl;
-												}
-											}
-											for(size_t m = 0; m < nodes.size(); m++){
-												std::string node = nodes.at(m);
-												std::cout << "nodes at " << m << " : ";
-												for(size_t l =0; l < node.size();l++){
-													std::cout << int(node.at(l)) << " " ;
-													}
-											}
-											std::cout << " " << std::endl;		
-										}
-									}	
 								}
 							}
-							break;
+							//The second case://The non common part is added as a child node and all old child nodes become children of the non-common part
+							else if((length == current_string.size() && common_part.size() == length) || common_part.size() < length ){
+								std::vector<size_t> non_common;
+								std::vector<size_t> non_common_2;
+								for(size_t j =common_part.size(); j < current_parent.size(); j++){
+									non_common.push_back(current_parent.at(j));
+								}
+								if(common_part.size() < length){
+									for(size_t j =common_part.size(); j < current_string.size(); j++){
+										non_common_2.push_back(current_string.at(j));
+									}	
+								}else { std::cout <<" there is no non common 2" << std::endl;}
+								std::cout << "non_common "<<std::endl;
+								assert(non_common.size() != 0);
+								for( size_t j =0; j < non_common.size() ; j ++){
+									std::cout << non_common.at(j)<< " ";
+								}
+								std::cout<< " " << std::endl;
+								std::cout << "non_common_2"<<std::endl;
+								for( size_t j =0; j < non_common_2.size() ; j ++){
+									std::cout << non_common_2.at(j)<< " ";
+								}
+								std::cout<< " " << std::endl;
+								vector<size_t> childs;
+								find_child_nodes(node_index,childs);
+								if(childs.size() == 0){
+									if(node_index == nodes.size()-1){//If it is the last node on the tree
+									//	nodes.at(node_index) = common_part;
+										if(common_part.size() < length){
+											nodes.push_back(non_common_2);
+										}else{
+											std::vector<size_t> new_suffix;
+											new_suffix.push_back(powerOfTwo.at(31));
+											nodes.push_back(new_suffix);
+										}
+										nodes.push_back(non_common);
+									}else if(node_index == nodes.size()-2){
+										std::cout<<"node size - 2" <<std::endl;
+										std::vector<size_t> last_node = nodes.at(nodes.size()-1);
+									//	nodes.at(node_index) = common_part;
+										if(common_part.size() < length){
+											nodes.at(node_index+1)=non_common_2;
+										}else{
+											std::vector<size_t> new_suffix;
+											new_suffix.push_back(powerOfTwo.at(31));
+											nodes.at(node_index+1)= new_suffix;
+										}
+										nodes.push_back(non_common);
+										nodes.push_back(last_node);
+									}else{//Indices of all the nodes after that should be shifted 
+										std::vector<size_t> last_node = nodes.at(nodes.size()-1);
+										std::vector<size_t> second_last_node = nodes.at(nodes.size()-2);
+										std::cout<< "node index "<< node_index<<std::endl;
+										for(size_t j =nodes.size()-1; j > node_index+2; j--){
+											nodes.at(j) = nodes.at(j-2);
+										}
+									//	nodes.at(node_index) = common_part;
+										if(common_part.size() < length){
+											nodes.at(node_index+1)=non_common_2;
+										}else{
+											std::vector<size_t> new_suffix;
+											new_suffix.push_back(powerOfTwo.at(31));
+											nodes.at(node_index+1)= new_suffix;
+										}
+										nodes.at(node_index+2)= non_common;
+										nodes.push_back(second_last_node);
+										nodes.push_back(last_node);
+										// Shifting the rest of relations as well:
+										std::multimap<size_t,size_t> intermediate;
+										for(size_t shift = nodes.size()-3; shift > node_index;shift--){
+											std::cout << "shift "<< shift << std::endl;
+											pair<std::multimap<size_t,size_t>::iterator , std::multimap<size_t,size_t>::iterator > p1 = nodes_relation.equal_range(shift);
+											std::vector<size_t> counter;
+											for(std::multimap<size_t,size_t>::iterator it1 = p1.first ; it1 != p1.second; it1++){
+												if(it1 != nodes_relation.end()){
+													counter.push_back(it1->second);
+												}
+											}
+											if(counter.size() > 0){
+												nodes_relation.erase(shift);
+												for(size_t in = 0; in < counter.size(); in++){
+													intermediate.insert(make_pair(shift+2, counter.at(in)+2));					
+												}
+											}else{//checked!
+												size_t ItsParent = nodes.size();
+												size_t ItsParent1 = nodes.size();
+												size_t ItsParent2 = nodes.size();
+												find_parent(shift,ItsParent2); //Replaced it with first parent
+											//	find_parent(node_index,ItsParent1);
+												first_parent_index(shift,ItsParent);
+												first_parent_index(node_index,ItsParent1);
+												std::cout << "shift "<< shift << " node_index "<< node_index <<" shift-parent: "<< ItsParent << " index_parent " << ItsParent1<<std::endl;
+												if(ItsParent == ItsParent1&& ItsParent != nodes.size() && ItsParent2 != nodes.size()){
+													std::cout<<"Node had no kids but they have same parent"<<std::endl;
+													delete_relation(ItsParent2,shift);
+													intermediate.insert(make_pair(ItsParent2,shift+2));
+												}	
+											}
+										}
+										for(std::multimap<size_t,size_t>::iterator it = intermediate.begin();it != intermediate.end(); it++){
+											nodes_relation.insert(make_pair(it->first, it->second));
+										}
+									}
+									nodes.at(node_index) = common_part;
+									nodes_relation.insert(make_pair(node_index,node_index+1));
+									nodes_relation.insert(make_pair(node_index,node_index+2));
+							}else{//It has children
+								std::vector<size_t> last_node = nodes.at(nodes.size()-1);// Not sure if it works for the case that node index is equal to the nodes.size()-2
+								std::vector<size_t> second_last_node;
+								if(nodes.size()-2 != node_index){
+									second_last_node = nodes.at(nodes.size()-2);
+									std::cout << node_index << " " << nodes.size()-1<< " " << nodes.size()-2 << std::endl;
+									for(size_t j =nodes.size()-1; j > node_index+2; j--){
+										nodes.at(j) = nodes.at(j-2);
+									}
+								}else{
+									std::cout<< "exception!" <<std::endl;
+								}
+							//	nodes.at(node_index) = common_part;
+								if(common_part.size() < length){
+									nodes.at(node_index+1)=non_common_2;
+									std::cout<< "HEya!" <<std::endl;
+								}else{
+									std::vector<size_t> new_suffix;
+									new_suffix.push_back(powerOfTwo.at(31));
+									nodes.at(node_index+1)= new_suffix;
+									std::cout<< "HEYA!" <<std::endl;
+								}
+								if(nodes.size()-2 != node_index){
+									nodes.at(node_index+2)= non_common;
+									nodes.push_back(second_last_node);
+								}else{
+									nodes.push_back(non_common);
+								}
+								nodes.push_back(last_node);
+								for(size_t shift = nodes.size()-2; shift > node_index;shift--){
+									pair<std::multimap<size_t,size_t>::iterator , std::multimap<size_t,size_t>::iterator > p1 = nodes_relation.equal_range(shift);
+									std::vector<size_t> counter;
+									std::multimap<size_t,size_t> intermediate;
+									for(std::multimap<size_t,size_t>::iterator it1 = p1.first ; it1 != p1.second; it1++){
+										if(it1 != nodes_relation.end()){
+											counter.push_back(it1->second);
+										}
+									}
+									if(counter.size() > 0){
+										nodes_relation.erase(shift);
+										for(size_t in = 0; in < counter.size(); in++){
+											intermediate.insert(make_pair(shift+2, counter.at(in)+2));					
+										}
+										for(std::multimap<size_t,size_t>::iterator it = intermediate.begin();it != intermediate.end(); it++){
+											nodes_relation.insert(make_pair(it->first, it->second));
+											std::cout << "shift "<< shift<< " it->first " << it->first <<std::endl;
+										}
+									}else{//checked!
+										std::cout << "almost there!" << std::endl;
+										size_t ItsParent = nodes.size();
+										size_t ItsParent1 = nodes.size();
+										size_t ItsParent2 = nodes.size();
+										find_parent(shift,ItsParent2);// Replaced it with first parent
+									//	find_parent(node_index,ItsParent1);
+										first_parent_index(shift,ItsParent);
+										first_parent_index(node_index,ItsParent1);
+										if(ItsParent == ItsParent1&& ItsParent != nodes.size()&& ItsParent2 != node_index && ItsParent2 != nodes.size()){
+											std::cout<<"they have same parent"<<std::endl;
+											delete_relation(ItsParent2,shift);
+											nodes_relation.insert(make_pair(ItsParent2,shift+2));
+										}
+									}				
+								}
+								for(size_t j = 0 ; j < childs.size();j++){
+									delete_relation(node_index,childs.at(j));
+									nodes_relation.insert(make_pair(node_index+2, childs.at(j)+2));
+								}
+								std::cout<<"nodes relation4: "<<std::endl;
+								for(std::multimap<size_t , size_t>::iterator it = nodes_relation.begin(); it != nodes_relation.end(); it++){
+									std::cout << it->first <<" "<< it->second << std::endl;
+								}
+								nodes.at(node_index) = common_part;
+								nodes_relation.insert(make_pair(node_index,node_index+1));
+								nodes_relation.insert(make_pair(node_index,node_index+2));
+							}
+							std::map<std::vector<size_t>, size_t> f_par;
+							for(size_t shift = node_index+1; shift <nodes.size()-2; shift++){
+								std::map<std::vector<size_t>, size_t>::iterator it = firstParent.find(nodes.at(shift+2));
+								if(it != firstParent.end() && it->second == shift){
+									f_par.insert(make_pair(it->first,it->second+2));
+								}
+							}
+							for(std::map<std::vector<size_t> , size_t>::iterator it = f_par.begin(); it != f_par.end(); it++){
+								std::map<std::vector<size_t> , size_t>::iterator it1 = firstParent.find(it->first);
+								if(it1 != firstParent.end()){
+									it1->second = it->second;
+								}
+							}
+							std::map<std::vector<size_t>,size_t>::iterator it = firstParent.find(nodes.at(node_index));
+							if(it != firstParent.end() && it->second == node_index){
+								std::cout << "node is first parent!"  << node_index <<std::endl;
+								firstParent.erase(it);
+								firstParent.insert(make_pair(common_part,node_index));
+							}
+					//		nodes.at(node_index) = common_part;
+					//		nodes_relation.insert(make_pair(node_index,node_index+1));
+					//		nodes_relation.insert(make_pair(node_index,node_index+2));
+							std::cout<<"nodes relation: "<<std::endl;
+							for(std::multimap<size_t , size_t>::iterator it = nodes_relation.begin(); it != nodes_relation.end(); it++){
+								std::cout << it->first <<" "<< it->second << std::endl;
+							}
+							making_tree = false;					
 						}
-					}
-				}
-				if(temp==active_node){//it is used only for adding a new branch to the root.
-					std::cout<< " node size: " << nodes.size() << " current: " << std::endl;
-					for(size_t l =0; l < current.size(); l++){
-						std::cout<< int(current.at(l))<< " ";
-					}
-					std::cout << " " << std::endl;
-					first_parent.push_back(current);
-					nodes.push_back(current);
-				//	vector<size_t> path;
-				//	path.push_back(nodes.size()-1);
-				//	branch_counter.insert(make_pair(path,1));
-					std::map<std::string, size_t>::iterator it = firstParent.find(current);
-					if(it == firstParent.end()){
-						firstParent.insert(make_pair(current,nodes.size()-1));
-					}else{
-						it->second = nodes.size()-1;
+						//The third case
+						//else if(length == current_parent.size() && common_part.size() < length){ current parent is broken(similar to case two)}
+						//The forth case:
+						//else if(length == current_string.size() && common_part.size() < length){ Similar to case two }
 					}
 				}
 			}
-		}
-		std::cout<<"first parents: "<<std::endl;
-		for(size_t k=0; k < first_parent.size(); k++){
-			for(size_t i =0; i< first_parent.at(k).size();i++){
-				std::cout<< int(first_parent.at(k).at(i))<< " ";
-			}
-			std::cout << " , " ;
-		}
-		std::cout<< " "<<std::endl;
-		std::cout << " first parent map: "<<std::endl;
-		for(std::map<std::string, size_t>::iterator it = firstParent.begin();it != firstParent.end(); it++){
-			std::string parent = it->first;
-			for(size_t i =0; i< parent.size();i++){
-				std::cout<< int(parent.at(i))<< " ";
-			}
-			std::cout << " , " << it->second << std::endl;
+}
 		}
 		std::cout<< "all the nodes:"<<std::endl;
 		for(size_t i = 0; i < nodes.size(); i++){
-			std::string node = nodes.at(i);
+			std::vector<size_t> node = nodes.at(i);
 			std::cout << "node at " << i << " is ";
 			for(size_t j =0; j < node.size();j++){
-				std::cout << int(node.at(j)) << " " ;
+				std::cout << node.at(j) << " " ;
 			}
 			std::cout << " " <<std::endl;
 		}
 		std::cout<<"nodes relation: "<<std::endl;
 		for(std::multimap<size_t , size_t>::iterator it = nodes_relation.begin(); it != nodes_relation.end(); it++){
-				std::cout << it->first <<" "<< it->second << std::endl;
+			std::cout << it->first <<" "<< it->second << std::endl;
 		}
 	}
-	void suffix_tree::count_paths(){
+		count_branches();
+	}
+	void suffix_tree::count_branches(){
+		branch_counter.clear();
 		for(size_t seq =0; seq < data.numSequences(); seq++){
-			create_suffix(seq);
-			std::cout << "seq: "<<seq<<std::endl;
-			for(size_t i = 0; i < suffixes.size(); i++){
+			std::cout << "seq: "<<seq<< "suffix size " << suffixes.at(seq).size() << std::endl;
+			for(size_t i = 0; i < suffixes.at(seq).size(); i++){
 				std::cout<< "i: "<<i << std::endl;
-				string current = suffixes.at(i);
+				for(size_t q = 0; q < suffixes.at(seq).at(i).size();q++){
+				std::vector<size_t> current = suffixes.at(seq).at(i).at(q);
+				for(size_t j =0; j < current.size(); j++){
+				std::cout << current.at(j) << " ";
+				}
+				std::cout << " " << std::endl;
 				vector<size_t> branch;//insert this vector to the branch _counter map
-				for(map<string,size_t>::iterator it = firstParent.begin();it!=firstParent.end();it++){
-					string first_parent = it->first;
+				for(map<std::vector<size_t>,size_t>::iterator it = firstParent.begin();it!=firstParent.end();it++){
+					std::vector<size_t> first_parent = it->first;
 					if(first_parent.at(0)==current.at(0)){
-						string updated_current;
+						std::vector<size_t> updated_current;
 						if(first_parent.size()==current.size()){
-							std::cout<<"No kid!"<<std::endl;
-						}else{
+							std::cout<<"All the current is on the first parent!"<<std::endl;
+						}else{//Note that first parent can not be longer than current.
+							std::cout << "first updated current"<<std::endl;
 							for(size_t j =first_parent.size() ; j < current.size(); j++){
-								updated_current+=current.at(j);
+								updated_current.push_back(current.at(j));
+								std::cout << current.at(j)<<std::endl;
 							}
 						}
-							size_t parent_index = it->second;
-							branch.push_back(it->second);
-							current = updated_current;
+						size_t parent_index = it->second;
+						branch.push_back(it->second);
+						current = updated_current;
 						while(current.size()>0){
+							std::cout << "parent_index "<< parent_index <<std::endl;
 							multimap<size_t,size_t>::iterator check = nodes_relation.find(parent_index);
 							if(check != nodes_relation.end()){
 								pair<multimap<size_t,size_t>::iterator , multimap<size_t,size_t>::iterator > p1 = nodes_relation.equal_range(parent_index);
+								bool ItIsNotOnAnyChildNode = true;
 								for(multimap<size_t,size_t>::iterator it1 = p1.first ; it1 != p1.second; it1++){
-									size_t parentIndex = it1->second;
-									if(current.at(0)==nodes.at(parentIndex).at(0)){
-										branch.push_back(parentIndex);
-										string updatedCurrent;
-										if(nodes.at(parentIndex).size()==current.size()){
+									size_t CurrentParentIndex = it1->second;
+									std::cout << "CurrentParentIndex "<< CurrentParentIndex <<std::endl;
+									if(current.at(0)==nodes.at(CurrentParentIndex).at(0)){
+										ItIsNotOnAnyChildNode = false;										
+										branch.push_back(CurrentParentIndex);
+										std::vector<size_t> updatedCurrent;
+										if(nodes.at(CurrentParentIndex).size()==current.size()){
+											std::cout<<"All the current is on the parent!"<<std::endl;
 										}else{
-											for(size_t j = nodes.at(parentIndex).size(); j<current.size(); j++){
-												updatedCurrent+=current.at(j);
+											std::cout<< "next updated current: "<<std::endl;
+											for(size_t j = nodes.at(CurrentParentIndex).size(); j<current.size(); j++){
+												updatedCurrent.push_back(current.at(j));
+												std::cout << current.at(j)<<std::endl;
 											}
 										}
 										current = updatedCurrent;
-										parent_index = parentIndex;
+										parent_index = CurrentParentIndex;
 										break;
 									}
 								}
-							} else{ 
-								std::cout<< "has no kid"<<std::endl;
-								break;
+								if(ItIsNotOnAnyChildNode == true){
+									std::cout<< "There is something wrong! "<<std::endl;
 								}
+							} else{ 
+								std::cout<< "Parent has no kid! It shouldn't happen"<<std::endl;
+								break;
+							}
 						}
 						break;
 					}
 				}
+				std::vector<size_t> sub_branch;
 				cout<< "branch size: "<< branch.size() << endl;
-				for(size_t i = 0; i < branch.size(); i++){
-					vector<size_t>sub_branch;
-					std::cout<< " push back to sub branch: " <<std::endl;
-					for(size_t j = i; j< branch.size();j++){
-						sub_branch.push_back(branch.at(j));
-						std::cout<< branch.at(j)<<std::endl;
-						map<vector<size_t>,size_t>::iterator it1 = branch_counter.find(sub_branch);
-						if(it1 == branch_counter.end()){
-							branch_counter.insert(make_pair(sub_branch,0));
-							it1 = branch_counter.find(sub_branch);
-						}
-						it1->second = it1->second +1;
+				for(size_t i = 0 ; i < branch.size(); i++){
+					sub_branch.push_back(branch.at(i));
+					std::map<std::vector<size_t>,size_t>::iterator it1 = branch_counter.find(sub_branch);
+					if(it1 == branch_counter.end()){
+						branch_counter.insert(make_pair(sub_branch,0));
+						it1 = branch_counter.find(sub_branch);
 					}
+					for(size_t j = 0; j < sub_branch.size();j++){
+						std::cout << sub_branch.at(j)<< " ";
+					}					
+					it1->second = it1->second +1;
+					std::cout<< "number of happening "<< it1->second << std::endl;
 				}
-				
+			}			
 			}
 
 		}
 		cout<< "branch counter: "<<endl;
-		for(map<vector<size_t> , size_t>::iterator it = branch_counter.begin(); it != branch_counter.end(); it++){
+		for(std::map<std::vector<size_t> , size_t>::iterator it = branch_counter.begin(); it != branch_counter.end(); it++){
 			vector<size_t> br = it->first;
 			for(size_t i =0; i < br.size();i++){
 				cout<< br.at(i)<< " ";
@@ -2104,7 +2325,7 @@ std::cout << " first parent map: "<<std::endl;
 			
 		}
 	}
-	std::vector<std::string> suffix_tree::get_nodes()const{
+	std::vector<std::vector<size_t> > suffix_tree::get_nodes()const{
 		return nodes;
 	}
 	std::map<std::vector<size_t>, size_t> suffix_tree::get_count()const{
@@ -2112,7 +2333,7 @@ std::cout << " first parent map: "<<std::endl;
 	}
 	std::vector<size_t> suffix_tree::get_first_parent()const{
 		std::vector<size_t> first_parent;
-		for(std::map<std::string,size_t>::const_iterator it = firstParent.begin(); it != firstParent.end(); it++){
+		for(std::map<std::vector<size_t>,size_t>::const_iterator it = firstParent.begin(); it != firstParent.end(); it++){
 			first_parent.push_back(it->second);
 		}
 		sort(first_parent.begin(),first_parent.end());	
@@ -2123,147 +2344,733 @@ std::cout << " first parent map: "<<std::endl;
 		std::cout << " " <<std::endl;
 		return first_parent;
 	}
-	merging_centers::merging_centers(finding_centers & cent , suffix_tree & t):centers(cent),tree(t){}
+	size_t suffix_tree::get_power_of_two(size_t & power)const{
+		size_t power_of_two = powerOfTwo.at(power);
+		return power_of_two;
+	}
+	std::map<size_t, std::vector<size_t> > suffix_tree::get_center_on_a_sequence(size_t & seq_id)const{
+		return successive_centers.at(seq_id);
+	}
+	merging_centers::merging_centers(all_data & d, finding_centers & cent , suffix_tree & t):data(d), centers(cent),tree(t){}
 	merging_centers::~merging_centers(){}
-	void merging_centers::merg_gain_value(){
-	//	tree.get_first_parent();
-		vector<string> nodes = tree.get_nodes();
-		cout<< "size: " << nodes.size()<<endl;
-		map<vector<size_t> , size_t> counts = tree.get_count();//vector<size_t> shows a path and size_t is its number of happening.
-	//	map<vector<size_t>, size_t> tree_gains;	// Just final gain values are added, vector<size_t> a path (long center) and size_t its gain.
-		cout<< "first parent size: "<< tree.get_first_parent().size()<<endl;
-		//for(size_t i =0; i < tree.get_first_parent().size();i++){
-		//	cout << "i "<< i <<endl;
-		//	size_t firstparent = tree.get_first_parent().at(i);
-			map<vector<size_t>, size_t> subtree_gains;//gain values
-			for(map<vector<size_t> , size_t>::iterator it = counts.begin(); it != counts.end(); it++){
-				vector<size_t> br = it->first;
-			//	if(br.at(0)== firstparent){
-					size_t number = it->second;
-					string centers;
-					int gain = 0;
-					for(size_t j = 0 ; j < br.size(); j++){
-						centers += nodes.at(br.at(j));
-					}
-					cout<< "number "<< number << "centers " ;
-					for(size_t j =0; j < centers.size();j++){
-						cout<< int(centers.at(j)) << " " ;
-					}
-					cout << " " <<endl;
-					gain = number*(centers.size())-(number+centers.size());
-						subtree_gains.insert(make_pair(br,gain));
-						cout<< "gain "<<gain <<endl;
-			//	}
+	void merging_centers::updating_centers(std::vector<size_t> & center_string, size_t & index){//replace 'center_string' with its new 'index' where ever 'center_sting' occurs on the tree and updates the number of happening.
+		//First make a new tree !
+		tree.create_tree(center_string,index);
+		std::vector<std::vector<size_t> > nodes = tree.get_nodes();
+		std::map<std::vector<size_t>, size_t > counts = tree.get_count(); // Updated number of happening for each updated string of centers(Notice that it has node number not the centers indices)
+		std::map<std::vector<size_t>, int> intermediate;
+		for(std::map<std::vector<size_t> , size_t>::iterator it = counts.begin(); it != counts.end(); it++){
+			vector<size_t> br = it->first;//list of nodes of a path
+			std::cout << "br size is : " << br.size() <<std::endl;
+			for(size_t i =0; i < br.size();i++){
+				std::cout << br.at(i)<< " ";
 			}
-			size_t highest_gain=0;
-			vector<size_t>highest_path;
-			for(map<vector<size_t>, size_t>::iterator it = subtree_gains.begin(); it != subtree_gains.end(); it++){
-				if(it->second > highest_gain){
-						highest_gain = it->second;
-						highest_path = it->first;
+			std::cout << " "<< std::endl;
+			size_t number = it->second;
+			std::vector<size_t> seriesOfCenters;
+			for(size_t j = 0 ; j < br.size(); j++){
+				for(size_t k =0; k < nodes.at(br.at(j)).size();k++){
+					seriesOfCenters.push_back(nodes.at(br.at(j)).at(k));
+				}
+			}
+			size_t power = 31 ;
+			if(seriesOfCenters.at(seriesOfCenters.size()-1) == tree.get_power_of_two(power)){
+				seriesOfCenters.pop_back();	
+			}
+			std::map<std::vector<size_t>, int>::iterator it1 = gains.find(seriesOfCenters);
+			if(it1 != gains.end()){//It is kept as it is
+				intermediate.insert(make_pair(it1->first,it1->second));
+			}else{
+				size_t number_of_new_center = 0;
+				for(size_t i = 0; i < seriesOfCenters.size(); i++){
+					if(seriesOfCenters.at(i)== index){
+						number_of_new_center = number_of_new_center + 1;
+					}
+				}
+				size_t old_length = seriesOfCenters.size()+ (number_of_new_center*center_string.size());
+				size_t gain = number*old_length - (number + seriesOfCenters.size());
+				intermediate.insert(make_pair(seriesOfCenters,gain));
+			}
+		}
+		gains.clear();
+		for(std::map<std::vector<size_t>,int>::iterator it = intermediate.begin(); it != intermediate.end(); it++){
+			gains.insert(make_pair(it->first,it->second));
+		}
+/*			size_t oldCount = old_count ->second;
+			size_t length = centers.size();
+			if(center_string.size()<centers.size()){//here center_string is the high path
+				length = center_string.size();
+			}
+			bool StillNeedTobeChecked = true;
+			while(StillNeedTobeChecked == true){		
+				for(size_t i =0; i < centers.size(); i++){
+					size_t first_common_index;
+					std::vector<size_t> common_part;
+					if(centers.at(i)==center_string.at(0)&& centers.size()-i >= center_string.size()){
+						first_common_index = i;
+						for(size_t j =0; j < length;j++){
+							if(centers.at(j+i)==center_string.at(j)){
+								common_part.push_back(centers.at(j));
+							}else{
+								break;
+							}
+						}
+					}
+					if(common_part.size() == center_string.size()){
+						std::cout<< "there is a common part "<<std::endl;
+					//	std::map<std::vector<size_t> , size_t>::iterator it1 = updated_counts.find(centers);
+					//	if(old_count != updated_counts.end() && old_count ->second > 0){//why don't we erase it??
+					//		updated_counts.erase(it1);
+						//	it1->second = 0;
+					//	}
+						StillNeedTobeChecked = true;
+					//	std::map<std::vector<size_t> , size_t>::iterator oldCount = counts.find(centers);						
+						std::vector<size_t> new_center;
+						for(size_t j = 0; j < first_common_index ;j++){
+							new_center.push_back(centers.at(j));
+						}
+						new_center.push_back(index);
+						for(size_t j = first_common_index + common_part.size(); j < centers.size();j++){
+							new_center.push_back(centers.at(j));
+						}
+				//		centers = new_center;
+						std::map<std::vector<size_t> , size_t>::iterator it1 = updated_counts.find(centers);
+						if(it1 != updated_counts.end()){
+							oldCount = it1->second;
+							std::cout<<"old count " << oldCount << std::endl;
+							updated_counts.insert(make_pair(new_center,oldCount));
+						}else{
+							std::cout << "there is something wrong in new counts!" <<std::endl;
+						}
+						updated_counts.erase(it1);
+						centers = new_center;
+					}else{
+					//	std::cout << "we are here! " <<std::endl;
+						StillNeedTobeChecked = false;
+					}
+				}
+			}
+			int gain = it->second;
+			if(centers.size() != 1 && old_center_size != centers.size()){
+				std::cout << oldCount << " " << old_center_size << " " << centers.size()<<std::endl;
+				gain = oldCount*(old_center_size)-(oldCount+centers.size());
+			}
+			intermediate.insert(make_pair(centers,gain));
+			std::cout<< "centers " ;
+			for(size_t j =0; j < centers.size();j++){
+				cout<< centers.at(j) << " " ;
+			}
+			cout << " " <<endl;
+			std::cout << "gain is: " << gain << std::endl;
+		}
+		for(std::map<std::vector<size_t>, size_t>::iterator new_count = updated_counts.begin(); new_count != updated_counts.end(); new_count ++){
+			for(size_t j =0; j < new_count->first.size();j++){
+				cout<< new_count->first.at(j) << " " ;
+			}
+			std::cout << "number of happening " << new_count->second << std::endl;
+
+		}
+		size_t gains_size = gains.size();
+		std::cout << "updated_count size is " << updated_counts.size() << std::endl;
+		std::cout << "gains size " << gains_size <<std::endl;//should be equal to the number of paths
+		gains.clear();
+		for(std::map<std::vector<size_t>,int>::iterator it = intermediate.begin(); it != intermediate.end(); it++){
+			gains.insert(make_pair(it->first,it->second));
+		}*/
+
+	}
+
+	void merging_centers::merg_gain_value(){
+		std::vector<std::vector<size_t> > nodes = tree.get_nodes();
+		cout<< "size: " << nodes.size()<<endl;
+		size_t original_center_numbers = centers.get_number_of_centers();
+		std::cout << "original center number: "<< original_center_numbers << std::endl;
+		std::map<std::vector<size_t> , size_t> counts = tree.get_count();//vector<size_t> shows a path and size_t is its number of happening.
+		//calculating the initial gain values:
+		for(map<vector<size_t> , size_t>::iterator it = counts.begin(); it != counts.end(); it++){
+			vector<size_t> br = it->first;//list of nodes of a path
+			size_t number = it->second;
+			std::vector<size_t> centers;
+			int gain = 0;
+			for(size_t j = 0 ; j < br.size(); j++){
+				for(size_t k =0; k < nodes.at(br.at(j)).size();k++){
+					centers.push_back(nodes.at(br.at(j)).at(k));
+				}
+			}
+			size_t power = 31 ;
+			if(centers.at(centers.size()-1) == tree.get_power_of_two(power)){
+				centers.pop_back();	
+			}
+			std::cout<< "centers " ;
+			for(size_t j =0; j < centers.size();j++){
+				cout<< centers.at(j) << " " ;
+			}
+			cout << " " <<endl;
+			std::cout<< "center size: " << centers.size() << "  number of happening: "<< number << std::endl;
+			gain = number*(centers.size())-(number+centers.size());
+			if(centers.size()!= 0){
+				gains.insert(make_pair(centers,gain));//centers-->index of centers
+				cout<< "gain "<<gain <<endl;
+			}
+		}
+		int highest_gain=0;
+		std::vector<size_t> highest_path;
+		for(map<std::vector<size_t>, int>::iterator it = gains.begin(); it != gains.end(); it++){
+			if(it->second > highest_gain){
+					highest_gain = it->second;
+					highest_path = it->first;
+			}else continue;
+		}
+		if(highest_gain > 0){
+			merged_centers.insert(make_pair(highest_path, original_center_numbers+1));//Making the first new center with a new index which is 'original_center_numbers+1'
+		}
+		size_t center_numbers;
+		center_numbers = original_center_numbers + 1;//it will be used when ever we are going to insert the next megerd center to the merged_centers map.
+		std::cout << "cent number: "<< center_numbers << std::endl;
+		while(highest_gain > 0){
+			std::cout << "highest gain: "<< highest_gain << std::endl; 
+			std::cout <<" highest gain path " ;
+			for(size_t i = 0 ; i < highest_path.size(); i++){
+				std::cout << highest_path.at(i)<< " ";
+			}
+			std::cout << "" << std::endl;
+			updating_centers(highest_path, center_numbers);//update all the strings, their number of happpening and gains! Notice that new trees are made in this function!
+			highest_gain=0;
+			std::map<std::vector<size_t>, size_t>::iterator hi = merged_centers.find(highest_path);
+			std::vector<size_t> hi_from_map;
+			hi_from_map.push_back(hi->second);//Because we dont want to use the same canter again as the one with the highest gain
+			assert(hi != merged_centers.end());
+			for(map<std::vector<size_t>, int>::iterator it = gains.begin(); it != gains.end(); it++){
+				if(it->second > highest_gain && it->first != hi_from_map && it->first.size() != 1){
+					std::cout<< "gain "<< it->second <<std::endl;
+					highest_gain = it->second;
+					highest_path = it->first;
 				}else continue;
 			}
-			while(highest_gain > 0){
-				for(map<vector<size_t>, size_t>::iterator it = subtree_gains.begin(); it != subtree_gains.end(); it++){
-				//	vector<size_t>common_path;
-					string center_index;
-					string highest_index;
-					for(size_t i =0; i < highest_path.size(); i++){
-						highest_index += nodes.at(highest_path.at(i));
-					}
-					for(size_t i =0; i < it->first.size(); i++){
-						center_index += nodes.at(it->first.at(i));
-					}
-					std::cout << "center_index: "<< endl;
-					for(size_t i = 0; i < center_index.size(); i++){
-						std::cout << center_index.at(i);
-					}
-					std::cout << "" <<std::endl;
-					if(center_index.size() >= highest_index.size()){
-						size_t common_id = center_index.size();
-						for(size_t i=0; i < center_index.size(); i++){
-							if(center_index.at(i)==highest_index.at(0)){
-								common_id = i;
-								break;
-							}else continue;
-						}
-						string common_path;
-						if(common_id < center_index.size()){
-							for(size_t i=0; i < highest_index.size(); i++){
-								if(center_index.at(common_id+i)==highest_index.at(i)){
-									common_path += center_index.at(i);
-								}else break;
-							}
-							if(common_path.size() == highest_index.size()){
-								map<vector<size_t>, size_t>::iterator it2 = counts.find(it->first);
-								assert(it2 != counts.end());
-								size_t number = it->second;
-								size_t gain = 0;
-								gain = number*(center_index.size())-(number+center_index.size()-highest_index.size());
-								subtree_gains.insert(make_pair(it->first,gain));
-							}
-						}
-					}			
+			if(gains.size() != 0){
+				std::cout << "check highest path: " <<std::endl;
+				for(size_t j = 0; j < highest_path.size(); j++){
+					std::cout << highest_path.at(j)<< " ";
 				}
-				for(map<vector<size_t>, size_t>::iterator it = subtree_gains.begin(); it != subtree_gains.end(); it++){
-					if(it->second > highest_gain){
-						highest_gain = it->second;
-						highest_path = it->first;
+				std::cout << " " <<std::endl;
+			}
+			center_numbers = center_numbers +1;
+			merged_centers.insert(make_pair(highest_path, center_numbers));
+		}
+		std::cout << "final result: " << std::endl;
+		for(map<std::vector<size_t>, int>::iterator it = gains.begin(); it != gains.end(); it++){
+			for(size_t j =0; j < it->first.size(); j++){
+				std::cout<< it->first.at(j)<< " ";
+			}
+			std::cout<< " gain is " << it->second << std::endl;
+		}
+		std::cout << "new centers: "<<std::endl;
+		for(std::map<std::vector<size_t>, size_t>::iterator it = merged_centers.begin(); it != merged_centers.end(); it++){
+			if(it != merged_centers.end()){
+				for(size_t i = 0; i < it->first.size(); i ++){
+					std::cout << it->first.at(i)<< " ";
+				}
+				std::cout << " its index is " << it->second <<std::endl;
+			}else {std::cout << "there is no merged center! " <<std::endl;}
+			
+		}		
+	}
+	void merging_centers::adding_new_centers(std::vector<std::vector<std::string> > & long_centers, std::vector<std::map<size_t, std::vector<std::string> > > & centersPositionOnASeq){//Filling in the long centers vector and centersPositionOnASeq
+		merg_gain_value();
+		size_t biggest_index = 0;
+		std::vector<std::string> sequence_of_centers;
+		for(std::map<std::vector<size_t>,size_t>::iterator it = merged_centers.begin(); it != merged_centers.end(); it++){
+			std::cout << " merged_center: " << it->second << std::endl;
+			std::vector<size_t> updated_center = it->first;
+			std::vector<size_t> list;
+			list = it->first;
+			size_t id = list.at(0);	
+			bool ThereIsStillABigID = true;
+			while (ThereIsStillABigID == true){
+				std::cout << "here!" << std::endl;
+				std::cout << "number of original centers: "<< centers.get_number_of_centers()<<std::endl;
+				for(size_t j =0; j < list.size(); j++){
+					id = list.at(j);
+					std::cout << "id " << id <<std::endl;
+					if(id > centers.get_number_of_centers()){
+						for(std::map<std::vector<size_t>,size_t>::iterator it1 = merged_centers.begin(); it1 != merged_centers.end(); it1++){
+							if(it1->second == id){
+								std::vector<size_t> temp;
+								std::cout << "j "<< j << std::endl;
+								if(j != 0){
+									for(size_t i = 0; i < j;i++){
+										temp.push_back(list.at(i));	
+									}
+									std::cout<< "temp0: "<<std::endl;
+									for(size_t i = 0; i < temp.size(); i ++){
+										std::cout << temp.at(i)<< " ";
+									}
+									std::cout << " " <<std::endl;
+								}
+								for(size_t i = 0; i < it1->first.size();i++){
+									temp.push_back(it1->first.at(i));
+								}
+								std::cout<< "temp1: "<<std::endl;
+								for(size_t i = 0; i < temp.size(); i ++){
+									std::cout << temp.at(i)<< " ";
+								}
+								std::cout << " " <<std::endl;
+								for(size_t i = j+1; i < list.size();i++){
+									temp.push_back(list.at(i));
+								}
+								std::cout<< "temp: "<<std::endl;
+								for(size_t i = 0; i < temp.size(); i ++){
+									std::cout << temp.at(i)<< " ";
+								}
+								list = temp;
+								j = j + it1->first.size()-1;
+								std::cout << "j1 "<< j <<std::endl;
+								break;
+							} else continue;
+						}
+					}
+				}
+				ThereIsStillABigID = false;
+				for(size_t j =0; j < list.size(); j++){
+					id = list.at(j);
+					std::cout << "j2 " << j <<std::endl;
+					if(id > centers.get_number_of_centers()){
+						ThereIsStillABigID = true;
+						std::cout << "Still a new center! "<<std::endl;
+						break;
 					}else continue;
 				}
 			}
-	//	}
-	/*	for(map<vector<size_t>,size_t>::iterator it = tree_gains.begin(); it != tree_gains.end(); it++){
-			cout<< "path"<<endl;
-			merged_centers.push_back(it->first);
-			for(size_t i = 0 ; i < it->first.size(); i++){
-				cout<< it->first.at(i)<< " ";
+			for(size_t j =0; j < list.size(); j++){
+				size_t id = list.at(j);
+				std::string center = centers.find_center_name(id);
+				sequence_of_centers.push_back(center);
 			}
-			cout << " "<<endl;
-			cout<< " gain " << it->second << endl;
-		}*/
+			long_centers.push_back(sequence_of_centers);
+			for(size_t i = 0; i < data.numSequences(); i++){
+				find_new_centers(it->second,sequence_of_centers,i, centersPositionOnASeq);
+			}
+			sequence_of_centers.clear();
+		}
 	}
-
-	void merging_centers::merg_alignments(map<string, vector<pw_alignment> > & al_of_a_ccs){
-	/*	vector<string> center_index;
-		for(map<string, vector<pw_alignment> >::iterator it2=al_of_a_ccs.begin(); it2 != al_of_a_ccs.end();it2++){
-			string cent = it2->first;
-			center_index.push_back(cent);
-		}
-		for(size_t i = 0; i < data.numSequences(); i++){
-			vector<size_t> successive_centers = centers.get_center(i);
-			string center_1 = center_index.at(succ)
-
-		}
-		for(size_t i =0; i < merged_centers.size();i++){
-			vector<pw_alignment> als;
-			vector<size_t> longCenter = merged_centers.at(i);
-			size_t left_long_piece =0;
-			size_t ref_long_piece ;
-			for(size_t j =0; j < longCenter.size(); j++){
-				string center = center_index.at(longCenter.at(j));
-				vector<string> split;
-				strsep(center, ":" , split);
-				size_t cent_ref = atoi(split.at(0).c_str());
-				size_t cent_left = atoi(split.at(1).c_str());
-				map<string, vector<pw_alignment> >::iterator al = al_of_a_ccs.find(center);
-				size_t left;
-				size_t ref;
-				for(size_t k = 0; k < al->second.size();k++){
-					pw_alignment & p = al->second.at(k);// find associated ref!
-					if(p.getreference1() == cent_ref && cent_left == p.getbegin1()){
-						left = p.getbegin2();
-						ref = p.getreference2();
+/*	void merging_centers::merg_alignments(vector<vector<std::string> > & long_centers, std::map<std::string, std::vector<pw_alignment> > & al_of_a_ccs, std::map<std::string, std::vector<std::string> > & cluster_result, std::map<vector<std::string>, std::vector<pw_alignment> > & new_centers){//new_centers has new centers and their als, it should contains all the centers of all rounds.//TODO has to be fixed!
+		size_t counter = 0;
+		for(size_t i =0; i < long_centers.size(); i ++){
+			std::cout << " i "<< i <<std::endl;
+			vector<std::string> long_center = long_centers.at(i);
+			std::map<vector<std::string>, vector<pw_alignment> >::iterator new_cent = new_centers.find(long_center);
+			if(new_cent == new_centers.end()){
+				new_centers.insert(make_pair(long_center,vector<pw_alignment>()));
+			}
+			std::map<std::vector<std::string>, std::vector<pw_alignment> > temp;
+			size_t temp_center_ref;
+			size_t temp_center_left;
+			for(size_t j = 0; j < long_center.size(); j++){
+				std::string center = long_center.at(j);
+				std::cout << "center: "<< center << std::endl;
+				std::map<std::string, std::vector<std::string> >::iterator it = cluster_result.find(center);
+				std::map<std::string, std::vector<pw_alignment> >::iterator all_als = al_of_a_ccs.find(center);
+				assert(it != al_of_a_ccs.end());
+				std::vector<std::string> center_parts;
+				strsep(center, ":" , center_parts);
+				unsigned int center_ref = atoi(center_parts.at(0).c_str());
+				unsigned int center_left = atoi(center_parts.at(1).c_str());
+				std::vector<std::string> current_string_of_centers;
+				pw_alignment al;
+				if(j == 0){
+					std::vector<std::string> first_center;
+					first_center.push_back(center);
+					temp.insert(make_pair(first_center, all_als->second));
+					temp_center_ref = center_ref;
+					temp_center_left= center_left;	
+					std::cout << "if j is 0 " << std::endl;				
+				}else{
+					for(size_t m = 0; m < j ; m++){
+						current_string_of_centers.push_back(long_center.at(m));
+						std::cout << long_center.at(m) <<std::endl;
 					}
-					if(p.getreference2() == cent_ref && cent_left == p.getbegin2()){
-						left = p.getbegin1();
-						ref = p.getreference1();
+					std::map<std::vector<std::string>, std::vector<pw_alignment> >::iterator temporary = temp.find(current_string_of_centers);
+					std::cout << " size of temp->second " << temporary->second.size() <<std::endl;
+					if(temporary != temp.end() && temporary->second.size() != 0){
+						std::cout << "temporary != temp.end()"<<std::endl;
+						std::vector<std::string> members = it->second;
+						for(size_t k = 0; k < members.size();k++){
+						std::vector<std::string>member_parts;
+						strsep(members.at(k),":", member_parts);
+						unsigned int member_left = atoi(member_parts.at(0).c_str());
+						unsigned int member_ref = atoi(member_parts.at(0).c_str());
+					//	for(size_t k = 0; k < als.size(); k++){
+					//		pw_alignment & p = als.at(k);
+					//		size_t left1,right1,left2,right2;
+					//		p.get_lr1(left1, right1);
+					//		p.get_lr2(left2, right2);
+					//		size_t ref1 = p.getreference1();
+					//		size_t ref2 = p.getreference2();
+					//		size_t left, right, ref,id;
+					//		if(ref1 != center_ref && left1 != center_left){//center is on the ref2 of alignment
+								unsigned int closest_one = 0;
+								bool closest_left_is_found = false;
+								pw_alignment & p1 = temporary->second.at(0);
+								for(size_t n =0; n < temporary->second.size(); n++){
+									p1 = temporary->second.at(n);
+									size_t left_1,right_1,left_2,right_2;
+									p1.get_lr1(left_1, right_1);
+									p1.get_lr2(left_2, right_2);
+									size_t ref_1 = p1.getreference1();
+									size_t ref_2 = p1.getreference2();
+									if(ref_1 == member_ref && member_left > right_1){//find the closest!
+
+
+									}
+									if(ref_2 == member_ref && member_left > right_2){
+									if(ref_1 != temp_center_ref && left_1 != temp_center_left){//center from temp is on ref2 of its al.
+										left = left_1;
+										right = right_1;
+										ref = ref_1;
+										id = 0;
+									}else{
+										left = left_2;
+										right = right_2;
+										ref = ref_2;
+										id = 1;
+									}									
+									if(ref == ref1 && left < left1){
+										if(left >= closest_one){
+											closest_one = left;
+											closest_left_is_found = true;
+										}
+									}
+								}
+								if(closest_left_is_found == true){ //translate and translate back bits
+									std::vector<bool> sample_p1 = p1.getsample(id);
+									std::vector<bool> sample_temp_center = p1.getsample(1-id);
+									std::vector<bool> sample_p = p.getsample(0);
+									std::vector<bool> sample_cent = p.getsample(1);
+									std::vector<bool> sample1;
+									std::vector<bool> sample2;
+									for(size_t m = 0 ; m <sample_p1.size(); m++){
+										sample1.push_back(sample_p1.at(m));
+										sample2.push_back(sample_temp_center.at(m));
+									}
+									vector<bool> middle_part_of_sample;
+									std::cout << "distance between two als " << left1-(right+1) << std::endl;
+									for(size_t m = right+1 ; m < left1 ; m++){
+										char base = data.getSequence(ref1).at(m);
+										vector<bool> bits(3);
+										pw_alignment::get_bits(base,bits);
+										for(size_t n = 0; n < 3; n++){
+											middle_part_of_sample.push_back(bits.at(n));
+										}
+									}
+									std::cout<< "size of middle part is " << middle_part_of_sample.size() << std::endl;
+									for(size_t m = 0 ; m < middle_part_of_sample.size();m++){
+										sample1.push_back(middle_part_of_sample.at(m));
+										sample2.push_back(middle_part_of_sample.at(m));
+									}
+									for(size_t m = 0 ; m < sample_p.size(); m++){
+										sample1.push_back(sample_p.at(m));
+										sample2.push_back(sample_cent.at(m));
+									}
+									al.setreference1(ref1);
+									al.setbegin1(closest_one);//to solve the problem of reverse or forward just left and right are considered.
+									al.setend1(right1);
+									if(temp_center_ref == center_ref){
+										al.setreference2(ref2);
+										al.setbegin2(temp_center_left);
+										al.setend2(right2);
+									}else{
+										if(temp_center_ref > data.numSequences()){
+											al.setreference2(temp_center_ref);
+											std::cout<< "temp center ref " << temp_center_ref << std::endl;
+										}else{
+											counter = counter + 1;
+											al.setreference2(data.numSequences()+counter);
+										}
+										al.setbegin2(0);
+										al.setend2(p1.alignment_length()+(left1-(right+1))+p.alignment_length());
+									}
+									al.set_alignment_bits(sample1,sample2);//set bits
+									std::cout << "center is on ref 2 " <<std::endl;
+									al.print();
+									temp_center_ref = al.getreference2();
+									size_t Left_2,Right_2;
+									al.get_lr2(Left_2, Right_2);
+									temp_center_left = Left_2;
+								}
+							}else{//if center is on ref1 of alignment
+								unsigned int closest_one = 0;
+								bool closest_left_is_found = false;
+								pw_alignment & p1 = temporary->second.at(0);
+								for(size_t n =0; n < temporary->second.size(); n++){// if it goes over temp instead it may work
+									p1 = temporary->second.at(n);
+									size_t left_1,right_1,left_2,right_2;
+									p1.get_lr1(left_1, right_1);
+									p1.get_lr2(left_2, right_2);
+									size_t ref_1 = p1.getreference1();
+									size_t ref_2 = p1.getreference2();
+									if(ref_1 != temp_center_ref && left_1 != temp_center_left){//center from temp is on ref2 of its al.
+										left = left_1;
+										right = right_1;
+										ref = ref_1;
+										id = 0;
+									}else{
+										left = left_2;
+										right = right_2;
+										ref = ref_2;
+										id = 1;
+									}									
+									if(ref == ref2 && left < left2){
+										if(left >= closest_one){
+											closest_one = left;
+											closest_left_is_found = true;
+										}
+									}
+								}
+								if(closest_left_is_found == true){ //translate and translate back bits
+									std::vector<bool> sample_p1 = p1.getsample(id);
+									std::vector<bool> sample_temp_center = p1.getsample(1-id);
+									std::vector<bool> sample_p = p.getsample(1);
+									std::vector<bool> sample_cent = p.getsample(0);
+									std::vector<bool> sample1;
+									std::vector<bool> sample2;
+									for(size_t m = 0 ; m <sample_p1.size(); m++){
+										sample1.push_back(sample_temp_center.at(m));
+										sample2.push_back(sample_p1.at(m));
+									}
+									vector<bool> middle_part_of_sample;
+									for(size_t m = right+1 ; m < left2 ; m++){
+										char base = data.getSequence(ref2).at(m);
+										vector<bool> bits(3);
+										pw_alignment::get_bits(base,bits);
+										for(size_t n = 0; n < 3; n++){
+											middle_part_of_sample.push_back(bits.at(n));
+										}
+									}
+									for(size_t m = 0 ; m < middle_part_of_sample.size();m++){
+										sample1.push_back(middle_part_of_sample.at(m));
+										sample2.push_back(middle_part_of_sample.at(m));
+									}
+									for(size_t m = 0 ; m < sample_p.size(); m++){
+										sample1.push_back(sample_cent.at(m));
+										sample2.push_back(sample_p.at(m));
+									}
+									if(temp_center_ref == center_ref){
+										al.setreference1(ref1);
+										al.setbegin1(temp_center_left);
+										al.setend1(right1);
+									}else{
+										if(temp_center_ref > data.numSequences()){
+											al.setreference1(temp_center_ref);
+										}else{
+											counter = counter + 1;
+											al.setreference1(data.numSequences()+counter);
+										}
+										al.setbegin1(0);
+										al.setend2(p1.alignment_length()+(left2-(right+1))+p.alignment_length());
+									}
+									al.setreference2(ref2);
+									al.setbegin2(closest_one);//to solve the problem of reverse or forward just left and right are considered.
+									al.setend2(right2);
+									al.set_alignment_bits(sample1,sample2);//set bits
+									std::cout << "center is on ref 1 " <<std::endl;
+									al.print();
+									temp_center_ref = al.getreference1();
+									size_t Left_1,Right_1;
+									al.get_lr1(Left_1, Right_1);
+									temp_center_left = Left_1;
+								}
+							}
+						}
 					}
+				}//else	(j != 0)
+				//Insert the concatenated center and its members to the temp map
+				current_string_of_centers.push_back(long_center.at(j));
+				std::cout << "size of current string of centers is " << current_string_of_centers.size() <<std::endl;
+				for(size_t m = 0; m < current_string_of_centers.size(); m++){
+					std::cout << current_string_of_centers.at(m) << " ";
+				}
+				std::cout << " " <<endl;
+				std::map<std::vector<std::string>, std::vector<pw_alignment> >::iterator it_temp = temp.find(current_string_of_centers);
+				if(it_temp == temp.end()){
+					temp.insert(make_pair(current_string_of_centers,std::vector<pw_alignment>()));
+					it_temp = temp.find(current_string_of_centers);
+				}
+				if(al.alignment_length() != 0){
+					it_temp->second.push_back(al);
+					std::cout << "al: " <<std::endl;
+					al.print();
+				}
+			}
+			std::map<std::vector<std::string>, std::vector<pw_alignment> >::iterator temporary = temp.find(long_center);
+			if(temporary != temp.end()){
+				std::map<std::vector<std::string>, std::vector<pw_alignment> >::iterator it1 = new_centers.find(long_center);
+				if(it1 != new_centers.end()){
+					std::cout<< "add to new center! "<<std::endl;
+					it1->second = temporary ->second;
+					std::cout << "number of added als: "<< it1->second.size() << std::endl;
+				}
+			}
+		}
+	}*/
+	void merging_centers::create_alignment(std::vector<std::vector<std::string> > & long_centers, std::map<vector<std::string>, std::vector<pw_alignment> > & new_centers, std::map<std::string , std::vector<pw_alignment> > & al_of_a_ccs, std::vector<std::map<std::vector<std::string> ,std::vector<size_t> > > & centersPositionOnASeq){
+	/*	size_t artificial_ref = data.numSequences()+new_centers.size();
+		for(size_t i =0; i < long_centers.size(); i ++){
+			vector<std::string> long_center = long_centers.at(i);
+			std::map<vector<std::string>, vector<pw_alignment> >::iterator new_cent = new_centers.find(long_center);
+			if(new_cent == new_centers.end()){
+				new_centers.insert(make_pair(long_center,std::vector<pw_alignment>()));
+			}
+		}
+		for(size_t j = 0 ; j < data.numSequences(); j++){//Note that if there is an overlap between two long centers, one of them is fully included in the other one.
+			std::multimap<size_t, std::vector<std::string> > seq_new_centers;//size_t is where the long center starts on sequence j
+			find_new_centers(seq_new_centers, long_centers, j,centersPositionOnASeq);//find long_centers and their positions on sequence j.
+			if(seq_new_centers.size() != 0){
+				for(std::multimap<size_t, std::vector<std::string> >::iterator it = seq_new_centers.begin(); it != seq_new_centers.end(); it++){
+					std::vector<bool> sample1;
+					std::vector<bool> sample2;
+					pw_alignment al;
+					al.setreference1(j);
+					al.setbegin1(it->first);
+					std::cout<< "begin 1 is "<< it->first <<std::endl;
+					std::map<std::vector<std::string>, std::vector<size_t> >::iterator it1 = centersPositionOnASeq.at(j).find(it->second);
+					std::cout << "it1->second.size() " << it1->second.size() << std::endl;
+					size_t left_of_last_piece = it1->second.at(it1->second.size()-1);
+					std::string last_center = it->second.at(it->second.size()-1);
+					std::map<std::string , std::vector<pw_alignment> >::iterator it2 = al_of_a_ccs.find(last_center);
+					size_t length = 0;
+					std::cout << "last center: "<<last_center << "it2->second size: " << it2->second.size()<<std::endl;
+					for(size_t i = 0; i < it2->second.size(); i++){
+						pw_alignment p = it2->second.at(i);
+						size_t r1,r2,l1,l2;
+						p.get_lr1(l1,r1);
+						p.get_lr2(l2,r2);
+						std::cout << r1 << " " << r2 << " " << l1 << " " << l2 <<std::endl;
+						std::cout << "left of last piece " << left_of_last_piece << " ref 1 " << p.getreference1() << " ref2 " << p.getreference2()<< " j " << j << " it1->second at 0 " << it1->second.at(0) <<std::endl;
+						if(p.getreference1() == j && l1 == left_of_last_piece){
+							al.setend1(r1);
+							std::cout<< "end1 is: " << r1 <<std::endl;
+							length = r1 - it1->second.at(0);
+							break;
+						}
+						else if(p.getreference2() == j && l2 == left_of_last_piece){
+							al.setend1(r2);
+							std::cout<< "end1 is: " << r2 <<std::endl;
+							length = r2 - it1->second.at(0);
+							break;
+						}
+						else{
+							std::cout<< "here2!"<<std::endl;
+							continue;
+						}
+					}//Up to now first reference of an alignment is set. Center is always considered as the second reference.
+					bool centers_are_on_the_same_ref = false;
+					std::string cent = it->second.at(0);
+					std::vector<std::string> cent_parts;
+					strsep(cent, ":" , cent_parts);
+					unsigned int cent_ref = atoi(cent_parts.at(0).c_str());
+					unsigned int cent_left = atoi(cent_parts.at(1).c_str());
+					for(size_t i = 0; i < it->second.size();i++){
+						std::string center = it->second.at(i);
+						std::vector<std::string> center_parts;
+						strsep(center, ":" , center_parts);
+						unsigned int center_ref = atoi(center_parts.at(0).c_str());
+						unsigned int center_left = atoi(center_parts.at(1).c_str());
+						if(center_ref == cent_ref){
+							centers_are_on_the_same_ref= true;
+						}else{
+							centers_are_on_the_same_ref=false;
+							break;
+						}
+					}
+					if(centers_are_on_the_same_ref==true){
+						al.setreference2(cent_ref);
+						al.setbegin2(cent_left);
+						al.setend2(cent_left + length);
+					}else{
+						al.setreference2(artificial_ref);
+						artificial_ref = artificial_ref+1;
+						al.setbegin2(0);
+						al.setend2(length);
+					}//Now second reference is also set.
+					//We are setting samples here:
+					size_t right;
+					std::cout<< "it second size " << it->second.size() <<std::endl;
+					for(size_t i =0; i < it->second.size();i++){
+						std::cout<< " center "<< it->second.at(i)<<std::endl;
+						std::map<std::string , std::vector<pw_alignment> >::iterator it3 = al_of_a_ccs.find(it->second.at(i));
+						assert(it3 != al_of_a_ccs.end());
+						for(size_t k = 0; k < it3->second.size();k++){
+							pw_alignment p = it3->second.at(k);
+							size_t r1,r2,l1,l2;
+							p.get_lr1(l1,r1);
+							p.get_lr2(l2,r2);
+							std::cout<<  "ref 1 " << p.getreference1() << " ref2 " << p.getreference2()<< " j " << j << " l1 " << l1 << " l2 " << l2 << " it1->second.at(i) " << it1->second.at(i) <<std::endl;
+							if((p.getreference1()== j && l1 == it1->second.at(i))||(p.getreference2() == j && l2 == it1->second.at(i))){
+								if(l1 == it1->second.at(i)){
+									right = r1;
+									std::cout << "right1 " << right << std::endl;
+								}else{
+									right = r2;
+									std::cout << "right2 " << right << std::endl;
+								}
+								std::vector<bool> sample1_p = p.getsample1();
+								std::vector<bool> sample2_p = p.getsample2();
+								std::cout << " sample1_p.size() " << sample1_p.size()<< " " << sample2_p.size()<< " " << p.alignment_length() <<std::endl;
+								std::cout << "pushing back samples " << std::endl;
+								for(size_t m =0; m < sample1_p.size(); m++){
+									sample1.push_back(sample1_p.at(m));
+									sample2.push_back(sample2_p.at(m));
+								}
+								std::cout << sample1.size() << " " << sample2.size() << std::endl;
+								break;							
+							}
+						}
+						if(i != it->second.size()-1){
+							size_t left = it1->second.at(i+1);
+							vector<bool> middle_part_of_sample;
+							std::cout << "right+1 "<< right+1 << " left "<<left <<std::endl;
+							for(size_t m = right+1 ; m < left ; m++){
+								char base = data.getSequence(j).at(m);
+								vector<bool> bits(3);
+								pw_alignment::get_bits(base,bits);
+								for(size_t n = 0; n < 3; n++){
+									middle_part_of_sample.push_back(bits.at(n));
+								}
+							}
+							std::cout<< "size of middle part is " << middle_part_of_sample.size() << std::endl;
+							for(size_t m = 0 ; m < middle_part_of_sample.size();m++){
+								sample1.push_back(middle_part_of_sample.at(m));
+								sample2.push_back(middle_part_of_sample.at(m));
+							}
+						}
+					}
+					al.set_alignment_bits(sample1,sample2);
+					std::cout << "alignment is: " <<std::endl;
+					al.print();
+					std::map<vector<std::string>, vector<pw_alignment> >::iterator new_cent = new_centers.find(it->second);
+					new_cent->second.push_back(al);
 				}
 			}
 		}*/
-	}
 
+	}
+//The following function finds long centers of specific sequence:
+	void merging_centers::find_new_centers(size_t & center_indices, std::vector<std::string > & current_long_center, size_t & seq_id , std::vector<std::map<size_t, std::vector<std::string> > > & centersPositionOnASeq){
+		std::map<size_t,std::vector<size_t> > all_centers = tree.get_center_on_a_sequence(seq_id);
+		std::cout<<"sequence is "<< seq_id << std::endl;
+		for(std::map<size_t,std::vector<size_t> >::iterator it1 = all_centers.begin(); it1!= all_centers.end();it1++){
+				std::cout << center_indices<< std::endl;
+				std::cout << " " <<std::endl;
+				for(size_t i =0; i < it1->second.size(); i++){
+					std::cout << it1->second.at(i)<< " ";
+				}
+				std::cout << " " <<std::endl;
+				if(it1->second.at(0) == center_indices){
+					centersPositionOnASeq.at(seq_id).insert(make_pair(it1->first,current_long_center));
+					std::cout << "seq "<<seq_id << "position "<<it1->first << std::endl;
+				}
+		}
+	}
 
 
 	

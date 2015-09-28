@@ -157,12 +157,12 @@ int do_fasta_prepare(int argc, char * argv[]) {
 			while(getline((*(inputs.at(i))), str)) {
 				if(str.length()>0) { // ignore empty lines
 				if(str.at(0)=='>') {
-				//	std::string nname = str.substr(1);//original code
+					std::string nname = str.substr(1);
 					std::stringstream nhead;
-					nhead << ">" << i << ":" << j;
-				//	nhead << ">" << names.at(i) << ":" << nname;//original code
-				//	outf << nhead.str() << std::endl;//original code
-					outf << nhead.str();
+				//	nhead << ">" << i << ":" << j;
+					nhead << ">" << names.at(i) << ":" << nname;
+					outf << nhead.str() << std::endl;
+				//	outf << nhead.str();
 					j = j +1;
 
 						
@@ -178,8 +178,8 @@ int do_fasta_prepare(int argc, char * argv[]) {
 */	
 
 				} else {
-					outf << str;
-				//	outf << str << std::endl; original code
+				//	outf << str;
+					outf << str << std::endl;
 				}
 				}
 			}
@@ -442,7 +442,6 @@ void msa_star_alignment(const std::string & center, std::vector<pw_alignment> & 
 
 }
 
-
 	/*
 		write the graph as multiple alignment data structure	
 	*/
@@ -533,12 +532,12 @@ int do_mc_model(int argc, char * argv[]) {
 	clock_t initial_cc_time = clock();
 	compute_cc cccs(data);
 	std::vector<std::set< pw_alignment , compare_pw_alignment> > ccs;
-	cccs.compute(ccs); //fill in ccss, order by size(Notice that they are just connected to each other if they have overlap!)
+	cccs.compute(ccs); //fill in ccs, order by size(Notice that they are just connected to each other if they have overlap!)
 	initial_cc_time = clock() - initial_cc_time;
-/*	std::cout << " Found " << ccs.size() << " connected components" << std::endl;
-	for(size_t i=0; i<ccs.size(); i++) {
-		std::cout << "Connected component "<< i << " contains " << ccs.at(i).size() << " alignments" << std::endl;
-	}*/
+//	std::cout << " Found " << ccs.size() << " connected components" << std::endl;
+//	for(size_t i=0; i<ccs.size(); i++) {
+//		std::cout << "Connected component "<< i << " contains " << ccs.at(i).size() << " alignments" << std::endl;
+//	}
 // Train the model on all data
 
 	clock_t train_models_time = clock();
@@ -556,44 +555,46 @@ int do_mc_model(int argc, char * argv[]) {
 	std::cout << "total gain " << total << std::endl;
 	train_models_time = clock() - train_models_time;
 //	double sum = 0;
-//	double c1;
-//	double c2;
-//	double m1;
-//	double m2;
+	double c1;
+	double c2;
+	double m1;
+	double m2;
 //	size_t len=0;
 /*	for(size_t i =0; i <  data.numSequences(); i++){
 		const dnastd::string & sequence = data.getSequence(i);
 		size_t length = sequence.length();
 		len +=length;
 	}*/
-/*	std::cout<<"length: " << len << std::endl;
-	for(size_t i = 0 ; i< data.numAlignments() ; i++){
-		const pw_alignment & p = data.getAlignment(i);
-		size_t ref1 = p.getreference1();
-		size_t ref2 = p.getreference2();
-		const dnastd::string & sequence1 = data.getSequence(ref1);
-		const dnastd::string & sequence2 = data.getSequence(ref2);
-		size_t length1 = sequence1.length();
-		size_t length2 = sequence2.length();
-		m.cost_function(p, c1,c2,m1,m2,outs);
-		sum +=c1+c2;
-		len +=length1 + length2;
-	}
-	std::cout<< "sum is "<<sum <<std::endl;
-	std::cout<< "len times two: "<< len*2 <<std::endl;*/
-//	counting_functor functor(data);
-//	encoder en(data,m);
-//	use_clustering clust(ol,data,m);
-	use_encode en(data,m,wrap);
+// std::cout<<"length: " << len << std::endl;
+//	for(size_t i = 0 ; i< data.numAlignments() ; i++){
+//		const pw_alignment & p = data.getAlignment(i);
+	//	size_t ref1 = p.getreference1();
+	//	size_t ref2 = p.getreference2();
+	//	const dnastd::string & sequence1 = data.getSequence(ref1);
+	//	const dnastd::string & sequence2 = data.getSequence(ref2);
+	//	size_t length1 = sequence1.length();
+	//	size_t length2 = sequence2.length();
+//		std::cout<< "als costs: " <<std::endl;
+//		p.print();
+//		m.cost_function(p, c1,c2,m1,m2);
+//		std::cout << "c1 " << c1 << " c2 " << c2 << " m1 " << m1 << " m2 "<< m2 <<std::endl;
+	//	sum +=c1+c2;
+	//	len +=length1 + length2;
+//	}
+//	std::cout<< "sum is "<<sum <<std::endl;
+//	std::cout<< "len times two: "<< len*2 <<std::endl;
 	std::vector<overlap> cc_overlap(ccs.size(), overlap(data));// An overlap class object is needed for each connected component, thus we cannot use ol
 	// base cost to use an alignment (information need for its adress)
 	double cluster_base_cost = log2(data.numAlignments());
-//	std::cout << " base cost " << cluster_base_cost << std::endl;
+	std::cout << " base cost " << cluster_base_cost << std::endl;
 // Select an initial alignment std::set for each connected component (in parallel)
 	// TODO put the next two into a single data structure
 	std::map<std::string, std::vector<string> > global_results;//for each center returns all its cluster members TODO needed?
 	std::map<std::string, std::vector<pw_alignment> > alignments_in_a_cluster;//string ---> center of a cluster, vector ---> alignments with that center
-
+	std::map<vector<std::string>, std::vector<pw_alignment> > new_centers;//Equivalent to alignments_in_a_cluster for long centers TODO is the one should be filled in in the next step.
+	std::vector<std::map<size_t, std::vector<std::string> > >centersPositionOnASeq(data.numSequences());
+	std::vector<std::map<size_t , std::string> > centerOnSequence(data.numSequences());
+	vector<vector<std::string> > long_centers;
 	size_t num_clusters = 0;
 	size_t num_cluster_members_al = 0;
 	size_t num_cluster_seq = 0;
@@ -610,15 +611,14 @@ int do_mc_model(int argc, char * argv[]) {
 	double all_gain_in_ias = 0;
 	size_t all_used_input_alignments = 0;
 	size_t all_npo_alignments = 0;
-
-#pragma omp parallel for num_threads(num_threads) schedule(dynamic)
+	#pragma omp parallel for num_threads(num_threads) schedule(dynamic)
 	for(size_t i=0; i<ccs.size(); ++i) {
 #pragma omp critical(print)
 {
 //		std::cout << " on initial CC " << i << " size " << ccs.at(i).size() << std::endl;
 }
 		clock_t ias_time_local = clock();
-		std::set< pw_alignment, compare_pw_alignment> & cc = ccs.at(i);
+		std::set< pw_alignment, compare_pw_alignment> & cc = ccs.at(i);//Before cutting partial overlaps
 		use_ias ias(data,cc, m, cluster_base_cost);
 		ias.compute(cc_overlap.at(i));
 		ias_time_local = clock() - ias_time_local;
@@ -635,7 +635,7 @@ int do_mc_model(int argc, char * argv[]) {
 }
 
 
-	//	std::cout << " number of alignments " << cc_overlap.at(i).size() << std::endl;
+		//std::cout << " number of alignments " << cc_overlap.at(i).size() << std::endl;
 		// TODO this can be done a lot faster because there is no partial overlap here
 		clock_t second_cc_time_local = clock();
 		std::vector< std::set<pw_alignment , compare_pw_alignment> > cc_cluster_in; //has shorter length than original sequence pieces
@@ -650,27 +650,36 @@ int do_mc_model(int argc, char * argv[]) {
 		second_cc_time += second_cc_time_local;
 }
 #endif
-
-	//	std::cout<< "cc_cluster_in size: "<< cc_cluster_in.size()<<std::endl;
-	//	std::cout << "cc " << i << ": from " << cc.size() << " original als with total gain " << ias.get_max_gain() << " we made " << cc_overlap.at(i).size() << " pieces with total gain " << ias.get_result_gain() <<  std::endl; 
+		std::cout<< "cc_cluster_in size: "<< cc_cluster_in.size()<<std::endl;
+		std::cout << "cc " << i << ": from " << cc.size() << " original als with total gain " << ias.get_max_gain() << " we made " << cc_overlap.at(i).size() << " pieces with total gain " << ias.get_result_gain() <<  std::endl; 
 	//	std::cout << " components for clustering: " << std::endl;
-		std::vector<std::string> all_centers;
-		map<string, vector<pw_alignment> >al_of_a_ccs;// it is used for creating long centers
+		map<string, vector<pw_alignment> >al_of_a_ccs;//It is filled with the original centers and is used for creating long centers & their als.(string ---> center, vector<pw_al> ---> alignments of a cluster)
+//		vector<vector<std::string> > long_centers;
 		for(size_t j=0; j<cc_cluster_in.size(); ++j) {
 
-		//	std::cout << " run affpro on " << cc_cluster_in.at(j).size()<<std::endl;
+			std::cout << " run affpro at " << j << " on " << cc_cluster_in.at(j).size()<<std::endl;
 		//	data.numAcc();
 
-			/*
+		
 			std::cout << " in al std::set size " << cc_cluster_in.at(j).size() << std::endl;
 			size_t nums=0;
-			for(std::set<const pw_alignment *, compare_pw_alignment>::iterator ait=cc_cluster_in.at(j).begin(); ait!=cc_cluster_in.at(j).end(); ++ait) {
+			for(std::set<pw_alignment, compare_pw_alignment>::iterator ait=cc_cluster_in.at(j).begin(); ait!=cc_cluster_in.at(j).end(); ++ait) {
 				std::cout << " nums " << nums << std::endl;
+				const pw_alignment & cc_al = *ait;
 				nums++;
-				(*ait)->print();
+				cc_al.print();
 				std::cout << std::endl;
+				double c1;
+				double c2;
+				double m1;
+				double m2;
+				m.cost_function(cc_al, c1, c2, m1,m2);
+				std::cout << "c1 " << c1 << " c2 " << c2 << " m1 " << m1 << " m2 "<< m2 <<std::endl;
+			//	if(cc_al.getreference1()== 0 && cc_al.getreference2() == 1){
+			//		cc_cluster_in.at(j).erase(ait);
+			//	}
 			}
-			*/
+		
 
 			clock_t ap_time_local = clock();
 			use_affpro uaf(cc_cluster_in.at(j), m, cluster_base_cost,outs);
@@ -691,6 +700,7 @@ int do_mc_model(int argc, char * argv[]) {
 			size_t counter =0;
 			for(std::map<std::string,std::vector<string> >::iterator it=cluster_result.begin();it !=cluster_result.end();it++){
 				counter++;
+				std::cout << "center is" << it->first << " number of memebrs " << it->second.size() << std::endl;
 				std::string center = it->first;
 			/*	
 				std::vector<std::string> clmembers = it->second;
@@ -713,7 +723,7 @@ int do_mc_model(int argc, char * argv[]) {
 				for(std::set<pw_alignment, compare_pw_alignment>::iterator it2 = cc_cluster_in.at(j).begin(); it2!=cc_cluster_in.at(j).end(); ++it2){
 					const pw_alignment & al = *it2;
 			//		std::cout<< "alignment in cc cluster in at " << j << std::endl;
-			//		al->print();
+			//		al.print();
 			//		double g1;
 			//		double g2;
 			//		m.gain_function(*al,g1,g2,outs);
@@ -747,7 +757,7 @@ int do_mc_model(int argc, char * argv[]) {
 								}else continue;
 							}
 					}else continue;
-				} // for cluster_in std::set
+				} // for cluster_in set
 			}
 #pragma omp critical 
 {
@@ -755,30 +765,16 @@ int do_mc_model(int argc, char * argv[]) {
 			num_cluster_inputs_al += cc_cluster_in.at(j).size();
 			
 			for(std::map<std::string, std::vector<pw_alignment> >::iterator it = local_al_in_a_cluster.begin(); it!=local_al_in_a_cluster.end(); ++it) {
-				alignments_in_a_cluster.insert(*it);
-				if(it->second.size()!=0){
+				if(it->second.size() != 0){
 					al_of_a_ccs.insert(*it);
 				}
-				num_cluster_members_al += 1 + it->second.size();
-				
-			
+				alignments_in_a_cluster.insert(*it);// Globally saves all the als.
+				num_cluster_members_al += 1 + it->second.size();					
 			}
+			
 }
 
-		/*	std::set<std::string> intermediate_center;
-			for(std::map<std::string, std::vector<pw_alignment> >::iterator it = alignments_in_a_cluster.begin(); it!=alignments_in_a_cluster.end();it++){
-				if(it->second.size()==0){
-					intermediate_center.insert(it->first);
-				}
-			}
-			for(std::set<std::string>::iterator it = intermediate_center.begin();it !=intermediate_center.end();it++){
-				std::string cent = *it;
-				std::map<std::string, std::vector<pw_alignment> >::iterator it1 = alignments_in_a_cluster.find(cent);
-				alignments_in_a_cluster.erase(it1);				
-			}*/	
-			
-		//	std::cout<<"counter: "<<counter<<std::endl;
-			
+				
 #pragma omp critical
 {
 			for(std::map<std::string,std::vector<string> >::iterator it=cluster_result.begin();it != cluster_result.end();it++){
@@ -797,35 +793,28 @@ int do_mc_model(int argc, char * argv[]) {
 
 		} // for cluster_in set  
 		std::cout << std::endl;
-//new code for long centers can be used here!(al_of_a_ccs is used for running mergingCenters class functions)
-//	finding_centers centers(data);
-//	suffix_tree tree(data,centers);
-//	merging_centers merg(centers,tree);
-//	for(std::map<std::string, std::vector<pw_alignment> >::iterator  al = al_of_a_ccs.begin(); al !=al_of_a_ccs.end();al++){
-//		std::string cent = al->first;
-//		std::cout<< "cent: " << al->first << "al_size: "<< al->second.size()<<std::endl;
-//	}
-//	if(al_of_a_ccs.size()>0){
-//		centers.center_frequency(al_of_a_ccs);
-//		for(size_t seq =0 ; seq < data.numSequences(); seq ++){
-//			tree.create_suffix(seq);
-//		}
-//	}
-//	tree.make_a_tree();
-//	tree.count_paths();
-//	merg.merg_gain_value();	
 
-
-
-/*	for(std::map<std::string, std::vector<pw_alignment> >::iterator it=alignments_in_a_cluster.begin(); it != alignments_in_a_cluster.end();it++){
-		for(size_t h=0; h< it->second.size();h++){
-			it->second.at(h).print();
+		//Long centers are created:
+		finding_centers centers(data);
+		suffix_tree tree(data,centers);
+		merging_centers merg(data, centers, tree);
+		std::vector<size_t> highest_gain; //It is only used once, and is never filled in. TODO I should think about a better thing!
+		size_t index = 0;
+		centers.center_frequency(al_of_a_ccs,centerOnSequence);
+		tree.create_tree(highest_gain,index);//It is only used for the initial tree
+		merg.adding_new_centers(long_centers,centersPositionOnASeq);//After merging one group of centers we iteratively create new suffixes and tree based on them, then recalculate the gains again
+		// New centers (longer ones) are added to a separate data structure.
+		std::cout << "long centers: " << std::endl;
+		for(size_t j  =0; j < long_centers.size();j++){
+			for(size_t k =0; k < long_centers.at(j).size();k++){
+				std::cout << long_centers.at(j).at(k)<< " ";
+			}
+			std::cout << " " <<std::endl;
 		}
-	}
- 
- */	
-	
-				
+		std::cout << "al of a ccs: " <<std::endl;
+		for(std::map<std::string, std::vector<pw_alignment> >::iterator it = al_of_a_ccs.begin(); it!=al_of_a_ccs.end(); ++it){
+			std::cout << it->first<< std::endl;
+		}
 	/*	for(std::set< const pw_alignment *, compare_pw_alignment>::iterator it=cc.begin();it!=cc.end();it++ ){
 			const pw_alignment *al = *it;
 			size_t index = al ->getreference1();
@@ -836,16 +825,36 @@ int do_mc_model(int argc, char * argv[]) {
 	//	std::cout << " initial CC " << i << " done " << std::endl << flush;
 //}
 	} // for connected components
-
-
-
+	std::cout<< "global result "<< std::endl;
+	for(std::map<std::string, std::vector<pw_alignment> >::iterator it = alignments_in_a_cluster.begin(); it != alignments_in_a_cluster.end(); it++){
+		std::cout<< "center: "<< it->first << std::endl;
+		std::cout << "members: "<<std::endl;
+		for(size_t i =0;i< it->second.size();i++){
+			it->second.at(i).print();
+			std::cout<< " " <<std::endl;		
+		}
+	}
+	for(size_t i =0; i < data.numSequences();i++){
+		std::cout<< "sequence "<< i << std::endl;
+		for(std::map<size_t, std::string>::iterator centPos = centerOnSequence.at(i).begin(); centPos != centerOnSequence.at(i).end();centPos++){
+			std::cout << centPos->first << " " << centPos->second <<std::endl;
+		}
+	}
+	std::cout<< "all the als: "<<std::endl;
+	for(size_t i =0; i < data.numAlignments();i++){
+		const pw_alignment p = data.getAlignment(i);
+		p.print();
+		
+	}
 	clock_t graph_ma_time = clock();
 	// TODO better separation of the different applications of our program: create/read model, compress/decompress sequences, create graph
 	// write graph result in maf format
-	write_graph_maf(graphout, alignments_in_a_cluster, data);//includes clusters with no associated member.
+	write_graph_maf(graphout, alignments_in_a_cluster, data);//includes clusters with no associated member.TODO add long centers and modify the graph, for that purpose we may need a data structure to save all old and new centers at the same time. 
 	graph_ma_time = clock() - graph_ma_time;
 
 	clock_t arithmetic_encoding_time = clock();
+//Remove centers with no other member rather than themselves:
+	//(On original centers:)
 	std::set<std::string> intermediate_center;
 	for(std::map<std::string, std::vector<pw_alignment> >::iterator it = alignments_in_a_cluster.begin(); it!=alignments_in_a_cluster.end();it++){
 		if(it->second.size()==0){
@@ -857,12 +866,9 @@ int do_mc_model(int argc, char * argv[]) {
 		std::map<std::string, std::vector<pw_alignment> >::iterator it1 = alignments_in_a_cluster.find(cent);
 		alignments_in_a_cluster.erase(it1);				
 	}
-/*	std::cout<< "al cent size: "<<  alignments_in_a_cluster.size() << std::endl;
-	for(std::map<std::string, std::vector<pw_alignment> >::iterator it = alignments_in_a_cluster.begin(); it!=alignments_in_a_cluster.end();it++){
-		std::cout << " al cent: "<< it->first <<std::endl;
-	} 
-*/
-	//Defining weights of global clustering results! 
+
+//Defining weights of global clustering results! 
+	//On original centers:
 	std::map<std::string, unsigned int>weight;
 	size_t max_bit = 8;	
 	size_t max_members = 0;//Returns the largest cluster
@@ -889,6 +895,48 @@ int do_mc_model(int argc, char * argv[]) {
 				it1->second = 1;
 			}
 		}else continue;
+	}
+	//On concatenated ones:
+	std::map<std::vector<std::string>, size_t> numberOfACenter;
+	std::map<std::vector<std::string> , unsigned int> long_center_weight;
+	size_t maximum_mem = 0;//At the end should be equal to the number of center occurs more than all the others
+	for(size_t i = 0; i < long_centers.size();i++){
+		std::vector<std::string> longCenter = long_centers.at(i);
+		std::cout<< "current long center is "<<std::endl;
+		for(size_t j =0; j < longCenter.size();j++){
+			std::cout << longCenter.at(j)<< " " ;
+		}
+		std::cout << " " <<std::endl;
+		size_t number =0;
+		for(size_t j =0; j < data.numSequences();j++){
+			for(std::map<size_t, std::vector<std::string> >::iterator it = centersPositionOnASeq.at(j).begin(); it != centersPositionOnASeq.at(j).end(); it++){
+				if(it->second == longCenter){
+					number = number +1;
+				}
+			}
+		}
+		std::cout << "number "<<number <<std::endl;
+		numberOfACenter.insert(make_pair(longCenter,number));
+		if(number > maximum_mem){
+			maximum_mem = number;
+		}
+	}
+	std::cout<< "maximum_mem "<< maximum_mem << std::endl;		
+	for(std::map<std::vector<std::string>, size_t >::iterator it = numberOfACenter.begin(); it!=numberOfACenter.end(); it++){
+		std::map<std::vector<std::string>, unsigned int >::iterator it1 = long_center_weight.find(it->first);
+		if(it1 == long_center_weight.end()){
+			long_center_weight.insert(make_pair(it->first,0));
+			it1 = long_center_weight.find(it->first);
+		}
+		it1->second = (unsigned int)(it->second*((m.get_powerOfTwo().at(max_bit)-1)/(double)maximum_mem));
+	}
+	std::cout<< "long centers weights: " <<std::endl;
+	for(std::map<std::vector<std::string>, unsigned int >::iterator it = long_center_weight.begin(); it != long_center_weight.end(); it++){
+		for(size_t i =0; i < it->first.size();i++){
+			std::cout << it->first.at(i) << " ";
+		}
+		std::cout << " " << std::endl;
+		std:: cout << "weight is "<< it->second << std::endl;
 	}
 	size_t no_al = 0;
 	for(std::map<std::string, std::vector<string> >::iterator it=global_results.begin();it !=global_results.end();it++){
@@ -967,8 +1015,18 @@ int do_mc_model(int argc, char * argv[]) {
 //						std::cout<< " "<< std::endl;
 
 //	}
+	for(size_t i = 0; i < data.numSequences(); i++){
+		std::cout<< "long centers on sequence " << i << " are "<<std::endl;
+		for(std::map<size_t, std::vector<std::string> >::iterator it = centersPositionOnASeq.at(i).begin(); it !=  centersPositionOnASeq.at(i).end();it++){
+			for(size_t j =0; j < it->second.size();j++){
+				std::cout << it->second.at(j)<< " ";
+			}
+			std::cout<< " "<< std::endl;
+		}
+	}
 
 //Data compression:
+	use_encode en(data,m,wrap);
 	if(0!=encoding_out.compare("noencode")) {
 	std::cout<< "weight size: "<< weight.size()<<std::endl;
 //	en.arithmetic_encoding_alignment(weight,member_of_cluster,alignments_in_a_cluster,outs);
@@ -980,7 +1038,8 @@ int do_mc_model(int argc, char * argv[]) {
 //	en.arithmetic_encoding_centers(alignments_in_a_cluster,outs);
 //	en.arithmetic_encoding_alignment(weight,member_of_cluster,alignments_in_a_cluster,outs,*enc);
 //	en.write_to_stream(alignments_in_a_cluster,outs);
-	en.al_encoding(weight,member_of_cluster,alignments_in_a_cluster,outs,*enc);
+	en.al_encode_with_long_center(weight, long_center_weight,alignments_in_a_cluster, centersPositionOnASeq, member_of_cluster,long_centers ,outs, *enc);
+//	en.al_encoding(weight,member_of_cluster,alignments_in_a_cluster,outs,*enc);
 	delete enc;
 	outs.close();
 //	std::ifstream in(encoding_out.c_str(),std::ifstream::binary);
@@ -1099,12 +1158,12 @@ int do_dynamic_mc_model(int argc, char * argv[]) {
 	double all_gain_in_ias = 0;
 	size_t all_used_input_alignments = 0;
 	size_t all_npo_alignments = 0;
-
+	std::cout <<"size of ccs " << ccs.size() <<std::endl;
 #pragma omp parallel for num_threads(num_threads) schedule(dynamic)
 	for(size_t i=0; i<ccs.size(); ++i) {
 #pragma omp critical(print)
 {
-//		std::cout << " on initial CC " << i << " size " << ccs.at(i).size() << std::endl;
+		std::cout << " on initial CC " << i << " size " << ccs.at(i).size() << std::endl;
 }
 		clock_t ias_time_local = clock();
 		std::set< pw_alignment, compare_pw_alignment> & cc = ccs.at(i);
@@ -1142,6 +1201,11 @@ int do_dynamic_mc_model(int argc, char * argv[]) {
 	map<string, vector<pw_alignment> >al_of_a_ccs;// it is used for creating long centers
 	for(size_t j=0; j<cc_cluster_in.size(); ++j) {
 		clock_t ap_time_local = clock();
+		std::cout << "cc cluster in at " << j << std::endl;
+		for(std::set<pw_alignment , compare_pw_alignment>::iterator cc_cl = cc_cluster_in.at(j).begin();cc_cl !=cc_cluster_in.at(j).end();cc_cl++){
+			const pw_alignment & al = *cc_cl;
+			al.print();
+		}
 		use_affpro uaf(cc_cluster_in.at(j), m, cluster_base_cost,outs);
 		std::map<std::string, std::vector<string> >cluster_result;
 		uaf.run(cluster_result);
@@ -1374,11 +1438,11 @@ int do_dynamic_mc_model(int argc, char * argv[]) {
 }
 int do_decoding(int argc, char * argv[]){
 	typedef mc_model use_model;
-	typedef encoder<use_model> use_encode;
+	typedef decoder<use_model> use_decode;
 	if(argc < 4){
 		usage();
-		cerr << "Program: decoding" << endl;
-		cerr << "Parameters:" << endl;
+		cerr << "Program: decoding" << std::endl;
+		cerr << "Parameters:" << std::endl;
 		cerr << "* input binary compressed file from model" << std::endl;
 		cerr << " * output binary for saving retrievd sequences" << std::endl;		
 	}
@@ -1388,21 +1452,47 @@ int do_decoding(int argc, char * argv[]){
 	std::ofstream out(decoding_out.c_str(),std::ofstream::binary);
 	all_data data;
 	use_model m(data);
-	test_encoder test;
-	wrapper wrap;
-	use_encode en(data,m,wrap);
+//	test_encoder test;
+	decoding_wrapper wrap;
+	use_decode dec(data,m,wrap);
 //Decompression
-	dlib::entropy_decoder_kernel_1  dec;
-	en.al_decoding(in,dec,out);
+//	m.set_patterns(in);
+//	m.set_alignment_pattern(in);
+	dlib::entropy_decoder_kernel_1  decode;
+//	arithmetic_decoding_centers(in,dec);
+	dec.al_decode_with_long_center(in,decode,out);	
+//	dec.al_decoding(in,decode,out);
 	cout<< "decoding is done!"<<endl;
-	test.encode();
-	test.decode();
-	test.compare();
-	test.context_compare();
+//	test.encode();
+//	test.decode();
+//TODO These test functions are wrong! Need to be rewritten!
+//	test.compare();//TODO fix it!
+//	test.context_compare();//TODO fix it!
 	return 0;	
 }
-int do_model_seq(int argc, char * argv[]){
+int do_compare_sequences(int argc, char* argv[]){
+	if(argc < 5){
+		usage();
+		cerr << "Program: compare" <<std::endl;
+		cerr << "Parameters: "<<std::endl;
+		cerr << "* fasta file from fasta_prepare" << std::endl;
+		cerr << "* maf file containing alignments of sequences contained in the fasta file" << std::endl;
+		cerr << "* file contains decoded sequences" <<std::endl;
+	}
+	std::string fastafile(argv[2]);
+	std::string maffile(argv[3]);
+	std::string decoding_out(argv[4]);
+	std::ifstream in(decoding_out.c_str(),std::ifstream::binary);
+	all_data data;
+	data.read_fasta_maf(fastafile, maffile);
+	data.compare_seq_with_decoding(in);
+	std::cout<< "Comparing is done!"<<std::endl;
+	return 0;
+}
+int do_model_simple(int argc, char * argv[]){//simple model
 	typedef model use_model;
+	typedef initial_alignment_set<use_model> use_ias;
+	typedef affpro_clusters<use_model> use_affpro;
 	if(argc < 5) {
 		usage();
 		cerr << "Program: simple_model" << std::endl;
@@ -1419,39 +1509,66 @@ int do_model_seq(int argc, char * argv[]){
 	if(argc == 6) {
 		num_threads = atoi(argv[5]);
 	}
-
 //Reading data:
 	all_data data;
 	data.read_fasta_maf(fastafile, maffile);
 	overlap ol(data);
-//	wrapper wrapp;
-//	counting_functor functor(data);
-//	encoding_functor functor1(data);
-
-//std::ofstream outs("encode",std::ofstream::binary);
+	std::ofstream outs;
+// Find connected components of alignments with some overlap
+	compute_cc cccs(data);
+	std::vector<std::set< pw_alignment, compare_pw_alignment> > ccs;
+	cccs.compute(ccs);
 //Train all the sequences:
 	use_model m(data);
 	m.train();
-	double sum = 0;
-	double g1;
-	double g2;
-//	for(size_t i = 0 ; i< data.numAlignments() ; i++){
-//		const pw_alignment & p = data.getAlignment(i);
-//		m.gain_function(p, g1,g2);
-//		sum +=g1+g2;
-//	}
-//	std::cout<< "sum is "<<sum <<std::endl;
-	size_t information;
-	m.total_information(information);
-	std::cout << "total information: "<<information << std::endl;
-// Find connected components of alignments with some overlap
-//	compute_cc cccs(data);
-//	std::vector<std::set< const pw_alignment *, compare_pw_alignment> > ccs;
-//	cccs.compute(ccs);
-//test
-//	en.arithmetic_encoding_seq(outs);
-//	en.arithmetic_decoding_seq();
-//	en.arithmetic_encoding_alignment();
+	std::vector<overlap> cc_overlap(ccs.size(), overlap(data));
+	// base cost to use an alignment
+//	double cluster_base_cost = log2(data.numAlignments());
+	double cluster_base_cost = 5.0;
+	std::cout << " base cost " << cluster_base_cost << std::endl;
+
+// Select an initial alignment std::set for each connected component
+	for(size_t i=0; i<ccs.size(); ++i) {
+		std::set< pw_alignment, compare_pw_alignment> & cc = ccs.at(i);
+		use_ias ias(data,cc, m, cluster_base_cost);
+		ias.compute(cc_overlap.at(i));
+	std::vector< std::set<pw_alignment , compare_pw_alignment> > cc_cluster_in; //has shorter length than original sequence pieces
+	compute_cc occ(cc_overlap.at(i), data.numSequences());
+	occ.compute(cc_cluster_in);
+	std::cout<< "cc_cluster_in size: "<< cc_cluster_in.size()<<std::endl;
+	std::cout << "cc " << i << ": from " << cc.size() << " original als with total gain " << ias.get_max_gain() << " we made " << cc_overlap.at(i).size() << " pieces with total gain " << ias.get_result_gain() <<  std::endl; 
+	std::vector<std::string> all_centers;
+	map<string, vector<pw_alignment> >al_of_a_ccs;// it is used for creating long centers (string ---> center, vector<pw_al> ---> alignments of a cluster)
+	for(size_t j=0; j<cc_cluster_in.size(); ++j) {
+		std::cout << " run affpro at " << j << " on " << cc_cluster_in.at(j).size()<<std::endl;	
+		std::cout << " in al std::set size " << cc_cluster_in.at(j).size() << std::endl;
+		size_t nums=0;
+		for(std::set<pw_alignment, compare_pw_alignment>::iterator ait=cc_cluster_in.at(j).begin(); ait!=cc_cluster_in.at(j).end(); ++ait) {
+			std::cout << " nums " << nums << std::endl;
+			const pw_alignment & cc_al = *ait;
+			nums++;
+			cc_al.print();
+			std::cout << std::endl;
+			double c1;
+			double c2;
+			double m1;
+			double m2;
+			m.cost_function(cc_al, c1, c2, m1,m2);
+			std::cout << "c1 " << c1 << " c2 " << c2 << " m1 " << m1 << " m2 "<< m2 <<std::endl;
+		}
+		
+		use_affpro uaf(cc_cluster_in.at(j), m, cluster_base_cost,outs);
+		std::map<std::string, std::vector<string> >cluster_result;
+		uaf.run(cluster_result);
+		for(std::map<std::string,std::vector<string> >::iterator it=cluster_result.begin();it != cluster_result.end();it++){
+			std::cout << "center " << it->first << std::endl;
+		}
+	}
+}
+
+
+
+
 	
 	return 0;
 }
@@ -1477,12 +1594,14 @@ int main(int argc, char * argv[]) {
 		return do_decoding(argc,argv);
 	}
 	else if(0==program.compare("simple_model")){
-		return do_model_seq(argc,argv);
+		return do_model_simple(argc,argv);
 	}
 	else if(0==program.compare("dy_model")){
 		return do_dynamic_mc_model(argc,argv);
 	}
-
+	else if(0 ==program.compare("compare")){
+		return do_compare_sequences(argc,argv);
+	}
 	else {
 		usage();
 	}

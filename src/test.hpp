@@ -22,8 +22,10 @@
 		void compare();
 		void context_compare();
 		private:
-		vector<unsigned int>low;
-		vector<unsigned int>high;
+		std::vector<unsigned int>low;
+		std::vector<unsigned int>high;
+		std::vector<unsigned int>low_dec;
+		std::vector<unsigned int>high_dec;
 
 	
 
