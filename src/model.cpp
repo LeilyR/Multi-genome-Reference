@@ -7,9 +7,9 @@
 template<typename T>
 void initial_alignment_set<T>::compute(overlap & o) {
 
-//	compute_simple_lazy_splits(o);
+	compute_simple_lazy_splits(o);
 //	compute_simple(o);
-	compute_vcover_clarkson(o);
+//	compute_vcover_clarkson(o);
 
 }
 
