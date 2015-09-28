@@ -96,13 +96,12 @@
 
 		}
 		
-	/*	for(size_t i =0 ; i < high.size();i++){
-			cout << "high at " << i << " is " << high.at(i) << endl;
-		}*/
-		
+				
 		std::cout<< "low_dec size: "<< low_dec.size() << "low size "<< low.size()<< std::endl;
 		std::cout<< "high_dec size: "<< high_dec.size() << "high size "<< high.size()<< std::endl;
-
+		for(size_t i =0 ; i < high_dec.size();i++){
+			cout << "high at " << i << " is " << high.at(i) << " " << high_dec.at(i) << endl;
+		}
 		for(size_t i = 0; i < low_dec.size(); i++){
 			if(low.at(i)!=low_dec.at(i)){
 				cout<< "low values at " << i << " are different" << low.at(i) << " " << low_dec.at(i) <<endl;

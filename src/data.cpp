@@ -1139,8 +1139,13 @@ void overlap::test_multimaps() {
 
 
 void overlap::insert_without_partial_overlap(const pw_alignment & p){
-
-	//std::cout << " insert " << np << std::endl;
+	p.print();
+	std::cout<<" "<<std::endl;
+	for(std::set<pw_alignment, compare_pw_alignment>::iterator it = alignments.begin(); it != alignments.end(); it++){
+		const pw_alignment & al = *it;
+		al.print();
+	}
+	std::cout << " insert " << std::endl;
 	assert(alignments.find(p) == alignments.end());
 	std::pair<std::set<pw_alignment, compare_pw_alignment>::iterator, bool > npp = alignments.insert(p);
 	std::set<pw_alignment, compare_pw_alignment>::iterator npi = npp.first;
@@ -2221,13 +2226,12 @@ void splitpoints::insert_split_point(size_t sequence, size_t position) {
 #if SPLITPRINT
 				std::cout << "SPLIT " << *split << std::endl;
 #endif
+				std::cout<< "split all!" <<std::endl;
 				for(std::multimap<size_t, pw_alignment>::const_iterator it =als_on_ref.lower_bound(*split); it!=als_on_ref.end(); ++it){
 					const pw_alignment & pr = it-> second;
 					const pw_alignment * p = & pr;
-
-
-//					p->print();
-//					std::cout << std::endl;
+					p->print();
+					std::cout << std::endl;
 
 					if(p->getreference1() == i) {
 						size_t pleft1;
@@ -2261,13 +2265,15 @@ void splitpoints::insert_split_point(size_t sequence, size_t position) {
 
 	//	std::cout << " in split all "<< remove_alignments.size() << " remove_alignments " << std::endl;
 		std::vector<pw_alignment>  split_pieces;
-		splits(newal, split_pieces);	
+		splits(newal, split_pieces);
+		std::cout << "new al "	<< std::endl;
+		newal.print();
 		for(std::set<pw_alignment,compare_pw_alignment>::iterator removed = remove_alignments.begin(); removed != remove_alignments.end(); ++removed){
 			splits(*removed, split_pieces);			
 		}
 	//	std::cout<<"split_pieces: "<<std::endl;
 	//	for(size_t i = 0 ; i < split_pieces.size();i++){split_pieces.at(i).print();}	
-//		std::cout<<"size of split pieces"<<split_pieces.size()<<std::endl;
+		std::cout<<"size of split pieces"<<split_pieces.size()<<std::endl;
 		std::set<pw_alignment,compare_pw_alignment> inserted_pieces;
 		for(size_t i = 0; i<split_pieces.size();i++) {
 #ifndef NDEBUG
@@ -2295,6 +2301,9 @@ void splitpoints::insert_split_point(size_t sequence, size_t position) {
 				}
 			}
 		}
+	//	if(insert_alignments.size()==0 && remove_alignments.size()==0){
+	//		insert_alignments.push_back(newal);
+	//	}
 		
 					
 	}
@@ -2707,7 +2716,7 @@ void mc_model::markov_chain_alignment(){
 				unsigned int l = 0;
 			//	unsigned int total = 0;
 				size_t bit = 12; // number of bits to use for encoding event width
-				std::string current_pattern	= *it;
+				std::string current_pattern = *it;
 				// it1: high values for current pattern/accession pair
                                	highValue.at(i).at(j).insert(std::make_pair(current_pattern,std::vector<unsigned int>(NUM_DELETE+NUM_KEEP+10,0)));
 				std::map<std::string, std::vector<unsigned int> >::iterator it1=highValue.at(i).at(j).find(current_pattern);
@@ -2920,16 +2929,18 @@ void mc_model::write_parameters(std::ofstream & outs){
 		std::cout<<"acc: "<<i<<std::endl;
 		for(std::map<std::string, std::vector<double> >::iterator it= all_the_patterns.begin(); it != all_the_patterns.end() ; it++){
 			std::string pattern = it ->first;
+			std::cout << "pattern: " << pattern << std::endl;
 			std::map<std::string,std::vector<double> >::iterator it1=sequence_successive_bases.at(i).find(pattern);
 			if(it1 != sequence_successive_bases.at(i).end()){
 				for(size_t n = 0; n <5; n ++){
 					it->second.at(n) = it1 ->second.at(n);
 				}
 			}else{
-				for(size_t n =0; n < 5 ; n++)
+				for(size_t n =0; n < 5 ; n++){
 					it -> second.at(n) = -log2(0.2);
 				}
 			}
+		}
 			std::map <std::string, std::vector<unsigned int> >lower_bound;
 			for(std::map<std::string, std::vector<double> >::iterator it= all_the_patterns.begin(); it != all_the_patterns.end() ; it++){	
 					std::vector<double> num(5,0);
@@ -3011,7 +3022,7 @@ void mc_model::write_parameters(std::ofstream & outs){
 					outs<< (char) 0;
 					outs<< j;
 				//	outs << data.get_acc(i);
-				//	outs<< (char) 0;
+					outs<< (char) 0;
 				//	outs<< data.get_acc(j);
 				//	outs<< (char) 0;
 			//		std::cout<<"acc1 : " << data.get_acc(i) << " acc2: " << data.get_acc(j) << std::endl;
@@ -3043,6 +3054,7 @@ void mc_model::write_parameters(std::ofstream & outs){
 			outs<<(char) 8;
 	//	}
 	//	outs.close();
+		std::cout << "all the alignment patterns are written! " <<std::endl;
 	}
 /*
 	Modification instructions:
@@ -3135,10 +3147,11 @@ void mc_model::make_all_alignments_patterns(){
 // TODO do we want to make markov chain levels dependent on input sequence length?
 	void mc_model::train(std::ofstream & outs){
 		make_all_the_patterns();
-		write_parameters(outs);
-		write_alignments_pattern(outs);
 		markov_chain();
 		markov_chain_alignment();
+		write_parameters(outs);
+		write_alignments_pattern(outs);
+
 	}
 	
 	void mc_model::make_all_the_patterns(){
@@ -3167,7 +3180,7 @@ void mc_model::make_all_alignments_patterns(){
 			all_the_patterns.insert(std::make_pair(seq3,std::vector<double>(5,0)));
 		//	std::cout << " sequence pattern length " <<seq3.length() << std::endl;
 		}
-
+		std::cout << "All the sequence patterns are made! "<<std::endl;
 	}
 	void mc_model::set_patterns(std::ifstream& in){
 		make_all_the_patterns();
@@ -3201,8 +3214,8 @@ void mc_model::make_all_alignments_patterns(){
 			c = in.get();
 			for(std::map<std::string,std::vector<double> >::const_iterator it= all_the_patterns.begin(); it!= all_the_patterns.end();it++){
 				std::string pattern = it ->first;
-				std::cout << "pattern: "<<pattern <<std::endl;
-				std::cout<< "accession " << accession << "high size: " << high.size() << " numOfAcc "<< data.numOfAcc() << std::endl;
+			//	std::cout << "pattern: "<<pattern <<std::endl;
+			//	std::cout<< "accession " << accession << "high size: " << high.size() << " numOfAcc "<< data.numOfAcc() << std::endl;
 				high.at(accession).insert(std::make_pair(pattern, std::vector<unsigned int>(5,0)));
 			}
 			for(std::map<std::string,std::vector<unsigned int> >::iterator it= high.at(accession).begin(); it!= high.at(accession).end();it++){
@@ -3255,6 +3268,7 @@ void mc_model::make_all_alignments_patterns(){
 	}
 	void mc_model::set_alignment_pattern(std::ifstream & in){
 		make_all_alignments_patterns();
+		std::cout << "all alignment patterns have been made! "<<std::endl;
 		size_t bit = 12;
 		char c;
 		char h;
@@ -3275,7 +3289,7 @@ void mc_model::make_all_alignments_patterns(){
 			in >> accession2;
 		//	std::string acc2;
 		//	std::stringstream s2;
-		//	c= in.get();
+			c= in.get();
 		//	while(c != 0){
 		//		s2 << c;
 		//		c = in.get();
@@ -3286,7 +3300,7 @@ void mc_model::make_all_alignments_patterns(){
 			std::cout << "accession 1 "<< accession1 << " accession 2 "<<accession2 << std::endl;
 			for(std::set<std::string>::const_iterator it= all_alignment_patterns.begin(); it!= all_alignment_patterns.end();it++){
 				std::string pattern = *it;
-			//	std::cout<<"acc1: "<<accession1 << " acc2 " << accession2<<std::endl;
+		//		std::cout<<"acc1: "<<accession1 << " acc2 " << accession2<<std::endl;
 				highValue.at(accession1).at(accession2).insert(std::make_pair(pattern, std::vector<unsigned int>(NUM_KEEP+NUM_DELETE+10,0)));
 			}
 			for(std::map<std::string,std::vector<unsigned int> >::iterator it= highValue.at(accession1).at(accession2).begin(); it!= highValue.at(accession1).at(accession2).end();it++){
@@ -3462,7 +3476,7 @@ void mc_model::make_all_alignments_patterns(){
 		//return the enc
 		if(num_delete != -1){
 		//	std::cout<< "there is a delete of length "<< num_delete <<std::endl; 
-		//	return NUM_DELETE+num_delete; TODO this was really wrong
+		//	return NUM_DELETE+num_delete;
 			return 5 + num_delete;
 		}
 		if(num_keep != -1){
@@ -3567,7 +3581,7 @@ void mc_model::make_all_alignments_patterns(){
 		size_t first_patterns = Alignment_level;
 		size_t power = powersOfTwo.at(NUM_KEEP-1);
 	//	std::cout<< "power: "<<powersOfTwo.at(0)<<std::endl;	
-		for(size_t j = 0; j < Alignment_level; j++){// two keeps of length 2^1 and 2^0 has been created at the begining of each alignment.
+		for(size_t j = 0; j < Alignment_level; j++){// two keeps of length 2^1 and 2^0 has been created at the begining of each alignment (if level is 2).
 			first_patterns--;
 			seq+=modification_character(-1,-1,-1,first_patterns);
 		}
@@ -3648,6 +3662,7 @@ void mc_model::make_all_alignments_patterns(){
 		//		std::cout<< "size of seq: "<< seq.size()<<std::endl;
 		//		std::cout << "seq 2 " << int(seq2) << std::endl;
 		//		std::cout<< "recorded keep length: " << n+1 << std::endl;
+		//		std::cout<< "a keep is observed!" <<std::endl;
 				functor. see_context(acc1,acc2,p,i,seq1,seq2);
 		//		std::cout<<"n: "<< n << std::endl;
 			}else{
@@ -3929,9 +3944,69 @@ void mc_model::make_all_alignments_patterns(){
 		if(al.getreference1()==center_ref && left_1 == center_left){
 			std::cout<< "center is on ref1"<<std::endl;
 			computing_modification_oneToTwo(al, functor);	
-		}else{
+		}
+		else{
 			std::cout<< "center is on ref2"<<std::endl;
 			computing_modification_twoToOne(al, functor);
+		}
+	}
+	void mc_model::get_insertion_high_between_centers(size_t& seq_id ,char & seq_base, char & last_center_base, unsigned int& center_ref,unsigned int & high, unsigned int & low)const{
+		size_t acc1 = data.accNumber(center_ref);		
+		size_t acc2 = data.accNumber(seq_id);
+		std::string pattern;
+		size_t bit = 13;
+		for(size_t i =0; i < Alignment_level; i++){
+			pattern += modification_character(-1,-1,-1,(Alignment_level-i));
+		}
+		pattern += last_center_base;
+		size_t insertion = dnastring::base_to_index(seq_base);
+		char insert = modification_character(-1,-1,insertion,-1);
+		std::map<std::string , std::vector<unsigned int> >::const_iterator it = highValue.at(acc1).at(acc2).find(pattern);
+		if(insert != NUM_KEEP+NUM_DELETE+10-1){
+			high = it->second.at(insert);
+		}else{
+			high = powersOfTwo.at(bit);
+		}
+		low = it->second.at(insert -1);
+	}
+	void mc_model::get_a_keep(unsigned int & cent_left, unsigned int& cent_ref, size_t & length, std::vector<unsigned int> & low, std::vector<unsigned int> & high)const{
+		size_t acc1 = data.accNumber(cent_ref);	
+		size_t power = powersOfTwo.at(NUM_KEEP-1);	
+		const dnastring & sequence = data.getSequence(cent_ref);		
+		std::string pattern;
+		for(size_t i =0; i < Alignment_level; i++){
+			pattern += modification_character(-1,-1,-1,(Alignment_level-i));
+		}
+		size_t pos = cent_left;
+		size_t last_base = dnastring::base_to_index(sequence.at(pos));
+		std::string current_pattern = pattern;
+		current_pattern += last_base;
+		std::cout << "len "<<length << "pow "<< power << std::endl;
+		while(length > power){
+			char keep = modification_character(-1,-1,-1,NUM_KEEP-1);
+			length = length - power;
+			std::map<std::string , std::vector<unsigned int> >::const_iterator it = highValue.at(acc1).at(acc1).find(current_pattern);
+			std::cout << "current pattern "<<int(current_pattern.at(0)) << " " << int(current_pattern.at(1)) << " keep "<< int(keep)<<std::endl;
+			high.push_back(it->second.at(keep));
+			low.push_back(it->second.at(keep -1));
+			pattern.clear();
+			for(size_t i = 1; i < current_pattern.size()-1;i++){
+				pattern +=current_pattern.at(i);
+			}
+			pattern += keep;
+			pos += power;
+			last_base = dnastring::base_to_index(sequence.at(pos));	
+			pattern +=last_base;
+			current_pattern = pattern;
+		}
+		for (size_t m = NUM_KEEP; m > 0; m--){
+			if((length & powersOfTwo.at(m-1)) != 0){
+				std::map<std::string , std::vector<unsigned int> >::const_iterator it = highValue.at(acc1).at(acc1).find(current_pattern);
+				char keep = modification_character(-1,-1,-1,m-1);
+				high.push_back(it->second.at(keep));
+				low.push_back(it->second.at(keep -1));
+				break;
+			}
 		}
 	}
 
@@ -4093,7 +4168,7 @@ double counting_functor::get_total(size_t acc1, size_t acc2, std::string context
 	}
 	encoding_functor::encoding_functor(all_data & d, mc_model * a_model, wrapper & wrap, dlib::entropy_encoder_kernel_1 & encode ):data(d),model(a_model),wrappers(wrap),enc(encode){
 	}
-	void encoding_functor::see_context(size_t acc1, size_t acc2,const pw_alignment & p, size_t pos, std::string context, char last_char){//last_char is infact a pattern!
+	void encoding_functor::see_context(size_t acc1, size_t acc2,const pw_alignment & p, size_t pos, std::string context, char last_char){//last_char is infact a encoded pattern!
 		size_t bit = 13;
 	//	dlib::entropy_encoder_kernel_1 * enc = new dlib::entropy_encoder_kernel_1();
 	//	enc->std::set_stream(outs);

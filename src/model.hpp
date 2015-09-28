@@ -335,7 +335,7 @@ class affpro_clusters {
 		//	al->print();
 		//	dat.numAcc();
 		//	std::cout<<"data3 ad in afp: "<< & dat << std::endl;	
-			add_alignment(al); //Marion : I have an error that I dont understand !
+			add_alignment(al); 
 		//	std::cout<<"data4 ad in afp: "<< & dat << std::endl;	
 
 		}
@@ -346,39 +346,40 @@ void run(std::map<std::string, std::vector<std::string> > & cluster_result) {
 	// convert to c-style matrix
 	double * data = new double[simmatrix.size() * simmatrix.size()];
 	int * result = new int[simmatrix.size()];
-	if(simmatrix.size()>2) {
-	for(size_t i=0; i<simmatrix.size(); ++i) {
-		for(size_t j=0; j<simmatrix.size(); ++j) {
-			data[i*simmatrix.size() + j] = simmatrix.at(i).at(j);
+	if(simmatrix.size()>2){
+		for(size_t i=0; i<simmatrix.size(); ++i) {
+			for(size_t j=0; j<simmatrix.size(); ++j) {
+				data[i*simmatrix.size() + j] = simmatrix.at(i).at(j);
+			//	std::cout<< "simmat at "<<i <<" at "<< j << " " << simmatrix.at(i).at(j)<<std::endl;
+			}
 		}
-	}
-
-	APOPTIONS apoptions;
-	apoptions.cbSize = sizeof(APOPTIONS);
-	apoptions.lambda = 0.9;
-	apoptions.minimum_iterations = 1;
-	apoptions.converge_iterations = 20;
-	apoptions.maximum_iterations = 5000;
-	apoptions.nonoise = 1;
-	apoptions.progress=NULL; apoptions.progressf=NULL;
-	double netsim;	
-	int iter = apcluster32(data, NULL, NULL, simmatrix.size()*simmatrix.size(), result, &netsim, &apoptions);
-//	std::cout << "iter " << iter << std::endl;
-	if(iter <= 0 || result[0]==-1) {
-		apoptions.converge_iterations = 10;
-		apoptions.maximum_iterations = 15000;
-		apoptions.lambda = 0.98;
-		iter = apcluster32(data, NULL, NULL, simmatrix.size()*simmatrix.size(), result, &netsim, &apoptions);
-//		std::cout << "iter " << iter << std::endl;
-	}
-	if(iter <= 0 || result[0]==-1) {
-		apoptions.converge_iterations = 10;
-		apoptions.maximum_iterations = 15000;
-		apoptions.lambda = 0.995;
-		iter = apcluster32(data, NULL, NULL, simmatrix.size()*simmatrix.size(), result, &netsim, &apoptions);
-	//	std::cout << "iter " << iter << std::endl;
-
-	}
+		APOPTIONS apoptions;
+		apoptions.cbSize = sizeof(APOPTIONS);
+		apoptions.lambda = 0.9;
+		apoptions.minimum_iterations = 10;
+		apoptions.converge_iterations = 500;
+		apoptions.maximum_iterations = 5000;
+		apoptions.nonoise = 1;
+		apoptions.progress=NULL; apoptions.progressf=NULL;
+		double netsim;	
+		int iter = apcluster32(data, NULL, NULL, simmatrix.size()*simmatrix.size(), result, &netsim, &apoptions);
+		std::cout << "iter " << iter << "result[0] "<< result[0] << " netsim "<< netsim<< std::endl;
+		if(iter <= 0 || result[0]==-1) {
+			apoptions.minimum_iterations = 100;
+			apoptions.converge_iterations = 500;
+			apoptions.maximum_iterations = 15000;
+			apoptions.lambda = 0.98;
+			iter = apcluster32(data, NULL, NULL, simmatrix.size()*simmatrix.size(), result, &netsim, &apoptions);
+	//		std::cout << "iter " << iter << std::endl;
+		}
+		if(iter <= 0 || result[0]==-1) {
+			apoptions.minimum_iterations = 1000;
+			apoptions.converge_iterations = 800;
+			apoptions.maximum_iterations = 25000;
+			apoptions.lambda = 0.995;
+			iter = apcluster32(data, NULL, NULL, simmatrix.size()*simmatrix.size(), result, &netsim, &apoptions);
+			std::cout << "iter1 " << iter << "result[0] " <<result[0]<< std::endl;
+		}
 	} else {
 		if(simmatrix.size()==1) {
 			result[0] = 0;
@@ -390,7 +391,7 @@ void run(std::map<std::string, std::vector<std::string> > & cluster_result) {
 
 			if(one > two && one > separate) {
 				result[0] = 0;
-				result[1] = 1;
+				result[1] = 0;
 			} else if(two > one && two > separate) {
 				result[0] = 1;
 				result[1] = 1;
@@ -411,7 +412,7 @@ void run(std::map<std::string, std::vector<std::string> > & cluster_result) {
 		totalccost -= simmatrix.at(i).at(i);
 	//	}
 	}
-
+//	std::cout << "totalcost "<< totalccost<<std::endl;
 	double apcost = 0;
 //	std::cout<<"size of simmatrix: "<<simmatrix.size()<<std::endl;
 	for(size_t i=0; i<simmatrix.size(); ++i) {
@@ -431,21 +432,22 @@ void run(std::map<std::string, std::vector<std::string> > & cluster_result) {
 		}
 	}
 	for(size_t i=0; i<simmatrix.size(); ++i) {//cluster center may happen whenever i == result[i]
-//		std::cout << sequence_names.at(i) << " res " << i << " is " << result[i] << " ( length " << sequence_lengths.at(i) << ")"<<std::endl;
+		std::cout << sequence_names.at(i) << " res " << i << " is " << result[i] << " ( length " << sequence_lengths.at(i) << ")"<<std::endl;
 
 		if( (size_t)result[i]==i) {
-		//	std::cout << " " << simmatrix.at(i).at(i) << std::endl;
+			std::cout << " " << simmatrix.at(i).at(i) << std::endl;
 			std::map<std::string, std::vector<std::string> >::iterator it=cluster_result.find(sequence_names.at(i));
-			if(it==cluster_result.end()) {
+			if(it==cluster_result.end()){
 				cluster_result.insert(make_pair(sequence_names.at(i), std::vector<std::string>()));
 			} else {
+				std::cout << "at else "<<std::endl;
 				// it->second.push_back(sequence_names.at(i));
 			
 			}
 
 
 		} else {
-		//	std::cout << " " << simmatrix.at(i).at(result[i]) << " : " << simmatrix.at(i).at(i) << std::endl;
+			std::cout << " " << simmatrix.at(i).at(result[i]) << " : " << simmatrix.at(i).at(i) << std::endl;
 			//result[i]is associated one, add them to the map for each center
 			std::map<std::string, std::vector<std::string> >::iterator it=cluster_result.find(sequence_names.at(result[i]));
 			if(it == cluster_result.end()) {
@@ -490,17 +492,19 @@ class finding_centers{
 	finding_centers(all_data &);
 	~finding_centers();
 	void setOfAlignments(std::map<std::string,std::vector<pw_alignment> > &);
-	void findMemberOfClusters(std::map<std::string,std::vector<pw_alignment> > & );
-	void center_frequency(std::map<std::string,std::vector<pw_alignment> > &);
-	std::vector<size_t> get_center(size_t)const;
-	size_t get_number_of_centers()const;
+	void findMemberOfClusters(std::map<std::string,std::vector<pw_alignment> > &);
+	void center_frequency(std::map<std::string,std::vector<pw_alignment> > &, std::vector<std::map<size_t, std::string> > & );
+	std::map<size_t, std::vector<size_t> >get_center(size_t)const;
+	size_t get_number_of_centers()const;//Returns the total number of centers
+	std::map< size_t, std::string> get_sequence_centers(size_t & )const;//It returns all the centers of a sequence, a center may happen more than once, thus it might be repeated in the vector. size_t shows the position of each center
 	std::string find_center_name(size_t &)const;
-
+	
 	private:
 	all_data & data;
 	std::vector< std::multimap<size_t , pw_alignment*> >AlignmentsFromClustering;
 	std::map<std::string,std::string> memberOfCluster; //first string is assocciated member and second one is its center
-	std::vector<std::vector<size_t> >centersOfASequence;//all the centers that happen on each sequence.
+	std::vector< std::map< size_t, std::string> >centersOnSequence;//all the centers that happen on each sequence and their positions.
+	std::vector< std::map< size_t , std::vector<size_t> > > centersOfASequence;//centers that happen on each sequence and have less than 5 bases difference and their position.
 	std::vector<std::string> center_index;
 
 
@@ -511,45 +515,52 @@ class suffix_tree{
 	suffix_tree(all_data &, finding_centers&);
 	~suffix_tree();
 	void create_suffix(size_t);
-	void find_a_node(size_t& ,size_t&, std::string&);
+	void update_successive_centers(std::vector<size_t> &,size_t &, size_t & ); // Updating successive center vector by replacing a new merged center 
+	void find_a_node(size_t& ,size_t&, std::vector<size_t>&);
 	void find_sibling(size_t&, vector<size_t>&);
 	void find_parent(size_t&, size_t&);
 	void delete_relation(size_t & , size_t& );
-	void make_a_tree();
-	void insert_node(std::string);
+	void insert_node(std::vector<size_t>);
 	void count_branches();
-	std::vector<std::string> get_nodes()const;
-	std::map<std::vector<size_t>, size_t> get_count()const;
+	std::vector<std::vector<size_t> > get_nodes()const;
+	std::map<std::vector<size_t>, size_t> get_count()const;//Returns 'branch counter'
 	std::vector<size_t> get_first_parent()const;
-	void read_first_parents(std::string &, std::string &);
+	void read_first_parents(std::vector<size_t> & , std::vector<size_t> &);
 	void find_child_nodes(size_t &, vector<size_t> &);
-	void create_tree();
+	void first_parent_index(size_t & , size_t &); //current index, its first parent index
+	void create_tree(std::vector<size_t> &, size_t &);
+	size_t get_power_of_two(size_t &)const;
+	std::map<size_t, std::vector<size_t> > get_center_on_a_sequence(size_t &)const;
 	private:
 	all_data & data;
 	finding_centers & centers;
-	std::vector<std::string>suffixes;//all the suffixes of a sequence at the time
-	std::vector<std::string> nodes;
+	std::vector<std::map<size_t,std::vector<size_t> > >successive_centers;//It is updated in each round of making a suffix tree
+	std::vector<std::vector<std::vector<std::vector<size_t> > > >suffixes;//all the suffixes of all the sequences at each around
+	std::vector<std::vector<size_t> > nodes;
+	std::vector<size_t> powerOfTwo;
 	std::multimap<size_t , size_t> nodes_relation; //first size_t shows the parent and second one shows kids
-	std::map<std::string, size_t>firstParent; // size_t shows its node index
+	std::map<std::vector<size_t>, size_t>firstParent; // size_t shows its node index
 	std::map<std::vector<size_t>,size_t>branch_counter;//vector represents all nodes of a branch , size_t shows the number of that branch is happening
-		
 };
-
 class merging_centers{
 	public:
 		merging_centers(all_data &, finding_centers &, suffix_tree &);
 		~merging_centers();
-		void updating_centers(std::string & , size_t &);
+		void updating_centers(std::vector<size_t> & , size_t &);
 		void merg_gain_value( );
-		void merg_alignments(vector<vector<std::string> > &, std::map<std::string, std::vector<pw_alignment> > &, std::map<std::string, std::vector<std::string> > &, std::map<vector<std::string>,std::vector<pw_alignment> > &);
-		void adding_new_centers(vector<vector<std::string> >&);// Saves new centers in the 'long_centers' vector in main. It gives a unique id to each of them(Their row in the outer vector). vector<string> includes are the centers in the new one. they are saved in the form of ref:left.
+		void adding_new_centers(std::vector<std::vector<std::string> >&, std::vector<std::map<size_t , std::vector<std::string> > >&);// Saves new centers in the 'long_centers' vector in main. It gives a unique id to each of them(Their row in the outer vector). vector<string> includes are the centers in the new one. they are saved in the form of ref:left.
+	//	void merg_alignments(vector<vector<std::string> > &, std::map<std::string, std::vector<pw_alignment> > &, std::map<std::string, std::vector<std::string> > &, std::map<vector<std::string>,std::vector<pw_alignment> > &);
+		void create_alignment(std::vector<std::vector<std::string> > &, std::map<vector<std::string>, vector<pw_alignment> >&, std::map<std::string , std::vector<pw_alignment> > &, std::vector<std::map<std::vector<std::string> ,std::vector<size_t> > > & ); //Creates all the als between a seq and long centers on that seq.
+		void find_new_centers(size_t &, std::vector<std::string> & , size_t &, std::vector<std::map<size_t, std::vector<std::string> > >& );//Finds long centers on a certain sequence	
+
 	private:
 		all_data & data;
 		finding_centers & centers;
 		suffix_tree & tree;
-		std::map<std::string , size_t> merged_centers;//merged centers, string ----> megerd centers , size_t ----> its new index
-		std::map<std::string, int >gains; // string ----> series of centers, int ----> gain of it. It includes the last combination of centers
-		std::map<std::string, size_t>updated_counts;//number of the string happening
+		std::map<std::vector<size_t> , size_t> merged_centers;//merged centers, vector<size_t> ----> original indices of megerd centers , size_t ----> its new index
+		std::map<std::vector<size_t>, int >gains; // vector<size_t> ----> series of centers, int ----> gain of it. It includes the last combination of centers
+//		std::vector<std::map<std::vector<std::string> ,std::vector<size_t> > >centersPositionOnASeq;
+
 		
 
 

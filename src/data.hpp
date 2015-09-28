@@ -322,6 +322,8 @@ class mc_model{
 		void computing_modification_in_cluster(std::string center, std::string member)const;
 		size_t modification_length(char mod)const;
 		void get_encoded_member(pw_alignment & al, size_t center_ref, size_t center_left, encoding_functor & functor,std::ofstream&)const;
+		void get_insertion_high_between_centers(size_t& seq_id ,char & seq_base, char & last_center_base, unsigned int& center_ref,unsigned int& high, unsigned int& low)const;
+		void get_a_keep(unsigned int & , unsigned int & , size_t & , std::vector<unsigned int> & , std::vector<unsigned int> & )const;
 	private:
 	all_data & data;
 	std::vector<std::map<std::string, std::vector<double> > >sequence_successive_bases;
