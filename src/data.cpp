@@ -1152,10 +1152,10 @@ void overlap::insert_without_partial_overlap(const pw_alignment & p){
 	std::cout<<" "<<std::endl;
 	for(std::set<pw_alignment, compare_pw_alignment>::iterator it = alignments.begin(); it != alignments.end(); it++){
 		const pw_alignment & al = *it;
-		al.print();
+	//	al.print();
 	}
 	std::cout << " insert " << std::endl;
-	assert(alignments.find(p) == alignments.end());
+	//assert(alignments.find(p) == alignments.end());
 	std::pair<std::set<pw_alignment, compare_pw_alignment>::iterator, bool > npp = alignments.insert(p);
 	std::set<pw_alignment, compare_pw_alignment>::iterator npi = npp.first;
 	const pw_alignment & np = *(npi);
@@ -1325,7 +1325,11 @@ void overlap::test_overlap()const{
 	
 bool overlap::checkAlignments(const pw_alignment & p)const{
 	std::set<pw_alignment, compare_pw_alignment>::iterator it=alignments.find(p);
-	if(it !=alignments.end()) return true;	
+	if(it!=alignments.end()){
+		const pw_alignment al = *it;
+	//	al.print();
+		return true;	
+	}
 	else return false;	
 }
 	
@@ -2235,12 +2239,11 @@ void splitpoints::insert_split_point(size_t sequence, size_t position) {
 #if SPLITPRINT
 				std::cout << "SPLIT " << *split << std::endl;
 #endif
-				std::cout<< "split all!" <<std::endl;
 				for(std::multimap<size_t, pw_alignment>::const_iterator it =als_on_ref.lower_bound(*split); it!=als_on_ref.end(); ++it){
 					const pw_alignment & pr = it-> second;
 					const pw_alignment * p = & pr;
-					p->print();
-					std::cout << std::endl;
+				//	p->print();
+				//	std::cout << std::endl;
 
 					if(p->getreference1() == i) {
 						size_t pleft1;
@@ -2272,17 +2275,17 @@ void splitpoints::insert_split_point(size_t sequence, size_t position) {
 			}
 		}
 
-	//	std::cout << " in split all "<< remove_alignments.size() << " remove_alignments " << std::endl;
+		std::cout << " in split all "<< remove_alignments.size() << " remove_alignments " << std::endl;
 		std::vector<pw_alignment>  split_pieces;
 		splits(newal, split_pieces);
 		std::cout << "new al "	<< std::endl;
-		newal.print();
+	//	newal.print();
 		for(std::set<pw_alignment,compare_pw_alignment>::iterator removed = remove_alignments.begin(); removed != remove_alignments.end(); ++removed){
 			splits(*removed, split_pieces);			
 		}
 	//	std::cout<<"split_pieces: "<<std::endl;
 	//	for(size_t i = 0 ; i < split_pieces.size();i++){split_pieces.at(i).print();}	
-		std::cout<<"size of split pieces"<<split_pieces.size()<<std::endl;
+		std::cout<<"size of split pieces "<<split_pieces.size()<<std::endl;
 		std::set<pw_alignment,compare_pw_alignment> inserted_pieces;
 		for(size_t i = 0; i<split_pieces.size();i++) {
 #ifndef NDEBUG
@@ -2302,17 +2305,24 @@ void splitpoints::insert_split_point(size_t sequence, size_t position) {
 				std::cout << std::endl;
 #endif
 				std::set<pw_alignment,compare_pw_alignment>::const_iterator it = inserted_pieces.find(noendgaps);
-				if (overl.checkAlignments(noendgaps)) {}
-				else if ( it != inserted_pieces.end()){}
+			//	noendgaps.print();
+				if (overl.checkAlignments(noendgaps)) {
+				//	std::cout << "check noendgap "<<std::endl;		
+				}
+				else if ( it != inserted_pieces.end()){
+				//	std::cout << "end inserted pieces "<<std::endl;				
+				}
 				else {
 					insert_alignments.push_back(noendgaps);
 					inserted_pieces.insert(noendgaps);
+				//	std::cout << "insert to the insert_al "<<std::endl;
 				}
 			}
 		}
-		if(insert_alignments.size()==0 && remove_alignments.size()==0){
+
+		if(insert_alignments.size()==0 && remove_alignments.size()==0){//Just added to add independent als to the set of alignments when they dont split and dont add any ins or del.
 			insert_alignments.push_back(newal);
-			std::cout << "new_al is pushed back" <<std::endl;
+		//	std::cout << "new_al is pushed back" <<std::endl;
 		}
 		
 					
@@ -2939,7 +2949,7 @@ void mc_model::write_parameters(std::ofstream & outs){
 		std::cout<<"acc: "<<i<<std::endl;
 		for(std::map<std::string, std::vector<double> >::iterator it= all_the_patterns.begin(); it != all_the_patterns.end() ; it++){
 			std::string pattern = it ->first;
-			std::cout << "pattern: " << pattern << std::endl;
+		//	std::cout << "pattern: " << pattern << std::endl;
 			std::map<std::string,std::vector<double> >::iterator it1=sequence_successive_bases.at(i).find(pattern);
 			if(it1 != sequence_successive_bases.at(i).end()){
 				for(size_t n = 0; n <5; n ++){

@@ -188,7 +188,7 @@ void initial_alignment_set<T>::lazy_split_insert_step(overlap & ovrlp, size_t le
 	// we continue if information gain is possible from the current alignment
 	local_gain = 0;
 	std::cout<< "al in lazy split "<< std::endl;
-	al.print();
+//	al.print();
 	if(av_al_gain > 0) {
 		splitpoints spl(al, ovrlp, data);
 		spl.nonrecursive_splits();
@@ -220,9 +220,9 @@ void initial_alignment_set<T>::lazy_split_insert_step(overlap & ovrlp, size_t le
 				max_parts_gain += iav_gain;
 				ordered_parts.insert(std::make_pair(iav_gain, insert_als.at(i)));
 			}
-//			std::cout << "INS " << std::endl;
-//			insert_als.at(i).print();
-//			std::cout << std::endl;
+		//	std::cout << "INS  gain " <<iav_gain << std::endl;
+		//	insert_als.at(i).print();
+		//	std::cout << std::endl;
 		}
 
 		std::cout << "splits: level " << level << " on al length " << al.alignment_length() << " gain " << av_al_gain << " causes to remove " << remove_als.size() << " alignments with " << lost_information_gain << 
@@ -347,7 +347,7 @@ void initial_alignment_set<T>::compute_simple_lazy_splits(overlap & o){
 		double gain_of_al = 0;
 
 		cout << " start recursive lazy insert tree on " << endl;
-		al.print();
+	//	al.print();
 		cout << endl;
 
 		std::vector<pw_alignment> ins_als;
@@ -1199,7 +1199,14 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment & al) {
 	// similarity (i,j): i has exemplar j, this means modify j to i?
 	simmatrix.at(ref2idx).at(ref1idx) = -m2;
 	simmatrix.at(ref1idx).at(ref2idx) = -m1;
-
+	double random_number;
+	for(size_t i=0; i<simmatrix.size(); ++i){//This for loops was added because we observed that AFP has issue in choosing the best center when there are several centers that return the same value.
+//TODO replace it with mt 19937 random number generator!
+		random_number = std::rand() % 10000;
+		random_number = 1 / random_number;
+		std::cout<< "test" << random_number << std::endl;
+		simmatrix.at(i).at(i) -= random_number;	
+	}
 
 }
 
@@ -1320,7 +1327,7 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment & al) {
 							//centersOfASequence.at(i).push_back(cent_index);
 							cout<< "cent_index " << cent_index<<endl;
 							centersOnSequence.at(i).insert(make_pair(n,center));
-							centerOnseq.at(i).insert(make_pair(n,center));//TODO add it as an argument!
+							centerOnseq.at(i).insert(make_pair(n,center));
 							break;
 						}
 					}
@@ -1663,7 +1670,7 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment & al) {
 						bool making_tree = true;
 						while(making_tree == true){						
 							//The first case:
-							if(length == current_parent.size() && common_part.size() == length){//Current parent is shorter than the current suffix and current suffix contains all of it
+							if(length == current_parent.size() && common_part.size() == length){//Current parent is shorter than the current suffix, and the current suffix contains all of it
 								std::cout << "first case! "<<std::endl;
 								std::vector<size_t> other;
 								for(size_t j = common_part.size(); j < current_string.size(); j++){
@@ -1700,7 +1707,8 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment & al) {
 												break;
 											}
 										}
-									}else{//Indices of all the nodes after that should be shifted 
+									}
+									else{//Indices of all the nodes after that should be shifted 
 										std::vector<size_t> last_node = nodes.at(nodes.size()-1);
 										std::vector<size_t> second_last_node = nodes.at(nodes.size()-2);
 										if(other.size() != 0){
@@ -1710,7 +1718,12 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment & al) {
 											nodes.at(node_index +1) =other;
 											std::vector<size_t> new_suffix;
 											new_suffix.push_back(powerOfTwo.at(31));
-											nodes.at(node_index+2) = new_suffix;
+											std::cout << nodes.size()<< " " << node_index+2 << std::endl;
+											if(node_index == nodes.size()-2){
+												nodes.push_back(new_suffix);
+											}else{
+												nodes.at(node_index+2) = new_suffix;
+											}
 											//The rest of node relation should be updated
 											std::multimap<size_t,size_t> intermediate;
 											for(size_t shift = nodes.size()-1; shift > node_index;shift--){
@@ -1753,7 +1766,9 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment & al) {
 												std::cout << it1->second << " " ;
 											}
 											std::cout << " " <<std::endl;
-											nodes.push_back(second_last_node);
+											if(node_index != nodes.size()-2){
+												nodes.push_back(second_last_node);
+											}
 											nodes.push_back(last_node);
 											std::cout << "node size " << nodes.size() << std::endl;
 											for(size_t shift = node_index+3; shift <nodes.size(); shift++){//was node_index + 1
@@ -2194,9 +2209,6 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment & al) {
 								firstParent.erase(it);
 								firstParent.insert(make_pair(common_part,node_index));
 							}
-					//		nodes.at(node_index) = common_part;
-					//		nodes_relation.insert(make_pair(node_index,node_index+1));
-					//		nodes_relation.insert(make_pair(node_index,node_index+2));
 							std::cout<<"nodes relation: "<<std::endl;
 							for(std::multimap<size_t , size_t>::iterator it = nodes_relation.begin(); it != nodes_relation.end(); it++){
 								std::cout << it->first <<" "<< it->second << std::endl;
@@ -2912,8 +2924,8 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment & al) {
 			}
 		}
 	}*/
-	void merging_centers::create_alignment(std::vector<std::vector<std::string> > & long_centers, std::map<vector<std::string>, std::vector<pw_alignment> > & new_centers, std::map<std::string , std::vector<pw_alignment> > & al_of_a_ccs, std::vector<std::map<std::vector<std::string> ,std::vector<size_t> > > & centersPositionOnASeq){
-	/*	size_t artificial_ref = data.numSequences()+new_centers.size();
+	void merging_centers::create_alignment(std::vector<std::vector<std::string> > & long_centers, std::map<vector<std::string>, std::vector<pw_alignment> > & new_centers, std::map<std::string , std::vector<pw_alignment> > & alignments_in_a_cluster, std::vector<std::map<size_t , std::vector<std::string> > > & centersPositionOnASeq, std::vector<std::map<size_t , std::string> > & centerOnSequence){
+		size_t artificial_ref = data.numSequences()+new_centers.size();
 		for(size_t i =0; i < long_centers.size(); i ++){
 			vector<std::string> long_center = long_centers.at(i);
 			std::map<vector<std::string>, vector<pw_alignment> >::iterator new_cent = new_centers.find(long_center);
@@ -2921,52 +2933,26 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment & al) {
 				new_centers.insert(make_pair(long_center,std::vector<pw_alignment>()));
 			}
 		}
-		for(size_t j = 0 ; j < data.numSequences(); j++){//Note that if there is an overlap between two long centers, one of them is fully included in the other one.
-			std::multimap<size_t, std::vector<std::string> > seq_new_centers;//size_t is where the long center starts on sequence j
-			find_new_centers(seq_new_centers, long_centers, j,centersPositionOnASeq);//find long_centers and their positions on sequence j.
-			if(seq_new_centers.size() != 0){
-				for(std::multimap<size_t, std::vector<std::string> >::iterator it = seq_new_centers.begin(); it != seq_new_centers.end(); it++){
+		for(size_t j = 0 ; j < data.numSequences(); j++){
+			for(std::map<size_t , std::vector<std::string> >::iterator it = centersPositionOnASeq.at(j).begin(); it != centersPositionOnASeq.at(j).end(); it++){
+				if(it != centersPositionOnASeq.at(j).end()){//If there is a long center on that sequence
 					std::vector<bool> sample1;
 					std::vector<bool> sample2;
 					pw_alignment al;
 					al.setreference1(j);
 					al.setbegin1(it->first);
-					std::cout<< "begin 1 is "<< it->first <<std::endl;
-					std::map<std::vector<std::string>, std::vector<size_t> >::iterator it1 = centersPositionOnASeq.at(j).find(it->second);
-					std::cout << "it1->second.size() " << it1->second.size() << std::endl;
-					size_t left_of_last_piece = it1->second.at(it1->second.size()-1);
-					std::string last_center = it->second.at(it->second.size()-1);
-					std::map<std::string , std::vector<pw_alignment> >::iterator it2 = al_of_a_ccs.find(last_center);
-					size_t length = 0;
-					std::cout << "last center: "<<last_center << "it2->second size: " << it2->second.size()<<std::endl;
-					for(size_t i = 0; i < it2->second.size(); i++){
-						pw_alignment p = it2->second.at(i);
-						size_t r1,r2,l1,l2;
-						p.get_lr1(l1,r1);
-						p.get_lr2(l2,r2);
-						std::cout << r1 << " " << r2 << " " << l1 << " " << l2 <<std::endl;
-						std::cout << "left of last piece " << left_of_last_piece << " ref 1 " << p.getreference1() << " ref2 " << p.getreference2()<< " j " << j << " it1->second at 0 " << it1->second.at(0) <<std::endl;
-						if(p.getreference1() == j && l1 == left_of_last_piece){
-							al.setend1(r1);
-							std::cout<< "end1 is: " << r1 <<std::endl;
-							length = r1 - it1->second.at(0);
-							break;
-						}
-						else if(p.getreference2() == j && l2 == left_of_last_piece){
-							al.setend1(r2);
-							std::cout<< "end1 is: " << r2 <<std::endl;
-							length = r2 - it1->second.at(0);
-							break;
-						}
-						else{
-							std::cout<< "here2!"<<std::endl;
-							continue;
-						}
-					}//Up to now first reference of an alignment is set. Center is always considered as the second reference.
+					size_t end_of_last_piece=0;
+					size_t length;
+					size_t position = it->first;
+					std::cout << "position " << position << std::endl;
+					find_long_center_length(it->second, alignments_in_a_cluster,j,position,length,end_of_last_piece);
+					std::cout << "end of last piece "<< end_of_last_piece << " length "<< length << std::endl;
+					al.setend1(end_of_last_piece);
+					//Up to now first reference of an pw-alignment is set. Center is always considered as the second reference.
 					bool centers_are_on_the_same_ref = false;
-					std::string cent = it->second.at(0);
+					std::string first_center = it->second.at(0);
 					std::vector<std::string> cent_parts;
-					strsep(cent, ":" , cent_parts);
+					strsep(first_center, ":" , cent_parts);
 					unsigned int cent_ref = atoi(cent_parts.at(0).c_str());
 					unsigned int cent_left = atoi(cent_parts.at(1).c_str());
 					for(size_t i = 0; i < it->second.size();i++){
@@ -2985,74 +2971,114 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment & al) {
 					if(centers_are_on_the_same_ref==true){
 						al.setreference2(cent_ref);
 						al.setbegin2(cent_left);
-						al.setend2(cent_left + length);
+						al.setend2(cent_left + length-1);
 					}else{
-						al.setreference2(artificial_ref);
-						artificial_ref = artificial_ref+1;
+						std::map<vector<std::string>, vector<pw_alignment> >::iterator new_cent = new_centers.find(it->second);
+						if(new_cent->second.size() == 0){
+							al.setreference2(artificial_ref);
+							artificial_ref = artificial_ref+1;
+						}else{
+							pw_alignment p1 = new_cent->second.at(0);
+							al.setreference2(p1.getreference2());
+							assert(p1.getreference2() >=data.numSequences());
+						}
 						al.setbegin2(0);
 						al.setend2(length);
-					}//Now second reference is also set.
-					//We are setting samples here:
-					size_t right;
-					std::cout<< "it second size " << it->second.size() <<std::endl;
-					for(size_t i =0; i < it->second.size();i++){
-						std::cout<< " center "<< it->second.at(i)<<std::endl;
-						std::map<std::string , std::vector<pw_alignment> >::iterator it3 = al_of_a_ccs.find(it->second.at(i));
-						assert(it3 != al_of_a_ccs.end());
-						for(size_t k = 0; k < it3->second.size();k++){
-							pw_alignment p = it3->second.at(k);
-							size_t r1,r2,l1,l2;
-							p.get_lr1(l1,r1);
-							p.get_lr2(l2,r2);
-							std::cout<<  "ref 1 " << p.getreference1() << " ref2 " << p.getreference2()<< " j " << j << " l1 " << l1 << " l2 " << l2 << " it1->second.at(i) " << it1->second.at(i) <<std::endl;
-							if((p.getreference1()== j && l1 == it1->second.at(i))||(p.getreference2() == j && l2 == it1->second.at(i))){
-								if(l1 == it1->second.at(i)){
-									right = r1;
-									std::cout << "right1 " << right << std::endl;
-								}else{
-									right = r2;
-									std::cout << "right2 " << right << std::endl;
-								}
-								std::vector<bool> sample1_p = p.getsample1();
-								std::vector<bool> sample2_p = p.getsample2();
-								std::cout << " sample1_p.size() " << sample1_p.size()<< " " << sample2_p.size()<< " " << p.alignment_length() <<std::endl;
-								std::cout << "pushing back samples " << std::endl;
-								for(size_t m =0; m < sample1_p.size(); m++){
-									sample1.push_back(sample1_p.at(m));
-									sample2.push_back(sample2_p.at(m));
-								}
-								std::cout << sample1.size() << " " << sample2.size() << std::endl;
-								break;							
-							}
-						}
-						if(i != it->second.size()-1){
-							size_t left = it1->second.at(i+1);
-							vector<bool> middle_part_of_sample;
-							std::cout << "right+1 "<< right+1 << " left "<<left <<std::endl;
-							for(size_t m = right+1 ; m < left ; m++){
-								char base = data.getSequence(j).at(m);
-								vector<bool> bits(3);
-								pw_alignment::get_bits(base,bits);
-								for(size_t n = 0; n < 3; n++){
-									middle_part_of_sample.push_back(bits.at(n));
-								}
-							}
-							std::cout<< "size of middle part is " << middle_part_of_sample.size() << std::endl;
-							for(size_t m = 0 ; m < middle_part_of_sample.size();m++){
-								sample1.push_back(middle_part_of_sample.at(m));
-								sample2.push_back(middle_part_of_sample.at(m));
-							}
+					}
+					std::cout<< "begin2 "<< al.getbegin2() << " end2 " << al.getend2() << std::endl;
+					//Now second reference is also set.
+					//First we should check if the alignment is not there yet
+					bool dontAdd = false;
+					std::map<vector<std::string>, vector<pw_alignment> >::iterator new_cent = new_centers.find(it->second);
+					for(size_t k =0; k < new_cent->second.size();k++){
+						pw_alignment p1 = new_cent->second.at(k);
+						if(p1.getbegin1()==al.getbegin1()&&p1.getend1()==al.getend1()&&p1.getbegin2()==al.getbegin2()&&p1.getend2()==al.getend2()&&p1.getreference1()==al.getreference1()&&p1.getreference2()==al.getreference2()){
+							dontAdd = true;
+							break;
 						}
 					}
-					al.set_alignment_bits(sample1,sample2);
-					std::cout << "alignment is: " <<std::endl;
-					al.print();
-					std::map<vector<std::string>, vector<pw_alignment> >::iterator new_cent = new_centers.find(it->second);
-					new_cent->second.push_back(al);
+					if(dontAdd == false){
+						//We are setting samples here:
+						size_t right = 0;
+						std::cout<< "it second size " << it->second.size() <<std::endl;
+						for(size_t i =0; i < it->second.size();i++){
+							std::cout<< " center "<< it->second.at(i)<<std::endl;
+							std::map<std::string , std::vector<pw_alignment> >::iterator it3 = alignments_in_a_cluster.find(it->second.at(i));
+							size_t left_of_a_sample;
+							for(std::map<size_t , std::string>::iterator leftOfSample = centerOnSequence.at(j).begin(); leftOfSample !=  centerOnSequence.at(j).end(); leftOfSample++){
+							//	std::cout<< "current from the map " << leftOfSample->second << std::endl;
+								if (it->second.at(i)== leftOfSample->second && leftOfSample->first >= it->first && leftOfSample->first >= right){
+									left_of_a_sample = leftOfSample->first;
+									std::cout<< "left is set!"<<std::endl;
+									break;
+								}
+							}
+							assert(it3 != alignments_in_a_cluster.end());
+							for(size_t k = 0; k < it3->second.size();k++){
+								pw_alignment p = it3->second.at(k);
+								size_t r1,r2,l1,l2;
+								p.get_lr1(l1,r1);
+								p.get_lr2(l2,r2);
+								std::cout<<  "ref 1 " << p.getreference1() << " ref2 " << p.getreference2()<< " j " << j << " l1 " << l1 << " l2 " << l2 << " left_of_a_sample "<< left_of_a_sample << std::endl;
+								if((p.getreference1()== j && l1 == left_of_a_sample)||(p.getreference2() == j && l2 == left_of_a_sample)){
+									if(l1 == left_of_a_sample){
+										right = r1;
+										std::cout << "right1 " << right << std::endl;
+									}else{
+										right = r2;
+										std::cout << "right2 " << right << std::endl;
+									}
+									std::vector<bool> sample1_p = p.getsample1();
+									std::vector<bool> sample2_p = p.getsample2();
+									std::cout << " sample1_p.size() " << sample1_p.size()<< " " << sample2_p.size()<< " " << p.alignment_length() <<std::endl;
+									std::cout << "pushing back samples " << std::endl;
+									for(size_t m =0; m < sample1_p.size(); m++){
+										sample1.push_back(sample1_p.at(m));
+										sample2.push_back(sample2_p.at(m));
+									}
+									std::cout << sample1.size() << " " << sample2.size() << std::endl;
+									break;							
+								}
+							}
+							if(i != it->second.size()-1){
+								size_t left_of_next_center=0;
+								for(std::map<size_t , std::string>::iterator leftOfNextCenter = centerOnSequence.at(j).begin(); leftOfNextCenter != centerOnSequence.at(j).end(); leftOfNextCenter++){
+									if (it->second.at(i+1)== leftOfNextCenter->second){
+										left_of_next_center = leftOfNextCenter->first;
+										std::cout<< "left of next center is set! " << it->second.at(i+1) <<" "<< left_of_next_center <<std::endl;
+										break;
+									}
+								}
+								vector<bool> middle_part_of_sample;
+								vector<bool> gap_sample;
+								std::cout << "right+1 "<< right+1 << " left "<< left_of_next_center <<std::endl;
+								for(size_t m = right+1 ; m < left_of_next_center ; m++){
+									char base = data.getSequence(j).at(m);
+									char gap = '-';
+									vector<bool> bits(3);
+									vector<bool> gap_bit(3);
+									pw_alignment::get_bits(base,bits);
+									pw_alignment::get_bits(gap,gap_bit);
+									for(size_t n = 0; n < 3; n++){
+										middle_part_of_sample.push_back(bits.at(n));
+										gap_sample.push_back(gap_bit.at(n));
+									}
+								}
+								std::cout<< "size of middle part is " << middle_part_of_sample.size() << std::endl;
+								for(size_t m = 0 ; m < middle_part_of_sample.size();m++){
+									sample1.push_back(middle_part_of_sample.at(m));
+									sample2.push_back(gap_sample.at(m));
+								}
+							}
+						}
+						al.set_alignment_bits(sample1,sample2);
+						std::cout << "alignment is: " <<std::endl;
+						al.print();
+						new_cent->second.push_back(al);
+					}
 				}
 			}
-		}*/
-
+		}
 	}
 //The following function finds long centers of specific sequence:
 	void merging_centers::find_new_centers(size_t & center_indices, std::vector<std::string > & current_long_center, size_t & seq_id , std::vector<std::map<size_t, std::vector<std::string> > > & centersPositionOnASeq){
@@ -3069,6 +3095,74 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment & al) {
 					centersPositionOnASeq.at(seq_id).insert(make_pair(it1->first,current_long_center));
 					std::cout << "seq "<<seq_id << "position "<<it1->first << std::endl;
 				}
+		}
+	}
+	void merging_centers::find_long_center_length(std::vector<std::string> & centers, std::map<std::string,std::vector<pw_alignment> > & alignments_in_a_cluster, size_t & seq_id,size_t & position ,size_t & center_length, size_t & end_of_last_piece){
+		end_of_last_piece = 0;
+		size_t current_position  = position;
+		center_length = 0;
+		for(size_t i =0; i < centers.size();i++){
+			std::string center = centers.at(i);
+			std::vector<std::string> center_parts;
+			strsep(center, ":" , center_parts);
+			unsigned int center_ref = atoi(center_parts.at(0).c_str());
+			unsigned int center_left = atoi(center_parts.at(1).c_str());
+			std::map<std::string , std::vector<pw_alignment> >::iterator it = alignments_in_a_cluster.find(centers.at(i));
+			assert(it != alignments_in_a_cluster.end());
+			std::cout<< "al size "<<it->second.size() << std::endl;
+			bool selfAligned = true;
+			for(size_t j =0; j < it->second.size();j++){
+				pw_alignment p = it->second.at(j);
+				size_t r1,r2,l1,l2;
+				p.get_lr1(l1,r1);
+				p.get_lr2(l2,r2);
+				size_t ref1 = p.getreference1();
+				size_t ref2 = p.getreference2();
+				std::cout << "l1 " << l1 << " r1 "<< r1 << " l2 "<< l2 << " r2 " << r2 << " ref1 "<<ref1 << " ref2 "<< ref2<<std::endl;
+				std::cout << "seq id " << seq_id << " cent ref "<< center_ref << " current pos " << current_position << " cent lef "<< center_left << std::endl;
+				//If center is not the seq_id
+				if((ref1== seq_id && ref2== center_ref && l1 >= current_position && l1 <= current_position + 5 && l2 ==center_left)){ //5 is the number of gaps!
+					std::cout<< "on ref 1"<<std::endl;
+					center_length += r2-l2+1;
+					current_position = r1;
+					std::cout << "cur pos " << current_position << " length "<< center_length << std::endl;
+					if(i == centers.size()-1){
+						end_of_last_piece = r1;
+					}
+					break;
+				}
+				else if(ref2== seq_id && ref1== center_ref && l2 >= current_position && l2<= current_position +5 && l1 ==center_left){
+					center_length +=r1-l1+1;
+					current_position = r2;
+					std::cout << "cur pos " << current_position << " length "<< center_length << std::endl;
+					if(i == centers.size()-1){
+						end_of_last_piece = r2;
+					}
+					break;
+				}
+				//If we need to align the same piece against itself
+				else if(ref1 == seq_id && seq_id == center_ref && center_left == l1 && center_left >= current_position && center_left <= current_position + 5){
+					center_length +=r1-l1+1;
+					current_position = r1;
+					std::cout << "here!" <<std::endl;
+					if(i == centers.size()-1){
+						end_of_last_piece = r1;
+					}
+					break;
+				}
+				else if(ref2 == seq_id && seq_id == center_ref && center_left == l2 && center_left >= current_position && center_left <= current_position + 5){
+					center_length +=r2-l2+1;
+					current_position = r2;
+					std::cout << "there!" <<std::endl;
+					if(i == centers.size()-1){
+						end_of_last_piece = r2;
+					}
+					break;
+
+				}
+
+
+			}
 		}
 	}
 

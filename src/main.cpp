@@ -278,7 +278,7 @@ void msa_star_alignment(const std::string & center, std::vector<pw_alignment> & 
 		alignments.at(i).get_lr1(left1, right1);
 		alignments.at(i).get_lr2(left2, right2);
 
-	//	std::cout << " al " << i << std::endl;
+	 //	std::cout << " al " << i << std::endl;
 	//	alignments.at(i).print();
 	//	std::cout << std::endl;
 		// find cluster center and make sure that each alignment goes to cluster center
@@ -348,7 +348,7 @@ void msa_star_alignment(const std::string & center, std::vector<pw_alignment> & 
 
 	// now we have inserted a lot of gaps in to gaps_before
 	// all that gaps are inserted into all alignments to create a multiple alignment where all sequences have the same length
-	for(size_t i=0; i<alignments.size(); ++i) {
+	for(size_t i=0; i<alignments.size(); ++i){
 		size_t ref1 = alignments.at(i).getreference1();
 		size_t ref2 = alignments.at(i).getreference2();
 		size_t left1, right1, left2, right2;
@@ -441,6 +441,87 @@ void msa_star_alignment(const std::string & center, std::vector<pw_alignment> & 
 	}
 
 }
+void msa_star_al_with_long_centers(const std::vector<std::string> & longCenter, std::vector<pw_alignment> & alignment){//center is always on the second reference! 
+	size_t center_length = 0; // length of the cluster center on its reference
+	std::vector<size_t> gaps_before;
+	std::cout<< "al size "<< alignment.size() <<std::endl;
+	for(size_t i=0; i<alignment.size(); ++i) {
+		size_t ref1 = alignment.at(i).getreference1();
+		size_t ref2 = alignment.at(i).getreference2();
+		size_t left1, right1, left2, right2;
+		alignment.at(i).get_lr1(left1, right1);
+		alignment.at(i).get_lr2(left2, right2);
+		std::cout<< "ref 2 "<< ref2<<std::endl;
+		if(center_length==0) {
+			center_length = right2 - left2 + 1;
+			gaps_before = std::vector<size_t>(center_length + 1, 0);
+		} else {
+			std::cout << " cl " << center_length << " l2 " << left2 << " r2 " << right2 << std::endl;
+			assert(center_length == right2 - left2 +1);
+		}
+		size_t center_ref_pos=0; // relative to cluster center start (always forward in this case)
+		size_t gapcounter = 0;
+		// now go over alignment
+		std::cout<< alignment.at(i).alignment_length() <<" "<< center_length+1 << std::endl;
+		for(size_t j=0; j<alignment.at(i).alignment_length(); ++j) {
+			char c1, c2;
+			alignment.at(i).alignment_col(j, c1, c2);
+			if(c2 == '-') {
+				gapcounter++;
+			} else {
+				if(gaps_before.at(center_ref_pos) < gapcounter) {
+					gaps_before.at(center_ref_pos) = gapcounter;
+				}	
+				gapcounter = 0;
+				center_ref_pos ++;
+			}		
+		}
+		// gaps at end of alignment
+		if(gaps_before.at(center_ref_pos) < gapcounter) {
+			gaps_before.at(center_ref_pos) = gapcounter;
+		}
+	}
+	for(size_t i=0; i<alignment.size(); ++i) {
+		size_t ref1 = alignment.at(i).getreference1();
+		size_t ref2 = alignment.at(i).getreference2();
+		size_t left1, right1, left2, right2;
+		alignment.at(i).get_lr1(left1, right1);
+		alignment.at(i).get_lr2(left2, right2);
+		// for writing new al std::strings
+		std::stringstream centerref_al;
+		std::stringstream otherref_al;
+		size_t center_ref_pos=0; // relative to cluster center start (even if cluster center is backwards, we count forwards) 
+		size_t gapcounter = 0;
+		for(size_t j=0; j<alignment.at(i).alignment_length(); ++j) {
+			char c1, c2;
+			alignment.at(i).alignment_col(j, c1, c2);
+			if(c2 == '-') {
+				gapcounter++;
+				centerref_al << c2;
+				otherref_al << c1;
+			} else {
+				// add gaps before next center ref symbol
+				for(size_t k=gapcounter; k<gaps_before.at(center_ref_pos); k++) {
+					centerref_al << '-';
+					otherref_al << '-';
+				}
+				centerref_al << c2;
+				otherref_al << c1;
+				gapcounter = 0;
+				center_ref_pos ++;
+			}	
+		}
+		for(size_t k=gapcounter; k<gaps_before.at(center_ref_pos); k++) {
+			centerref_al << '-';
+			otherref_al << '-';
+		}	
+		pw_alignment newal(otherref_al.str(),centerref_al.str(), 
+		alignment.at(i).getbegin1(), alignment.at(i).getbegin2(),
+		alignment.at(i).getend1(), alignment.at(i).getend2(),
+		alignment.at(i).getreference1(), alignment.at(i).getreference2());
+		alignment.at(i) = newal;
+	}
+}
 
 	/*
 		write the graph as multiple alignment data structure	
@@ -478,7 +559,33 @@ void write_graph_maf(const std::string & graphout, const std::map<string, std::v
 	gout.close();
 
 }
-
+void write_graph_maf_with_long_centers(const std::string & graphout ,const std::map<std::vector<std::string>, std::vector<pw_alignment> > & new_centers,const all_data & data){
+	std::ofstream gout(graphout.c_str());
+	gout << "##maf version=1 scoring=probability" << std::endl;
+	gout << "# graph version " << VERSION << std::endl;
+	gout << "# Coordinates are 0-based.  For - strand matches, coordinates" << std::endl;
+	gout << "# in the reverse complement of the 2nd sequence are used." << std::endl;
+	gout << "#" << std::endl;
+	gout << "# name start alnSize strand seqSize alignment" << std::endl;
+	gout << "#" << std::endl;
+	size_t cluster_number = 0;
+	for(std::map<std::vector<std::string> , std::vector<pw_alignment> >::const_iterator it = new_centers.begin(); it != new_centers.end(); it++){
+		std::vector<std::string> longCenter = it->first;
+		std::vector<pw_alignment> als = it->second;
+		size_t sequence_number = data.numSequences();
+		msa_star_al_with_long_centers(longCenter,als);
+		if(als.size()>0){
+			gout << "# cluster " << cluster_number << std::endl;
+			gout << "a score=1" << std::endl;
+			write_maf_record(gout, data, als.at(0), 0);
+			for(size_t i=0; i<als.size(); ++i) {
+				write_maf_record(gout, data, als.at(i), 0); 
+			}	
+			cluster_number++;
+		}
+	}
+	std::cout<< "cluster number "<< cluster_number << " "<< new_centers.size()<< std::endl;
+}
 int do_mc_model(int argc, char * argv[]) {
 	typedef mc_model use_model;
 //	typedef dynamic_mc_model use_model;
@@ -591,9 +698,9 @@ int do_mc_model(int argc, char * argv[]) {
 	// TODO put the next two into a single data structure
 	std::map<std::string, std::vector<string> > global_results;//for each center returns all its cluster members TODO needed?
 	std::map<std::string, std::vector<pw_alignment> > alignments_in_a_cluster;//string ---> center of a cluster, vector ---> alignments with that center
-	std::map<vector<std::string>, std::vector<pw_alignment> > new_centers;//Equivalent to alignments_in_a_cluster for long centers TODO is the one should be filled in in the next step.
-	std::vector<std::map<size_t, std::vector<std::string> > >centersPositionOnASeq(data.numSequences());
-	std::vector<std::map<size_t , std::string> > centerOnSequence(data.numSequences());
+	std::map<vector<std::string>, std::vector<pw_alignment> > new_centers;//Equivalent to alignments_in_a_cluster for long centers.
+	std::vector<std::map<size_t, std::vector<std::string> > >centersPositionOnASeq(data.numSequences());//all the long centers of each sequence and their position
+	std::vector<std::map<size_t , std::string> > centerOnSequence(data.numSequences());//all the centers on a seq and their position
 	vector<vector<std::string> > long_centers;
 	size_t num_clusters = 0;
 	size_t num_cluster_members_al = 0;
@@ -802,19 +909,20 @@ int do_mc_model(int argc, char * argv[]) {
 		size_t index = 0;
 		centers.center_frequency(al_of_a_ccs,centerOnSequence);
 		tree.create_tree(highest_gain,index);//It is only used for the initial tree
-		merg.adding_new_centers(long_centers,centersPositionOnASeq);//After merging one group of centers we iteratively create new suffixes and tree based on them, then recalculate the gains again
+		merg.adding_new_centers(long_centers,centersPositionOnASeq);//After merging one group of centers we iteratively create new suffixes and a new tree based on them, then recalculate the gains again
 		// New centers (longer ones) are added to a separate data structure.
-		std::cout << "long centers: " << std::endl;
-		for(size_t j  =0; j < long_centers.size();j++){
-			for(size_t k =0; k < long_centers.at(j).size();k++){
-				std::cout << long_centers.at(j).at(k)<< " ";
-			}
-			std::cout << " " <<std::endl;
-		}
-		std::cout << "al of a ccs: " <<std::endl;
-		for(std::map<std::string, std::vector<pw_alignment> >::iterator it = al_of_a_ccs.begin(); it!=al_of_a_ccs.end(); ++it){
-			std::cout << it->first<< std::endl;
-		}
+//		std::cout << "long centers: " << std::endl;
+//		for(size_t j  =0; j < long_centers.size();j++){
+//			for(size_t k =0; k < long_centers.at(j).size();k++){
+//				std::cout << long_centers.at(j).at(k)<< " ";
+//			}
+//			std::cout << " " <<std::endl;
+//		}
+		merg.create_alignment(long_centers,new_centers,alignments_in_a_cluster,centersPositionOnASeq,centerOnSequence);
+//		std::cout << "al of a ccs: " <<std::endl;
+//		for(std::map<std::string, std::vector<pw_alignment> >::iterator it = al_of_a_ccs.begin(); it!=al_of_a_ccs.end(); ++it){
+//			std::cout << it->first<< std::endl;
+//		}
 	/*	for(std::set< const pw_alignment *, compare_pw_alignment>::iterator it=cc.begin();it!=cc.end();it++ ){
 			const pw_alignment *al = *it;
 			size_t index = al ->getreference1();
@@ -825,39 +933,178 @@ int do_mc_model(int argc, char * argv[]) {
 	//	std::cout << " initial CC " << i << " done " << std::endl << flush;
 //}
 	} // for connected components
-	std::cout<< "global result "<< std::endl;
+	//Adding short centers to new centers
+	std::vector<std::string> intermediate;
 	for(std::map<std::string, std::vector<pw_alignment> >::iterator it = alignments_in_a_cluster.begin(); it != alignments_in_a_cluster.end(); it++){
-		std::cout<< "center: "<< it->first << std::endl;
-		std::cout << "members: "<<std::endl;
+		std::cout<< "center is "<< it->first << " al size is "<< it->second.size() << std::endl;
+		for(std::map<std::vector<std::string>, std::vector<pw_alignment> >::iterator it1 = new_centers.begin(); it1 != new_centers.end(); it1++){
+			if(it->first == it1->first.at(0) && it1->first.size() != 1){
+				std::cout << "if center exists as a long one " << it1->first.size() <<std::endl;
+				for(size_t k =0; k < it1->first.size();k++){
+					intermediate.push_back(it1->first.at(k));
+					std::map<std::string, std::vector<pw_alignment> >::iterator it3 = alignments_in_a_cluster.find(it1->first.at(k));
+					std::cout << it3->first << " "<< it3->second.size() << std::endl;
+					assert(it3 != alignments_in_a_cluster.end());
+					std::vector<std::string> cparts;
+					strsep(it3->first, ":", cparts);
+					size_t center_ref = atoi(cparts.at(0).c_str());
+					size_t center_left = atoi(cparts.at(1).c_str());
+					for(size_t i = 0; i < it3->second.size();i++){
+						std::cout<< "al size: " << it3->second.size()<<std::endl;
+						bool ItExistsAsALongerAl = false;
+						pw_alignment p = it3->second.at(i);
+						size_t l1,l2,r1,r2;
+						size_t ref1 = p.getreference1();
+						size_t ref2 = p.getreference2();
+						p.get_lr1(l1, r1);
+						p.get_lr2(l2, r2);
+						if(l1 == center_left && ref1 == center_ref){
+							std::cout << "center on ref1"<<std::endl;
+							std::cout << it1->second.size() <<std::endl;
+							for(size_t j =0; j < it1->second.size();j++){
+								pw_alignment p1 = it1->second.at(j);
+								size_t left1,left2,right1,right2;
+								size_t reference1 = p1.getreference1();
+								size_t reference2 = p1.getreference2();
+								p1.get_lr1(left1, right1);
+								p1.get_lr2(left2, right2);
+								std::cout << left1 << " "<< l2 << " "<< right1 << " " << r2 << " " << left2 << " " << right2 << " "  << reference1 << " "<< reference2 << std::endl;
+								if((left1 <= l2 && right1 >= r2 && reference1 == ref2) || (left2 <= l2 && right2 >= r2 && reference2 == ref2)){
+									ItExistsAsALongerAl = true;
+									break;
+								}
+							}
+							if(ItExistsAsALongerAl==false){//should be added to new centers!
+								std::vector<std::string> center;
+								center.push_back(it1->first.at(k));
+								std::map<std::vector<std::string>, std::vector<pw_alignment> >::iterator it2 = new_centers.find(center);
+								if(it2 == new_centers.end()){
+									new_centers.insert(make_pair(center,std::vector<pw_alignment>()));
+									it2 = new_centers.find(center);
+								}
+								std::cout<<it2->second.size()<<std::endl;
+								it2->second.push_back(p);
+								std::cout<< "add to new center when center is on ref1"<<std::endl;
+							}
+						}else{
+							std::cout << "center on ref2"<<std::endl;
+							for(size_t j =0; j < it1->second.size();j++){
+								pw_alignment p1 = it1->second.at(j);
+								size_t left1,left2,right1,right2;
+								size_t reference1 = p1.getreference1();
+								size_t reference2 = p1.getreference2();
+								p1.get_lr1(left1, right1);
+								p1.get_lr2(left2, right2);
+								if((left1 <= l1 && right1 >= r1 && reference1 == ref1) || (left2 <= l1 && right2>=r1 && reference2 == ref1)){
+									ItExistsAsALongerAl = true;
+									break;
+								}
+							}
+							if(ItExistsAsALongerAl==false){//should be added to new centers!
+								std::vector<std::string> center;
+								center.push_back(it1->first.at(k));
+								std::map<std::vector<std::string>, std::vector<pw_alignment> >::iterator it2 = new_centers.find(center);
+								if(it2 == new_centers.end()){
+									new_centers.insert(make_pair(center,std::vector<pw_alignment>()));
+									it2 = new_centers.find(center);
+								}
+								std::cout<<it2->second.size()<<std::endl;
+								it2->second.push_back(p);
+								std::cout<< "add to new center when center is on ref2"<<std::endl;
+							}
+						}
+					}
+				}
+				std::cout << "end of if"<<std::endl;
+				break;
+			}
+		}
+	}
+	for(std::map<std::string, std::vector<pw_alignment> >::iterator it = alignments_in_a_cluster.begin(); it != alignments_in_a_cluster.end(); it++){
+		bool PartOfLongCenter = false;
+		for(size_t i =0; i < intermediate.size();i++){
+			if(intermediate.at(i)== it->first){
+				PartOfLongCenter = true;
+				break;
+			}
+		}
+		if(PartOfLongCenter==false){
+			std::vector<std::string> center;
+			center.push_back(it->first);
+			std::map<std::vector<std::string>, std::vector<pw_alignment> >::iterator it2 = new_centers.find(center);
+			if(it2 == new_centers.end()){
+				new_centers.insert(make_pair(center,it->second));
+			}
+
+		}
+	}
+	//At the end all the alignemnts are swapped in the way that center be on the second ref
+	for(std::map<std::vector<std::string>, std::vector<pw_alignment> >::iterator it = new_centers.begin(); it!=new_centers.end();it++){
+		if(it->first.size()==1){
+			std::string center = it->first.at(0);
+			std::vector<std::string> center_parts;
+			strsep(center, ":" , center_parts);
+			unsigned int center_ref = atoi(center_parts.at(0).c_str());
+			unsigned int center_left = atoi(center_parts.at(1).c_str());
+			for(size_t i =0; i < it->second.size();i++){
+				size_t ref1 = it->second.at(i).getreference1();
+				size_t ref2 = it->second.at(i).getreference2();
+				size_t left1, right1, left2, right2;
+				it->second.at(i).get_lr1(left1, right1);
+				it->second.at(i).get_lr2(left2, right2);
+				// for writing new al std::strings
+				std::stringstream centerref_al;
+				std::stringstream otherref_al;
+				if(ref1 == center_ref && left1 == center_left){	
+					for(size_t j=0; j<it->second.at(i).alignment_length(); ++j) {
+						char c1, c2;
+						it->second.at(i).alignment_col(j, c1, c2);
+						centerref_al << c1;
+						otherref_al << c2;
+					}
+					pw_alignment newal(otherref_al.str(),centerref_al.str(),it->second.at(i).getbegin2(),it->second.at(i).getbegin1(),it->second.at(i).getend2(),it->second.at(i).getend1(),
+					it->second.at(i).getreference2(),it->second.at(i).getreference1());
+					it->second.at(i) = newal;
+
+				} else {
+					assert(ref2 == center_ref && left2 == center_left);
+				}
+			}				
+		}
+	}
+	std::cout<< alignments_in_a_cluster.size() << " " << new_centers.size() << std::endl;
+	std::cout<< "global long centers result "<<std::endl;
+	for(std::map<std::vector<std::string>, std::vector<pw_alignment> >::iterator it = new_centers.begin(); it != new_centers.end(); it++){
+		std::cout<< "center size: "<< it->first.size() << std::endl;
+		for(size_t j =0; j < it->first.size();j++){
+			std::cout<<it->first.at(j)<<std::endl;
+		}
+		std::cout << "members size: "<< it->second.size() <<std::endl;
 		for(size_t i =0;i< it->second.size();i++){
 			it->second.at(i).print();
 			std::cout<< " " <<std::endl;		
 		}
 	}
-	for(size_t i =0; i < data.numSequences();i++){
+
+/*	for(size_t i =0; i < data.numSequences();i++){
 		std::cout<< "sequence "<< i << std::endl;
 		for(std::map<size_t, std::string>::iterator centPos = centerOnSequence.at(i).begin(); centPos != centerOnSequence.at(i).end();centPos++){
 			std::cout << centPos->first << " " << centPos->second <<std::endl;
 		}
-	}
-	std::cout<< "all the als: "<<std::endl;
-	for(size_t i =0; i < data.numAlignments();i++){
-		const pw_alignment p = data.getAlignment(i);
-		p.print();
-		
-	}
+	}*/
 	clock_t graph_ma_time = clock();
 	// TODO better separation of the different applications of our program: create/read model, compress/decompress sequences, create graph
 	// write graph result in maf format
-	write_graph_maf(graphout, alignments_in_a_cluster, data);//includes clusters with no associated member.TODO add long centers and modify the graph, for that purpose we may need a data structure to save all old and new centers at the same time. 
+//	write_graph_maf(graphout, alignments_in_a_cluster, data);//includes clusters with no associated member.
+	write_graph_maf_with_long_centers(graphout,new_centers,data);
 	graph_ma_time = clock() - graph_ma_time;
-
 	clock_t arithmetic_encoding_time = clock();
 //Remove centers with no other member rather than themselves:
 	//(On original centers:)
 	std::set<std::string> intermediate_center;
 	for(std::map<std::string, std::vector<pw_alignment> >::iterator it = alignments_in_a_cluster.begin(); it!=alignments_in_a_cluster.end();it++){
 		if(it->second.size()==0){
+			std::cout<< "center has no al!"<<std::endl;
 			intermediate_center.insert(it->first);
 		}
 	}
@@ -1015,7 +1262,7 @@ int do_mc_model(int argc, char * argv[]) {
 //						std::cout<< " "<< std::endl;
 
 //	}
-	for(size_t i = 0; i < data.numSequences(); i++){
+/*	for(size_t i = 0; i < data.numSequences(); i++){
 		std::cout<< "long centers on sequence " << i << " are "<<std::endl;
 		for(std::map<size_t, std::vector<std::string> >::iterator it = centersPositionOnASeq.at(i).begin(); it !=  centersPositionOnASeq.at(i).end();it++){
 			for(size_t j =0; j < it->second.size();j++){
@@ -1023,7 +1270,7 @@ int do_mc_model(int argc, char * argv[]) {
 			}
 			std::cout<< " "<< std::endl;
 		}
-	}
+	}*/
 
 //Data compression:
 	use_encode en(data,m,wrap);
