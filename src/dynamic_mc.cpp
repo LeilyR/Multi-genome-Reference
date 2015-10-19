@@ -210,7 +210,7 @@ void dynamic_mc_model::markov_chain(size_t & accession, size_t  level){
 void dynamic_mc_model::calculate_sequence_high(size_t & accession, const std::map<std::string, std::vector<size_t> > & counts){//TODO level0
 	size_t level = accLevel.at(accession);
 	if(level > 0){
-		make_all_patterns(level);
+		//make_all_patterns(level);
 		for(std::map<std::string, std::vector<double> >::iterator it= all_the_patterns.begin(); it != all_the_patterns.end() ; it++){
 			std::string pattern = it ->first;
 			std::map<std::string,std::vector<double> >::iterator it1=sequence_successive_bases.at(accession).find(pattern);
@@ -342,7 +342,7 @@ void dynamic_mc_model::set_patterns(std::ifstream & in){
 		set_acc_level(retrieved_level);
 		size_t level = get_acc_level(accession);//just to test and see if returns the same thing.
 		std::cout<< "ret_level: " << retrieved_level << " level "<< level <<std::endl;
-		make_all_patterns(level);// TODO later on change it to retrieved_level	
+		//make_all_patterns(level);// TODO later on change it to retrieved_level	
 		for(std::map<std::string,std::vector<double> >::const_iterator it= all_the_patterns.begin(); it!= all_the_patterns.end();it++){
 			std::string pattern = it ->first;
 			high.at(accession).insert(std::make_pair(pattern, std::vector<unsigned int>(5,0)));
@@ -1040,6 +1040,7 @@ size_t dynamic_mc_model::get_al_level(size_t& acc1 , size_t & acc2)const{
 void dynamic_mc_model::set_al_level(size_t& acc1 , size_t & acc2, size_t & level){
 	al_level.at(acc1).at(acc2) = level;
 }
+
 const std::map<std::string, std::vector<unsigned int> >&  dynamic_mc_model::get_high(size_t acc)const{
 	return high.at(acc);
 }

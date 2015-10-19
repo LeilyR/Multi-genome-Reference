@@ -247,7 +247,7 @@ class cost_functor : public abstract_context_functor {
 	double modify1;
 	double modify2;	
 
-};
+};http://stackoverflow.com/questions/583076/c-c-changing-the-value-of-a-const
 
 
 class adding_functor : public abstract_context_functor {

@@ -1155,7 +1155,7 @@ void overlap::insert_without_partial_overlap(const pw_alignment & p){
 		al.print();
 	}
 	std::cout << " insert " << std::endl;
-	assert(alignments.find(p) == alignments.end());
+//	assert(alignments.find(p) == alignments.end());
 	std::pair<std::set<pw_alignment, compare_pw_alignment>::iterator, bool > npp = alignments.insert(p);
 	std::set<pw_alignment, compare_pw_alignment>::iterator npi = npp.first;
 	const pw_alignment & np = *(npi);
@@ -2310,9 +2310,10 @@ void splitpoints::insert_split_point(size_t sequence, size_t position) {
 				}
 			}
 		}
-	//	if(insert_alignments.size()==0 && remove_alignments.size()==0){
-	//		insert_alignments.push_back(newal);
-	//	}
+		if(insert_alignments.size()==0 && remove_alignments.size()==0){
+			insert_alignments.push_back(newal);
+			std::cout << "new_al is pushed back" <<std::endl;
+		}
 		
 					
 	}

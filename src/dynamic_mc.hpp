@@ -16,7 +16,7 @@ class dynamic_mc_model{//TODO level 0;
 		void train_sequence_model();	
 //		void markov_chain(size_t &, size_t);
 		void calculate_sequence_high(size_t & accession, const std::map<std::string, std::vector<size_t> > & counts);
-		void make_all_patterns(size_t & );
+		void make_all_patterns(const size_t &);
 		void write_parameters(std::ofstream & );
 		void set_patterns(std::ifstream &);
 		void recursive_al_model();
@@ -47,7 +47,7 @@ class dynamic_mc_model{//TODO level 0;
 
 		all_data & data;	
 		std::vector<size_t>accLevel; // accession i uses a markov chain of that level, 0 means simple model without context
-//		std::vector<std::vector<double> > create_cost;//accession(cost of each base)
+		std::vector<std::vector<double> > create_cost;//accession(cost of each base)
 
 		std::vector<std::map<std::string, std::vector<double> > >sequence_successive_bases;//accession(string ---> context , vector<double> ---> probability of the next base)
 		std::vector<std::vector<std::map <std::string, std::vector<double> > > >mod_cost; //accession1(accession2(context, next context))
@@ -62,10 +62,6 @@ class dynamic_mc_model{//TODO level 0;
 
 		double total_sequence_cost(const std::map<std::string, std::vector<size_t> > & all_context_counts) const;
 		void context_count(std::map<std::string, std::vector<size_t> > & countmap, const std::string & context, size_t base, size_t num) const;
-
-
-
-
 
 };
 
