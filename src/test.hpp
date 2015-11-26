@@ -19,8 +19,8 @@
 		~test_encoder();
 		void encode();
 		void decode();
-		void compare();
-		void context_compare();
+		void compare(std::ifstream & , std::ifstream &);
+		void context_compare(std::ifstream &  , std::ifstream & );
 		private:
 		std::vector<unsigned int>low;
 		std::vector<unsigned int>high;

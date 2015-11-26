@@ -764,7 +764,7 @@ bool compare_pw_alignment::operator()(const pw_alignment &ar, const pw_alignment
 	} else if(a->getreference(abigger) > b->getreference(bbigger)) {
 		return false;	
 	}
-
+//This is the added part:
 	if (a->getbegin(asmaller) < b->getbegin(bsmaller))return true;
 	if (a->getbegin(asmaller) > b->getbegin(bsmaller))return false;
 
@@ -843,18 +843,91 @@ pw_alignment & pw_alignment::operator=(const pw_alignment & al) {
 		create_costs = al.create_costs;
 		modify_costs = al.modify_costs;
 		costs_cached = al.costs_cached;
-	
 	}
 
 	return *this;
 }
+char pw_alignment::complement(char & c){
+	switch(c) {
+		case 'a':
+		case 'A':
+		return 'T';
+		break;
+		case 't':
+		case 'T':
+		return 'A';
+		break;
+		case 'c':
+		case 'C':
+		return 'G';
+		break;
+		case 'g':
+		case 'G':
+		return 'C';
+		break;
+	
+			case 'R':
+			case 'r':
+			case 'Y':
+			case 'y':
+			case 'M':
+			case 'm':
+			case 'K':
+			case 'k':
+			case 'W':
+			case 'w':
+			case 'S':
+			case 's':
+			case 'B':
+			case 'b':
+			case 'D':
+			case 'd':
+			case 'H':
+			case 'h':
+			case 'V':
+			case 'v':
+			case 'N':	
+			case 'n':
+		return 'N';
+		break;
+		case '.':
+		case '-':
+		return '-';
+		break;
 
+	}
+	return 'X';
+}
+std::vector<bool> pw_alignment::reverse_complement(std::vector<bool> & sample){
+	std::vector<bool> temp;
+	for(int i =sample.size()-1; i > 1;i--){
+		char s = base_translate_back(sample.at(i-2),sample.at(i-1),sample.at(i));
+		char rev = complement(s);
+		bool bit1;
+		bool bit2;
+		bool bit3;
+		base_translate(rev, bit1, bit2, bit3);
+		temp.push_back(bit1);
+		temp.push_back(bit2);
+		temp.push_back(bit3);
+		i = i-2;
+	}
+	return temp;
+}
+void pw_alignment::get_reverse(pw_alignment & al){
+	al.references = references;
+	al.ends = begins;
+	al.begins = ends;
+	std::vector< std::vector<bool> >temp = samples;
+	al.samples.at(0) = reverse_complement(temp.at(0)); 
+	al.samples.at(1) = reverse_complement(temp.at(1)); 
+}
         wrapper::wrapper():encodeout("enc1.txt"),al_encode("al_encode1.txt"){
         }
         wrapper::~wrapper(){}
         void wrapper::encode(unsigned int& low, unsigned int& high, unsigned int & total){
                 encodeout << "l"<< low << "h"<< high;
-                al_encode << " low: "<< low << " high: "<< high <<std::endl;
+//              al_encode << " low: "<< low << " high: "<< high <<std::endl;
 
         }
         void wrapper::context(int & context){
@@ -866,10 +939,12 @@ pw_alignment & pw_alignment::operator=(const pw_alignment & al) {
 	decoding_wrapper::~decoding_wrapper(){}
 	void decoding_wrapper::decode(unsigned int& low, unsigned int& high, unsigned int & total){
                 decodeout << "l"<< low << "h"<< high;
-                al_decode << " low: "<< low << " high: "<< high <<std::endl;
+//		std::cout << "high in wrapper " << high <<std::endl;
+//              al_decode << " low: "<< low << " high: "<< high <<std::endl;
         }
         void decoding_wrapper::decodeContext(int & context){
 		al_decode<<"c"<<context;
+	//	std::cout << "context "<< context << std::endl;
             //    al_decode << "position: " << pos << " context: " <<  context <<std::endl;
         }
 

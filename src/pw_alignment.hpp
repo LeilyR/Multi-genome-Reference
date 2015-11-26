@@ -69,10 +69,12 @@ class pw_alignment {
 	double get_create2() const;
 	double get_modify1() const;
 	double get_modify2() const;
-
+	
 	bool equals(const pw_alignment & al) const;
 
 	pw_alignment & operator=(const pw_alignment & al);
+	std::vector<bool> reverse_complement(std::vector<bool> & ); 
+	void get_reverse(pw_alignment &);
 
 	private:
 	std::vector<std::vector<bool> > samples;
@@ -87,6 +89,7 @@ class pw_alignment {
 	
 	static inline void base_translate(char base, bool & bit1, bool & bit2, bool & bit3);
 	static inline char base_translate_back(bool bit1, bool bit2, bool bit3);
+	static inline char complement(char &);
 };
 
 

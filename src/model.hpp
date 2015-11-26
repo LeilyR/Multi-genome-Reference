@@ -41,7 +41,7 @@ class initial_alignment_set {
 			const pw_alignment & alit = rit->second;
 		//	std::cout << " ral " << alit << std::endl;
 		//	alit.print();
-			std::cout << std::endl;
+		//	std::cout << std::endl;
 			sorted_original_als.at(pos) = alit;
 			pos++;
 		}
@@ -239,7 +239,6 @@ main.cpp:rse_iterator rit = sorter.rbegin(); rit!=sorter.rend(); ++rit) {
 };
 
 */
-
 class compute_cc {
 	public:
 	compute_cc(const std::set<pw_alignment, compare_pw_alignment> & als_in, size_t num_sequences):alignments(als_in), als_on_reference(num_sequences), last_pos(num_sequences, 0) {
@@ -363,14 +362,14 @@ void run(std::map<std::string, std::vector<std::string> > & cluster_result) {
 		apoptions.progress=NULL; apoptions.progressf=NULL;
 		double netsim;	
 		int iter = apcluster32(data, NULL, NULL, simmatrix.size()*simmatrix.size(), result, &netsim, &apoptions);
-		std::cout << "iter " << iter << "result[0] "<< result[0] << " netsim "<< netsim<< std::endl;
+//		std::cout << "iter " << iter << "result[0] "<< result[0] << " netsim "<< netsim<< std::endl;
 		if(iter <= 0 || result[0]==-1) {
 			apoptions.minimum_iterations = 10000;
 			apoptions.converge_iterations = 15000;
 			apoptions.maximum_iterations = 150000;
 			apoptions.lambda = 0.6;
 			iter = apcluster32(data, NULL, NULL, simmatrix.size()*simmatrix.size(), result, &netsim, &apoptions);
-	//		std::cout << "iter " << iter << std::endl;
+		//	std::cout << "iter " << iter << std::endl;
 		}
 		if(iter <= 0 || result[0]==-1) {
 			apoptions.minimum_iterations = 100000;
@@ -378,7 +377,7 @@ void run(std::map<std::string, std::vector<std::string> > & cluster_result) {
 			apoptions.maximum_iterations = 250000;
 			apoptions.lambda = 0.99;
 			iter = apcluster32(data, NULL, NULL, simmatrix.size()*simmatrix.size(), result, &netsim, &apoptions);
-			std::cout << "iter1 " << iter << "result[0] " <<result[0]<< std::endl;
+	//		std::cout << "iter1 " << iter << "result[0] " <<result[0]<< std::endl;
 		}
 	} else {
 		if(simmatrix.size()==1) {
@@ -422,7 +421,7 @@ void run(std::map<std::string, std::vector<std::string> > & cluster_result) {
 		assert(result[i]>= 0);
 		if(i==(size_t)result[i]) {
 			apcost-=simmatrix.at(i).at(i);
-			std::cout << "i is "<< i << std::endl;
+		//	std::cout << "i is "<< i << std::endl;
 		} else {
 			if(simmatrix.at(i).at(result[i])== -HUGE_VAL){
 				result[i]=i;
@@ -433,22 +432,22 @@ void run(std::map<std::string, std::vector<std::string> > & cluster_result) {
 		}
 	}
 	for(size_t i=0; i<simmatrix.size(); ++i) {//cluster center may happen whenever i == result[i]
-		std::cout << sequence_names.at(i) << " res " << i << " is " << result[i] << " ( length " << sequence_lengths.at(i) << ")"<<std::endl;
+	//	std::cout << sequence_names.at(i) << " res " << i << " is " << result[i] << " ( length " << sequence_lengths.at(i) << ")"<<std::endl;
 
 		if( (size_t)result[i]==i) {
-			std::cout << " " << simmatrix.at(i).at(i) << std::endl;
+		//	std::cout << " " << simmatrix.at(i).at(i) << std::endl;
 			std::map<std::string, std::vector<std::string> >::iterator it=cluster_result.find(sequence_names.at(i));
 			if(it==cluster_result.end()){
 				cluster_result.insert(make_pair(sequence_names.at(i), std::vector<std::string>()));
 			} else {
-				std::cout << "at else "<<std::endl;
+	//			std::cout << "at else "<<std::endl;
 				// it->second.push_back(sequence_names.at(i));
 			
 			}
 
 
 		} else {
-			std::cout << " " << simmatrix.at(i).at(result[i]) << " : " << simmatrix.at(i).at(i) << std::endl;
+		//	std::cout << " " << simmatrix.at(i).at(result[i]) << " : " << simmatrix.at(i).at(i) << std::endl;
 			//result[i]is associated one, add them to the map for each center
 			std::map<std::string, std::vector<std::string> >::iterator it=cluster_result.find(sequence_names.at(result[i]));
 			if(it == cluster_result.end()) {
@@ -500,16 +499,13 @@ class finding_centers{
 	std::map< size_t, std::string> get_sequence_centers(size_t & )const;//It returns all the centers of a sequence, a center may happen more than once, thus it might be repeated in the vector. size_t shows the position of each center
 	std::string find_center_name(size_t &)const;
 	
-	private:
+	private://all these containers are local and their containts are replacing after each call of clustering:
 	all_data & data;
-	std::vector< std::multimap<size_t , pw_alignment*> >AlignmentsFromClustering;
+	std::vector< std::map<size_t , pw_alignment*> >AlignmentsFromClustering;//It is changing in each call of clustering
 	std::map<std::string,std::string> memberOfCluster; //first string is assocciated member and second one is its center
-	std::vector< std::map< size_t, std::string> >centersOnSequence;//all the centers that happen on each sequence and their positions.
+	std::vector< std::map< size_t, std::string> >centersOnSequence;//all the centers that happen on each sequence and their positions 
 	std::vector< std::map< size_t , std::vector<size_t> > > centersOfASequence;//centers that happen on each sequence and have less than 5 bases difference and their position.
 	std::vector<std::string> center_index;
-
-
-
 };
 class suffix_tree{
 	public:
@@ -526,11 +522,13 @@ class suffix_tree{
 	std::vector<std::vector<size_t> > get_nodes()const;
 	std::map<std::vector<size_t>, size_t> get_count()const;//Returns 'branch counter'
 	std::vector<size_t> get_first_parent()const;
-	void read_first_parents(std::vector<size_t> & , std::vector<size_t> &);
-	void find_child_nodes(size_t &, vector<size_t> &);
+	void get_first_parent(std::vector<size_t> & , std::vector<size_t> &);
+	void find_child_nodes(size_t &, std::vector<size_t> &);
 	void first_parent_index(size_t & , size_t &); //current index, its first parent index
 	void create_tree(std::vector<size_t> &, size_t &);
 	size_t get_power_of_two(size_t &)const;
+	void shift_node_relation(std::multimap<size_t,size_t> & , size_t & , size_t & , size_t & );
+	void shift_first_parent();
 	std::map<size_t, std::vector<size_t> > get_center_on_a_sequence(size_t &)const;
 	private:
 	all_data & data;
@@ -550,8 +548,7 @@ class merging_centers{
 		void updating_centers(std::vector<size_t> & , size_t &);
 		void merg_gain_value( );
 		void adding_new_centers(std::vector<std::vector<std::string> >&, std::vector<std::map<size_t , std::vector<std::string> > >&);// Saves new centers in the 'long_centers' vector in main. It gives a unique id to each of them(Their row in the outer vector). vector<string> includes are the centers in the new one. they are saved in the form of ref:left.
-	//	void merg_alignments(vector<vector<std::string> > &, std::map<std::string, std::vector<pw_alignment> > &, std::map<std::string, std::vector<std::string> > &, std::map<vector<std::string>,std::vector<pw_alignment> > &);
-		void create_alignment(std::vector<std::vector<std::string> > &, std::map<vector<std::string>, vector<pw_alignment> >&, std::map<std::string , std::vector<pw_alignment> > &,  std::vector<std::map<size_t , std::vector<std::string> > > &,  std::vector<std::map<size_t , std::string> > & ); //Creates all the als between a seq and long centers on that seq.
+		void create_alignment(std::vector<std::vector<std::string> > &, std::map<vector<std::string>, vector<pw_alignment> >&, std::map<std::string , std::vector<pw_alignment> > &,  std::vector<std::map<size_t , std::vector<std::string> > > &,  std::vector<std::map<size_t , std::string> > & ); //Creates all the als using long centers 
 		void find_new_centers(size_t &, std::vector<std::string> & , size_t &, std::vector<std::map<size_t, std::vector<std::string> > >& );//Finds long centers on a certain sequence	
 		void find_long_center_length(std::vector<std::string> & , std::map<std::string,std::vector<pw_alignment> > & , size_t & ,size_t & ,size_t &,size_t &);
 
@@ -561,13 +558,6 @@ class merging_centers{
 		suffix_tree & tree;
 		std::map<std::vector<size_t> , size_t> merged_centers;//merged centers, vector<size_t> ----> original indices of megerd centers , size_t ----> its new index
 		std::map<std::vector<size_t>, int >gains; // vector<size_t> ----> series of centers, int ----> gain of it. It includes the last combination of centers
-//		std::vector<std::map<std::vector<std::string> ,std::vector<size_t> > >centersPositionOnASeq;
-
-		
-
-
-
-
 };
 
 

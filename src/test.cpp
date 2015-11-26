@@ -61,36 +61,32 @@
 			i = i + 1;
 		}
 	}
-	void test_encoder::compare(){//TODO  is wrong and should be fixed.
-		ifstream read;	
+	void test_encoder::compare(std::ifstream & encode , std::ifstream & decode){
 		char c;
 		low_dec.clear();
 		high_dec.clear();
-		read.open("dec1.txt");
-		while(read.good()){
-			c = read.get();
+		while(decode.good()){
+			c = decode.get();
 			unsigned int l;
-			read >> l;
+			decode >> l;
 			low_dec.push_back(l);
-			c = read.get();
+			c = decode.get();
 			unsigned int hi;
-			read >> hi;
+			decode >> hi;
 			high_dec.push_back(hi);
 		}
-		read.close();
+		decode.close();
 		char h;
-		ifstream read1;
 		low.clear();
 		high.clear();
-		read1.open("enc1.txt");
-		while(read1.good()){
-			h = read1.get();
+		while(encode.good()){
+			h = encode.get();
 			unsigned int l;
-			read1 >> l;
+			encode >> l;
 			low.push_back(l);
-			h = read1.get();
+			h = encode.get();
 			unsigned int hi;
-			read1 >> hi;
+			encode >> hi;
 			high.push_back(hi);
 
 
@@ -99,8 +95,8 @@
 				
 		std::cout<< "low_dec size: "<< low_dec.size() << "low size "<< low.size()<< std::endl;
 		std::cout<< "high_dec size: "<< high_dec.size() << "high size "<< high.size()<< std::endl;
-		for(size_t i =0 ; i < high_dec.size();i++){
-			cout << "high at " << i << " is " << high.at(i) << " " << high_dec.at(i) << endl;
+		for(size_t i =0 ; i < high.size();i++){
+			cout << "high at " << i << " is " << high.at(i) << endl;
 		}
 		for(size_t i = 0; i < low_dec.size(); i++){
 			if(low.at(i)!=low_dec.at(i)){
@@ -120,34 +116,30 @@
 		std::cout << "end of control!"<<std::endl;
 		
 	}
-	void test_encoder::context_compare(){//TODO is wrong and should be fixed
+	void test_encoder::context_compare(std::ifstream & encode , std::ifstream & decode){
 		char c;
 		vector<size_t> enc_context;
 		vector<size_t> dec_context;
-		ifstream read;
-		read.open("al_encode1.txt");
-		while(read.good()){
-			c = read.get();
+		while(encode.good()){
+			c = encode.get();
 			int h;
-			read >> h;
+			encode >> h;
 			enc_context.push_back(h);
 		}
 	//	std::cout<< "encode context: "<< std::endl;
 	//	for(size_t i =0; i < enc_context.size(); i++){
 	//		std::cout << enc_context.at(i)<<std::endl;
 	//	}
-		read.close();
-		ifstream read1;
-		read1.open("al_decode1.txt");
-		while(read1.good()){
-			c = read1.get();
+		while(decode.good()){
+			c = decode.get();
 			int h;
-			read1 >> h;
+			decode >> h;
 			dec_context.push_back(h);
 		}
 		std::cout<< "enc size: "<< enc_context.size() << "dec size "<< dec_context.size()<< endl;
 	//	assert(enc_context.size()==dec_context.size());
-		for(size_t i = 0; i < enc_context.size(); i++){
+		for(size_t i = 0; i < dec_context.size(); i++){
+//			cout<< "contexts at " << i << " is " << enc_context.at(i) << " " << dec_context.at(i) <<endl;
 			if(enc_context.at(i)!= dec_context.at(i)){
 				cout<< "contexts at " << i << " are different" << enc_context.at(i) << " " << dec_context.at(i) <<endl;
 				exit(1);
