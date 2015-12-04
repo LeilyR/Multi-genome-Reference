@@ -430,8 +430,47 @@ void dynamic_mc_model::compute_alignment_model() {
 		}
 	}
 
+// compute base cost
+/*
+	Using an alignment in encoding has these costs:
+	
+	* alignment begin flag on 2 sequences
+	* 2 * cluster center adress 
+	* the modifications are contained in using modify - create cost (0 base cost)
+	* alignment end flag on 2 sequences
+
+*/
+
+	alignment_adress_cost = log2(data.numAlignments());
+	alignment_begin_cost.resize(data.numAcc());
+	alignment_end_cost.resize(data.numAcc());
+	alignment_base_cost.resize(data.numAcc());
+	std::cout << "alignment base cost estimate: " << alignment_base_cost << std::endl;
+	for(size_t a = 0; a<data.numAcc(); ++a) {
+		alignment_end_cost.at(a).resize(data.numAcc());
+		alignment_base_cost.at(a).resize(data.numAcc());
+		size_t bases = acc_sequence_all_bases_total.at(a);
+		size_t alflag = acc_sequence_alignment_flag.at(a);
+		size_t al_begin_width = alflag - bases;
+		double al_begin_cost = -log2((double) al_begin_width / (double) TOTAL_FOR_ENCODING);
+		alignment_begin_cost.at(a) = al_begin_cost;
+		std::cout << "acc "<< a << " alignment begin cost estimate " << alignment_begin_cost.at(a) << std::endl;
+		for(size_t a2 =0; a2<data.numAcc(); ++a2) {
+			size_t al_mods = alignments_all_modification_total.at(a).at(a2);
+			size_t al_end_width = TOTAL_FOR_ENCODING - al_mods;
+			double al_end_cost = -log2((double) al_end_width / (double) TOTAL_FOR_ENCODING);
+			alignment_end_cost.at(a).at(a2) = al_end_cost;
+			alignment_base_cost.at(a).at(a2) = alignment_adress_cost + alignment_begin_cost.at(a) + alignment_end_cost.at(a).at(a2);
+			std::cout << " acc " << a << " to acc " << a2 << " alignment end cost estimate " << alignment_end_cost.at(a).at(a2) <<  " total base cost " << alignment_base_cost.at(a).at(a2) << std::endl;
+		}
+	}
+
 }
 
+
+double dynamic_mc_model::get_alignment_base_cost(const size_t & acc1, const size_t & acc2) const {
+	return alignment_base_cost.at(acc1).at(acc2);
+}
 
 void dynamic_mc_model::train_sequence_model() {
 

@@ -4,9 +4,9 @@
 #include "data.hpp"
 
 
-#define MIN_ENCODING_WIDTH_BITS 3
+#define MIN_ENCODING_WIDTH_BITS 1
 #define MAX_ENCODING_WIDTH_BITS 20
-#define NUM_ENCODING_TYPES 36 // (max - min + 1)*2, 36 types encoded 0 to 35, 36 is used as flag for no model
+#define NUM_ENCODING_TYPES 40 // (max - min + 1)*2, 40 types encoded 0 to 39, 40 is used as flag for no model
 #define MAX_SEQUENCE_MARKOV_CHAIN_LEVEL 5
 #define MAX_ALIGNMENT_MARKOV_CHAIN_LEVEL 3 // context is three modification instructions + current base on known strand
 #define TOTAL_FOR_ENCODING 4294967295 // 2^32-1
@@ -47,12 +47,20 @@ public:
 	inline void see_context(const std::string & context, size_t modification);
 
 	std::map<std::string, std::vector<size_t> > countsmap;
-	
+};
 
+
+class reader_costs {
+public:
+//	inline void see_context(const std::string & context, size_t modification);
+
+	double cost_sum;
 
 };
 
+
 typedef alignment_contexts<reader_counter> context_counter;
+typedef alignment_contexts<reader_costs> context_cost;
 
 class dynamic_mc_model {
 
@@ -66,7 +74,12 @@ class dynamic_mc_model {
 
 		void write_parameters(std::ofstream & ) const;
 		void set_patterns(std::ifstream &);
-		
+	
+
+	
+		double get_alignment_base_cost(const size_t & acc1, const size_t & acc2) const;
+
+
 		static char modification_character(int modify_base, int num_delete, int insert_base, int num_keep);
 		static std::string tranlsate_modification_character(char enc);
 		static size_t modification_length(char mod); 
@@ -125,6 +138,11 @@ class dynamic_mc_model {
 
 		std::vector<std::vector<std::map<std::string, std::vector<uint32_t> > > > alignment_model_widths; //  acc-from -> acc-to -> pattern (length is MAX_ALIGNMENT_MARKOV_CHAIN_LEVEL +1 ) -> encoding high value per base 
 
+
+		std::vector<double> alignment_begin_cost; 
+		std::vector<std::vector<double> > alignment_end_cost;
+		double alignment_adress_cost; // estimated cluster center adressing cost
+		std::vector<std::vector< double > > alignment_base_cost; // summary base cost
 
 
 

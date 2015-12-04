@@ -122,16 +122,19 @@ public:
 	void test_all() const;
 	void test_all_part()const;// Change it later to check all those pieces with gap in one sample. Put them all in a std::set and check if the only missed parts of coverage are those parts.
 	void test_overlap()const;
+	void test_no_overlap_between_ccs(const pw_alignment &, std::set<pw_alignment, compare_pw_alignment> &)const;
 	void print_all_alignment() const;
 	const pw_alignment * get_al_at_left_end(size_t ref1, size_t ref2, size_t left1, size_t left2) const;
-	std::multimap<size_t, pw_alignment >& get_als_on_reference(size_t sequence) ;
-	const std::multimap<size_t, pw_alignment>& get_als_on_reference_const(size_t sequence) const ;
+	std::multimap<size_t, const pw_alignment &>& get_als_on_reference(size_t sequence) ;
+	const std::multimap<size_t, const pw_alignment & >& get_als_on_reference_const(size_t sequence) const ;
 	void test_multimaps()  ;
 	bool checkAlignments(const pw_alignment & p)const;
 
 	const std::set<pw_alignment, compare_pw_alignment> & get_all() const;
 
 	void test_partial_overlap() const;
+	void test_al_on_ref()const;
+	bool check_alignment_address(const pw_alignment & , const pw_alignment * )const;
 	static void test_partial_overlap_set(std::set< const pw_alignment *, compare_pw_alignment> & als);
 	static void test_partial_overlap_vec(std::vector< const pw_alignment *> & als);
 	static bool check_po(size_t l1, size_t r1, size_t l2, size_t r2);
@@ -141,8 +144,8 @@ public:
 private:
 	const all_data & data;
 	std::set<pw_alignment, compare_pw_alignment> alignments;
-	std::vector< std::multimap< size_t, pw_alignment> > als_on_reference; // sequence index -> pos on that sequence -> alignment reference
-
+	std::vector< std::multimap< size_t, const pw_alignment &> > als_on_reference; // sequence index -> pos on that sequence -> alignment reference
+	//04.11.15 changed it from a copy to a reference from "alignments"
 
 	
 };
@@ -295,6 +298,7 @@ class mc_model{
 		const std::vector<std::vector<std::map <std::string, vector<double> > > >& get_mod_cost()const;
 		void cost_function(const pw_alignment& p, double & c1, double & c2, double & m1, double & m2)const ;
 		void gain_function(const pw_alignment& p, double & g1, double & g2)const ;
+		double get_the_gain(const pw_alignment &, std::string & )const;
 		void train(std::ofstream &);
 		char modification_character(int modify_base, int num_delete, int insert_base, int num_keep)const;
 		void modification(char enc, int & modify_base, int & num_delete, int & insert_base, int & num_keep)const;
@@ -323,7 +327,8 @@ class mc_model{
 		void computing_modification_in_cluster(std::string center, std::string member)const;
 		size_t modification_length(char mod)const;
 		void get_encoded_member(pw_alignment & al, size_t center_ref, size_t center_left, encoding_functor & functor,std::ofstream&)const;
-		void get_insertion_high_between_centers(size_t& seq_id ,char & seq_base, char & last_center_base, unsigned int& center_ref,unsigned int& high, unsigned int& low)const;
+		void get_encoded_member_long_center(pw_alignment & al, size_t center_ref, size_t center_left, std::string & , encoding_functor & functor,std::ofstream&)const;
+		void get_insertion_high_between_centers(size_t& seq_id ,char & seq_base, char & last_center_base, unsigned int& center_ref,std::string & ,unsigned int& high, unsigned int& low)const;
 		void get_a_keep(unsigned int & , unsigned int & , size_t & , std::vector<unsigned int> & , std::vector<unsigned int> & )const;
 	private:
 	all_data & data;
@@ -335,6 +340,7 @@ class mc_model{
 	std::map<std::string,std::vector<double> > all_the_patterns; // TODO vector<double> part is wrong (independent of accession) --- it is because at the beginning all the values are set to 0. And then later on in high we set them accession dependent. I need to make a better way to represent all the pattern
 	std::set<std::string> all_alignment_patterns; // all possible alignment patterns
 	std::vector<std::vector<std::map<std::string , std::vector<unsigned int> > > >highValue;//alignments patterns
+	mutable std::string last_context; //last context of an alignment. it is used for arith encoding of long centers
 
 		
 
