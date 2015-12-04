@@ -355,28 +355,28 @@ void run(std::map<std::string, std::vector<std::string> > & cluster_result) {
 		}
 		APOPTIONS apoptions;
 		apoptions.cbSize = sizeof(APOPTIONS);
-		apoptions.lambda = 0.9;
-		apoptions.minimum_iterations = 10;
-		apoptions.converge_iterations = 500;
-		apoptions.maximum_iterations = 5000;
+		apoptions.lambda = 0.5;
+		apoptions.minimum_iterations = 1000;
+		apoptions.converge_iterations = 5000;
+		apoptions.maximum_iterations = 50000;
 		apoptions.nonoise = 1;
 		apoptions.progress=NULL; apoptions.progressf=NULL;
 		double netsim;	
 		int iter = apcluster32(data, NULL, NULL, simmatrix.size()*simmatrix.size(), result, &netsim, &apoptions);
 		std::cout << "iter " << iter << "result[0] "<< result[0] << " netsim "<< netsim<< std::endl;
 		if(iter <= 0 || result[0]==-1) {
-			apoptions.minimum_iterations = 100;
-			apoptions.converge_iterations = 500;
-			apoptions.maximum_iterations = 15000;
-			apoptions.lambda = 0.98;
+			apoptions.minimum_iterations = 10000;
+			apoptions.converge_iterations = 15000;
+			apoptions.maximum_iterations = 150000;
+			apoptions.lambda = 0.6;
 			iter = apcluster32(data, NULL, NULL, simmatrix.size()*simmatrix.size(), result, &netsim, &apoptions);
 	//		std::cout << "iter " << iter << std::endl;
 		}
 		if(iter <= 0 || result[0]==-1) {
-			apoptions.minimum_iterations = 1000;
-			apoptions.converge_iterations = 800;
-			apoptions.maximum_iterations = 25000;
-			apoptions.lambda = 0.995;
+			apoptions.minimum_iterations = 100000;
+			apoptions.converge_iterations = 20000;
+			apoptions.maximum_iterations = 250000;
+			apoptions.lambda = 0.99;
 			iter = apcluster32(data, NULL, NULL, simmatrix.size()*simmatrix.size(), result, &netsim, &apoptions);
 			std::cout << "iter1 " << iter << "result[0] " <<result[0]<< std::endl;
 		}
@@ -422,6 +422,7 @@ void run(std::map<std::string, std::vector<std::string> > & cluster_result) {
 		assert(result[i]>= 0);
 		if(i==(size_t)result[i]) {
 			apcost-=simmatrix.at(i).at(i);
+			std::cout << "i is "<< i << std::endl;
 		} else {
 			if(simmatrix.at(i).at(result[i])== -HUGE_VAL){
 				result[i]=i;
@@ -550,8 +551,9 @@ class merging_centers{
 		void merg_gain_value( );
 		void adding_new_centers(std::vector<std::vector<std::string> >&, std::vector<std::map<size_t , std::vector<std::string> > >&);// Saves new centers in the 'long_centers' vector in main. It gives a unique id to each of them(Their row in the outer vector). vector<string> includes are the centers in the new one. they are saved in the form of ref:left.
 	//	void merg_alignments(vector<vector<std::string> > &, std::map<std::string, std::vector<pw_alignment> > &, std::map<std::string, std::vector<std::string> > &, std::map<vector<std::string>,std::vector<pw_alignment> > &);
-		void create_alignment(std::vector<std::vector<std::string> > &, std::map<vector<std::string>, vector<pw_alignment> >&, std::map<std::string , std::vector<pw_alignment> > &, std::vector<std::map<std::vector<std::string> ,std::vector<size_t> > > & ); //Creates all the als between a seq and long centers on that seq.
+		void create_alignment(std::vector<std::vector<std::string> > &, std::map<vector<std::string>, vector<pw_alignment> >&, std::map<std::string , std::vector<pw_alignment> > &,  std::vector<std::map<size_t , std::vector<std::string> > > &,  std::vector<std::map<size_t , std::string> > & ); //Creates all the als between a seq and long centers on that seq.
 		void find_new_centers(size_t &, std::vector<std::string> & , size_t &, std::vector<std::map<size_t, std::vector<std::string> > >& );//Finds long centers on a certain sequence	
+		void find_long_center_length(std::vector<std::string> & , std::map<std::string,std::vector<pw_alignment> > & , size_t & ,size_t & ,size_t &,size_t &);
 
 	private:
 		all_data & data;

@@ -738,7 +738,7 @@ bool compare_pw_alignment::operator()(const pw_alignment &ar, const pw_alignment
 	if (b->getreference(0) > b->getreference(1)){
 		bsmaller = 1;
 		bbigger = 0;
-} 
+	} 
 	else if (b->getreference(0) == b->getreference(1)){
 		if(b->getbegin(0) > b->getbegin(1)) {
 			bsmaller =1;
@@ -753,6 +753,18 @@ bool compare_pw_alignment::operator()(const pw_alignment &ar, const pw_alignment
 	}
 
 
+	
+	if(a->getreference(asmaller) < b->getreference(bsmaller)) {
+		return true;
+	} else if(a->getreference(asmaller) > b->getreference(bsmaller)) {
+		return false;	
+	}
+	if(a->getreference(abigger) < b->getreference(bbigger)) {
+		return true;
+	} else if(a->getreference(abigger) > b->getreference(bbigger)) {
+		return false;	
+	}
+
 	if (a->getbegin(asmaller) < b->getbegin(bsmaller))return true;
 	if (a->getbegin(asmaller) > b->getbegin(bsmaller))return false;
 
@@ -764,9 +776,10 @@ bool compare_pw_alignment::operator()(const pw_alignment &ar, const pw_alignment
 	
 	if ( a->getend(abigger) < b->getend(bbigger)) return true;
 	if ( a->getend(abigger) > b->getend(bbigger)) return false;
+
 	return false;
 }
-bool sort_pw_alignment::operator() (const pw_alignment &p1, const pw_alignment &p2)const	{
+bool sort_pw_alignment::operator() (const pw_alignment &p1, const pw_alignment &p2)const{
 			return (p1.getbegin2() < p2.getbegin2());
 }
 

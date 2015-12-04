@@ -805,7 +805,7 @@ template<typename T>
 						wrappers.encode(l1,h1,total);
 						std::cout<< "al position: "<< n << std::endl;
 						pw_alignment p1 = *it->second;
-						p1.print();
+					//	p1.print();
 						if(it1 != centersPositionOnASeq.at(sequenceId).end()){//If there is a long center in that position
 							//This flag shows we reached a long center
 							unsigned int l1	= model.get_powerOfTwo().at(bit)+0;
@@ -855,7 +855,7 @@ template<typename T>
 									std::cout<<"center is on ref"<<std::endl;
 									std::map<std::string, std::vector<pw_alignment> >::iterator find_al = alignmentOfCluster.find(it1->second.at(j));
 									pw_alignment p1 = find_al->second.at(0);
-									p1.print();
+								//	p1.print();
 									p1.get_lr1(l_1,r_1);
 									p1.get_lr2(l_2,r_2);	
 									if(cent_ref == p1.getreference1() && cent_left == l_1){
@@ -877,7 +877,7 @@ template<typename T>
 								}else{
 									std::multimap<size_t, pw_alignment* >::iterator al =AlignmentsFromClustering.at(sequenceId).find(length);
 									p = *al->second;
-									p.print();
+							//		p.print();
 									p.get_lr1(l_1,r_1);
 									p.get_lr2(l_2,r_2);	
 									if(sequenceId == p.getreference1() && length == l_1){
@@ -896,7 +896,7 @@ template<typename T>
 									std::map<std::string, std::vector<pw_alignment> >::iterator find_al = alignmentOfCluster.find(it1->second.at(j+1));
 									for(size_t m =0; m < find_al->second.size();m++){
 										p1 = find_al->second.at(m);
-										p1.print();
+									//	p1.print();
 										p1.get_lr1(left1,right1);
 										p1.get_lr2(left2,right2);	
 										if((p.getreference1()== sequenceId && left1 >= length && left1 < length + 5)|| (p.getreference2()== sequenceId && left2 >= length && left2 < length +5)){
