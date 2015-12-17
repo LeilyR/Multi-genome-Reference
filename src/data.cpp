@@ -262,6 +262,8 @@ char dnastring::index_to_base(size_t index) {
 }
 all_data::all_data() {}
 
+
+// TODO this function does not have all features of maf function
 void all_data::read_fasta_sam(std::string fasta_all_sequences, std::string sam_all_alignments) {
 	std::cout << "read sam File "<< std::endl;
 	std::ifstream fastain(fasta_all_sequences.c_str());
@@ -645,6 +647,7 @@ void all_data::read_fasta_maf(std::string fasta_all_sequences, std::string maf_a
 								pw_alignment al(al1, al2, start1, start2, incl_end1, incl_end2, idx1, idx2);
 								size_t alidx = alignments.size();
 								alignments.push_back(al);
+	
 
 								als_on_reference.at(idx1).insert(std::make_pair(start1, alidx));
 								als_on_reference.at(idx2).insert(std::make_pair(start2, alidx));
@@ -676,7 +679,7 @@ void all_data::read_fasta_maf(std::string fasta_all_sequences, std::string maf_a
 		std::cout << "Loaded: " << sequences.size() << " sequences and " << alignments.size() << " pairwise alignments " << std::endl;
 		std::cout << skip_self << " self alignments were skipped" << std::endl;
 		std::cout << skip_alt << " alternative alignments of identical regions were skipped" << std::endl;
-		std::cout << skip_reverse << "alignments removed because already had their reverse one." << std::endl;
+		std::cout << skip_reverse << " reverse alignment duplicates skipped" << std::endl;
 	
 	} else {
 		std::cerr << "Error: cannot read: " << maf_all_alignments << std::endl;
@@ -754,7 +757,7 @@ all_data::~all_data() {
 		return 0;
 	}
 
-	void all_data::set_accession(const std::string & acc){
+	void all_data::add_accession(const std::string & acc){
 		accession_name.insert(std::make_pair(acc, accession_name.size()));
 		std::cout<< "acc "<< acc <<" accession name size: " << accession_name.size() <<std::endl;
 	}
@@ -3293,7 +3296,7 @@ void mc_model::make_all_alignments_patterns(){
 			}
 			s >> acc;
 			std::cout << " acc " << acc <<std::endl;
-			data.set_accession(acc);//since in decoding we have no access to our fasta file we need to set accession names in data class
+			data.add_accession(acc);//since in decoding we have no access to our fasta file we need to set accession names in data class
 			high.push_back(values);//initializing the high vector
 			c = in.get();
 		}

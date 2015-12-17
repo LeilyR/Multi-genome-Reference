@@ -1,12 +1,56 @@
 #include "dynamic_mc.hpp"
 
+
+template<typename reader>
+sequence_contexts<reader>::sequence_contexts(reader & r, size_t level): rd(r), level(level) {
+	astring.append(level, 'A');
+
+}
+
+template<typename reader>
+sequence_contexts<reader>::~sequence_contexts() {}
+
+template<typename reader>
+void sequence_contexts<reader>::read_sequence(const std::string & sequence) {
+	for(size_t i=0; i<level && i<sequence.length(); ++i) {
+		std::string cont = astring.substr(i);
+		cont.append(sequence.substr(0, i));
+		rd.see_context(cont, dnastring::base_to_index(sequence.at(i)));
+		assert(cont.length() == level);
+	}
+	for(size_t i=level; i<sequence.length(); ++i) {
+		std::string cont = sequence.substr(i - level, level);
+		rd.see_context(cont, dnastring::base_to_index(sequence.at(i)));
+	}
+}
+
+
+template<typename reader>
+void sequence_contexts<reader>::read_sequence(const dnastring & sequence, const size_t & from, const size_t & to) {
+	assert(from != to); // should only be called for sequences longer than 1 so that we know which strand we are on
+	if(from < to) {
+		size_t len = to - from + 1;
+		std::string seq(len, ';');
+		for(size_t i=0; i<len; ++i) {
+			seq.at(i) = sequence.at(from + i);
+		}
+		read_sequence(seq);
+	} else {
+		size_t len = from - to + 1;
+		std::string seq(len, ';');
+		for(size_t i=0; i<len; ++i) {
+			seq.at(i) = dnastring::complement(sequence.at(from - i));
+		}
+		read_sequence(seq);
+	}
+}
+
 template<typename reader> 
 alignment_contexts<reader>::alignment_contexts(reader & r, size_t level):rd(r), level(level)  {
 }
 
 template<typename reader> 
 alignment_contexts<reader>::~alignment_contexts() {}
-
 
 
 /*
@@ -213,6 +257,13 @@ void alignment_contexts<reader>::read_alignment_1_2(const pw_alignment & pw) {
 		std::string newcontext = context;
 		newcontext.append(1, onc);
 
+
+/*		std::cout << " found con ";
+		for(size_t i=0; i<newcontext.length(); ++i) {
+			std::cout << ": " << (size_t)newcontext.at(i);
+		}
+		std::cout << std::endl;
+*/
 		rd.see_context(newcontext, (size_t)modc);
 		
 		// update mod context for next round
@@ -259,7 +310,7 @@ void alignment_contexts<reader>::read_alignment_2_1(const pw_alignment & pw) {
 	assert(at_al_col == pw.alignment_length());
 }
 
-void reader_counter::see_context(const std::string & context, size_t modification) {
+void a_reader_counter::see_context(const std::string & context, size_t modification) {
 	
 	std::map<std::string, std::vector<size_t> >::iterator findc = countsmap.find(context);
 	if(findc == countsmap.end()) {
@@ -268,6 +319,52 @@ void reader_counter::see_context(const std::string & context, size_t modificatio
 	}
 	findc->second.at(modification)++;
 }
+
+void s_reader_counter::see_context(const std::string & context, size_t modification) {
+	
+	std::map<std::string, std::vector<size_t> >::iterator findc = countsmap.find(context);
+	if(findc == countsmap.end()) {
+		countsmap.insert(std::make_pair(context, vector<size_t>(numchars, 0)));
+		findc = countsmap.find(context);
+	}
+	findc->second.at(modification)++;
+}
+
+
+
+a_reader_costs::a_reader_costs(const std::map<std::string, std::vector<double> > & mcost):cost_sum(0), model_costs(mcost) {
+
+}
+
+a_reader_costs::~a_reader_costs() {}
+
+
+s_reader_counter::s_reader_counter():numchars(5) {}
+
+s_reader_counter::~s_reader_counter() {}
+
+void a_reader_costs::see_context(const std::string & context, size_t modification) {
+	std::map<std::string, std::vector<double> >::const_iterator it = model_costs.find(context);
+	assert(it!=model_costs.end());
+	const std::vector<double> & mc = it->second;
+	cost_sum+=mc.at(modification);
+}
+
+
+s_reader_costs::s_reader_costs(const std::map<std::string, std::vector<double> > & mcost):cost_sum(0), model_costs(mcost) {
+
+}
+
+s_reader_costs::~s_reader_costs() {}
+
+
+void s_reader_costs::see_context(const std::string & context, size_t modification) {
+	std::map<std::string, std::vector<double> >::const_iterator it = model_costs.find(context);
+	assert(it!=model_costs.end());
+	const std::vector<double> & mc = it->second;
+	cost_sum+=mc.at(modification);
+}
+
 
 dynamic_mc_model::dynamic_mc_model(all_data & d, size_t nt): data(d), num_threads(nt) {
 	// use (1<<i) should be faster	
@@ -410,23 +507,28 @@ void dynamic_mc_model::context_count(std::map<std::string, std::vector<size_t> >
 }
 
 void dynamic_mc_model::compute_sequence_model() {
-	sequence_model_widths.resize(data.numAcc());
+	sequence_model_highs.resize(data.numAcc());
+	sequence_model_costs.resize(data.numAcc());
 	vector<unsigned char> alphabet;
 	get_sequence_alphabet(alphabet);
 
 
 	for(size_t acc = 0; acc<data.numAcc(); ++acc) {
-		model_bits_to_full_high_values(sequence_models.at(acc), acc_sequence_all_bases_total.at(acc), MAX_SEQUENCE_MARKOV_CHAIN_LEVEL, alphabet, sequence_model_widths.at(acc));
+// storage widhts (few bits) to encoding widths (32 bits)
+		model_bits_to_full_high_values(sequence_models.at(acc), acc_sequence_all_bases_total.at(acc), MAX_SEQUENCE_MARKOV_CHAIN_LEVEL, alphabet, sequence_model_highs.at(acc), sequence_model_costs.at(acc));
 	}
 
 }
 void dynamic_mc_model::compute_alignment_model() {
 	vector<unsigned char> alignment_alphabet;
 	get_alignment_alphabet(alignment_alphabet);
-	alignment_model_widths = std::vector<std::vector<std::map<std::string, std::vector<uint32_t> > > > (data.numAcc(), std::vector<std::map<std::string, std::vector<uint32_t> > >(data.numAcc()));
+	alignment_model_highs = std::vector<std::vector<std::map<std::string, std::vector<uint32_t> > > > (data.numAcc(), std::vector<std::map<std::string, std::vector<uint32_t> > >(data.numAcc()));
+	alignment_model_costs = std::vector<std::vector<std::map<std::string, std::vector<double> > > > (data.numAcc(), std::vector<std::map<std::string, std::vector<double> > >(data.numAcc()));
 	for(size_t a1 = 0; a1<data.numAcc(); ++a1) {
 		for(size_t a2 = 0; a2<data.numAcc(); ++a2) {
-			model_bits_to_full_high_values(alignment_models.at(a1).at(a2), alignments_all_modification_total.at(a1).at(a2), MAX_ALIGNMENT_MARKOV_CHAIN_LEVEL + 1, alignment_alphabet, alignment_model_widths.at(a1).at(a2));
+			// TODO can we make this faster?
+			model_bits_to_full_high_values(alignment_models.at(a1).at(a2), alignments_all_modification_total.at(a1).at(a2), MAX_ALIGNMENT_MARKOV_CHAIN_LEVEL + 1, alignment_alphabet, alignment_model_highs.at(a1).at(a2), alignment_model_costs.at(a1).at(a2));
+
 		}
 	}
 
@@ -445,7 +547,7 @@ void dynamic_mc_model::compute_alignment_model() {
 	alignment_begin_cost.resize(data.numAcc());
 	alignment_end_cost.resize(data.numAcc());
 	alignment_base_cost.resize(data.numAcc());
-	std::cout << "alignment base cost estimate: " << alignment_base_cost << std::endl;
+	std::cout << "alignment base cost estimate: " << alignment_adress_cost << std::endl;
 	for(size_t a = 0; a<data.numAcc(); ++a) {
 		alignment_end_cost.at(a).resize(data.numAcc());
 		alignment_base_cost.at(a).resize(data.numAcc());
@@ -502,24 +604,17 @@ void dynamic_mc_model::train_sequence_model() {
 	acc_sequence_alignment_flag.resize(data.numAcc());
 #pragma omp paralell for schedule(dynamic) num_threads(num_threads)
 	for(size_t acc=0; acc<data.numAcc(); ++acc) {
-		std::map< std::string, std::vector<size_t> > context_counts;
+//		std::map< std::string, std::vector<size_t> > context_counts;
+		s_reader_counter ccounts;
+		scontext_counter ccount(ccounts, MAX_SEQUENCE_MARKOV_CHAIN_LEVEL);
 		size_t acc_num_bases = 0;
 		for(size_t k = 0; k <data.getAcc(acc).size(); k++) {
 			std::string sequence = data.getSequence(data.getAcc(acc).at(k)).str();
 			acc_num_bases += sequence.length();
+			ccount.read_sequence(sequence);
 
 
 
-			for(size_t i=0; i<MAX_SEQUENCE_MARKOV_CHAIN_LEVEL; ++i) {
-				std::string cont = astring.substr(i);
-				cont.append(sequence.substr(0, i));
-				context_count(context_counts, cont, dnastring::base_to_index(sequence.at(i)), 1);
-				assert(cont.length() == MAX_SEQUENCE_MARKOV_CHAIN_LEVEL);
-			}
-			for(size_t i=MAX_SEQUENCE_MARKOV_CHAIN_LEVEL; i<sequence.length(); ++i) {
-				std::string cont = sequence.substr(i - MAX_SEQUENCE_MARKOV_CHAIN_LEVEL, MAX_SEQUENCE_MARKOV_CHAIN_LEVEL);
-				context_count(context_counts, cont, dnastring::base_to_index(sequence.at(i)), 1);
-			}
 		} // for sequences in accession
 
 		// we estimate the probability of having an alignment on this accession by the total number of half alignments on that accession
@@ -546,15 +641,16 @@ void dynamic_mc_model::train_sequence_model() {
 		distribution_to_bits(distri, MAX_ENCODING_WIDTH_BITS, flag_bits);
 		vector<uint32_t> flag_widths;
 		bits_to_width_encoding(flag_bits, TOTAL_FOR_ENCODING, flag_widths);
-		std::cout <<"acc " << acc << ": encoding widhts: any base: "<< flag_widths.at(0) << " half alignment begin: " << flag_widths.at(1) << " sequence end: " << flag_widths.at(2) << std::endl;
+		std::cout <<"acc " << acc << ": encoding widths: any base: "<< flag_widths.at(0) << " half alignment begin: " << flag_widths.at(1) << " sequence end: " << flag_widths.at(2) << std::endl;
 		std::cout <<"acc " << acc << ": encoding costs: any base: " << -log2((double)flag_widths.at(0)/(double)TOTAL_FOR_ENCODING) << 
 			 "bit half alignment begin: " << -log2((double)flag_widths.at(1)/(double)TOTAL_FOR_ENCODING) << "bit sequence end: " << -log2((double)flag_widths.at(2)/(double)TOTAL_FOR_ENCODING) <<"bit "<< std::endl;
 		
 		uint32_t new_total = flag_widths.at(0);
 		std::map< std::string, std::pair<unsigned char, std::vector<uint32_t> > > acc_seq_model;
 
-		std::cout << " run context selector on " << context_counts.size() << " contexts"<< std::endl;
-		double enc_cost = context_selector(context_counts, alphabet, new_total, acc_seq_model, MAX_SEQUENCE_MARKOV_CHAIN_LEVEL );
+		std::cout << " run context selector on " << ccounts.countsmap.size() << " contexts"<< std::endl;
+		double enc_cost = context_selector(ccounts.countsmap, alphabet, new_total, acc_seq_model, MAX_SEQUENCE_MARKOV_CHAIN_LEVEL );
+		enc_cost += acc_sequence_ends * -log2((double)flag_widths.at(2)/(double)TOTAL_FOR_ENCODING);
 		std::cout << " select " << acc_seq_model.size() << " contexts, total sequence encoding needs " << enc_cost << "bit (" << enc_cost/(double)acc_num_bases << " bit/base)" <<  std::endl;
 
 		sequence_models.at(acc) = acc_seq_model;
@@ -607,6 +703,7 @@ void dynamic_mc_model::get_model_type(unsigned char model_index, bool & use_sqro
 
 
 void dynamic_mc_model::counts_to_distribution(const std::vector<size_t> & counts, std::vector<double> & distri) {
+	distri.resize(counts.size());
 	size_t sum = 0;
 	distri.resize(counts.size());
 	for(size_t i=0; i<counts.size(); ++i) {
@@ -619,6 +716,51 @@ void dynamic_mc_model::counts_to_distribution(const std::vector<size_t> & counts
 }
 
 
+void dynamic_mc_model::model_to_widths(const std::vector<uint32_t> bits, unsigned char model_index, uint32_t target_total, std::vector<uint32_t> & widths) {
+	widths.resize(bits.size());
+	size_t num_bits;
+	bool use_sqroot;
+	get_model_type(model_index, use_sqroot, num_bits);
+	if(use_sqroot) {
+		sqroot_bits_to_width_encoding(bits, target_total, widths);
+	} else {
+		bits_to_width_encoding(bits, target_total, widths);
+	}
+
+
+}
+
+double dynamic_mc_model::model_to_costs(const std::vector<uint32_t> bits, unsigned char model_index, uint32_t target_total, std::vector<double> & costs) {
+	costs.resize(bits.size());
+	std::vector<uint32_t> widths(bits.size());
+	model_to_widths(bits, model_index, target_total, widths);
+	
+	size_t total = 0;
+	for(size_t i=0; i<widths.size(); ++i) {
+		if(widths.at(i) < 1) widths.at(i) = 1; 
+		total+=widths.at(i);
+	}
+	for(size_t i=0; i<widths.size(); ++i) {
+		costs.at(i) = -log2((double) widths.at(i) / (double) total);
+	}
+}
+
+
+
+double dynamic_mc_model::distri_to_bits(const std::vector<double> & distri, unsigned char model_index, std::vector<uint32_t> & bits) {
+	bits.resize(distri.size());
+	size_t num_bits;
+	bool use_sqroot;
+	get_model_type(model_index, use_sqroot, num_bits);
+	if(use_sqroot) {
+		distribution_to_sqroot_bits(distri, num_bits, bits);
+	} else {
+		distribution_to_bits(distri, num_bits, bits);
+	}
+
+
+}
+
 double dynamic_mc_model::counts_to_bits_eval(const std::vector<size_t> & counts, uint32_t target_total, unsigned char & model_index, std::vector<uint32_t> & bits) {
 	
 	double best_cost = std::numeric_limits<double>::max();
@@ -630,29 +772,18 @@ double dynamic_mc_model::counts_to_bits_eval(const std::vector<size_t> & counts,
 	counts_to_distribution(counts, distri);
 	
 	for(model_index = 0; model_index < NUM_ENCODING_TYPES; ++model_index) {
+		distri_to_bits(distri, model_index, bits);
+		model_to_widths(bits, model_index, target_total, widths);
 		size_t num_bits;
 		bool use_sqroot;
 		get_model_type(model_index, use_sqroot, num_bits);
-		if(use_sqroot) {
-			distribution_to_sqroot_bits(distri, num_bits, bits);
-			sqroot_bits_to_width_encoding(bits, target_total, widths);
-		} else {
-			distribution_to_bits(distri, num_bits, bits);
-			bits_to_width_encoding(bits, target_total, widths);
-		}
 
-//		std::cout << " mi " << (size_t)model_index;
-//		for(size_t i=0; i<bits.size(); ++i) {
-//			std::cout << " " << distri.at(i) << " " << bits.at(i) <<std::endl;
-//		}
-
-
+			
 		// encoding cost
 		double cost =  count_cost_eval(counts, widths);
-		// model parameter cost
 
-//		std::cout << "c " << cost;
-			cost += widths.size() * num_bits;
+//		parameter (model size) cost
+		cost += widths.size() * num_bits;
 //		std::cout << " cp " << cost;
 		if(cost < best_cost) {
 //			std::cout << " * ";
@@ -860,141 +991,6 @@ double dynamic_mc_model::context_selector(const std::map< std::string, std::vect
 }
 
 /*
-double dynamic_mc_model::context_selector(const std::map< std::string, std::vector<size_t> > & context_counts, const std::vector<char> & alphabet, uint32_t target_total, 
-	std::map< std::string, std::pair<unsigned char, std::vector<uint32_t> > > & cpref_bits ) {
-	double sum_cost = 0;	
-	// context -> ((cost, counts),(type_index, bits))
-	typedef std::pair< std::pair<double, std::vector<size_t> >, std::pair<unsigned char, std::vector<uint32_t> > > pairstype;
-	typedef std::map< std::string, pairstype >  ce_type;
-	std::vector<ce_type> context_evals; // context length -> context -> ((cost, counts),(type_index, bits))
-	for(std::map< std::string, std::vector<size_t> >::const_iterator it = context_counts.begin(); it!=context_counts.end(); ++it) {
-		std::string cont = it->first;
-		std::vector<size_t> counts = it->second;
-		
-		unsigned char model_index;
-		std::vector<uint32_t> bits;
-		double cost = counts_to_bits_eval(counts, target_total, model_index, bits);
-		if(context_evals.size() < cont.length()+1) context_evals.resize(cont.length()+1);
-		context_evals.at(cont.length()).insert(std::make_pair(cont, std::make_pair(std::make_pair(cost, counts), std::make_pair(model_index, bits)))); 
-			
-		bool use_sqroot;
-		size_t num_bits;
-		get_model_type(model_index, use_sqroot, num_bits);
-	//	std::cout << " init eval of " << cont << " bits " << num_bits << " sqroot " << use_sqroot << " cost " << cost << std::endl;
-
-
-
-	}
-
-
-	std::cout << "Cont SEL lens " << std::endl;
-	for(size_t i=0; i<context_evals.size(); ++i) {
-		std::cout << " l " << i<< " size " << context_evals.at(i).size() << std::endl;
-	}
-
-	
-	bool go = true;
-
-	while(go) {
-		// get a set of sibling leaves (char 0 variable, 1..n fixed) with the longest possible context still available
-		std::string cur_patt("");
-		go = false;
-		for(size_t c = context_evals.size(); c>0; --c) {
-			size_t cl = c-1;
-			if(!context_evals.at(cl).empty()) {
-				cur_patt = context_evals.at(cl).begin()->first;
-				go = true;
-				break;
-			}
-
-
-		}
-		if(0!=cur_patt.compare("")) {	 
-			std::vector<std::string> sibling_leaves;
-			std::vector< pairstype > sibling_evals;
-			double leaves_cost = 0;
-			for(size_t i=0; i<alphabet.size(); ++i) {
-				std::string searchv = cur_patt;
-				searchv.at(0) = alphabet.at(i);
-				std::map< std::string, pairstype >::iterator findcur = context_evals.at(searchv.length()).find(searchv);
-				if(findcur != context_evals.at(searchv.length()).end()) {
-					sibling_leaves.push_back(searchv);
-					sibling_evals.push_back(findcur->second);
-					leaves_cost += sibling_evals.at(sibling_evals.size()-1).first.first;
-				}	
-			}
-			// TODO alle suffixe rein, wo kommen kürzere contexte her?
-
-			// build a common model (reducing context length by one)
-			vector<size_t> sums(sibling_evals.at(0).first.second.size(), 0);
-			for(size_t i=0; i< sums.size() ; ++i) {
-				for(size_t j=0; j<sibling_evals.size(); ++j) {
-					sums.at(i)+=sibling_evals.at(j).first.second.at(i);
-				}
-			}
-			unsigned char common_index;
-			std::vector<uint32_t> common_bits;
-			double common_cost = counts_to_bits_eval(sums, target_total, common_index, common_bits);
-
-			// remove all the leaves
-			for(size_t i=0; i<sibling_leaves.size(); ++i) {
-				size_t num_erased = context_evals.at(sibling_leaves.at(i).length()).erase(sibling_leaves.at(i));
-				assert(num_erased==1);
-			}	
-
-			if(common_cost < leaves_cost) {
-				// remove first char of context string
-				std::string common_context("");
-				for(size_t i=1; i<cur_patt.length(); ++i) {
-					common_context.append(1, cur_patt.at(i));
-				}
-				bool use_sqroot;
-				size_t num_bits;
-				get_model_type(common_index, use_sqroot, num_bits);
-			//	std::cout << "join contexts to " << common_context << " cost " << common_cost << " less than leaves costs " << leaves_cost <<  " bits " << num_bits << " sqroot: " << use_sqroot << std::endl;
-					// add joint leaves as a shorter context node
-				if(common_context.length()>0) {
-					context_evals.at(common_context.length()).insert(std::make_pair(common_context, std::make_pair( std::make_pair(common_cost , sums), std::make_pair( common_index, common_bits) )));
-				} else {
-
-			
-					cpref_bits.insert(std::make_pair(common_context, std::make_pair( common_index, common_bits ) ) );
-					sum_cost += common_cost;
-				}
-			} else {
-			//	std::cout << " keep all sibling leaves of " << cur_patt << " cost " << leaves_cost <<  " number " << sibling_leaves.size();
-				// add the leaves into result set
-				for(size_t i=0; i<sibling_leaves.size(); ++i) {
-	
-			//		std::cout << " " << sibling_leaves.at(i) << ": " << sibling_evals.at(i).first.first;
-					cpref_bits.insert(std::make_pair(sibling_leaves.at(i), std::make_pair(sibling_evals.at(i).second.first, sibling_evals.at(i).second.second ) ) );
-				}
-			//	std::cout << std::endl;
-				sum_cost+=leaves_cost;
-			}
-		} else {
-			// we should only get here if the function gets called with only empty context
-			std::map<std::string, pairstype>::iterator finde = context_evals.at(0).find(cur_patt);
-			assert(finde!=context_evals.at(0).end() || !go);
-			if(go) {
-				pairstype evals = finde->second;
-				unsigned char common_index = evals.second.first;
-				std::vector<uint32_t> common_bits = evals.second.second;
-				cpref_bits.insert(std::make_pair(cur_patt, std::make_pair(common_index, common_bits ) ) );
-				sum_cost += evals.first.first;
-			}
-	
-
-		}
-
-	
-	} // while true
-	return sum_cost;
-}
-*/
-
-
-/*
 	distribution to storable parameters
 	bits bit per parameter (encoding width), zero width is ok for very small width
 
@@ -1045,99 +1041,90 @@ void dynamic_mc_model::distribution_to_bits(const std::vector<double> & distri, 
 
 
 
-void dynamic_mc_model::sqroot_bits_to_width_encoding(const std::vector<uint32_t> & sqbits, uint32_t target_total, std::vector<uint32_t> & widths) {
-	std::vector<size_t> vbits(sqbits.size());
-	widths.resize(sqbits.size());
-	size_t total = 0;
-	for(size_t i=0; i<sqbits.size(); ++i) {
-		vbits.at(i) = sqbits.at(i) * sqbits.at(i);
-		total += vbits.at(i);
-	}
+void dynamic_mc_model::width_correct(std::vector<uint32_t> & widths, uint32_t target_total) {
+	// we correct the widths several times until the sum matches target_total
+	size_t it;
+	for(it=0; it<widths.size(); ++it) {
+		size_t total = 1;  // avoid total 0
+		for(size_t i=0; i<widths.size(); ++i) {
+			total += widths.at(i);
+	//		std::cout << " it " << it << " w " << widths.at(i) << std::endl;
+		} 
+		double scale = (double)  target_total / (double) total;
+	//	std::cout << " scale " << scale << std::endl;
+		size_t scaled_total = 0;
+		for(size_t i=0; i<widths.size(); ++i) {
+			size_t nw =  (size_t)(scale * ((double)(widths.at(i) + 0.5)));
+			if(nw < ENCODING_MIN_WIDTH) nw = ENCODING_MIN_WIDTH;
+			if(nw > target_total) nw = target_total;
+			widths.at(i) = (uint32_t) nw;
+			scaled_total+=widths.at(i);
+	//		std::cout << " scaled " << widths.at(i) << std::endl;
+		}
+	//	std::cout << " scaled total " << scaled_total << std::endl;
 
-	double scale = (double)  target_total / (double) total;
+		int64_t correction = (int64_t)target_total - (int64_t)scaled_total;
+		if(correction == 0) break;
+		int64_t correction_done = 0;
+		double correction_factor = (double) correction / (double) scaled_total;
+	//	std::cout << " correction " << correction << " factor " << correction_factor << std::endl;
+		int extra_correction = 1; // correct some more to be sure to get it done
+		if(correction < 0) extra_correction = -1;
+		for(size_t i=0; i<widths.size(); ++i) {
+			int64_t this_correct = (int64_t) ((double)widths.at(i) * correction_factor) + extra_correction;
+			int64_t prediction = (int64_t)(widths.at(i)) + this_correct;
+	//		std::cout << " first correct " << this_correct <<  " on " << widths.at(i) << " predicted to " << prediction << std::endl;
+			if( ( prediction < ENCODING_MIN_WIDTH ) ) {
+	//			std::cout << " second correct " << this_correct << " numbers " << widths.at(i) << " " << prediction << " " <<  ENCODING_MIN_WIDTH << std::endl;
+				this_correct = ENCODING_MIN_WIDTH - (int64_t)(widths.at(i));
+			}
+			if (prediction > target_total) {
+				this_correct = target_total - (int64_t)widths.at(i);
+			}
 
-	size_t real_total = 0;
-	for(size_t i=0; i<vbits.size(); ++i) {
-		widths.at(i) = (uint32_t)(scale * (double)(vbits.at(i)));
-		if(widths.at(i) < ENCODING_MIN_WIDTH) widths.at(i) = ENCODING_MIN_WIDTH;
-		real_total+=widths.at(i);
-	}
-
-	int correction = target_total - real_total; // we have to add that number to real_total
-	int correction_done = 0;
-	double correction_factor = (double) correction / (double) real_total;
-	int extra_correction = 1; // correct some more to be sure to get it done
-	if(correction < 0) extra_correction = -1;
+			if(correction < 0) {
+				if(correction_done + this_correct <= correction) {
+					this_correct = correction - correction_done;
+	//		std::cout << " third correct " << this_correct << std::endl;
+				}
+			} else {
+				if(correction_done + this_correct >= correction) {
+					this_correct = correction - correction_done;
+				}
+			}
+			correction_done += this_correct;
+			widths.at(i) += this_correct;
+	//		std::cout << " real correct " << this_correct << " correction done " << correction_done << std::endl;
+			if(correction_done == correction) break;
+		}
+	} // redo algorithm iterations
+#ifndef NDEBUG
+	size_t test_sum = 0;
 	for(size_t i=0; i<widths.size(); ++i) {
-		int this_correct = (int) widths.at(i) * correction_factor + extra_correction;
-		if(this_correct < 0 && widths.at(i) + this_correct < ENCODING_MIN_WIDTH) {
-			this_correct = ENCODING_MIN_WIDTH - widths.at(i);
-		}
-		if(correction < 0) {
-			if(correction_done + this_correct <= correction) {
-				this_correct = correction - correction_done;
-			}
-		} else {
-			if(correction_done + this_correct >= correction) {
-				this_correct = correction - correction_done;
-			}
-		}
-		
-
-		correction_done += this_correct;
-		widths.at(i) += this_correct;
-		if(correction_done == correction) break;
+		test_sum+=widths.at(i);
 	}
+	assert(test_sum == target_total);
+#endif
+
+
+}
+
+void dynamic_mc_model::sqroot_bits_to_width_encoding(const std::vector<uint32_t> & sqbits, uint32_t target_total, std::vector<uint32_t> & widths) {
+	widths.resize(sqbits.size());
+	for(size_t i=0; i<sqbits.size(); ++i) {
+		widths.at(i) = sqbits.at(i) * sqbits.at(i);
+	}
+	width_correct(widths, target_total);
+
 }
 
 
 void dynamic_mc_model::bits_to_width_encoding(const std::vector<uint32_t> & bits, uint32_t target_total, std::vector<uint32_t> & widths) {
 	widths.resize(bits.size());
-	size_t total = 0;
 	for(size_t i=0; i<bits.size(); ++i) {
-		total += bits.at(i);
+		widths.at(i) = bits.at(i);
 	}
-
-	double scale = (double) target_total / (double) total;
-		
-//	std::cout << " sc " << scale << " total " << total;
-
-	size_t real_total = 0;
-	for(size_t i=0; i<bits.size(); ++i) {
-		widths.at(i) = (uint32_t)(scale * (double)(bits.at(i)));
-		if(widths.at(i) < ENCODING_MIN_WIDTH) widths.at(i) = ENCODING_MIN_WIDTH;
-		real_total+=widths.at(i);
-//		std::cout << " b " << bits.at(i) << " w " << widths.at(i) << std::endl;
-	}
-
-	int correction = target_total - real_total; // we have to add that number to real_total
-
-//	std::cout << " real total " << real_total << " corr " << correction << std::endl;
-
-	int correction_done = 0;
-	double correction_factor = (double) correction / (double) real_total;
-	int extra_correction = 1; // correct some more to be sure to get it done
-	if(correction < 0) extra_correction = -1;
-	for(size_t i=0; i<widths.size(); ++i) {
-		int this_correct = (int) widths.at(i) * correction_factor + extra_correction;
-		if(this_correct < 0 && widths.at(i) + this_correct < ENCODING_MIN_WIDTH) {
-			this_correct = ENCODING_MIN_WIDTH - widths.at(i);
-		}
-		if(correction < 0) {
-			if(correction_done + this_correct <= correction) {
-				this_correct = correction - correction_done;
-			}
-		} else {
-			if(correction_done + this_correct >= correction) {
-				this_correct = correction - correction_done;
-			}
-		}
-		
-
-		correction_done += this_correct;
-		widths.at(i) += this_correct;
-		if(correction_done == correction) break;
-	}
+	width_correct(widths, target_total);
 }
 
 
@@ -1146,180 +1133,88 @@ void dynamic_mc_model::bits_to_width_encoding(const std::vector<uint32_t> & bits
 
 
 
-/*
-void dynamic_mc_model::markov_chain(size_t & accession, size_t  level){
-	assert(level != 0);
-	for(size_t k = 0; k <data.getAcc(accession).size(); k++){
-		const dnastring & sequence = data.getSequence(data.getAcc(accession).at(k));
-		std::cout << "seq length "<<sequence.length() << " level "<< level << std::endl;
-		for(size_t i = 0 ; i < sequence.length(); i++ ){
-			char schr = sequence.at(i);
-			size_t s = dnastring::base_to_index(schr);
-			std::stringstream context;		
-			for(size_t j = level; j>0; j--){
-				char rchr;
-				signed long temp = i - j;
-				if(temp >= 0){
-					rchr = sequence.at(i-j);
-				}else{
-					rchr = 'A';
+/* 
+ TODO we can avoid copies made by this function
 
-				}
-				context << rchr;
-			}
-			std::string seq;
-			context>>seq;
-			std::map <std::string, std::vector<double> >::iterator it= sequence_successive_bases.at(accession).find(seq);
-			if(it==sequence_successive_bases.at(accession).end()){
-				sequence_successive_bases.at(accession).insert(std::make_pair(seq, std::vector<double>(5,1)));
-				it= sequence_successive_bases.at(accession).find(seq);
-			}
-			it->second.at(s)++;	
-		}
-	}
-	for(std::map <std::string, std::vector<double> >::iterator it= sequence_successive_bases.at(accession).begin();it!=sequence_successive_bases.at(accession).end();it++){
-		std::string seq = it->first;
-		int total = 0;
-		std::vector<double> & base = sequence_successive_bases.at(accession).at(seq);
-		for(size_t j = 0; j<5;j++){
-			total += base.at(j);
-		}
-		for(size_t k=0; k<5;k++){
-			base.at(k) = -log2(base.at(k)/total);
-			create_cost.at(accession).at(k) += base.at(k);
-		}
-	}
-}
-*/
-void dynamic_mc_model::calculate_sequence_high(size_t & accession, const std::map<std::string, std::vector<size_t> > & counts){//TODO level0
-/*	size_t level = accLevel.at(accession);
-	if(level > 0){
-		//make_all_patterns(level);
-		for(std::map<std::string, std::vector<double> >::iterator it= all_the_patterns.begin(); it != all_the_patterns.end() ; it++){
-			std::string pattern = it ->first;
-			std::map<std::string,std::vector<double> >::iterator it1=sequence_successive_bases.at(accession).find(pattern);
-			if(it1 != sequence_successive_bases.at(accession).end()){
-				for(size_t n = 0; n <5; n ++){
-					it->second.at(n) = it1 ->second.at(n);
-				}
-			}else{
-				for(size_t n =0; n < 5 ; n++){
-					it -> second.at(n) = -log2(0.2);
-				}
-			}
-		}
-		std::map <std::string, std::vector<unsigned int> >lower_bound;
-		for(std::map<std::string, std::vector<double> >::iterator it= all_the_patterns.begin(); it != all_the_patterns.end() ; it++){	
-			std::vector<double> num(5,0);
-			std::vector<unsigned int> low(5,0);
-			std::vector<unsigned int> high_value(5,0);
-			unsigned int l = 0;
-			size_t bit = 12;
-			std::string current_pattern = it->first;
-                        high.at(accession).insert(std::make_pair(current_pattern,std::vector<unsigned int>(5,0)));
-			std::map<std::string, std::vector<unsigned int> >::iterator it1=high.at(accession).find(current_pattern);
-			assert(it1 != high.at(accession).end());
-			for (size_t j=0; j < 5;j++){
-				low.at(j) = l;
-				num.at(j)=it->second.at(j);
-				int power_of_two = exp((-num.at(j))*log(2))*powersOfTwo.at(bit);
-				high_value.at(j) = l + power_of_two;
-				l = high_value.at(j);
-			}
-			for(size_t j = 0; j < 5 ; j++){
-				if(high_value.at(j)==low.at(j)){
-					for(size_t m = 0; m < 4 ; m++){
-						int power_of_two = exp((-num.at(m))*log(2))*(powersOfTwo.at(bit)-5);
-						high_value.at(m)= low.at(m)+power_of_two+1;
-						low.at(m+1)=  high_value.at(m);
-					}
-					high_value.at(4) = low.at(4)+exp((-num.at(4))*log(2))*(powersOfTwo.at(bit)-5)+1;
-					break;
-				}
-			}
-			for(size_t j = 0; j < 5; j++){
-				it1->second.at(j)=high_value.at(j);
-			}
-		}
-	}else{// TODO if level 0 needs to be added
-		
+one data structure like the bitmodel map to keep all different length contexts and their high values/costs
+then the current one for fixed length contexts (more of them) can keep references instead of copies
 
-	}
 
 */
-}
-
-
 
 void dynamic_mc_model::model_bits_to_full_high_values(const std::map< std::string, std::pair<unsigned char, std::vector<uint32_t> > > & bitmodel, uint32_t target_total, size_t target_pattern_length, const std::vector<unsigned char> & alphabet,
-	std::map< std::string, std::vector<uint32_t> > & hv_results) {
+	std::map< std::string, std::vector<uint32_t> > & hv_results, std::map<std::string, std::vector<double> > & cost_results) {
 	std::string seq = "";
 	std::set<std::string> pattern_set;
 
-	std::vector< std::map< std::string, std::pair<unsigned char, std::vector<uint32_t> > > > lsorted_inp(MAX_SEQUENCE_MARKOV_CHAIN_LEVEL + 1);
+	std::vector< std::map< std::string, std::pair<std::vector<uint32_t>, std::vector<double> > > > lsorted_res(target_pattern_length+1);
+	
+	clock_t ctime = clock();	
 	for(std::map< std::string, std::pair<unsigned char, std::vector<uint32_t> > >::const_iterator it = bitmodel.begin(); it!=bitmodel.end(); ++it) {
 		const std::string & cont = it->first;
+		unsigned char model_index = it->second.first;
+		const std::vector<uint32_t> & bits = it->second.second;
 		size_t len = cont.length();
-		lsorted_inp.at(len).insert(make_pair(it->first, it->second));
-	}
 
-	for(size_t l=0; l < MAX_SEQUENCE_MARKOV_CHAIN_LEVEL; l++) {
+		std::vector<uint32_t> widths;
+		std::vector<uint32_t> highs;
+		std::vector<double> costs;
+		model_to_widths(bits, model_index, target_total, widths);
+		model_widths_to_highs(widths, target_total, highs);
+		model_to_costs(bits, model_index, target_total, costs);
+
+	//	std::cout << " high and costs for " << cont << std::endl;
+
+
+		lsorted_res.at(len).insert(std::make_pair(cont, std::make_pair(highs, costs)));
+	}
+	ctime = clock() - ctime;
+	clock_t itime = clock();
+	for(size_t l=0; l < target_pattern_length; l++) {
 		// for each context of length l, copy data to all derived contexts of length l+1 (any character added to the front)
-		for(std::map< std::string, std::pair<unsigned char, std::vector<uint32_t> > >::iterator it = lsorted_inp.at(l).begin(); it!=lsorted_inp.at(l).end(); ++it) {
+		for(std::map< std::string, std::pair<std::vector<uint32_t>, std::vector<double> > >::iterator it = lsorted_res.at(l).begin(); it!=lsorted_res.at(l).end(); ++it) {
 			const std::string & cont = it->first;
-			std::pair<unsigned char, std::vector<uint32_t> > pdata = it->second;
+			const std::pair<std::vector<uint32_t>, std::vector<double> > & data = it->second;
 
 			for(size_t i=0; i<alphabet.size(); ++i) {
 				std::string newcont;
 				newcont.append(1, alphabet.at(i));
 				newcont.append(cont);
-				lsorted_inp.at(newcont.length()).insert(std::make_pair(newcont, pdata)); 
+
+				std::map< std::string, std::pair<std::vector<uint32_t>, std::vector<double> > >::iterator findnc = lsorted_res.at(newcont.length()).find(newcont);
+				assert(findnc == lsorted_res.at(newcont.length()).end());
+
+				lsorted_res.at(newcont.length()).insert(std::make_pair(newcont, data)); 
 			}
 		}
+	//	std::cout << " l " << l+1 <<  " s " << lsorted_res.at(l+1).size() << std::endl;
 	}
 
-	// copy all to result map
-	for(size_t l=0; l < MAX_SEQUENCE_MARKOV_CHAIN_LEVEL; l++) {
-		for(std::map< std::string, std::pair<unsigned char, std::vector<uint32_t> > >::iterator it = lsorted_inp.at(l).begin(); it!=lsorted_inp.at(l).end(); ++it) {
-			const std::string & cont = it->first;
-			const std::vector<uint32_t> & pdata = it->second.second;
+	for(std::map< std::string, std::pair<std::vector<uint32_t>, std::vector<double> > >::const_iterator it = lsorted_res.at(target_pattern_length).begin(); it!=lsorted_res.at(target_pattern_length).end(); ++it) {
+		const std::string & cont = it->first;
+		const std::vector<uint32_t> & widths = it->second.first;
+		const std::vector<double> & costs = it->second.second;
 
-			hv_results.insert(std::make_pair(cont, pdata));
-		}
+		hv_results.insert(std::make_pair(cont, widths));
+		cost_results.insert(std::make_pair(cont, costs));
 	}
+	itime = clock() - itime;
+
+	std::cout << " compute model times " << (double)ctime/CLOCKS_PER_SEC << " " << (double)itime/CLOCKS_PER_SEC << std::endl;
+	std::cout << " sizes " << bitmodel.size() << " " << hv_results.size() << " " << cost_results.size() << std::endl;
 } 
 
 
 
-
-/*
-void dynamic_mc_model::make_all_patterns(const size_t& level, ){
-	std::string seq = "";
-	std::set<std::string> pattern;
-	assert(level !=0 );
-	for(size_t i = 0 ; i < level ; i++){
-		seq += dnastring::index_to_base(0);
+void dynamic_mc_model::model_widths_to_highs(const std::vector<uint32_t> & widths, uint32_t target_total, std::vector<uint32_t> & high_values) {
+	uint32_t sum = 0;
+	high_values.resize(widths.size());
+	for(size_t i=0; i<widths.size(); ++i) {
+		sum+=widths.at(i);
+		high_values.at(i) = sum;
 	}
-	pattern.insert(seq);
-	for(size_t i = 0; i < level;i++){	
-		std::set<std::string> intermediate_pattern;
-		for(size_t j = 0; j <5; j++){
-			for(std::set<std::string>::iterator pat = pattern.begin();pat != pattern.end();++pat){
-				std::string seq1 = *pat;
-				seq1.at(level-1-i)=dnastring::index_to_base(j);	
-				intermediate_pattern.insert(seq1);
-			}
-		}
-		for(std::set<std::string>::iterator pat1 = intermediate_pattern.begin(); pat1 != intermediate_pattern.end();++pat1){
-			std::string seq2 = *pat1;
-			pattern.insert(seq2);
-		}
-	}	
-	for(std::set<std::string>::iterator it = pattern.begin();it !=pattern.end();it++){
-		std::string seq3 = *it;
-		all_the_patterns.insert(std::make_pair(seq3,std::vector<double>(5,0)));
-	}	
-}*/
+	assert(sum == target_total);
+}
 
 
 /*
@@ -1473,6 +1368,8 @@ void dynamic_mc_model::binary_read(std::ifstream & in, unsigned char & c) {
 
 
 
+#define NOMODEL_COMPRESS 1
+
 void dynamic_mc_model::mapmodel_write(std::ofstream & outs, const std::map< std::string, std::pair<unsigned char, std::vector<uint32_t> > > & mapmodel, const std::vector<unsigned char> & alphabet, size_t max_level) {
 	// sequence contexts:
 	std::set< std::string> contexts; //  (this means we have to look at all extensions in the next level
@@ -1500,22 +1397,26 @@ void dynamic_mc_model::mapmodel_write(std::ofstream & outs, const std::map< std:
 
 					}
 					
-
+#if NOMODEL_COMPRESS
 					if(nomodel_counter < MAX_NOMODEL_NUM - 1) {
 						nomodel_counter++;
 					} else {
 						outs.put((unsigned char) 255);
 						nomodel_counter = 0;
 					}
+#else 
 					// write no model symbol
-				//	outs.put((unsigned char) NUM_ENCODING_TYPES);
+					outs.put((unsigned char) NUM_ENCODING_TYPES);
+#endif
 				} else {
 
+#if NOMODEL_COMPRESS
 					if(nomodel_counter > 0) {
 						size_t nmchar = nomodel_counter -1 + NUM_ENCODING_TYPES;
 						outs.put((unsigned char) nmchar);
 						nomodel_counter = 0;
 					}
+#endif
 
 
 					unsigned char model_index = findcont->second.first;
@@ -1564,7 +1465,9 @@ void dynamic_mc_model::mapmodel_read(std::ifstream & in,  std::map< std::string,
 
 
 			if(nomodel_counter > 0) {
+#if NOMODEL_COMPRESS
 				nomodel_counter--;
+#endif
 	// insert all child nodes so that we will exspect them later in correct order
 				for(size_t i=0; i<alphabet.size(); ++i) {
 					std::string lcont;
@@ -1585,10 +1488,12 @@ void dynamic_mc_model::mapmodel_read(std::ifstream & in,  std::map< std::string,
 			binary_read(in, model_index);
 
 			if(model_index >= NUM_ENCODING_TYPES) {
+#if NOMODEL_COMPRESS
 				nomodel_counter = model_index - NUM_ENCODING_TYPES + 1;
 				nomodel_counter--;
 
 
+#endif
 
 
 				// insert all child nodes so that we will exspect them later in correct order
@@ -1663,7 +1568,7 @@ void dynamic_mc_model::write_parameters(std::ofstream & outs) const {//write acc
 		
 		for(size_t a2 = 0; a2<data.numAcc(); ++a2) {
 			binary_write(outs, alignments_all_modification_total.at(acc).at(a2));
-			mapmodel_write(outs, alignment_models.at(acc).at(a2), aalphabet, MAX_ALIGNMENT_MARKOV_CHAIN_LEVEL);
+			mapmodel_write(outs, alignment_models.at(acc).at(a2), aalphabet, MAX_ALIGNMENT_MARKOV_CHAIN_LEVEL +1);
 
 
 		}	
@@ -1737,6 +1642,31 @@ void dynamic_mc_model::check_parameters_in_file(const std::string & file) const 
 	for(size_t acc = 0; acc < na; ++acc) {
 		assert(this->alignment_models.at(acc).size() == alignment_models.at(acc).size());
 		for(size_t a2=0; a2 < na; ++a2) {
+
+/*
+
+			for(std::map< std::string, std::pair<unsigned char, std::vector<uint32_t> > >::const_iterator it = this->alignment_models.at(acc).at(a2).begin();
+			it!=this->alignment_models.at(acc).at(a2).end(); ++it) {
+				std::string cont = it->first;
+				std::cout << "t ";
+				for(size_t j=0; j<cont.length(); ++j) {
+					std::cout << " " << (size_t)cont.at(j);
+				}
+				std::cout << std::endl;
+			}
+			for(std::map< std::string, std::pair<unsigned char, std::vector<uint32_t> > >::const_iterator it = alignment_models.at(acc).at(a2).begin();
+			it!=alignment_models.at(acc).at(a2).end(); ++it) {
+				std::string cont = it->first;
+				std::cout << "l ";
+				for(size_t j=0; j<cont.length(); ++j) {
+					std::cout << " " << (size_t)cont.at(j);
+				}
+				std::cout << std::endl;
+			}
+
+
+
+*/
 			assert(this->alignment_models.at(acc).at(a2).size() == alignment_models.at(acc).at(a2).size());
 			for(std::map< std::string, std::pair<unsigned char, std::vector<uint32_t> > >::const_iterator it = this->alignment_models.at(acc).at(a2).begin();
 			it!=this->alignment_models.at(acc).at(a2).end(); ++it) {
@@ -1810,7 +1740,7 @@ void dynamic_mc_model::read_paramters(std::ifstream & in,
 	std::vector<uint32_t> & acc_sequence_alignment_flag,
 	std::vector<std::vector<uint32_t> > & alignments_all_modification_total,
 	std::vector<std::vector< std::map< std::string, std::pair<unsigned char, std::vector<uint32_t> > > > > & alignment_models
-) const {  // TODO set accession names in data
+) {  // TODO set accession names in data
 	size_t num_acc;
 	binary_read(in, num_acc);
 	acc_names.resize(num_acc);
@@ -1838,9 +1768,9 @@ void dynamic_mc_model::read_paramters(std::ifstream & in,
 
 		mapmodel_read(in, sequence_models.at(acc), sequence_alphabet, MAX_SEQUENCE_MARKOV_CHAIN_LEVEL);
 
-		for(size_t a2 = 0; a2<data.numAcc(); ++a2) {
+		for(size_t a2 = 0; a2<num_acc; ++a2) {
 			binary_read(in, alignments_all_modification_total.at(acc).at(a2));
-			mapmodel_read(in, alignment_models.at(acc).at(a2), alignment_alphabet, MAX_ALIGNMENT_MARKOV_CHAIN_LEVEL);
+			mapmodel_read(in, alignment_models.at(acc).at(a2), alignment_alphabet, MAX_ALIGNMENT_MARKOV_CHAIN_LEVEL + 1);
 
 
 		}	
@@ -1854,77 +1784,18 @@ void dynamic_mc_model::read_paramters(std::ifstream & in,
  Read parameters and store them into this object
 */
 void dynamic_mc_model::set_patterns(std::ifstream & in){
-	std::vector<std::string> acc_names; // TODO set in data
+	std::vector<std::string> acc_names; 
 	read_paramters(in, acc_names, 
 			this->sequence_models,
 			this->acc_sequence_all_bases_total,
 			this->acc_sequence_alignment_flag,
 			this->alignments_all_modification_total,
 			this->alignment_models);
-
-
-
-
-
-
-
-
-
-
-
-
-
-/*	size_t bit = 12;
-	char c;
-	char h;
-	c= in.get();	
-	while(c != 8){
-		size_t accession = 0;
-		std::string acc;
-		std::stringstream s;
-		while(c != 0){
-			s << c;
-			c = in.get();
-		}
-		s >> acc;
-		size_t retrieved_level;
-		in>>retrieved_level;
-		data.set_accession(acc);//During the decoding we have no access to the fasta file, thus we need to set the accession names and numbers in the data class
-		accession = data.get_acc_id(acc);
-		set_acc_level(retrieved_level);
-		size_t level = get_acc_level(accession);//just to test and see if returns the same thing.
-		std::cout<< "ret_level: " << retrieved_level << " level "<< level <<std::endl;
-		//make_all_patterns(level);// TODO later on change it to retrieved_level	
-		for(std::map<std::string,std::vector<double> >::const_iterator it= all_the_patterns.begin(); it!= all_the_patterns.end();it++){
-			std::string pattern = it ->first;
-			high.at(accession).insert(std::make_pair(pattern, std::vector<unsigned int>(5,0)));
-		}
-		for(std::map<std::string,std::vector<unsigned int> >::iterator it= high.at(accession).begin(); it!= high.at(accession).end();it++){
-			std::vector<bool> binary_high_value(0);
-			size_t bound = (5*bit)/8;
-			for(size_t j = 0 ; j < bound ; j++){ 
-				h=in.get();
-				size_t H = size_t(h); 
-				for(size_t k = 0; k < 8 ; k++){
-					binary_high_value.push_back(H%2);
-					H = H/2;
-				}
-			}
-			size_t counter = 0;
-			for(size_t i = 0; i < binary_high_value.size()-bit;i++){
-				unsigned int high_value = 0;					
-				for(size_t j =i; j < i+bit; j++){
-					high_value += binary_high_value.at(j)*powersOfTwo.at(j-i);
-				}
-				i=i+bit-1;
-				it -> second.at(counter)=high_value;
-				counter = counter + 1;
-			}
-		}
-		c= in.get();	
+	for(size_t i=0; i<acc_names.size(); ++i) {
+		data.add_accession(acc_names.at(i));
 	}
 
-*/
+
 }
 
 
@@ -2008,8 +1879,8 @@ void dynamic_mc_model::train_alignment_model() {
 			size_t to = from + batch_size;
 			if(to > num) to = num;
 			
-			reader_counter local_counts;
-			context_counter local_counter(local_counts,  MAX_ALIGNMENT_MARKOV_CHAIN_LEVEL);
+			a_reader_counter local_counts;
+			acontext_counter local_counter(local_counts,  MAX_ALIGNMENT_MARKOV_CHAIN_LEVEL);
 			
 
 
@@ -2040,8 +1911,8 @@ void dynamic_mc_model::train_alignment_model() {
 			size_t from = b*batch_size;
 			size_t to = from + batch_size;
 			if(to > num) to = num;
-			reader_counter local_counts;
-			context_counter local_counter(local_counts,  MAX_ALIGNMENT_MARKOV_CHAIN_LEVEL);
+			a_reader_counter local_counts;
+			acontext_counter local_counter(local_counts,  MAX_ALIGNMENT_MARKOV_CHAIN_LEVEL);
 			
 
 
@@ -2121,7 +1992,7 @@ void dynamic_mc_model::train_alignment_model() {
 */		
 		std::map<std::string, std::pair<unsigned char, std::vector<uint32_t> > > mod_model;
 
-		std::cout << " run context selector on " << counts.size() << " contexts " << std::endl;
+		std::cout << " run context selector on " << counts.size() << " contexts " << " from " <<  alignment_length_sums.at(a1).at(a2) << " total alignment length" << std::endl;
 		double enc_cost = context_selector(counts, alphabet, new_total, mod_model, MAX_ALIGNMENT_MARKOV_CHAIN_LEVEL + 1);
 		std::cout << " select " << mod_model.size() << " contexts, cost: " << enc_cost << " ( " << (enc_cost/(double) alignment_length_sums.at(a1).at(a2))<< " bits/alignment column)" << std::endl;
 		alignment_models.at(a1).at(a2) = mod_model;
@@ -2130,589 +2001,8 @@ void dynamic_mc_model::train_alignment_model() {
 
 }
 
-/*
-	new functors - separated per acc
 
-	new computing_modif function 
-		- why is it slow
-
-	go over al - shift pattern seq1 (now copy from seq)
-
-	find s1n, s2n -> skip gaps on ref1, why?  for seq1 context? why at level?
-
-
-	keep: find length, set pattern and n
-*/
-
-
-void dynamic_mc_model::recursive_al_model(){//TODO again the same question about level 0
-/*	counting_functor functor(data);
-	std::vector<std::vector<std::vector<std::vector<double> > > >modification(data.numAcc(), std::vector<std::vector<std::vector<double> > >(data.numAcc(),std::vector<std::vector<double> > (6, std::vector<double>(6,1) )));
-	//set an initial mod_cost for the alignments and go through the while loop as long as it decreases!
-	for(size_t i = 0 ; i< data.numAlignments() ; i++){
-		const pw_alignment & p = data.getAlignment(i);
-		size_t acc1 = data.accNumber(p.getreference1());	
-		size_t acc2 = data.accNumber(p.getreference2());
-		for(size_t j = 0 ; j< p.alignment_length() ; j++){
-			char s1ch;
-			char s2ch;
-			p.alignment_col(j, s1ch, s2ch);
-			size_t s1 = dnastring::base_to_index(s1ch);
-			size_t s2 = dnastring::base_to_index(s2ch);
-			modification.at(acc1).at(acc2).at(s1).at(s2)+=1.0;
-			modification.at(acc2).at(acc1).at(s2).at(s1)+=1.0;
-		}
-	}
-	for(size_t acc1=0; acc1 < data.numAcc(); ++acc1) {
-		for(size_t acc2=0; acc2 < data.numAcc(); ++acc2) {
-			double old_cost = 0.0;
-			for(size_t j=0; j<6; ++j) {
-				double sum = 0;
-				for(size_t k=0; k<6; ++k) {
-					sum+=modification.at(acc1).at(acc2).at(j).at(k);
-				}	
-				for(size_t k=0; k<6; ++k) {
-					modification.at(acc1).at(acc2).at(j).at(k) = -log2(modification.at(acc1).at(acc2).at(j).at(k)/sum);	
-				}
-			}
-			for(size_t j=0; j<6; ++j) {
-				for(size_t k=0; k<6; ++k) {
-				old_cost +=modification.at(acc1).at(acc2).at(j).at(k);
-				}
-			}		
-			double new_cost =0.0;
-			size_t level = 1;
-			while(new_cost<old_cost){//what is the reasonable way of defining new_cost? Decreasing mod_cost or increasing gain? Increasing gain is more complicated though
-				if(level != 1){//update the mod_cost
-					old_cost = new_cost;
-				}
-				make_all_alignment_pattern(level);			
-				for(std::set<std::string>::iterator it= all_alignment_patterns.begin(); it != all_alignment_patterns.end() ; it++){
-					std::string pattern = *it;	
-					functor.create_context(acc1,acc2,pattern);			
-				}
-				// count all contexts over all the alignments
-				for(size_t k = 0; k < data.numAlignments(); k++){
-					const pw_alignment & p = data.getAlignment(k);
-					if( data.accNumber(p.getreference1())==acc1 &&  data.accNumber(p.getreference2())==acc2){
-						count_context_OneToTwo(p,level,functor);
-						count_context_TwoToOne(p,level,functor); 
-					}
-				}
-				functor.total_context(acc1,acc2);
-				for(std::map <std::string, std::vector<size_t> >::const_iterator it= functor.get_context(acc1,acc2).begin();it!=functor.get_context(acc1,acc2).end();it++){
-					std::string seq1 = it->first;
-					const std::vector<size_t> & base = functor.get_context(acc1,acc2).at(seq1);
-					for(size_t k = 0; k< (NUM_DELETE+NUM_KEEP+10);k++) {
-						std::map <std::string, std::vector<double> >::iterator it1= mod_cost.at(acc1).at(acc2).find(seq1);
-						if(it1==mod_cost.at(acc1).at(acc2).end()) {
-							mod_cost.at(acc1).at(acc2).insert(std::make_pair(seq1, std::vector<double>((NUM_DELETE+NUM_KEEP+10),1)));
-							it1= mod_cost.at(acc1).at(acc2).find(seq1);
-						}
-						it1->second.at(k)=-log2(base.at(k)/functor.get_total(acc1,acc2,seq1));
-					}
-				}
-				level = level + 1;
-			}
-			al_level.at(acc1).at(acc2)=level-2;
-			std::cout<< "level between acc1 " << acc1 << " and acc2 "<< acc2 <<" is "<< level -2 <<std::endl;
-			if(level -2 > 0){
-				make_all_alignment_pattern(al_level.at(acc1).at(acc2));
-			}
-			calculate_alignment_high(acc1,acc2);
-		}
-	}
-*/
-}
-void dynamic_mc_model::make_all_alignment_pattern(const size_t & level){ // it is only used when level > 0
-/*	assert(level != 0);
-	std::string context; 
-	std::set<std::string>pattern;
-	// Alignment_level is makov chain level for alignments
-	for(size_t i = 0 ; i < level ; i++){
-		context += (char)0;
-	}
-	pattern.insert(context);
-	// this will create about (ND+NK+10)^Alignment_length patterns:
-	for(size_t i =0; i < level; i++) {
-		std::set<std::string> intermediate_pattern;
-		for(size_t j = 0; j <NUM_DELETE+NUM_KEEP+10; j++){
-			// For each current pattern: modify position i to character j
-			for(std::set<std::string>::iterator it = pattern.begin(); it!= pattern.end();it++){
-				std::string seq = *it;
-				seq.at(i)=j;	
-				// throw away some patterns to enforce decreasing order of binary encoding for num keep/delete
-				size_t keepthispattern  = 1;
-				if(i>0) {
-					int mod, del, ins, keep;
-					int mod_prev, del_prev, ins_prev, keep_prev;
-					modification(seq.at(i), mod, del, ins, keep);
-					modification(seq.at(i-1), mod_prev, del_prev, ins_prev, keep_prev);
-					if(del > -1 && del_prev > -1) {
-						if(del <= del_prev) { // enforce increasing order binary encoding
-							keepthispattern = 0;
-						}
-					
-					} else if (keep >-1 && keep_prev > -1) {
-						if(keep <= keep_prev) {
-							keepthispattern = 0;
-						}
-					}
-				}
-				if(keepthispattern)
-					intermediate_pattern.insert(seq);
-			//	std::cout<< "pattern: " << seq << std::endl;
-			}
-		}
-		pattern.clear();
-		for(std::set<std::string>::iterator it1 = intermediate_pattern.begin(); it1 != intermediate_pattern.end();++it1){
-			std::string seq1 = *it1;
-			pattern.insert(seq1);
-		}
-	} // for Alignment_level
-	std::set<std::string> intermediate1_pattern;
-	for(std::set<std::string>::iterator it = pattern.begin(); it != pattern.end();++it){
-		for(size_t i = 0 ; i < 6 ; i++){
-			std::string seq = *it;
-			char c = i;
-			std::string seq1 = seq + c;
-		//	std::cout << "seq1: " << seq1 <<std::endl;
-			intermediate1_pattern.insert(seq1);
-		}
-	}
-	pattern.clear();
-	for(std::set<std::string>::iterator it1 = intermediate1_pattern.begin(); it1 != intermediate1_pattern.end();++it1){
-			std::string seq1 = *it1;
-			pattern.insert(seq1);
-	}
-	all_alignment_patterns.clear();
-	for(std::set<std::string>::iterator it = pattern.begin();it !=pattern.end();it++){
-		std::string seq = *it;
-		all_alignment_patterns.insert(seq);
-	}
-*/
-}
-void dynamic_mc_model::calculate_alignment_high(size_t & acc1, size_t & acc2){//TODO level0?
-/*
-	counting_functor functor(data);
-	size_t level = al_level.at(acc1).at(acc2);
-	if(level != 0){
-		// Set all counts to 1 for all context/accession pairs
-		make_all_alignment_pattern(level);
-		for(std::set<std::string>::iterator it= all_alignment_patterns.begin(); it != all_alignment_patterns.end() ; it++){
-			std::string pattern = *it;	
-			functor.create_context(acc1, acc2, pattern);			
-		}	
-		// count all contexts over all the alignments
-		for(size_t k = 0; k < data.numAlignments(); k++){
-			const pw_alignment & p = data.getAlignment(k);
-			if( data.accNumber(p.getreference1())==acc1 &&  data.accNumber(p.getreference2())==acc2){
-				count_context_OneToTwo(p,level,functor);
-				count_context_TwoToOne(p,level,functor); 
-			}
-		}
-		functor.total_context(acc1,acc2);
-		for(std::set<std::string>::iterator it= all_alignment_patterns.begin(); it != all_alignment_patterns.end() ; it++){
-			std::vector<double> num(NUM_DELETE+NUM_KEEP+10,0);
-			std::vector<unsigned int> low(NUM_DELETE+NUM_KEEP+10,0);
-			std::vector<unsigned int> high_value(NUM_DELETE+NUM_KEEP+10,0);
-			unsigned int l = 0;
-			size_t bit = 12; // number of bits to use for encoding event width todo shall i use a smaller number?
-			std::string current_pattern= *it;
-			// it1: high values for current pattern/accession pair
-	                highValue.at(acc1).at(acc2).insert(std::make_pair(current_pattern,std::vector<unsigned int>(NUM_DELETE+NUM_KEEP+10,0)));
-			std::map<std::string, std::vector<unsigned int> >::iterator it1=highValue.at(acc1).at(acc2).find(current_pattern);
-			assert(it1 != highValue.at(acc1).at(acc2).end());
-			// it3: get counts for current pattern/accession pair
-			std::map <std::string, std::vector<size_t> >::const_iterator it3= functor.get_context(acc1,acc2).find(current_pattern);
-			assert(it3 != functor.get_context(acc1,acc2).end());
-			double total =  functor.get_total(acc1,acc2,current_pattern);
-			for (size_t f=0; f < NUM_DELETE+NUM_KEEP+10;f++){
-				low.at(f) = l;
-				num.at(f)=it3->second.at(f);
-				size_t rescaledNum = (num.at(f)/total)*(powersOfTwo.at(bit) - NUM_DELETE - NUM_KEEP - 11) + 1;
-				assert(rescaledNum >= 1);
-				assert(rescaledNum < powersOfTwo.at(bit));
-				high_value.at(f) = l + rescaledNum;
-				l = high_value.at(f);
-			}
-			// store high values
-			for(size_t f = 0; f < NUM_DELETE+NUM_KEEP+10; f++){
-				it1->second.at(f)=high_value.at(f);
-			}
-		}
-	}else{ //In case level 0
-
-	}
-*/
-}
-void dynamic_mc_model::write_alignment_parameters(std::ofstream & outs){//since we alreay wrote the accession names on the file and can retrieve them from set parameters here we can only save acc_number not the name anymore.
-/*	size_t bit = 12;
-	for(size_t i = 0 ; i < data.numAcc(); i++){
-		for(size_t j =0; j < data.numAcc(); j++){
-			outs<<char(0);
-			outs << i;
-			outs<< j;
-			size_t level = get_al_level(i,j);
-			outs<< level;
-			for(std::map<std::string, std::vector<unsigned int> >::iterator it= highValue.at(i).at(j).begin(); it != highValue.at(i).at(j).end(); it++){	
-				std::vector<bool> bit_to_byte(0);
-				for(size_t j = 0; j < NUM_DELETE+NUM_KEEP+10; j++){
-					int h =it->second.at(j);
-					for(size_t m = 0; m < bit; m++){
-						bit_to_byte.push_back(h%2);
-						h = h/2;
-					}
-				}
-				for(size_t n =0; n < bit_to_byte.size()-8; n++){
-					unsigned char a = 0;
-					for(size_t m = n; m <n+8; m++){
-						a+= powersOfTwo.at(m-n)* bit_to_byte.at(m);
-					}
-					n= n+7;
-					outs<< a;
-				}
-			}
-		}
-	}	
-	outs<<(char) 8;
-*/
-}
-
-void dynamic_mc_model::set_alignment_pattern(std::ifstream & in){
-/*	size_t bit = 12;
-	char c;
-	char h;
-	c = in.get();
-	while(c != 8){
-		size_t acc1;
-		size_t acc2;
-		size_t level;
-		in >> acc1;
-		in >> acc2;
-		in >> level;
-		set_al_level(acc1,acc2,level);// because in decoding we don't have access to level vector values
-		make_all_alignment_pattern(level);
-		for(std::set<std::string>::const_iterator it= all_alignment_patterns.begin(); it!= all_alignment_patterns.end();it++){
-			std::string pattern = *it;
-			highValue.at(acc1).at(acc2).insert(std::make_pair(pattern, std::vector<unsigned int>(NUM_KEEP+NUM_DELETE+10,0)));
-		}
-		for(std::map<std::string,std::vector<unsigned int> >::iterator it= highValue.at(acc1).at(acc2).begin(); it!= highValue.at(acc1).at(acc2).end();it++){
-			std::vector<bool> binary_high_value(0);
-			size_t bound = ((NUM_KEEP+NUM_DELETE+10)*bit)/8;
-			for(size_t j = 0 ; j < bound ; j++){ 
-				h=in.get();
-				size_t H = size_t(h);
-				for(size_t k = 0; k < 8 ; k++){
-					binary_high_value.push_back(H%2);
-					H = H/2;	
-				}
-			}
-			size_t counter =0;
-			for(size_t i = 0; i < (binary_high_value.size())-bit;i++){
-				unsigned int high_value = 0;					
-				for(size_t j =i; j < i+bit; j++){
-					high_value += binary_high_value.at(j)*powersOfTwo.at(j-i);
-				}
-				i=i+bit-1;
-				it -> second.at(counter)= high_value;
-				counter = counter +1;
-			}
-			it -> second.at(NUM_KEEP+NUM_DELETE+9)=powersOfTwo.at(bit); 
-		}
-		c=in.get();
-	}
-*/
-}
-/*
-void dynamic_mc_model::count_context_OneToTwo(const pw_alignment & p ,size_t level, abstract_context_functor & functor)const{
-	std::string seq = "";
-	size_t left_1; 
-	size_t right_1;
-	p.get_lr1(left_1,right_1);
-	size_t acc1 = data.accNumber(p.getreference1());
-	size_t acc2 = data.accNumber(p.getreference2());
-	size_t first_patterns = level;
-	size_t power = powersOfTwo.at(NUM_KEEP-1);//we break keeps longer than 'power'
-	for(size_t j = 0; j < level; j++){//Ex. Two keeps of length 2^1 and 2^0 is created at the begining of each alignment if level == 2.
-		first_patterns--;
-		seq+=modification_character(-1,-1,-1,first_patterns);//returns "keep"
-	}
-	for (size_t i = 0; i< p.alignment_length(); i++){
-		size_t n = 0;
-		int modify_base =-1;
-		int num_delete=-1;
-		int insert_base=-1;
-		int num_keep=-1;
-		std::string seq1(" ",level+1);
-		char seq2;
-		for(size_t w = level; w>0 ;w--){
-			seq1.at(level-w)=seq.at(seq.size()-w);
-		}
-		char s1chr;
-		char s2chr;
-		size_t s1;
-		size_t s2;
-		char s1nchr;
-		char s2nchr;
-		size_t s1n;
-		size_t s2n;
-		p.alignment_col(i, s1chr, s2chr);				
-		s1 = dnastring::base_to_index(s1chr);
-		s2 = dnastring::base_to_index(s2chr);
-		for(size_t j =i; j < p.alignment_length(); j++){
-			p.alignment_col(j, s1nchr, s2nchr);				
-			s1n = dnastring::base_to_index(s1nchr);
-			s2n = dnastring::base_to_index(s2nchr);
-			if(s1n == 5){
-				
-			}else break;	
-		}
-		seq1.at(level)=s1n;
-		if(s1 == s2){
-			size_t klength = 0;
-			for(size_t j = i; j<p.alignment_length(); j++){
-				char q1chr;
-				char q2chr;
-				p.alignment_col(j, q1chr, q2chr);				
-				size_t q1 = dnastring::base_to_index(q1chr);
-				size_t q2 = dnastring::base_to_index(q2chr);
-				if(q1 == q2){
-					klength +=1;
-				}else{	
-					break;
-				}
-			}
-			if(klength > power){
-				num_keep = NUM_KEEP-1;
-				n=powersOfTwo.at(num_keep)-1;
-				seq+=modification_character(modify_base,num_delete,insert_base,num_keep);
-			}else{
-				for (size_t m = NUM_KEEP; m > 0; m--){
-					if((klength & powersOfTwo.at(m-1)) != 0){
-						num_keep=m-1;
-						n= powersOfTwo.at(num_keep)-1;
-						seq += modification_character(modify_base,num_delete,insert_base,num_keep);
-						break;
-					}
-				}
-			}
-			seq2 = seq.at(seq.size()-1);
-			functor. see_context(acc1,acc2,p,i,seq1,seq2);
-		}else{
-				if((s1!=5) & (s2!=5)){
-					modify_base = s2;
-					seq += modification_character(modify_base,num_delete,insert_base,num_keep);
-					seq2 = modification_character(modify_base,num_delete,insert_base,num_keep);
-					functor. see_context(acc1,acc2,p,i,seq1,seq2);
-				}
-				if(s1 == 5){
-					insert_base = s2;
-					seq += modification_character(modify_base,num_delete,insert_base,num_keep);						
-					seq2 = modification_character(modify_base,num_delete,insert_base,num_keep);
-					functor. see_context(acc1,acc2,p,i,seq1,seq2);
-				}
-				if(s2 == 5){
-					size_t dlength = 0;
-					for(size_t j = i; j < p.alignment_length(); j++){
-						char q1chr;
-						char q2chr;
-						p.alignment_col(j, q1chr, q2chr);				
-						size_t q2 = dnastring::base_to_index(q2chr);
-						if(q2 == 5 ){
-							dlength +=1;
-						}else {
-							break;
-						}
-					}
-					if(dlength > powersOfTwo.at(NUM_DELETE-1)){
-						num_delete = NUM_DELETE-1;
-						n= powersOfTwo.at(num_delete)-1;
-						seq+=modification_character(modify_base,num_delete,insert_base,num_keep);
-					}else{
-						for(size_t m = NUM_DELETE; m > 0; m--){
-							if((dlength & powersOfTwo.at(m-1)) != 0){
-								num_delete = m-1;
-								n= powersOfTwo.at(num_delete)-1;
-								seq += modification_character(modify_base,num_delete,insert_base,num_keep);		
-								break;
-							}
-						}
-					}
-					seq2 = seq.at(seq.size()-1);
-					functor. see_context(acc1,acc2,p,i,seq1,seq2);
-				}
-
-			}
-			i=i+n;
-		}
-
-}
-void dynamic_mc_model::count_context_TwoToOne(const pw_alignment & p ,size_t level, abstract_context_functor & functor)const{
-		std::string seq = "";
-		size_t acc1 = data.accNumber(p.getreference1());
-		size_t acc2 = data.accNumber(p.getreference2());
-		size_t first_patterns = level;
-		for(size_t j = 0; j < level; j++){
-			first_patterns --;
-			seq+=modification_character(-1,-1,-1,first_patterns);
-		}
-		for (size_t i = 0; i< p.alignment_length(); i++){
-			int modify_base =-1;
-			int num_delete=-1;
-			int insert_base=-1;
-			int num_keep=-1;
-			size_t n = 0;			
-			std::string seq1(" ",level+1);
-			char seq2;
-			for(size_t w = level; w>0 ;w--){
-				seq1.at(level-w)=seq.at(seq.size()-w);
-			}
-			char s1chr;
-			char s2chr;
-			size_t s1;
-			size_t s2;
-			p.alignment_col(i, s1chr, s2chr);				
-			s1 = dnastring::base_to_index(s1chr);
-			s2 = dnastring::base_to_index(s2chr);
-			char s1nchr;
-			char s2nchr;
-			size_t s2n;
-			if(s2 == 5){
-				for(size_t j =i; j < p.alignment_length(); j++){
-					p.alignment_col(j, s1nchr, s2nchr);				
-					s2n = dnastring::base_to_index(s2nchr);
-					if(s2n != 5){
-						seq1.at(level)=s2n;
-						break;
-					}else continue;
-				}
-			}else seq1.at(level)=s2;
-			if(s1 == s2){
-				size_t klength = 0;
-				for(size_t j = i; j<p.alignment_length(); j++){
-					char q1chr;
-					char q2chr;
-					p.alignment_col(j, q1chr, q2chr);				
-					size_t q1 = dnastring::base_to_index(q1chr);
-					size_t q2 = dnastring::base_to_index(q2chr);
-					if(q1 == q2){
-						klength +=1;
-					}else {	
-						break;
-					}
-				}
-				if(klength > powersOfTwo.at(NUM_KEEP-1)){
-					num_keep = NUM_KEEP-1;
-					n=powersOfTwo.at(num_keep)-1;
-					seq+=modification_character(modify_base,num_delete,insert_base,num_keep);
-				}else{
-					for(size_t m = NUM_KEEP; m > 0; m--){
-						if((klength & powersOfTwo.at(m-1)) != 0){
-							num_keep=m-1;
-							n=powersOfTwo.at(num_keep)-1;						
-							seq += modification_character(modify_base,num_delete,insert_base,num_keep);
-							break;
-						}
-					}
-				}
-				seq2 = seq.at(seq.size()-1);
-				functor. see_context(acc2,acc1,p,i,seq1,seq2);
-			}else{
-
-				if((s1!=5) & (s2!=5)){
-					modify_base = s1;
-					seq += modification_character(modify_base,num_delete,insert_base,num_keep);
-					seq2 = modification_character(modify_base,num_delete,insert_base,num_keep);
-					functor. see_context(acc2,acc1,p,i,seq1,seq2);
-				}
-				if(s2 == 5){
-					insert_base = s1;
-					seq += modification_character(modify_base,num_delete,insert_base,num_keep);					
-					seq2 = modification_character(modify_base,num_delete,insert_base,num_keep);
-					functor. see_context(acc2,acc1,p,i,seq1,seq2);						
-				}
-				if(s1 == 5){
-					size_t dlength = 0;
-					for(size_t j = i; j < p.alignment_length(); j++){
-						char q1chr;
-						char q2chr;
-						p.alignment_col(j, q1chr, q2chr);				
-						size_t q1 = dnastring::base_to_index(q1chr);
-						if(q1 == 5 ){
-							dlength +=1;
-						}else {
-							break;
-						}
-					}
-					if(dlength > powersOfTwo.at(NUM_DELETE-1)){
-						num_delete = NUM_DELETE-1;
-						n = powersOfTwo.at(num_delete)-1;
-						seq+=modification_character(modify_base,num_delete,insert_base,num_keep);
-					}else{
-						for(size_t m = NUM_DELETE ; m > 0; m--){
-							if((dlength & powersOfTwo.at(m-1)) != 0){
-								num_delete = m-1;
-								n = powersOfTwo.at(num_delete)-1;
-								seq += modification_character(modify_base,num_delete,insert_base,num_keep);
-								break;			
-							}
-						}
-					}
-					seq2 = seq.at(seq.size()-1);
-					functor. see_context(acc2,acc1,p,i,seq1,seq2);
-				}
-			}
-			i=i+n;
-		}		
-}
-*/
-
-/*
-void dynamic_mc_model::modification(char enc, int & modify_base, int & num_delete, int & insert_base, int & num_keep)const {
-	modify_base = -1;
-	num_delete =-1;
-	insert_base = -1;
-	num_keep = -1;
-	if(enc < 5) {
-		modify_base = enc;
-		return;	
-	} 
-	if(enc < 5 + NUM_DELETE) {
-		num_delete = powersOfTwo.at(enc - 5);
-		return;
-	}
-	if (enc < 5 + NUM_DELETE + NUM_KEEP){
-		num_keep = powersOfTwo.at(enc-NUM_DELETE-5);
-		return;
-	}
-	if(enc< 5+ 5 + NUM_KEEP + NUM_DELETE){
-		insert_base = enc- 5 - NUM_KEEP - NUM_DELETE;
-		return;
-	}
-	assert(0);
-}
-char dynamic_mc_model::modification_character(int modify_base, int num_delete, int insert_base, int num_keep)const {
-	//return the enc
-	if(num_delete != -1){
-		return 5 + num_delete;
-	}
-	if(num_keep != -1){
-		return 5 + NUM_DELETE + num_keep;
-	}
-	if(modify_base != -1) {
-		return modify_base;
-	}
-	if(insert_base != -1){
-		return insert_base + NUM_KEEP + NUM_DELETE + 5;
-	}
-	assert (false);
-	return -1;
-}
-*/
-
-
-void dynamic_mc_model::train(std::ofstream & outs){//call it before training mc model to find the best level.
+void dynamic_mc_model::train(std::ofstream & outs){	
 	train_sequence_model();	
 	train_alignment_model();
 
@@ -2736,90 +2026,71 @@ void dynamic_mc_model::train(std::ofstream & outs){//call it before training mc 
 
 #endif
 
-
-exit(0);
-	recursive_al_model();
-	write_parameters(outs);
-	write_alignment_parameters(outs);
-	std::cout<< "dynamic train is done! "<<std::endl;
+/*	for(size_t i=0; i<data.numAlignments(); ++i) {
+		const pw_alignment & p = data.getAlignment(i);
+		double c1, c2, m1, m2;
+		cost_function(p, c1, c2, m1, m2);
+	}
+*/
 }
 
-void dynamic_mc_model::cost_function(const pw_alignment& p , double & c1 , double & c2 , double & m1 , double & m2)const{//TODO add the possibilty of level = 0
-/*	if(p.is_cost_cached()) {
+void dynamic_mc_model::cost_function(const pw_alignment& p , double & c1 , double & c2 , double & m1 , double & m2)const{
+
+	if(p.is_cost_cached()) {
 		c1 = p.get_create1();
 		c2 = p.get_create2();
 		m1 = p.get_modify1();
 		m2 = p.get_modify2();
-		return; 
+		return;
 	}
-	cost_functor f(data,mod_cost);
-	std::vector<double> cost_on_sample(2,0);
-	std::vector<double> modify_cost(2,0);
-	size_t acc1 = data.accNumber(p.getreference1());
-	size_t acc2 = data.accNumber(p.getreference2());
-	size_t level = get_al_level(acc1,acc2);
-	count_context_OneToTwo(p,level,f);
-	count_context_TwoToOne(p,level,f);
-	char s1chr;
-	char s2chr;
-	size_t left1;
-	size_t right1;	
-	size_t left2;
-	size_t right2;
-	p.get_lr1(left1,right1);
-	p.get_lr2(left2,right2);
-	for(size_t i = left1; i< right1; i++){
-		s1chr = data.getSequence(p.getreference1()).at(i);
-		size_t s1 = dnastring::base_to_index(s1chr);
-		std::stringstream context1;
-		for (size_t j = level; j>0; j--){
-			
-			if(i<j){
-				char r1chr = 'A';
-				context1 << r1chr;					
-			}else{
-				char r1chr = data.getSequence(p.getreference1()).at(i-j);
-				context1 << r1chr;
-			}
-		}
-		std::string seq1;
-		context1>>seq1;
-		std::map <std::string, std::vector<double> >::const_iterator it= sequence_successive_bases.at(acc1).find(seq1);
-		assert(it != sequence_successive_bases.at(acc1).end());
-		cost_on_sample.at(0) += it->second.at(s1);
-	}	
-	for(size_t i = left2; i<right2; i++){
-		s2chr = data.getSequence(p.getreference2()).at(i);
-		size_t s2 = dnastring::base_to_index(s2chr);
-		std::stringstream context2;
-		for(size_t j = level; j>0; j--){
-			if(i<j){
-				char r2chr = 'A';
-				context2 << r2chr;	
-			}else{
-				char r2chr = data.getSequence(p.getreference2()).at(i-j);
-				context2 << r2chr;
-			}
-		}
-		std::string seq2;
-		context2>>seq2;
-		std::map <std::string, std::vector<double> >::const_iterator it1= sequence_successive_bases.at(acc2).find(seq2);
-		assert(it1 != sequence_successive_bases.at(acc2).end());
-		cost_on_sample.at(1) += it1->second.at(s2);
-	}
-	c1 = cost_on_sample.at(0);
-	c2 = cost_on_sample.at(1);
-	m1 = f.get_modify(p,acc1,acc2);
-	m2 = f.get_modify(p,acc2,acc1);
-	modify_cost.at(0) = m1;
-	modify_cost.at(1) = m2;
-	p.set_cost(cost_on_sample, modify_cost);
-	assert(p.is_cost_cached());
-	assert(m1==p.get_modify1());
-	assert(m2==p.get_modify2());
-	assert(c1==p.get_create1());
-	assert(c2==p.get_create2());
-*/
+
+
+
+	size_t a1 = data.accNumber(p.getreference1());
+	size_t a2 = data.accNumber(p.getreference2());
+	vector<double> ccost(2,0);
+	vector<double> mcost(2,0);
+// compute alignment cost
+	const std::map< std::string, std::vector<double> > & model12 = alignment_model_costs.at(a1).at(a2);
+	const std::map< std::string, std::vector<double> > & model21 = alignment_model_costs.at(a2).at(a1);
+
+	a_reader_costs costs12(model12);
+	a_reader_costs costs21(model21);
+
+	acontext_cost ccost12(costs12, MAX_ALIGNMENT_MARKOV_CHAIN_LEVEL);
+	acontext_cost ccost21(costs21, MAX_ALIGNMENT_MARKOV_CHAIN_LEVEL);
+	
+	ccost12.read_alignment_1_2(p);
+	ccost21.read_alignment_2_1(p);
+
+	m1=costs12.cost_sum + alignment_base_cost.at(a1).at(a2);
+	m2=costs21.cost_sum + alignment_base_cost.at(a2).at(a1);
+
+	mcost.at(0) = m1;
+	mcost.at(1) = m2;
+
+// compute sequence cost
+	const std::map< std::string, std::vector<double> > & model1 = sequence_model_costs.at(a1);
+	const std::map< std::string, std::vector<double> > & model2 = sequence_model_costs.at(a2);
+
+//	std::cout << " acc 1 " << p.getreference1() << " costs size " << sequence_model_costs.at(a1).size() << " hv size " << sequence_model_highs.at(a1).size() << std::endl;
+	s_reader_costs costs1(model1);
+	s_reader_costs costs2(model2);
+
+	scontext_cost scost1(costs1, MAX_SEQUENCE_MARKOV_CHAIN_LEVEL);
+	scontext_cost scost2(costs2, MAX_SEQUENCE_MARKOV_CHAIN_LEVEL);
+	
+	scost1.read_sequence(data.getSequence(p.getreference1()), p.getbegin1(), p.getend1());
+	scost2.read_sequence(data.getSequence(p.getreference2()), p.getbegin2(), p.getend2());
+
+	c1 = costs1.cost_sum;
+	c2 = costs2.cost_sum;
+
+	ccost.at(0) = c1;
+	ccost.at(1) = c2;
+
+	p.set_cost(ccost, mcost);
+
 }
 
 void dynamic_mc_model::gain_function(const pw_alignment& p , double & g1 , double & g2)const{
@@ -2833,91 +2104,4 @@ void dynamic_mc_model::gain_function(const pw_alignment& p , double & g1 , doubl
 	g1 = c2 - m1;
 	g2 = c1 - m2;
 }
-
-// TODO we should not need that
-size_t dynamic_mc_model::get_acc_level(size_t & acc)const{
-//	return accLevel.at(acc);
-	return -1;
-}
-void dynamic_mc_model::set_acc_level(size_t & level){
-//	accLevel.push_back(level);
-
-}
-size_t dynamic_mc_model::get_al_level(size_t& acc1 , size_t & acc2)const{
-//	return al_level.at(acc1).at(acc2);
-	return -1;
-
-}
-void dynamic_mc_model::set_al_level(size_t& acc1 , size_t & acc2, size_t & level){
-//	al_level.at(acc1).at(acc2) = level;
-}
-
-const std::map<std::string, std::vector<unsigned int> >&  dynamic_mc_model::get_high(size_t acc)const{
-//	return high.at(acc);
-}
-std::string dynamic_mc_model::get_firstPattern(size_t& accession)const{
-/*	std::string first_pattern;
-	size_t level = accLevel.at(accession);
-	for(size_t i = 0; i< level; i++){
-		first_pattern += "A";
-	}
-	return first_pattern;
-*/
-}
-std::string dynamic_mc_model::get_firstAlignmentPattern(size_t& acc1, size_t& acc2)const{
-/*		std::string first_pattern;
-		size_t level = al_level.at(acc1).at(acc2);
-		size_t firstPatterns = level;
-		for(size_t j = 0; j < level; j++){
-			firstPatterns --;
-			first_pattern += modification_character(-1,-1,-1,firstPatterns);
-		}
-		return first_pattern;
-
-*/
-	}	
-void dynamic_mc_model::get_encoded_member(pw_alignment & al, size_t center_ref, size_t center_left, encoding_functor & functor,std::ofstream& outs)const{
-/*	size_t acc1 = data.accNumber(al.getreference1());
-	size_t acc2 = data.accNumber(al.getreference2());
-	size_t accession = data.accNumber(center_ref);
-	size_t left_1; 
-	size_t left_2;
-	size_t right_1;
-	size_t right_2;
-	size_t level = al_level.at(acc1).at(acc2);
-	al.get_lr1(left_1,right_1);
-	al.get_lr2(left_2,right_2);
-	if(al.getreference1()==center_ref && left_1 == center_left){
-		count_context_OneToTwo(al, level, functor);	
-	}else{
-		count_context_TwoToOne(al, level, functor);
-	}
-*/
-}
-
-std::vector<unsigned int> dynamic_mc_model::get_high_at_position(size_t seq_index, size_t position)const{
-/*	const dnastring & sequence = data.getSequence(seq_index);
-	size_t accession = data.accNumber(seq_index);
-	size_t level = accLevel.at(accession);
-	std::stringstream context;
-	for(size_t j = level; j>0; j--){
-		if(position < j){
-			char chr = 'A';
-			context<<chr;
-		}else{
-			char chr = sequence.at(position-j);
-			context<<chr;
-		}
-	}
-	std::string current_pattern;
-	context >> current_pattern;
-	std::map<std::string, std::vector<unsigned int> >::const_iterator it=high.at(accession).find(current_pattern);
-	assert(it!=high.at(accession).end());
-	return it->second;
-*/
-}
-const std::map<std::string, std::vector<unsigned int> > & dynamic_mc_model::get_highValue(size_t acc1, size_t acc2)const{
-//	return highValue.at(acc1).at(acc2);
-}
-
 

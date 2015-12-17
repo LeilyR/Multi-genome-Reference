@@ -1639,7 +1639,7 @@ int do_dynamic_mc_model(int argc, char * argv[]) {
 	use_encode en(data,m,wrap);
 	std::vector<overlap> cc_overlap(ccs.size(), overlap(data));// An overlap class object is needed for each connected component, thus we cannot use ol
 	// base cost to use an alignment (information need for its adress)
-	double cluster_base_cost = log2(data.numAlignments());
+	double cluster_base_cost = 0; // XXX base cost is now estimated in the model and added to modify/gain costs, we can still add something here to select fewer alignments
 // Select an initial alignment std::set for each connected component (in parallel)
 	// TODO put the next two into a single data structure
 	std::map<std::string, std::vector<string> > global_results;//for each center returns all its cluster members TODO needed?
@@ -1800,6 +1800,11 @@ int do_dynamic_mc_model(int argc, char * argv[]) {
 		std::cout << std::endl;
 	} // for connected components
 	clock_t graph_ma_time = clock();
+
+
+	//exit(0); // TODO 
+
+
 	// TODO better separation of the different applications of our program: create/read model, compress/decompress sequences, create graph
 	// write graph result in maf format
 	write_graph_maf(graphout, alignments_in_a_cluster, data);//includes clusters with no associated member.
