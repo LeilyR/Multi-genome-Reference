@@ -1609,7 +1609,7 @@ int do_dynamic_mc_model(int argc, char * argv[]) {
 		cerr << "* maf file containing alignments of sequences contained in the fasta file" << std::endl;
 		cerr << "* output maf file for the graph" << std::endl;
 		cerr << "* output binary compressed file (use 'noencode' to skip encoding step)" << std::endl;
-		cerr << "* number of threads to use (optional, default 10)" << std::endl;
+		cerr << "* number of threads to use (optional, default 1)" << std::endl;
 	}
 
 	clock_t read_data_time = clock();
@@ -1624,6 +1624,7 @@ int do_dynamic_mc_model(int argc, char * argv[]) {
 	std::ofstream outs(encoding_out.c_str(),std::ofstream::binary);
 // Read all data
 	all_data data;
+// TODO also allow for reading sam
 	data.read_fasta_maf(fastafile, maffile);
 	overlap ol(data);
 	wrapper wrap;
@@ -1638,7 +1639,7 @@ int do_dynamic_mc_model(int argc, char * argv[]) {
 // Train the model on all data
 
 	clock_t train_models_time = clock();
-	use_model m(data);
+	use_model m(data, num_threads);
 	m.train(outs);
 	train_models_time = clock() - train_models_time;
 	size_t total = 0;
@@ -1652,7 +1653,7 @@ int do_dynamic_mc_model(int argc, char * argv[]) {
 	use_encode en(data,m,wrap);
 	std::vector<overlap> cc_overlap(ccs.size(), overlap(data));// An overlap class object is needed for each connected component, thus we cannot use ol
 	// base cost to use an alignment (information need for its adress)
-	double cluster_base_cost = log2(data.numAlignments());
+	double cluster_base_cost = 0; // XXX base cost is now estimated in the model and added to modify/gain costs, we can still add something here to select fewer alignments
 // Select an initial alignment std::set for each connected component (in parallel)
 	// TODO put the next two into a single data structure
 	std::map<std::string, std::vector<string> > global_results;//for each center returns all its cluster members TODO needed?
@@ -1687,7 +1688,9 @@ int do_dynamic_mc_model(int argc, char * argv[]) {
 		ias_time_local = clock() - ias_time_local;
 
 		clock_t test_time_local = clock();
-		cc_overlap.at(i).test_partial_overlap(); // TODO remove slow test function
+#ifndef NDEBUG
+		cc_overlap.at(i).test_partial_overlap(); 
+#endif
 		test_time_local = clock() - test_time_local;
 #pragma omp critical(gain_statistics)
 {
@@ -1811,6 +1814,11 @@ int do_dynamic_mc_model(int argc, char * argv[]) {
 		std::cout << std::endl;
 	} // for connected components
 	clock_t graph_ma_time = clock();
+
+
+	//exit(0); // TODO 
+
+
 	// TODO better separation of the different applications of our program: create/read model, compress/decompress sequences, create graph
 	// write graph result in maf format
 	write_graph_maf(graphout, alignments_in_a_cluster, data);//includes clusters with no associated member.
@@ -1846,7 +1854,7 @@ int do_dynamic_mc_model(int argc, char * argv[]) {
 				weight.insert(make_pair(cluster,0));
 				it1 = weight.find(cluster);
 			}
-		//	it1->second = (unsigned int)(it->second.size()*((m.get_powerOfTwo().at(max_bit)-1)/(double)max_members));
+// TODO			it1->second = (unsigned int)(it->second.size()*((m.get_powerOfTwo().at(max_bit)-1)/(double)max_members));
 			if(it1 ->second == 0){
 				it1->second = 1;
 			}

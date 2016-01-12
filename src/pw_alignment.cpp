@@ -1,6 +1,6 @@
 #include "pw_alignment.hpp"
 
-pw_alignment::pw_alignment(std::string sample1str, std::string sample2str, size_t sample1_begin, size_t sample2_begin, size_t sample1_end, size_t sample2_end, size_t sample1reference, size_t sample2reference ): samples(2), begins(2), ends(2), references(2), costs_cached(false), create_costs(0), modify_costs(0){
+pw_alignment::pw_alignment(std::string sample1str, std::string sample2str, size_t sample1_begin, size_t sample2_begin, size_t sample1_end, size_t sample2_end, size_t sample1reference, size_t sample2reference ): samples(2), begins(2), ends(2), references(2), create_costs(0), modify_costs(0), costs_cached(false) {
 	assert(sample1str.length() == sample2str.length());
 
 

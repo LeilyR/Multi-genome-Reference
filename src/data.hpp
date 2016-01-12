@@ -83,7 +83,7 @@ class all_data {
 		const size_t get_acc_id(std::string acc)const;
 		std::string get_seq_name(size_t s) const;
 		size_t get_seq_size(size_t s) const;
-		void set_accession(const std::string & acc);
+		void add_accession(const std::string & acc);
 		size_t numOfAcc() const;
 		const std::map< std::string, size_t>& getLongname2seqidx()const;
 		int findIdAlignment(std::string name,unsigned int start, unsigned int end);

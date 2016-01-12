@@ -262,6 +262,8 @@ char dnastring::index_to_base(size_t index) {
 }
 all_data::all_data() {}
 
+
+// TODO this function does not have all features of maf function
 void all_data::read_fasta_sam(std::string fasta_all_sequences, std::string sam_all_alignments) {
 	std::cout << "read sam File "<< std::endl;
 	std::ifstream fastain(fasta_all_sequences.c_str());
@@ -466,7 +468,7 @@ void all_data::read_fasta_sam(std::string fasta_all_sequences, std::string sam_a
 	std::cout << "Loaded: " << sequences.size() << " sequences and " << alignments.size() << " pairwise alignments " << std::endl;
 	std::cout << skip_self << " self alignments were skipped" << std::endl;
 	std::cout << skip_alt << " alternative alignments of identical regions were skipped" << std::endl;
-
+// TODO remove alignments of identical regions in reverse
 
 
 
@@ -654,6 +656,7 @@ void all_data::read_fasta_maf(std::string fasta_all_sequences, std::string maf_a
 								pw_alignment al(al1, al2, start1, start2, incl_end1, incl_end2, idx1, idx2);
 							//	size_t alidx = alignments.size();
 								alignments.push_back(al);
+	
 
 							//	als_on_reference.at(idx1).insert(std::make_pair(start1, alidx));
 							//	als_on_reference.at(idx2).insert(std::make_pair(start2, alidx));
@@ -685,7 +688,7 @@ void all_data::read_fasta_maf(std::string fasta_all_sequences, std::string maf_a
 		std::cout << "Loaded: " << sequences.size() << " sequences and " << alignments.size() << " pairwise alignments " << std::endl;
 		std::cout << skip_self << " self alignments were skipped" << std::endl;
 		std::cout << skip_alt << " alternative alignments of identical regions were skipped" << std::endl;
-		std::cout << skip_reverse << "alignments removed because already had their reverse one." << std::endl;
+		std::cout << skip_reverse << " reverse alignment duplicates skipped" << std::endl;
 	
 	} else {
 		std::cerr << "Error: cannot read: " << maf_all_alignments << std::endl;
@@ -763,7 +766,7 @@ all_data::~all_data() {
 		return 0;
 	}
 
-	void all_data::set_accession(const std::string & acc){
+	void all_data::add_accession(const std::string & acc){
 		accession_name.insert(std::make_pair(acc, accession_name.size()));
 		std::cout<< "acc "<< acc <<" accession name size: " << accession_name.size() <<std::endl;
 	}
@@ -1201,7 +1204,6 @@ void overlap::insert_without_partial_overlap(const pw_alignment & p){
 //		const pw_alignment & al = *it;
 	//	al.print();
 //	}
-//	std::cout << " insert " << std::endl;
 	assert(alignments.find(p) == alignments.end());
 	std::pair<std::set<pw_alignment, compare_pw_alignment>::iterator, bool > npp = alignments.insert(p);
 	std::set<pw_alignment, compare_pw_alignment>::iterator npi = npp.first;
@@ -3332,7 +3334,7 @@ void mc_model::make_all_alignments_patterns(){
 			}
 			s >> acc;
 			std::cout << " acc " << acc <<std::endl;
-			data.set_accession(acc);//since in decoding we have no access to our fasta file we need to set accession names in data class
+			data.add_accession(acc);//since in decoding we have no access to our fasta file we need to set accession names in data class
 			high.push_back(values);//initializing the high vector
 			c = in.get();
 		}
@@ -3740,11 +3742,12 @@ void mc_model::make_all_alignments_patterns(){
 			p.alignment_col(i, s1chr, s2chr);				
 			s1 = dnastring::base_to_index(s1chr);
 			s2 = dnastring::base_to_index(s2chr);
+			// skip gaps on reference 1
 			for(size_t j =i; j < p.alignment_length(); j++){
 				p.alignment_col(j, s1nchr, s2nchr);				
 				s1n = dnastring::base_to_index(s1nchr);
 				s2n = dnastring::base_to_index(s2nchr);
-				if(s1n == 5){
+				if(s1n == 5){ 
 				
 				}else break;	
 			}
