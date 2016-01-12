@@ -695,25 +695,19 @@ void pw_alignment::print()const{
 	std::cout << "al2 seq "<< getreference2() << " b " << getbegin2() << " e " << getend2() << std::endl;
 //	if(alignment_length() > 5){
 //	for(size_t col = 0; col < 5; col++) {	
-/*	for(size_t col = 0; col < alignment_length(); col++) {
+	for(size_t col = 0; col < alignment_length(); col++) {
 	//	if(col < 3 || (alignment_length() - col < 3)) {
 			char c1;
 			char c2;
 			alignment_col(col, c1, c2);
 			std::cout <<col <<"\t"<< c1<<"\t"<<c2<<std::endl;
 	//	}
-	}*/
+	}
 //}
 	
 }
 
-
-
-
-
-bool compare_pw_alignment::operator()(const pw_alignment &ar, const pw_alignment &br) const {
-	const pw_alignment * a = &ar;
-	const pw_alignment * b = &br;
+bool compare_pointer_pw_alignment::operator()(const pw_alignment * a, const pw_alignment *b) const {
 	size_t asmaller = 0;
 	size_t abigger = 1;
 	if(a->getreference(0) > a->getreference(1)) {
@@ -777,8 +771,82 @@ bool compare_pw_alignment::operator()(const pw_alignment &ar, const pw_alignment
 	if ( a->getend(abigger) < b->getend(bbigger)) return true;
 	if ( a->getend(abigger) > b->getend(bbigger)) return false;
 
-	return false;
+	return false;	
+
+
 }
+
+bool compare_pw_alignment::operator()(const pw_alignment &ar, const pw_alignment &br) const {
+// if(ar.getbegin(0)
+	const pw_alignment * a = &ar;
+	const pw_alignment * b = &br;
+	size_t asmaller = 0;//TODO replace it with calling the new one
+	size_t abigger = 1;
+	if(a->getreference(0) > a->getreference(1)) {
+		asmaller = 1;
+		abigger = 0;
+	} else if(a->getreference(0) == a->getreference(1)) {
+		if(a->getbegin(0) > a->getbegin(1)) {
+			asmaller =1;
+			abigger = 0;
+		} else if(a->getbegin(0) == a->getbegin(1)) {
+			 if(a->getend(0) > a->getend(1)) {
+				asmaller =1;
+				abigger = 0;
+			}
+			assert(a->getend(0)!=a->getend(1));
+		}
+	}
+
+	
+	size_t bsmaller = 0;
+	size_t bbigger = 1;
+	if (b->getreference(0) > b->getreference(1)){
+		bsmaller = 1;
+		bbigger = 0;
+	} 
+	else if (b->getreference(0) == b->getreference(1)){
+		if(b->getbegin(0) > b->getbegin(1)) {
+			bsmaller =1;
+			bbigger = 0;
+		}else if(b->getbegin(0) == b->getbegin(1)) {
+			 if(b->getend(0) > b->getend(1)) {
+				bsmaller =1;
+				bbigger = 0;
+			}
+			assert(b->getend(0)!=b->getend(1));
+		}	
+	}
+
+
+	
+	if(a->getreference(asmaller) < b->getreference(bsmaller)) {
+		return true;
+	} else if(a->getreference(asmaller) > b->getreference(bsmaller)) {
+		return false;	
+	}
+	if(a->getreference(abigger) < b->getreference(bbigger)) {
+		return true;
+	} else if(a->getreference(abigger) > b->getreference(bbigger)) {
+		return false;	
+	}
+//This is the added part:
+	if (a->getbegin(asmaller) < b->getbegin(bsmaller))return true;
+	if (a->getbegin(asmaller) > b->getbegin(bsmaller))return false;
+
+	if (a->getend(asmaller) < b->getend(bsmaller))return true;
+	if (a->getend(asmaller) > b->getend(bsmaller))return false;
+
+	if ( a->getbegin(abigger) < b->getbegin(bbigger)) return true;
+	if ( a->getbegin(abigger) > b->getbegin(bbigger)) return false;
+	
+	if ( a->getend(abigger) < b->getend(bbigger)) return true;
+	if ( a->getend(abigger) > b->getend(bbigger)) return false;
+
+	return false;
+
+}
+
 bool sort_pw_alignment::operator() (const pw_alignment &p1, const pw_alignment &p2)const{
 			return (p1.getbegin2() < p2.getbegin2());
 }
@@ -922,6 +990,11 @@ void pw_alignment::get_reverse(pw_alignment & al){
 	al.samples.at(0) = reverse_complement(temp.at(0)); 
 	al.samples.at(1) = reverse_complement(temp.at(1)); 
 }
+void pw_alignment::get_reverse_complement_sample(std::vector<std::vector<bool> > & sample){
+	sample.push_back(reverse_complement(samples.at(0)));
+	sample.push_back(reverse_complement(samples.at(1)));
+}
+
         wrapper::wrapper():encodeout("enc1.txt"),al_encode("al_encode1.txt"){
         }
         wrapper::~wrapper(){}

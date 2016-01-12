@@ -23,15 +23,15 @@ void initial_alignment_set<T>::compute(overlap & o) {
 */
 template<typename T>
 void initial_alignment_set<T>::insert_alignment_sets(overlap & ovrlp, std::set<pw_alignment, compare_pw_alignment> & all_ins, std::set<pw_alignment, compare_pw_alignment> & all_rem, std::vector<pw_alignment> & this_ins, std::vector<pw_alignment> & this_rem) {
-
-	for(size_t i=0; i<this_ins.size(); ++i) {
+	
+	for(size_t i=0; i<this_ins.size(); i++) {
 		all_ins.insert(this_ins.at(i));
 	}
 
-	for(size_t i=0; i<this_rem.size(); ++i) {
+	for(size_t i=0; i<this_rem.size(); i++) {
 		std::set<pw_alignment>::iterator findr = all_ins.find(this_rem.at(i));
 		if(findr!=all_ins.end()) {
-			pw_alignment al = this_rem.at(i);
+			const pw_alignment & al = this_rem.at(i);
 			all_ins.erase(al);
 			all_rem.erase(al);
 			ovrlp.remove_alignment(al); 
@@ -42,14 +42,14 @@ void initial_alignment_set<T>::insert_alignment_sets(overlap & ovrlp, std::set<p
 	}
 }
 
-
 template<typename T>
 void initial_alignment_set<T>::local_undo(overlap & ovrlp, std::set<pw_alignment, compare_pw_alignment> & all_inserted, std::set<pw_alignment , compare_pw_alignment> & all_removed) {
-	for(std::set<pw_alignment, compare_pw_alignment >::iterator it = all_inserted.begin(); it!=all_inserted.end(); ++it) {
-		ovrlp.remove_alignment(*it);
+	for(std::set< pw_alignment , compare_pw_alignment >::iterator it = all_inserted.begin(); it!=all_inserted.end(); it++) {
+		const pw_alignment & al = *it;
+		ovrlp.remove_alignment(al);
 	}
 
-	for(std::set<pw_alignment, compare_pw_alignment >::iterator it = all_removed.begin(); it!= all_removed.end(); ++it ) {
+	for(std::set< pw_alignment, compare_pw_alignment >::iterator it = all_removed.begin(); it!= all_removed.end(); it++) {
 		const pw_alignment & ral = *it;
 		ovrlp.insert_without_partial_overlap(ral);
 	}
@@ -57,19 +57,21 @@ void initial_alignment_set<T>::local_undo(overlap & ovrlp, std::set<pw_alignment
 }
 
 template<typename T>
-void initial_alignment_set<T>::all_push_back(std::vector<pw_alignment> & inserted_alignments, vector<pw_alignment> & removed_alignments, std::set<pw_alignment, compare_pw_alignment> & all_inserted, std::set<pw_alignment, compare_pw_alignment> & all_removed ) {
-	for(std::set<pw_alignment>::iterator it = all_inserted.begin(); it!=all_inserted.end(); ++it) {
-		inserted_alignments.push_back(*it);
+void initial_alignment_set<T>::all_push_back(std::vector<pw_alignment> & inserted_alignments, vector<pw_alignment> & removed_alignments, std::set<pw_alignment , compare_pw_alignment> & all_inserted, std::set< pw_alignment, compare_pw_alignment> & all_removed ) {
+	for(std::set<pw_alignment>::iterator it = all_inserted.begin(); it!=all_inserted.end(); it++) {
+		const pw_alignment & p = *it;
+		inserted_alignments.push_back(p);
 	}
 
-	for(std::set<pw_alignment>::iterator it = all_removed.begin(); it!= all_removed.end(); ++it ) {
-		removed_alignments.push_back(*it);
+	for(std::set<pw_alignment>::iterator it = all_removed.begin(); it!= all_removed.end(); it++) {
+		const pw_alignment & p = *it;
+		removed_alignments.push_back(p);
 	}
 
 }
 
 template<typename T>
-void initial_alignment_set<T>::lazy_split_full_insert_step(overlap & ovrlp, size_t level, size_t & rec_calls, pw_alignment alin, std::vector<pw_alignment> & inserted_alignments, vector<pw_alignment> & removed_alignments, double & local_gain) {
+void initial_alignment_set<T>::lazy_split_full_insert_step(overlap & ovrlp, size_t level, size_t & rec_calls, const pw_alignment & alin, std::vector<pw_alignment> & inserted_alignments, vector<pw_alignment> & removed_alignments, double & local_gain) {
 
 //	std::cout << " full insert step on level " << level  << std::endl;
 
@@ -83,7 +85,7 @@ void initial_alignment_set<T>::lazy_split_full_insert_step(overlap & ovrlp, size
 	size_t inserted_counter = 0;
 	if(remove_als.empty()) {
 		local_gain = 0;
-		for(size_t i=0; i<insert_als.size(); ++i) {
+		for(size_t i=0; i<insert_als.size(); i++) {
 			double g1;
 			double g2;
 			common_model.gain_function(insert_als.at(i), g1, g2);
@@ -99,9 +101,9 @@ void initial_alignment_set<T>::lazy_split_full_insert_step(overlap & ovrlp, size
 	//	std::cout << "full insert: " << level << " on al length " << alin.alignment_length() << " finally inserted pieces: " << inserted_counter << " real local gain " << local_gain << std::endl;		
 	// insert pieces for recursion:
 	} else {
-		std::set<pw_alignment, compare_pw_alignment> all_removed;
+		std::set< pw_alignment , compare_pw_alignment> all_removed;
 		double lost_gain = 0;
-		for(std::set<pw_alignment, compare_pw_alignment>::iterator it = remove_als.begin(); it!=remove_als.end(); ++it) {
+		for(std::set<pw_alignment, compare_pw_alignment>::iterator it = remove_als.begin(); it!=remove_als.end(); it++) {
 			const pw_alignment & ral = *it;
 			double gain1, gain2;
 			common_model.gain_function(ral, gain1, gain2);
@@ -116,13 +118,13 @@ void initial_alignment_set<T>::lazy_split_full_insert_step(overlap & ovrlp, size
 		}
 
 		double max_parts_gain = 0;
-		std::multimap<double, pw_alignment> ordered_parts;
-		for(size_t i=0; i<insert_als.size(); ++i) {
+		std::multimap<double, const pw_alignment *> ordered_parts;
+		for(size_t i=0; i<insert_als.size(); i++) {
 			double gain1, gain2;
 			common_model.gain_function(insert_als.at(i), gain1, gain2);
 			double iav_gain = (gain1 + gain2)/2 - base_cost;
 			if(iav_gain > 0) {
-				ordered_parts.insert(std::make_pair(iav_gain, insert_als.at(i)));
+				ordered_parts.insert(std::make_pair(iav_gain, & insert_als.at(i)));
 				max_parts_gain+=iav_gain;
 			}
 
@@ -135,11 +137,11 @@ void initial_alignment_set<T>::lazy_split_full_insert_step(overlap & ovrlp, size
 
 		std::set<pw_alignment, compare_pw_alignment> all_inserted;
 
-		for(std::multimap<double, pw_alignment>::reverse_iterator it = ordered_parts.rbegin(); it!=ordered_parts.rend(); ++it) {
+		for(std::multimap<double, const pw_alignment *>::reverse_iterator it = ordered_parts.rbegin(); it!=ordered_parts.rend(); ++it) {
 			double thisgain;
 			std::vector<pw_alignment> this_inserted;
 			std::vector<pw_alignment> this_removed;
-			pw_alignment thisal = it->second;
+			const pw_alignment & thisal = *it->second;
 
 	//		std::cout <<"full insert function level "<< level << " start rec "<< alnum << " on al length " << thisal.alignment_length() << std::endl; 
 			// this function only changes ovrlp if this was locally good. We may need to undo the changes if they were globally bad
@@ -177,7 +179,7 @@ Afterwards, we have to compute the actual gain. If it is negative we undo the lo
 
 */
 template<typename T>
-void initial_alignment_set<T>::lazy_split_insert_step(overlap & ovrlp, size_t level, size_t & rec_calls, pw_alignment al, std::vector<pw_alignment> & inserted_alignments, vector<pw_alignment> & removed_alignments, double & local_gain) {
+void initial_alignment_set<T>::lazy_split_insert_step(overlap & ovrlp, size_t level, size_t & rec_calls, const pw_alignment  & al, std::vector<pw_alignment> & inserted_alignments, vector<pw_alignment> & removed_alignments, double & local_gain) {
 // start with computing gain of al
 	rec_calls++; // count number of calls
 	double gain1;
@@ -188,6 +190,7 @@ void initial_alignment_set<T>::lazy_split_insert_step(overlap & ovrlp, size_t le
 	local_gain = 0;
 //	std::cout<< "al in lazy split "<< std::endl;
 //	al.print();
+//	std::cout << "av_al_gain "<< av_al_gain <<std::endl;
 	if(av_al_gain > 0) {
 		splitpoints spl(al, ovrlp, data);
 		spl.nonrecursive_splits();
@@ -210,14 +213,15 @@ void initial_alignment_set<T>::lazy_split_insert_step(overlap & ovrlp, size_t le
 //		       	ral->print();
 //			std::cout << std::endl;	
 		}
-		std::multimap<double, pw_alignment> ordered_parts;
+		std::multimap<double, const pw_alignment *> ordered_parts;
 		double max_parts_gain = 0;
-		for(size_t i=0; i<insert_als.size(); ++i) {
+		for(size_t i=0; i<insert_als.size(); i++) {
+			const pw_alignment * al = & insert_als.at(i);
 			common_model.gain_function(insert_als.at(i), gain1, gain2);
 			double iav_gain = (gain1 + gain2)/2 - base_cost;
 			if(iav_gain > 0) {
 				max_parts_gain += iav_gain;
-				ordered_parts.insert(std::make_pair(iav_gain, insert_als.at(i)));
+				ordered_parts.insert(std::make_pair(iav_gain, al));
 			}
 		//	std::cout << "INS  gain " <<iav_gain << std::endl;
 		//	insert_als.at(i).print();
@@ -229,7 +233,15 @@ void initial_alignment_set<T>::lazy_split_insert_step(overlap & ovrlp, size_t le
 
 		// here: we actually decide to insert a small part (in the next function we check more carefully for indirectly induced splits)
 		if(remove_als.empty() && ordered_parts.size() == 1) {
-			pw_alignment nal = ordered_parts.begin()->second;
+		/*	for(std::multimap<double , const pw_alignment &>::iterator it = ordered_parts.begin(); it!= ordered_parts.end();it++){
+				std::pair<std::multimap<double, const pw_alignment&>::iterator, std::multimap<double, const pw_alignment&>::iterator  > r2 = ordered_parts.equal_range(it->first);
+				for(std::multimap<double, const pw_alignment &>::iterator it1 = r2.first; it1!=r2.second; ++it1) {
+					const pw_alignment & al = it1->second;
+					al.print();
+					std::cout << &al <<std::endl;
+				}
+			}*/
+			const pw_alignment & nal = *ordered_parts.begin()->second;
 			// full split step, we can just copy local gain
 			lazy_split_full_insert_step(ovrlp, level, rec_calls, nal, inserted_alignments, removed_alignments, local_gain);
 			return;
@@ -250,10 +262,10 @@ void initial_alignment_set<T>::lazy_split_insert_step(overlap & ovrlp, size_t le
 			// all_ins/rem accumulated over all recursive steps below current. If we take current step, those are tranferred to inserted_alignments/removed_alignments
 			std::set<pw_alignment, compare_pw_alignment> all_inserted;
 			std::set<pw_alignment, compare_pw_alignment> all_removed;
-
+//			std::cout << "size of all inserted "<<all_inserted.size()<<std::endl;
 			// remove before recursion
 			size_t remove_count = 0;
-			for(std::set<pw_alignment, compare_pw_alignment>::iterator it = remove_als.begin(); it!=remove_als.end(); ++it) {
+			for(std::set<pw_alignment, compare_pw_alignment>::iterator it = remove_als.begin(); it!=remove_als.end(); it++) {
 				const pw_alignment & pwa = *it;
 				all_removed.insert(pwa); 			
 	//			std::cout <<"level " << level << "REMOVE NOW: " << std::endl;
@@ -268,14 +280,14 @@ void initial_alignment_set<T>::lazy_split_insert_step(overlap & ovrlp, size_t le
 
 	//		std::cout << " before recursion, we have removed " << remove_count << " alignments with gain " << lost_information_gain <<  " upper bound of gain is " << upper_bound_of_gain << std::endl;
 			size_t alnum = 0;
-			for(std::map<double, pw_alignment>::reverse_iterator it = ordered_parts.rbegin(); it!=ordered_parts.rend(); ++it) {
+			for(std::map<double, const pw_alignment *>::reverse_iterator it = ordered_parts.rbegin(); it!=ordered_parts.rend(); it++) {
 				double ub_of_thisgain = it->first;
 				double thisgain;
 				std::vector<pw_alignment> this_inserted;
 				std::vector<pw_alignment> this_removed;
-				pw_alignment thisal = it->second;
-
-			//	thisal.print();
+				const pw_alignment & thisal = *it->second;
+//				std::cout <<"this al "<<std::endl;
+//				thisal.print();
 			//	std::cout << std::endl;
 
 	//			std::cout <<"start recursion: level "<< level << " start rec "<< alnum << " on al length " << thisal.alignment_length() << std::endl; 
@@ -285,15 +297,16 @@ void initial_alignment_set<T>::lazy_split_insert_step(overlap & ovrlp, size_t le
 				all_lost_gain += lost_gain;
 				total_recursive_gain += thisgain;
 
-
+		//		for(size_t i =0; i < this_inserted.size();i++){
+				//	this_inserted.at(i).print();
+		//		}
 		//		std::cout <<"end recursion: level "<< level << " end rec "<< alnum << " on al length " << thisal.alignment_length() << " subtree local gain " << thisgain << " ub was " << ub_of_thisgain << " lost gain is " << lost_gain << " total lost gain is " << all_lost_gain << " total gain of this level until now: " << total_recursive_gain <<  " ub is " << upper_bound_of_gain << std::endl; 
 			
-
 				insert_alignment_sets(ovrlp, all_inserted, all_removed, this_inserted, this_removed);
 
 				// if we have lost more than we may gain, we undo the entire recursive insertion subtree from here
 				if(all_lost_gain > upper_bound_of_gain) {
-					
+			//		std::cout << "local undo "<<std::endl;
 					local_undo(ovrlp, all_inserted, all_removed);
 
 
@@ -312,6 +325,7 @@ void initial_alignment_set<T>::lazy_split_insert_step(overlap & ovrlp, size_t le
 				local_gain = total_recursive_gain - lost_information_gain;
 
 				all_push_back(inserted_alignments, removed_alignments, all_inserted, all_removed);
+		//		std::cout << "all push back"<<std::endl;
 
 //	std::cout << "take subtree: level " << level << " on al length " << al.alignment_length() << " gain " << av_al_gain << " causes to remove " << all_removed.size() << " alignments with " << lost_information_gain << 
 //			" gain. We want to insert " << all_inserted.size() << " small pieces. TOTAL gain is " << local_gain << std::endl;
@@ -342,7 +356,7 @@ void initial_alignment_set<T>::compute_simple_lazy_splits(overlap & o){
 	size_t pcs_rem = 0;
 
 	for (size_t i=0; i<sorted_original_als.size(); ++i) {
-		const pw_alignment & al = sorted_original_als.at(i);
+		const pw_alignment * al = sorted_original_als.at(i);
 		double gain_of_al = 0;
 
 	//	cout << " start recursive lazy insert tree on " << endl;
@@ -352,11 +366,11 @@ void initial_alignment_set<T>::compute_simple_lazy_splits(overlap & o){
 		std::vector<pw_alignment> ins_als;
 		std::vector<pw_alignment> rem_als;
 		size_t count_rec_calls = 0;
-		lazy_split_insert_step(o,0, count_rec_calls,  al, ins_als, rem_als, gain_of_al);
+		lazy_split_insert_step(o,0, count_rec_calls, *al, ins_als, rem_als, gain_of_al);
 		
 		double gain1;
 		double gain2;
-		common_model.gain_function(al, gain1, gain2);
+		common_model.gain_function(*al, gain1, gain2);
 		double vgain = (gain1 + gain2) / 2 - base_cost;
 
 
@@ -417,13 +431,13 @@ void initial_alignment_set<T>::compute_simple(overlap & o) {
 	size_t pcs_ins = 0;
 	size_t pcs_rem = 0;
 //	std::cout<< "sorted alignment size" << sorted_original_als.size()<<std::endl;	
-	for(size_t i=0; i<sorted_original_als.size(); ++i) {
-		const pw_alignment * al = sorted_original_als.at(i);
+	for(size_t i=0; i<sorted_original_als.size(); i++) {
+		const pw_alignment & al = sorted_original_als.at(i);
 		double gain_of_al = 0;
 
 		// TODO remove
 		double gain1, gain2;
-		common_model.gain_function(*(al), gain1, gain2);
+		common_model.gain_function(al, gain1, gain2);
 		gain1-=base_cost;
 //		std::cout << std::endl<<"at alignment " << i << " length " << al->alignment_length() << " al base gain " << gain1 << std::endl;
 		//al->print();
@@ -440,7 +454,7 @@ void initial_alignment_set<T>::compute_simple(overlap & o) {
 //		o.print_all_alignment();
 
 
-		splitpoints spl(*al, o, data);
+		splitpoints spl(al, o, data);
 		spl.recursive_splits();
 		spl.split_all(remove_als, insert_als);
 		std::vector<double> insert_gains(insert_als.size(), 0);
@@ -482,7 +496,7 @@ void initial_alignment_set<T>::compute_simple(overlap & o) {
 				o.remove_alignment(*it);
 				pcs_rem++;
 			}	
-			for(size_t j=0; j<insert_als.size(); ++j) {
+			for(size_t j=0; j<insert_als.size(); j++) {
 				if(insert_gains.at(j)>0) {
 				o.insert_without_partial_overlap(insert_als.at(j));
 				pcs_ins++;
@@ -713,7 +727,7 @@ void initial_alignment_set<T>::compute_vcover_clarkson(overlap & o) {
 	// add independent set
 	size_t at = 0;
 	double weight_in_independent_set = 0;
-	for(size_t i=0; i<sorted_original_als.size(); ++i) {
+	for(size_t i=0; i<sorted_original_als.size(); i++) {
 		std::set<size_t>::iterator findi = removed.find(i);
 		if(findi == removed.end()) {
 			sorted_original_als.at(at) = backup_soa.at(i);
@@ -759,72 +773,72 @@ compute_cc::compute_cc(const all_data & dat): als_on_reference(dat.numSequences(
 	max_al_ref_length = 0;
 	for(size_t i=0; i<dat.numAlignments(); ++i) {
 		const pw_alignment & a = dat.getAlignment(i);
-		alignments.insert(a);
-		add_on_mmaps(a);
+		alignments.insert(&a);
+		add_on_mmaps(&a);
 	}
 
 }
-void compute_cc::add_on_mmaps(const pw_alignment & pwa) {
-	size_t ref1 = pwa.getreference1();
-	size_t ref2 = pwa.getreference2();
+void compute_cc::add_on_mmaps(const pw_alignment * pwa) {
+	size_t ref1 = pwa->getreference1();
+	size_t ref2 = pwa->getreference2();
 /*	
 	std::cout << "INS " <<std::endl;
 	pwa->print();
 	std::cout << std::endl;	
 */
-	als_on_reference.at(ref1).insert(std::make_pair(pwa.getbegin1(), pwa));
-	als_on_reference.at(ref1).insert(std::make_pair(pwa.getend1(), pwa));
-	als_on_reference.at(ref2).insert(std::make_pair(pwa.getbegin2(), pwa));
-	als_on_reference.at(ref2).insert(std::make_pair(pwa.getend2(), pwa));
+	als_on_reference.at(ref1).insert(std::make_pair(pwa->getbegin1(), pwa));
+	als_on_reference.at(ref1).insert(std::make_pair(pwa->getend1(), pwa));
+	als_on_reference.at(ref2).insert(std::make_pair(pwa->getbegin2(), pwa));
+	als_on_reference.at(ref2).insert(std::make_pair(pwa->getend2(), pwa));
 
 	size_t left, right;
-	pwa.get_lr1(left, right);
+	pwa->get_lr1(left, right);
 	size_t length = right - left + 1;
 	if(length > max_al_ref_length) max_al_ref_length = length;
 	if(right > last_pos.at(ref1)) last_pos.at(ref1) = right;
-	pwa.get_lr2(left, right);
+	pwa->get_lr2(left, right);
 	length = right - left + 1;
 	if(length > max_al_ref_length) max_al_ref_length = length;
 	if(right > last_pos.at(ref2)) last_pos.at(ref2) = right;
 
 }
 
-void compute_cc::remove_on_mmaps(const pw_alignment & al) {
-	size_t ref1 = al.getreference1();
+void compute_cc::remove_on_mmaps(const pw_alignment * al) {
+	size_t ref1 = al->getreference1();
 	size_t left, right;
-	al.get_lr1(left, right);
+	al->get_lr1(left, right);
 
-	std::pair<std::multimap<size_t, pw_alignment>::iterator, std::multimap<size_t, pw_alignment>::iterator > l1 = 
+	std::pair<std::multimap<size_t, const pw_alignment*>::iterator, std::multimap<size_t, const pw_alignment*>::iterator > l1 = 
 		als_on_reference.at(ref1).equal_range(left);
-	for(std::multimap<size_t, pw_alignment>::iterator it = l1.first; it!=l1.second; ++it) {
-		if(al.equals(it->second)) {
+	for(std::multimap<size_t, const pw_alignment*>::iterator it = l1.first; it!=l1.second; ++it) {
+		if(al == it->second) {
 			als_on_reference.at(ref1).erase(it);
 			break;
 		}	
 	}
-	std::pair<std::multimap<size_t, pw_alignment>::iterator, std::multimap<size_t, pw_alignment>::iterator  > r1 = 
+	std::pair<std::multimap<size_t, const pw_alignment*>::iterator, std::multimap<size_t, const pw_alignment*>::iterator  > r1 = 
 		als_on_reference.at(ref1).equal_range(left);
-	for(std::multimap<size_t, pw_alignment>::iterator it = r1.first; it!=r1.second; ++it) {
-		if(al.equals(it->second)) {
+	for(std::multimap<size_t, const pw_alignment*>::iterator it = r1.first; it!=r1.second; ++it) {
+		if(al == it->second) {
 			als_on_reference.at(ref1).erase(it);
 			break;
 		}	
 	}
 
-	size_t ref2 = al.getreference2();
-	al.get_lr2(left, right);
-	std::pair<std::multimap<size_t, pw_alignment>::iterator, std::multimap<size_t, pw_alignment>::iterator  > l2 = 
+	size_t ref2 = al->getreference2();
+	al->get_lr2(left, right);
+	std::pair<std::multimap<size_t, const pw_alignment*>::iterator, std::multimap<size_t, const pw_alignment*>::iterator  > l2 = 
 		als_on_reference.at(ref2).equal_range(left);
-	for(std::multimap<size_t, pw_alignment>::iterator it = l2.first; it!=l2.second; ++it) {
-		if(al.equals(it->second)) {
+	for(std::multimap<size_t, const pw_alignment*>::iterator it = l2.first; it!=l2.second; ++it) {
+		if(al==it->second) {
 			als_on_reference.at(ref2).erase(it);
 			break;
 		}	
 	}
-	std::pair<std::multimap<size_t, pw_alignment>::iterator, std::multimap<size_t, pw_alignment>::iterator  > r2 = 
+	std::pair<std::multimap<size_t, const pw_alignment*>::iterator, std::multimap<size_t, const pw_alignment*>::iterator  > r2 = 
 		als_on_reference.at(ref2).equal_range(left);
-	for(std::multimap<size_t, pw_alignment>::iterator it = r2.first; it!=r2.second; ++it) {
-		if(al.equals(it->second)) {
+	for(std::multimap<size_t, const pw_alignment*>::iterator it = r2.first; it!=r2.second; ++it) {
+		if(al==it->second) {
 			als_on_reference.at(ref2).erase(it);
 			break;
 		}	
@@ -832,31 +846,31 @@ void compute_cc::remove_on_mmaps(const pw_alignment & al) {
 
 }
 
-void compute_cc::compute(std::vector<std::set< pw_alignment , compare_pw_alignment> > & ccs) {
-	std::set <pw_alignment, compare_pw_alignment> seen;
-	std::multimap<size_t , std::set<pw_alignment, compare_pw_alignment> > sorter; // sorts ccs to give largest first
-	for(std::set<pw_alignment, compare_pw_alignment>::iterator it = alignments.begin(); it!=alignments.end(); ++it) {
+void compute_cc::compute(std::vector<std::set< const pw_alignment* , compare_pointer_pw_alignment> > & ccs) {
+	std::set <const pw_alignment*, compare_pointer_pw_alignment> seen;
+	std::multimap<size_t , std::set<const pw_alignment*, compare_pointer_pw_alignment> > sorter; // sorts ccs to give largest first
+	for(std::set<const pw_alignment *, compare_pointer_pw_alignment>::iterator it = alignments.begin(); it!=alignments.end(); ++it) {
 	//	std::cout << "compute_cc" <<std::endl;
-		const pw_alignment & al = *it;
-	//	al.print();
-		std::set<pw_alignment, compare_pw_alignment>::iterator seenal = seen.find(al);
+		const pw_alignment * al = *it;
+	//	al->print();
+		std::set< const pw_alignment*, compare_pointer_pw_alignment>::iterator seenal = seen.find(al);
 	//	std::cout << " seen " << seen.size() << std::endl;
 		if(seenal == seen.end()) {
 		//	std::cout << " getcc" << std::endl;
-			std::set<pw_alignment, compare_pw_alignment> cc;
-			get_cc(al, cc, seen);
+			std::set< const pw_alignment*, compare_pointer_pw_alignment> cc;
+			get_cc(*al, cc, seen);
 	//		std::cout << "FOUND CC size " << cc.size() << std::endl;
 			sorter.insert(std::make_pair(cc.size(), cc));
 		}	
 	}
-	for(std::multimap<size_t , std::set<pw_alignment, compare_pw_alignment> >::reverse_iterator it = sorter.rbegin(); it!=sorter.rend(); ++it) {
+	for(std::multimap<size_t , std::set<const pw_alignment*, compare_pointer_pw_alignment> >::reverse_iterator it = sorter.rbegin(); it!=sorter.rend(); it++) {
 		ccs.push_back(it->second);
 	}
 
 
 
 }
-void compute_cc::get_cc(const pw_alignment & al, std::set <pw_alignment, compare_pw_alignment> & cc, std::set <pw_alignment, compare_pw_alignment> & seen) {
+void compute_cc::get_cc(const pw_alignment & al, std::set <const pw_alignment*, compare_pointer_pw_alignment> & cc, std::set <const pw_alignment*, compare_pointer_pw_alignment> & seen) {
 	size_t left, right;
 	al.get_lr1(left, right);
 //	std::cout << "left1 "<< left << "right1 " << right <<std::endl;
@@ -870,13 +884,13 @@ void compute_cc::get_cc(const pw_alignment & al, std::set <pw_alignment, compare
 
 
 // TODO further improvements to this function are possible if we store intervals on the references in which all alignments were already processed
-void compute_cc::cc_step(size_t ref, size_t left, size_t right, std::set <pw_alignment, compare_pw_alignment> & cc, std::set <pw_alignment , compare_pw_alignment>  & seen ) {
+void compute_cc::cc_step(size_t ref, size_t left, size_t right, std::set <const pw_alignment*, compare_pointer_pw_alignment> & cc, std::set <const pw_alignment* , compare_pointer_pw_alignment>  & seen ) {
 //	std::cout << "beginning of cc step "<<std::endl;
 	// search bounds (where could other alignments which overlap with the current one start or end)
 	// leftbound: all alignments starting at leftbound or ealier either have the end in the search interval or no overlap with the search interval
 //	std::cout << " cc step " << ref << " from " << left << " to " << right << " seen is " << seen.size() << " we are on " << alignments.size() << " alignments" <<  std::endl; 
-	std::multimap<size_t, pw_alignment>::iterator searchbegin;
-	std::multimap<size_t, pw_alignment>::iterator searchend;
+	std::multimap<size_t, const pw_alignment*>::iterator searchbegin;
+	std::multimap<size_t, const pw_alignment*>::iterator searchend;
 	if(right > max_al_ref_length) {
 		size_t leftbound = right - max_al_ref_length;
 		searchbegin = als_on_reference.at(ref).upper_bound(leftbound);
@@ -894,25 +908,27 @@ void compute_cc::cc_step(size_t ref, size_t left, size_t right, std::set <pw_ali
 		searchend = als_on_reference.at(ref).end();
 	}
 
-	std::set <pw_alignment, compare_pw_alignment> seen1;
+	std::set <const pw_alignment * , compare_pointer_pw_alignment> seen1;
 //	std::set <pw_alignment, compare_pw_alignment> seen2;
 
 
 	// search for overlap first, then do all recursive calls after overlapping alignments have been put to seen 
 	// this reduces the maximal recursion level
 	size_t numseen = 0;
-	for(std::multimap<size_t, pw_alignment >::iterator it = searchbegin; it!=searchend; ++it) {
-		const pw_alignment & al = it->second;
-		std::set <pw_alignment , compare_pw_alignment>::iterator seenal = seen.find(al);
+	for(std::multimap<size_t, const pw_alignment* >::iterator it = searchbegin; it!=searchend; ++it) {
+		const pw_alignment * al = it->second;
+	//	std::cout<<"search"<<std::endl;
+	//	al->print();
+		std::set <const pw_alignment* , compare_pointer_pw_alignment>::iterator seenal = seen.find(al);
 		if(seenal == seen.end()) { // if current al not contained in any connected component
 	//		std::cout << " not seen" << std::endl;
 			size_t aleft, aright;	
 	//		size_t leftmost_point_of_al_on_ref = numeric_limits<size_t>::max(); 
-			if(al.getreference1()==ref) {
-				al.get_lr1(aleft, aright);//current alignment
+			if(al->getreference1()==ref) {
+				al->get_lr1(aleft, aright);//current alignment
 			//	std::cout << "alleft "<< aleft << "alright "<<aright <<std::endl;
 				if(aright >= left && aleft <= right) {
-				//	std::cout << "on ref 1 "<<std::endl;
+	//				std::cout << "on ref 1 "<<std::endl;
 					seen.insert(al);
 					seen1.insert(al);
 					cc.insert(al);
@@ -923,13 +939,18 @@ void compute_cc::cc_step(size_t ref, size_t left, size_t right, std::set <pw_ali
 		//			 leftmost_point_of_al_on_ref = aleft;
 		//		}
 			}
-			if(al.getreference2()==ref) {
-				al.get_lr2(aleft, aright);
+			if(al->getreference2()==ref) {
+				al->get_lr2(aleft, aright);
 			//	std::cout << "alleft "<< aleft << "alright "<<aright <<std::endl;
 				if(aright >= left && aleft <= right) {
-				//	std::cout<<"on ref 2 "<<std::endl;
+			//		std::cout<<"on ref 2 "<<std::endl;
+			//		al->print();
 					seen.insert(al);
 					seen1.insert(al);
+					std::set <const pw_alignment*, compare_pointer_pw_alignment>::const_iterator it1 = cc.find(al);
+				//	if(it1 != cc.end()){
+				//		std::cout << "already there! "<<std::endl;
+				//	}
 					cc.insert(al);
 				//	std::cout << "ovlr " << cc.size() << " "  << seen.size() << " ref "<< ref << " : " << left << " " << right << " ovrlaps " << std::endl;
 				//	al.print();
@@ -952,9 +973,11 @@ void compute_cc::cc_step(size_t ref, size_t left, size_t right, std::set <pw_ali
 
 
 	// now remove all seen alignments to be faster 
-
-	for(std::set<pw_alignment, compare_pw_alignment>::iterator it = seen1.begin(); it!=seen1.end(); ++it) {
-		remove_on_mmaps(*it);
+//	std::cout << "remove als"<<std::endl;
+	for(std::set<const pw_alignment * , compare_pointer_pw_alignment>::iterator it = seen1.begin(); it!=seen1.end(); ++it) {
+		const pw_alignment * al = *it;
+	//	al->print();
+		remove_on_mmaps(al);
 	}
 /*	for(std::set<pw_alignment, compare_pw_alignment>::iterator it = seen2.begin(); it!=seen2.end(); ++it) {
 		remove_on_mmaps(*it);
@@ -966,15 +989,15 @@ void compute_cc::cc_step(size_t ref, size_t left, size_t right, std::set <pw_ali
 	}
 //	std::cout << " mmaps length " <<debugsum << std::endl;
 
-	for(std::set<pw_alignment, compare_pw_alignment>::iterator it = seen1.begin(); it!=seen1.end(); ++it) {
-		const pw_alignment & al = *it;
-//		std::cout << "seen1 "<<std::endl;
+	for(std::set<const pw_alignment * , compare_pointer_pw_alignment>::iterator it = seen1.begin(); it!=seen1.end(); ++it) {
+		const pw_alignment * al = *it;
+	//	std::cout << "seen1 "<<std::endl;
 //		al.print();
 		size_t aleft, aright;	
-		al.get_lr2(aleft, aright);
-		cc_step(al.getreference2(), aleft, aright, cc, seen);
-		al.get_lr1(aleft, aright);
-		cc_step(al.getreference1(), aleft, aright, cc, seen);
+		al->get_lr2(aleft, aright);
+		cc_step(al->getreference2(), aleft, aright, cc, seen);
+		al->get_lr1(aleft, aright);
+		cc_step(al->getreference1(), aleft, aright, cc, seen);
 
 	} 	
 /*	for(std::set<pw_alignment, compare_pw_alignment>::iterator it = seen2.begin(); it!=seen2.end(); ++it) {
@@ -1341,15 +1364,50 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment & al) {
 	}
 	void finding_centers::center_frequency(std::map<std::string,std::vector<pw_alignment> > & alignmentsOfClusters, std::vector<std::map<size_t, std::string> > & centerOnseq){//it basically returns indices of centers on each sequence
 		setOfAlignments(alignmentsOfClusters);//set all the alignments on each sequence
-		findMemberOfClusters(alignmentsOfClusters);// returns strings that are member of a cluster	
+		findMemberOfClusters(alignmentsOfClusters);// returns strings that are member of a cluster in memberOfCluster
+	//	size_t index = 0;	
+		//First: fill in the "center_index" vector
 		for(std::map<std::string, std::vector<pw_alignment> >::iterator it2=alignmentsOfClusters.begin(); it2 != alignmentsOfClusters.end();it2++){
-			string cent = it2->first;
-			center_index.push_back(cent);
+			std::string center = it2->first;
+			center_index.push_back(center);
+		//	std::vector<std::string> center_parts;
+		//	strsep(center, ":" , center_parts);
+		//	unsigned int dir = atoi(center_parts.at(0).c_str());
+		//	unsigned int ref = atoi(center_parts.at(1).c_str());
+		//	unsigned int left = atoi(center_parts.at(2).c_str());
+		//	int cent_index = 0;
+	/*		if(dir == 0){
+				//first check if the reverse does not exist and then add the index
+				stringstream cent;
+				cent<< 1 << ":" << ref << ":" << left;
+				std::map<std::string, int>::iterator it = oriented_index.find(cent.str());
+				if(it != oriented_index.end()){
+					assert(it->second < 0);
+					cent_index = -1*it->second;
+				}else{
+					cent_index = index;
+					index +=1;
+				}
+				oriented_index.insert(make_pair(it2->first,cent_index));
+			}else{//if dir = 1
+				stringstream cent;
+				cent<< 0 << ":" << ref << ":" << left;
+				std::map<std::string, int>::iterator it = oriented_index.find(cent.str());
+				if(it != oriented_index.end()){
+					assert(it->second > 0);
+					cent_index = -1*it->second;
+				}else{
+					cent_index = -1*index;
+					index +=1;
+				}
+				oriented_index.insert(make_pair(it2->first,cent_index));	
+			}*/
 		}
 		cout<< "center index size" << center_index.size()<<endl;
 		for(size_t i = 0; i< data.numSequences(); i++){
 			cout << "sequence: " << i << endl;
 			const dnastring & sequence = data.getSequence(i);
+			// Second: Find all the centers on each sequence
 			for(size_t n= 0; n < sequence.length(); n++){
 				string center;
 				std::map<size_t, pw_alignment*>::iterator it=AlignmentsFromClustering.at(i).find(n);
@@ -1361,20 +1419,28 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment & al) {
 					if(it1 != memberOfCluster.end()){
 						center = it1->second;					
 						cout<< "center: "<< center<<endl;
-						size_t cent_index = 0;
-						for(size_t j =0; j < center_index.size(); j ++){
-							if(center_index.at(j)==center){
-								cent_index = j;
-								cout<< "cent_index " << cent_index<<endl;
-								centersOnSequence.at(i).insert(make_pair(n,center));
-								centerOnseq.at(i).insert(make_pair(n,center));//This is the global one
-								break;
-							}
-						}
+					//	size_t cent_index = 0;
+					//	for(size_t j =0; j < center_index.size(); j ++){
+					//		if(center_index.at(j)==center){
+					//			cent_index = j;
+					//			cout<< "cent_index " << cent_index<<endl;
+						centersOnSequence.at(i).insert(make_pair(n,center));
+						centerOnseq.at(i).insert(make_pair(n,center));//This is the global one
+					//			break;
+					//		}
+					//	}
+					/*	int cent_index = 0;
+						std::map<std::string , int>::iterator it2 = oriented_index.find(center);
+						assert(it2 != oriented_index.end());
+						cent_index = it2->second;
+						cout<< "cent_index " << cent_index<<endl;
+						centersOnSequence.at(i).insert(make_pair(n,center));
+						centerOnseq.at(i).insert(make_pair(n,center));//This is the global one	*/						
 					}
 				}
 			}
-			//We are going to find those centers that have less than 5 base pairs  distances. Their indices are saved in a vector.
+			//Third: Find potential candidates for being a long center. 
+			//We are going to find those centers that have less than ALLOWED_GAP base pairs  distances. Their indices are saved in a vector.
 			size_t last_position;
 			size_t first_position;
 			std::map<size_t, std::vector<size_t> > AllConnectedOnes;
@@ -1385,22 +1451,27 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment & al) {
 					first_position = it->first;
 				}
 				std::cout << "position " << it->first <<std::endl;
-				if(it->first - last_position < 500){//TODO reduce the number for bigger set of data!
+				if(it->first - last_position < ALLOWED_GAP){
 					if(vectorOfcenters.size()!=0){
-						std::cout << "smaller than 5! "<<std::endl;
+				//		std::cout << "smaller than ALLOWED_GAP! "<<std::endl;
 					}
 					size_t index;
-					for(size_t k= 0; k < center_index.size(); k++){
+					for(size_t k= 0; k < center_index.size(); k++){//Replaced it with a map
 						if( it->second == center_index.at(k)){
 							index = k;
 							break;
 						}
 					}
+					assert(index >=0 && index < center_index.size());
+				/*	int index;
+					std::map<std::string, int>::iterator it2 = oriented_index.find(it->second);
+					assert(it2 != oriented_index.end());
+					index = it2->second;*/
 					vectorOfcenters.push_back(index);
 					std::cout << "index "<< index << std::endl;
 					
 				}else{
-					std::cout<< "bigger than five: " <<std::endl;
+				//	std::cout<< "bigger than ALLOWED_GAP: " <<std::endl;
 					AllConnectedOnes.insert(make_pair(first_position, vectorOfcenters));
 					vectorOfcenters.clear();
 				}
@@ -1415,23 +1486,33 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment & al) {
 				if(left2 == it->first && p->getreference2() == i){
 					last_position = right2;
 				}
-				std::cout << "last position "<< last_position << std::endl;
+			//	std::cout << "last position "<< last_position << std::endl;
 			}
 			for(std::map<size_t, std::vector<size_t> >::iterator it = AllConnectedOnes.begin(); it != AllConnectedOnes.end(); it++){
 				if(it->second.size() != 1){
 					std::cout<< "pos "<< it->first <<std::endl;
-					 centersOfASequence.at(i).insert(make_pair(it->first, it->second));
+					 centersOfASequence.at(i).insert(make_pair(it->first, it->second));//connected centers that can be potential long centers
 				}
 			}
+			//TODO at this stage i need to check for fully reversed centers and merge two clusters in to one.
 		}
 	}
 	std::map< size_t, std::string> finding_centers::get_sequence_centers(size_t& id)const{
 		return centersOnSequence.at(id);
 	}
 	std::string finding_centers::find_center_name(size_t & centerIndex)const{
+	/*	std::string center;
+		for(std::map<std::string, int>::iterator it = oriented_index.begin(); it != oriented_index.end(); it++){
+			if(it->second == centerIndex){
+				center = it->first;
+				break;
+			}
+		}
+		assert(center.size()>0);
+		return center;*/
 		return center_index.at(centerIndex);
 	}	
-	std::map<size_t, std::vector<size_t> >finding_centers::get_center(size_t seq_id)const{
+	std::map<size_t, std::vector<size_t> >finding_centers::get_center(size_t & seq_id)const{
 		return centersOfASequence.at(seq_id);
 	}
 	size_t finding_centers::get_number_of_centers()const{
@@ -1568,34 +1649,6 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment & al) {
 			}
 		}
 	}
-	void suffix_tree::find_a_node(size_t& node_number,size_t& parent_node, std::vector<size_t>& node){
-		for(size_t i = parent_node; i < nodes.size(); i ++){
-		//	std::cout << "size of nodes: " << nodes.size() <<std::endl;
-			std::vector<size_t> current_node = nodes.at(i);
-			if(node == current_node){
-				std::cout << "i "<< i << std::endl;
-				node_number = i;
-				break;
-			}
-		}
-	}
-	void suffix_tree::find_sibling(size_t& current_node, vector<size_t>& siblings){
-		size_t CommonPar;
-		for(std::multimap<size_t,size_t>::iterator par =nodes_relation.begin();par!=nodes_relation.end();par++){
-			size_t common_par = par->first;
-			pair<std::multimap<size_t,size_t>::iterator , std::multimap<size_t,size_t>::iterator > it = nodes_relation.equal_range(common_par);
-			for(std::multimap<size_t,size_t>::iterator it1 = it.first ; it1 != it.second; it1++){
-				if(it1->second == current_node){
-					CommonPar = common_par;	
-					break;
-				}
-			}
-		}
-		pair<std::multimap<size_t,size_t>::iterator , std::multimap<size_t,size_t>::iterator > it = nodes_relation.equal_range(CommonPar);
-		for(std::multimap<size_t,size_t>::iterator it1 = it.first ; it1 != it.second; it1++){
-			siblings.push_back(it1->second)	;
-		}
-	}
 	void suffix_tree::find_parent(size_t & node_index, size_t & parent){
 		for(std::multimap<size_t,size_t>::iterator par =nodes_relation.begin();par!=nodes_relation.end();par++){
 			size_t common_par = par->first;
@@ -1668,7 +1721,7 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment & al) {
 				}
 			}		
 	}
-	void suffix_tree::create_tree(std::vector<size_t> & center_with_highest_gain, size_t & highest_index ){//makea tree dependent to high_gain. For the first time high_gain == 0 and then it is replaced by new one from merging. For that purpose one may need to difine high_gain vector in main and initialize it with 0 //Is there any better solution than that?
+	void suffix_tree::create_tree(std::vector<size_t> & center_with_highest_gain, size_t & highest_index ){//makea tree dependent to high_gain. For the first time high_gain == 0 and then it is replaced by new one from merging. 
 		nodes.clear();
 		nodes_relation.clear();
 		firstParent.clear();
@@ -1693,12 +1746,12 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment & al) {
 						std::cout << first_parent.at(j)<< " ";
 					}
 					std::cout << "" << std::endl;
-					if(first_parent.size()==0){
+					if(first_parent.size()==0){//if there is no first parent starts with the current suffix
 						std::cout << "if first parent is empty"<<std::endl;
 						nodes.push_back(suffixes.at(seq_id).at(i).at(q));
 						firstParent.insert(make_pair(suffixes.at(seq_id).at(i).at(q),nodes.size()-1));	
 					}else{
-						std::cout << "else "<<std::endl;
+						std::cout << "else "<<std::endl;// there is already a first parent starts with the current suffix
 						std::vector<size_t> common_part;
 						size_t shorter_length = suffixes.at(seq_id).at(i).at(q).size();
 						if(first_parent.size()<= shorter_length){
@@ -1716,11 +1769,11 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment & al) {
 						std::cout << " " << std::endl;
 						std::map<std::vector<size_t>, size_t>::iterator it = firstParent.find(first_parent);
 						assert(it!=firstParent.end());
-						size_t node_index = it->second;//It s updated later on in a way that always is equal to the parent node index
-						std::cout << "parent node index in create_tree: "<<node_index<<std::endl;
+						size_t node_index = it->second;//It is updated later on in a way that always is equal to the parent node index
+					//	std::cout << "parent node index in create_tree: "<<node_index<<std::endl;
 						firstParent.erase(it);
-						firstParent.insert(make_pair(common_part,node_index));
-					//	nodes.at(node_index) = common_part;
+						firstParent.insert(make_pair(common_part,node_index)); //TODO we are adding later in shift_first_parent. Maybe that can be removed from that function
+					//	nodes.at(node_index) = common_part;//fek konam in kar nemikone vase in ke too continus hey avaz mishe
 						std::vector<size_t> current_parent = first_parent;//it will be updated
 						std::vector<size_t> current_string = suffixes.at(seq_id).at(i).at(q);//it will be updated
 						bool making_tree = true;
@@ -1766,6 +1819,33 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment & al) {
 											}
 										}
 									}
+									else if(node_index == nodes.size()-2){
+										std::vector<size_t> last_node = nodes.at(nodes.size()-1);
+										std::vector<size_t> new_suffix;
+										new_suffix.push_back(powerOfTwo.at(31));
+										if(other.size() != 0){
+											nodes.at(node_index +1) =other;
+											nodes.push_back(new_suffix);
+											nodes_relation.insert(make_pair(node_index,node_index+1));
+											nodes_relation.insert(make_pair(node_index,node_index+2));
+											std::map<std::vector<size_t>, size_t>::iterator it = firstParent.find(last_node); 
+											if(it != firstParent.end() && it->second == node_index+1){
+												it->second = node_index+3;
+											}
+										}else{
+											if(current_parent.at(current_parent.size()-1) != powerOfTwo.at(31)){
+												nodes.at(node_index +1) = new_suffix;
+												nodes_relation.insert(make_pair(node_index,node_index+1));
+												if(it != firstParent.end() && it->second == node_index+1){
+													it->second = node_index+2;
+												}
+											}else{
+												making_tree = false;
+												break;
+											}
+										}
+										nodes.push_back(last_node);
+									}
 									else{//Indices of all the nodes after that should be shifted 
 										std::vector<size_t> last_node = nodes.at(nodes.size()-1);
 										std::vector<size_t> second_last_node = nodes.at(nodes.size()-2);
@@ -1776,15 +1856,18 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment & al) {
 											nodes.at(node_index +1) =other;
 											std::vector<size_t> new_suffix;
 											new_suffix.push_back(powerOfTwo.at(31));
-											std::cout << nodes.size()<< " " << node_index+2 << std::endl;
-											if(node_index == nodes.size()-2){
-												nodes.push_back(new_suffix);
-											}else{
+										//	std::cout << nodes.size()<< " " << node_index+2 << std::endl;
+										//	if(node_index == nodes.size()-2){
+										//		nodes.push_back(new_suffix);
+										//	}else{
 												nodes.at(node_index+2) = new_suffix;
-											}
+										//	}
 											//The rest of node relation should be updated
-											std::multimap<size_t,size_t> intermediate;//TODO make a new function for shifting the nodes
-											for(size_t shift = nodes.size()-1; shift > node_index;shift--){
+										//	std::multimap<size_t,size_t> intermediate;
+											size_t upper_bound = nodes.size()-1;
+											size_t shifting_value = 2;
+											shift_node_relation(node_index,  upper_bound , shifting_value);
+										/*	for(size_t shift = nodes.size()-1; shift > node_index;shift--){
 												pair<std::multimap<size_t,size_t>::iterator , std::multimap<size_t,size_t>::iterator > p1 = nodes_relation.equal_range(shift);
 												std::vector<size_t> counter;
 												for(std::multimap<size_t,size_t>::iterator it1 = p1.first ; it1 != p1.second; it1++){
@@ -1797,7 +1880,7 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment & al) {
 													for(size_t in = 0; in < counter.size(); in++){
 														intermediate.insert(make_pair(shift+2, counter.at(in)+2));					
 													}
-												}else{//checked!TODO
+												}else{//Should be changed!
 													//Having same first parents and no child node!
 													size_t ItsParent = nodes.size();
 													size_t ItsParent1 = nodes.size();
@@ -1812,10 +1895,10 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment & al) {
 														intermediate.insert(make_pair(ItsParent2,shift+2));
 													}	
 												}
-											}//the new function covers till here!
-											for(std::multimap<size_t,size_t>::iterator it = intermediate.begin();it != intermediate.end(); it++){
-												nodes_relation.insert(make_pair(it->first, it->second));
-											}
+											}*/
+									//		for(std::multimap<size_t,size_t>::iterator it = intermediate.begin();it != intermediate.end(); it++){
+									//			nodes_relation.insert(make_pair(it->first, it->second));
+									//		}
 											nodes_relation.insert(make_pair(node_index,node_index+1));
 											nodes_relation.insert(make_pair(node_index,node_index+2));
 											std::cout << " node relation for node  " << node_index <<std::endl;
@@ -1824,30 +1907,32 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment & al) {
 												std::cout << it1->second << " " ;
 											}
 											std::cout << " " <<std::endl;
-											if(node_index != nodes.size()-2){
+									//		if(node_index != nodes.size()-2){
 												nodes.push_back(second_last_node);
-											}
+									//		}
 											nodes.push_back(last_node);
-											std::cout << "node size " << nodes.size() << std::endl;//TODO make another shifting function to shift first parents
-											for(size_t shift = node_index+3; shift <nodes.size(); shift++){
-												std::map<std::vector<size_t>, size_t>::iterator it = firstParent.find(nodes.at(shift));
-												if(it != firstParent.end() && it->second == shift-2){
-													std::cout << "shift - 2 " << shift-2 <<std::endl;
-													it->second = shift;
-												}
-											}
-											std::map<std::vector<size_t>,size_t>::iterator it = firstParent.find(nodes.at(node_index));
-											if(it != firstParent.end() && it->second == node_index){					
-												firstParent.erase(it);
-												firstParent.insert(make_pair(common_part,node_index));
-												std::cout << "common part is added to the node " << node_index << std::endl;
-											}//the new function should covers till here	
-											nodes.at(node_index) = common_part;
+											size_t shift_value = 2;
+											shift_first_parent(node_index,shift_value,common_part);
+									//		std::cout << "node size " << nodes.size() << std::endl;
+									//		for(size_t shift = node_index+3; shift <nodes.size(); shift++){
+									//			std::map<std::vector<size_t>, size_t>::iterator it = firstParent.find(nodes.at(shift));
+									//			if(it != firstParent.end() && it->second == shift-2){
+									//				std::cout << "shift - 2 " << shift-2 <<std::endl;
+									//				it->second = shift;
+									//			}
+									//		}
+									//		std::map<std::vector<size_t>,size_t>::iterator it = firstParent.find(nodes.at(node_index));
+									//		if(it != firstParent.end() && it->second == node_index){//maybe it is not needed here since the length is equal to the common part in this case					
+									//			firstParent.erase(it);
+									//			firstParent.insert(make_pair(common_part,node_index));
+									//			std::cout << "common part is added to the node " << node_index << std::endl;
+									//		}//the new function should covers till here	
+								//			nodes.at(node_index) = common_part;
 											std::cout<<"nodes relation1: "<<std::endl;
 											for(std::multimap<size_t , size_t>::iterator it = nodes_relation.begin(); it != nodes_relation.end(); it++){
 												std::cout << it->first <<" "<< it->second << std::endl;
 											}
-										}else{//when the entire current string is on the parent node
+										}else{//when the entire current string is completely on the parent node and parent has no child node 
 											std::vector<size_t> new_suffix;
 											new_suffix.push_back(powerOfTwo.at(31));
 											if(current_parent.at(current_parent.size()-1) != powerOfTwo.at(31)){
@@ -1857,8 +1942,11 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment & al) {
 												std::cout << "here!"<<std::endl;
 												nodes.at(node_index +1) =new_suffix;
 												//The rest of node relation should be updated
-												std::multimap<size_t,size_t> intermediate;
-												for(size_t shift = nodes.size()-1; shift > node_index;shift--){
+										//		std::multimap<size_t,size_t> intermediate;
+												size_t upper_bound = nodes.size()-1;
+												size_t shifting_value = 1;
+												shift_node_relation(node_index,  upper_bound , shifting_value);
+										/*		for(size_t shift = nodes.size()-1; shift > node_index;shift--){
 													pair<std::multimap<size_t,size_t>::iterator , std::multimap<size_t,size_t>::iterator > p1 = nodes_relation.equal_range(shift);
 													std::vector<size_t> counter;
 													for(std::multimap<size_t,size_t>::iterator it1 = p1.first ; it1 != p1.second; it1++){
@@ -1873,24 +1961,6 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment & al) {
 															intermediate.insert(make_pair(shift+1, counter.at(in)+1));					
 														}
 													}
-												/*	else{
-												//	if(p1.first == nodes_relation.end())//checked!
-														std::cout << "end of the map"<<std::endl;
-														size_t ItsParent = nodes.size();// Replaced it with first parent instead
-														size_t ItsParent1 = nodes.size();
-														size_t ItsParent2 = nodes.size();
-														find_parent(shift,ItsParent2);
-													//	find_parent(shift,ItsParent);
-													//	find_parent(node_index,ItsParent1);
-														first_parent_index(shift,ItsParent);
-														first_parent_index(node_index,ItsParent1);
-														std::cout << "shift "<<shift << " nodeIndex "<<node_index <<" shiftParent: "<< ItsParent << " indexParent " << ItsParent1<< " shift parent "<< ItsParent2 <<std::endl;
-														if(ItsParent == ItsParent1&& ItsParent != nodes.size() && ItsParent2 != nodes.size()){
-															std::cout<<"Node had no kids but they have same parent"<<std::endl;
-															delete_relation(ItsParent2,shift);
-															intermediate.insert(make_pair(ItsParent2,shift+1));
-														}
-													}*/	
 												}//NEW CODES: checked on ecoli3, seems it works! 
 												size_t ItsParent = nodes.size();
 												size_t ItsfirstPar = nodes.size();
@@ -1921,14 +1991,16 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment & al) {
 															}
 														}
 													}
-												}
-												for(std::multimap<size_t,size_t>::iterator it = intermediate.begin();it != intermediate.end(); it++){
-													nodes_relation.insert(make_pair(it->first, it->second));
-												}
+												}*/
+										//		for(std::multimap<size_t,size_t>::iterator it = intermediate.begin();it != intermediate.end(); it++){
+										//			nodes_relation.insert(make_pair(it->first, it->second));
+										//		}
 												nodes_relation.insert(make_pair(node_index,node_index+1));
-												nodes.at(node_index) = common_part;// Seems like an extar thing since we already knew the entire parent is covered. 
+												nodes.at(node_index) = common_part;// Seems like an extra work since we already knew the entire parent is covered. 
 												nodes.push_back(last_node);
-												for(size_t shift = node_index+1; shift <nodes.size()-1; shift++){//size -1
+												size_t shift_value = 1;
+												shift_first_parent(node_index, shift_value,common_part);
+										/*		for(size_t shift = node_index+1; shift <nodes.size()-1; shift++){//size -1
 													std::map<std::vector<size_t>, size_t>::iterator it = firstParent.find(nodes.at(shift+1));
 													if(it != firstParent.end() && it->second == shift){
 														it->second = it->second+1;
@@ -1938,7 +2010,7 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment & al) {
 												if(it != firstParent.end() && it->second == node_index){					
 													firstParent.erase(it);
 													firstParent.insert(make_pair(common_part,node_index));
-												}	
+												}*/	
 												std::cout << "# is pushed back!" <<std::endl;
 												for(size_t i = 0; i < nodes.size(); i++){
 													std::vector<size_t> node = nodes.at(i);
@@ -2001,10 +2073,10 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment & al) {
 											}
 										}
 										nodes.push_back(last_node);
-										std::multimap<size_t,size_t> intermediate;//TODO replaced it with the shifting function
+									//	std::multimap<size_t,size_t> intermediate;
 										size_t shifting_value = 1;
-										size_t node_size = nodes.size()-2;
-										shift_node_relation(intermediate, node_index,  node_size , shifting_value);
+										size_t upper_bound = nodes.size()-2;
+										shift_node_relation(node_index,  upper_bound , shifting_value);
 									//	for(size_t shift = nodes.size()-2; shift > node_index;shift--){
 									//		pair<std::multimap<size_t,size_t>::iterator , std::multimap<size_t,size_t>::iterator > p1 = nodes_relation.equal_range(shift);
 									//		std::vector<size_t> counter;
@@ -2020,19 +2092,6 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment & al) {
 									//				intermediate.insert(make_pair(shift+1, counter.at(in)+1));					
 									//			}
 									//		}
-											/*else{
-												size_t ItsParent = nodes.size();
-												size_t ItsParent1 = nodes.size();
-												size_t ItsParent2 = nodes.size();
-												find_parent(shift,ItsParent2);
-												first_parent_index(shift,ItsParent);
-												first_parent_index(node_index,ItsParent1);
-												if(ItsParent == ItsParent1 && ItsParent2 != nodes.size()){
-													delete_relation(ItsParent2,shift);
-													nodes_relation.insert(make_pair(ItsParent2,shift+1));
-													std::cout <<"shift + 1 " << shift + 1<<std::endl;
-												}
-											}*/	
 									//	}//NEW CODE:
 									/*	size_t ItsParent = nodes.size();
 										size_t ItsfirstPar = nodes.size();
@@ -2068,14 +2127,15 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment & al) {
 											delete_relation(node_index,childs.at(j));
 											nodes_relation.insert(make_pair(node_index, childs.at(j)+1));
 										}
-										for(std::multimap<size_t,size_t>::iterator it = intermediate.begin();it != intermediate.end(); it++){
-										std::cout << "it -> first " << it->first << " it->second "<< it->second << std::endl;
-										nodes_relation.insert(make_pair(it->first, it->second));
-										}
+									//	for(std::multimap<size_t,size_t>::iterator it = intermediate.begin();it != intermediate.end(); it++){
+									//		nodes_relation.insert(make_pair(it->first, it->second));
+									//	}
 										std::cout<< "here!"<<std::endl;
 										nodes_relation.insert(make_pair(node_index,node_index+1));
 										std::cout <<"node index + 1 " << node_index + 1<<std::endl;
-										for(size_t shift = node_index+1; shift <nodes.size()-1; shift++){//TODO replace it with shifting function
+										size_t shift_value = 1;
+										shift_first_parent(node_index, shift_value,common_part);
+									/*	for(size_t shift = node_index+1; shift <nodes.size()-1; shift++){
 											std::map<std::vector<size_t>, size_t>::iterator it = firstParent.find(nodes.at(shift+1));		
 											if(it != firstParent.end() && it->second == shift){
 												std::cout << "shift for first parent: " << shift <<std::endl;
@@ -2086,7 +2146,7 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment & al) {
 										if(it != firstParent.end() && it->second == node_index){
 											firstParent.erase(it);
 											firstParent.insert(make_pair(common_part,node_index));	
-										}
+										}*/
 										nodes.at(node_index)= common_part;
 										std::cout<<"nodes relation2: "<<std::endl;
 										for(std::multimap<size_t , size_t>::iterator it = nodes_relation.begin(); it != nodes_relation.end(); it++){
@@ -2118,7 +2178,7 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment & al) {
 									}
 								}
 							}
-							//The second case://The non common part is added as a child node and all old child nodes become children of the non-common part
+							//The second case://The non common part is added as a child node and all old child nodes become children of the non-common part (The third and the fourth one was added here)
 							else if((shorter_length == current_string.size() && common_part.size() == shorter_length) || common_part.size() < shorter_length ){
 								std::vector<size_t> non_common;
 								std::vector<size_t> non_common_2;
@@ -2167,6 +2227,10 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment & al) {
 										}
 										nodes.push_back(non_common);
 										nodes.push_back(last_node);
+										std::map<std::vector<size_t>, size_t>::iterator it = firstParent.find(last_node);
+										if(it != firstParent.end() && it->second == node_index+1){
+											firstParent.insert(make_pair(last_node,node_index+3));
+										}
 									}else{//Indices of all the nodes after that should be shifted 
 										std::vector<size_t> last_node = nodes.at(nodes.size()-1);
 										std::vector<size_t> second_last_node = nodes.at(nodes.size()-2);
@@ -2186,8 +2250,11 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment & al) {
 										nodes.push_back(second_last_node);
 										nodes.push_back(last_node);
 										// Shifting the rest of relations as well:
-										std::multimap<size_t,size_t> intermediate;
-										for(size_t shift = nodes.size()-3; shift > node_index;shift--){
+									//	std::multimap<size_t,size_t> intermediate;
+										size_t upper_bound = nodes.size()-3;
+										size_t shifting_value = 2;
+										shift_node_relation(node_index,  upper_bound , shifting_value);
+									/*	for(size_t shift = nodes.size()-3; shift > node_index;shift--){
 											std::cout << "shift "<< shift << std::endl;
 											pair<std::multimap<size_t,size_t>::iterator , std::multimap<size_t,size_t>::iterator > p1 = nodes_relation.equal_range(shift);
 											std::vector<size_t> counter;
@@ -2202,23 +2269,9 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment & al) {
 													intermediate.insert(make_pair(shift+2, counter.at(in)+2));					
 												}
 											}
-										}
-										/*	else{
-												size_t ItsParent = nodes.size();
-												size_t ItsParent1 = nodes.size();
-												size_t ItsParent2 = nodes.size();
-												find_parent(shift,ItsParent2); //Replaced it with first parent
-											//	find_parent(node_index,ItsParent1);
-												first_parent_index(shift,ItsParent);
-												first_parent_index(node_index,ItsParent1);
-												std::cout << "shift "<< shift << " node_index "<< node_index <<" shift-parent: "<< ItsParent << " index_parent " << ItsParent1<<std::endl;
-												if(ItsParent == ItsParent1&& ItsParent != nodes.size() && ItsParent2 != nodes.size()){
-													std::cout<<"Node had no kids but they have same parent"<<std::endl;
-													delete_relation(ItsParent2,shift);
-													intermediate.insert(make_pair(ItsParent2,shift+2));
-												}	
-											}*/ //NEW_CODE: 
-										size_t ItsParent = nodes.size();
+										}*/
+										//NEW_CODE: 
+								/*		size_t ItsParent = nodes.size();
 										size_t ItsfirstPar = nodes.size();
 										find_parent(node_index,ItsParent);
 										first_parent_index(node_index,ItsfirstPar);
@@ -2247,45 +2300,62 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment & al) {
 													}
 												}
 											}
-										}
-										for(std::multimap<size_t,size_t>::iterator it = intermediate.begin();it != intermediate.end(); it++){
-											nodes_relation.insert(make_pair(it->first, it->second));
-										}
+										}*/
+									//	for(std::multimap<size_t,size_t>::iterator it = intermediate.begin();it != intermediate.end(); it++){
+									//		nodes_relation.insert(make_pair(it->first, it->second));
+									//	}
+										std::cout << "test!"<<std::endl;
 									}
 									nodes.at(node_index) = common_part;
 									nodes_relation.insert(make_pair(node_index,node_index+1));
 									nodes_relation.insert(make_pair(node_index,node_index+2));
 							}else{//It has children
-								std::vector<size_t> last_node = nodes.at(nodes.size()-1);// Not sure if it works for the case that node index is equal to the nodes.size()-2
-								std::vector<size_t> second_last_node;
-								if(nodes.size()-2 != node_index){
+								std::vector<size_t> last_node = nodes.at(nodes.size()-1);//TODO seperate it in to two different conditions if node_index = nodes.size -2 and else.
+								std::vector<size_t> new_suffix;
+								new_suffix.push_back(powerOfTwo.at(31));
+								if(node_index == nodes.size()-2){//Note that since it has an at least one child node, it can not be the last node //TODO first parent, relation
+									if(common_part.size() < shorter_length){
+										nodes.at(node_index+1)=non_common_2;
+									}else{
+										nodes.at(node_index+1)= new_suffix;
+									}
+									nodes.push_back(non_common);
+									nodes.push_back(last_node);
+									assert(childs.size()==1);
+
+								}else{
+									std::vector<size_t> second_last_node;
+//								if(nodes.size()-2 != node_index){
 									second_last_node = nodes.at(nodes.size()-2);
-									std::cout << node_index << " " << nodes.size()-1<< " " << nodes.size()-2 << std::endl;
+//									std::cout << node_index << " " << nodes.size()-1<< " " << nodes.size()-2 << std::endl;
 									for(size_t j =nodes.size()-1; j > node_index+2; j--){
 										nodes.at(j) = nodes.at(j-2);
 									}
-								}else{
-									std::cout<< "exception!" <<std::endl;
-								}
+//								}else{
+//									std::cout<< "exception!" <<std::endl;
+//								}
 							//	nodes.at(node_index) = common_part;
-								if(common_part.size() < shorter_length){
-									nodes.at(node_index+1)=non_common_2;
-									std::cout<< "HEya!" <<std::endl;
-								}else{
-									std::vector<size_t> new_suffix;
-									new_suffix.push_back(powerOfTwo.at(31));
-									nodes.at(node_index+1)= new_suffix;
-									std::cout<< "HEYA!" <<std::endl;
-								}
-								if(nodes.size()-2 != node_index){
+									if(common_part.size() < shorter_length){
+										nodes.at(node_index+1)=non_common_2;
+										std::cout<< "HEya!" <<std::endl;
+									}else{
+								//	std::vector<size_t> new_suffix;
+								//	new_suffix.push_back(powerOfTwo.at(31));
+										nodes.at(node_index+1)= new_suffix;
+										std::cout<< "HEYA!" <<std::endl;
+									}
+//								if(nodes.size()-2 != node_index){
 									nodes.at(node_index+2)= non_common;
 									nodes.push_back(second_last_node);
-								}else{
-									nodes.push_back(non_common);
-								}
-								nodes.push_back(last_node);
-								std::multimap<size_t,size_t> intermediate;
-								for(size_t shift = nodes.size()-2; shift > node_index;shift--){
+//								}else{
+//									nodes.push_back(non_common);
+//								}
+									nodes.push_back(last_node);
+							//	std::multimap<size_t,size_t> intermediate;
+									size_t upper_bound = nodes.size()-2;
+									size_t shifting_value = 2;
+									shift_node_relation(node_index,  upper_bound , shifting_value);
+							/*	for(size_t shift = nodes.size()-2; shift > node_index;shift--){
 									pair<std::multimap<size_t,size_t>::iterator , std::multimap<size_t,size_t>::iterator > p1 = nodes_relation.equal_range(shift);
 									std::vector<size_t> counter;
 									for(std::multimap<size_t,size_t>::iterator it1 = p1.first ; it1 != p1.second; it1++){
@@ -2329,43 +2399,11 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment & al) {
 											}
 										}
 									}
-								}
-								for(std::multimap<size_t,size_t>::iterator it = intermediate.begin();it != intermediate.end(); it++){
-									nodes_relation.insert(make_pair(it->first, it->second));
-								}
-
-								/*	else{//Just fixed it!
-										std::cout << "almost there!" << std::endl;
-										size_t ItsParent = nodes.size();
-										size_t ItsParent1 = nodes.size();
-										size_t ItsParent2 = nodes.size();
-										size_t ItsParent3 = nodes.size();
-										find_parent(shift,ItsParent2);// Replaced it with first parent
-										find_parent(node_index,ItsParent1);
-										first_parent_index(shift,ItsParent);
-										first_parent_index(node_index,ItsParent3);
-									//	if(ItsParent == ItsParent3 && ItsParent != nodes.size()&& ItsParent2 != node_index && ItsParent2 != nodes.size()){
-									//		std::cout<<"they have same parent"<<std::endl;
-									//		delete_relation(ItsParent2,shift);
-									//		nodes_relation.insert(make_pair(ItsParent2,shift+2));
-									//	}
-										if(ItsParent2 == node_index){
-											std::cout<<"they have same parent1"<<std::endl;
-											delete_relation(ItsParent2,shift);
-											nodes_relation.insert(make_pair(ItsParent2+2,shift+2));
-										}
-									//	else if(ItsParent2 ==ItsParent1){
-									//		std::cout<<"they have same parent2"<<std::endl;
-									//		delete_relation(ItsParent2,shift);
-									//		nodes_relation.insert(make_pair(ItsParent2,shift+2));
-									//	}
-										else if(ItsParent == ItsParent3 && ItsParent != nodes.size()&& ItsParent2 < node_index){
-											std::cout<<"they have same parent"<<std::endl;
-											delete_relation(ItsParent2,shift);
-											nodes_relation.insert(make_pair(ItsParent2,shift+2));
-										}
-									}				
 								}*/
+							//	for(std::multimap<size_t,size_t>::iterator it = intermediate.begin();it != intermediate.end(); it++){
+							//		nodes_relation.insert(make_pair(it->first, it->second));
+							//	}
+								}
 								for(size_t j = 0 ; j < childs.size();j++){//Here we add the splitted part of the parent node and all the previous child nodes.
 									delete_relation(node_index,childs.at(j));
 									nodes_relation.insert(make_pair(node_index+2, childs.at(j)+2));
@@ -2378,26 +2416,28 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment & al) {
 								nodes_relation.insert(make_pair(node_index,node_index+1));
 								nodes_relation.insert(make_pair(node_index,node_index+2));
 							}
-							std::map<std::vector<size_t>, size_t> f_par;
-							for(size_t shift = node_index+1; shift <nodes.size()-2; shift++){
-								std::map<std::vector<size_t>, size_t>::iterator it = firstParent.find(nodes.at(shift+2));
-								if(it != firstParent.end() && it->second == shift){
-									f_par.insert(make_pair(it->first,it->second+2));
-								}
-							}
-							for(std::map<std::vector<size_t> , size_t>::iterator it = f_par.begin(); it != f_par.end(); it++){
-								std::map<std::vector<size_t> , size_t>::iterator it1 = firstParent.find(it->first);
-								if(it1 != firstParent.end()){
-									it1->second = it->second;
-								}
-							}
-							std::map<std::vector<size_t>,size_t>::iterator it = firstParent.find(nodes.at(node_index));
-							if(it != firstParent.end() && it->second == node_index){
-								std::cout << "node is first parent!"  << node_index <<std::endl;
-								firstParent.erase(it);
-								firstParent.insert(make_pair(common_part,node_index));
-							}
-							std::cout<<"nodes relation: "<<std::endl;
+						//	std::map<std::vector<size_t>, size_t> f_par;
+							size_t shift_value = 2;
+							shift_first_parent(node_index,shift_value, common_part);
+					//		for(size_t shift = node_index+1; shift <nodes.size()-2; shift++){
+					//			std::map<std::vector<size_t>, size_t>::iterator it = firstParent.find(nodes.at(shift+2));
+					//			if(it != firstParent.end() && it->second == shift){
+					//				f_par.insert(make_pair(it->first,it->second+2));
+					//			}
+					//		}
+					//		for(std::map<std::vector<size_t> , size_t>::iterator it = f_par.begin(); it != f_par.end(); it++){
+					//			std::map<std::vector<size_t> , size_t>::iterator it1 = firstParent.find(it->first);
+					//			if(it1 != firstParent.end()){
+					//				it1->second = it->second;
+					//			}
+					//		}
+					//		std::map<std::vector<size_t>,size_t>::iterator it = firstParent.find(nodes.at(node_index));
+					//		if(it != firstParent.end() && it->second == node_index){
+					//			std::cout << "node is first parent!"  << node_index <<std::endl;
+					//			firstParent.erase(it);
+					//			firstParent.insert(make_pair(common_part,node_index));
+					//		}
+							std::cout<<"nodes relation here is : "<<std::endl;
 							for(std::multimap<size_t , size_t>::iterator it = nodes_relation.begin(); it != nodes_relation.end(); it++){
 								std::cout << it->first <<" "<< it->second << std::endl;
 							}
@@ -2410,7 +2450,7 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment & al) {
 					}
 				}
 			}
-}
+			}
 		}
 		std::cout<< "all the nodes:"<<std::endl;
 		for(size_t i = 0; i < nodes.size(); i++){
@@ -2548,8 +2588,9 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment & al) {
 		size_t power_of_two = powerOfTwo.at(power);
 		return power_of_two;
 	}
-	void suffix_tree::shift_node_relation(std::multimap<size_t,size_t> & intermediate , size_t & node_index, size_t & node_size , size_t & shift){
-		for(size_t i = node_size; i > node_index;shift--){
+	void suffix_tree::shift_node_relation( size_t & node_index, size_t & upper_bound , size_t & shift){
+		std::multimap<size_t,size_t> intermediate;
+		for(size_t i = upper_bound; i > node_index;i--){
 			pair<std::multimap<size_t,size_t>::iterator , std::multimap<size_t,size_t>::iterator > p1 = nodes_relation.equal_range(i);
 			std::vector<size_t> counter;
 			for(std::multimap<size_t,size_t>::iterator it1 = p1.first ; it1 != p1.second; it1++){
@@ -2594,6 +2635,23 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment & al) {
 					}
 				}
 			}
+		}
+		for(std::multimap<size_t,size_t>::iterator it = intermediate.begin();it != intermediate.end(); it++){
+			nodes_relation.insert(make_pair(it->first, it->second));
+		}
+	}
+	void suffix_tree::shift_first_parent(size_t & node_index , size_t & shifting_value, std::vector<size_t> & common_part){
+		for(size_t i = node_index+1; i <nodes.size()-shifting_value; i++){
+			std::map<std::vector<size_t>, size_t>::iterator it = firstParent.find(nodes.at(i+shifting_value));		
+			if(it != firstParent.end() && it->second == i){
+				it->second = it->second+shifting_value;
+			}
+		}
+		std::cout<< "shift function: "<<std::endl;
+		std::map<std::vector<size_t>,size_t>::iterator it = firstParent.find(nodes.at(node_index));
+		if(it != firstParent.end() && it->second == node_index){
+			firstParent.erase(it);
+			firstParent.insert(make_pair(common_part,node_index));
 		}
 	}
 	std::map<size_t, std::vector<size_t> > suffix_tree::get_center_on_a_sequence(size_t & seq_id)const{
@@ -2647,7 +2705,7 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment & al) {
 
 	}
 
-	void merging_centers::merg_gain_value(){//calculates the gain value and builds tree iteratively
+	void merging_centers::merg_gain_value(){//calculates the gain value and builds second tree and so on iteratively
 		std::vector<std::vector<size_t> > nodes = tree.get_nodes();//Includes the centers of each node
 		cout<< "size: " << nodes.size()<<endl;
 		size_t original_center_numbers = centers.get_number_of_centers();
@@ -2661,7 +2719,7 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment & al) {
 			int gain = 0;
 			for(size_t j = 0 ; j < br.size(); j++){
 				for(size_t k =0; k < nodes.at(br.at(j)).size();k++){
-					centers.push_back(nodes.at(br.at(j)).at(k));//push back all the center of all the nodes
+					centers.push_back(nodes.at(br.at(j)).at(k));//push back all the centers of all the nodes on the path br
 				}
 			}
 			size_t power = 31 ;
@@ -2675,7 +2733,7 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment & al) {
 			cout << " " <<endl;
 			std::cout<< "center size: " << centers.size() << "  number of happening: "<< number << std::endl;
 			gain = number*(centers.size())-(number+centers.size());
-			if(centers.size()!= 0){
+			if(centers.size()!= 0){// We may get zero when the original path only had the extra endign char.
 				gains.insert(make_pair(centers,gain));//centers-->index of centers, gain of the long center
 				cout<< "gain "<<gain <<endl;
 			}
@@ -2705,7 +2763,7 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment & al) {
 			highest_gain=0;
 			std::map<std::vector<size_t>, size_t>::iterator hi = merged_centers.find(highest_path);
 			std::vector<size_t> hi_from_map;
-			hi_from_map.push_back(hi->second);//Because we dont want to use the same canter again as the one with the highest gain
+			hi_from_map.push_back(hi->second);//Because we dont want to use the same center again as the one with the highest gain
 			assert(hi != merged_centers.end());
 			for(map<std::vector<size_t>, int>::iterator it = gains.begin(); it != gains.end(); it++){
 				if(it->second > highest_gain && it->first != hi_from_map && it->first.size() != 1){
@@ -2742,10 +2800,10 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment & al) {
 			
 		}		
 	}
-	void merging_centers::adding_new_centers(std::vector<std::vector<std::string> > & long_centers, std::vector<std::map<size_t, std::vector<std::string> > > & centersPositionOnASeq){//Filling in the long centers vector and centersPositionOnASeq
+	void merging_centers::adding_new_centers(std::vector<std::vector<std::string> > & long_centers, std::vector<std::map<size_t, std::vector<std::string> > > & centersPositionOnASeq){//Filling in the long centers vector and centersPositionOnASeq which contains all the long centers
 		//First the initial tree is built:
-		std::vector<size_t> h_gain;
-		size_t index = 0;
+		std::vector<size_t> h_gain;//it is only used for the first time of making tree. for the next times the center with the highest gain is used.
+		size_t index = 0; // The index of the center with the highest gain is used frome the next rounds.
 		tree.create_tree(h_gain,index);//First suffix tree
 		merg_gain_value();
 		size_t biggest_index = 0;
@@ -2834,11 +2892,13 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment & al) {
 			}
 		}
 		for(size_t j = 0 ; j < data.numSequences(); j++){
-			for(std::map<size_t , std::vector<std::string> >::iterator it = centersPositionOnASeq.at(j).begin(); it != centersPositionOnASeq.at(j).end(); it++){
+			std::cout << "num seq "<< j <<std::endl;
+			for(std::map<size_t , std::vector<std::string> >::iterator it = centersPositionOnASeq.at(j).begin(); it != centersPositionOnASeq.at(j).end(); it++){//It includes all the long centers on a sequence
 				if(it != centersPositionOnASeq.at(j).end()){//If there is a long center on that sequence
 					std::vector<bool> sample1;
 					std::vector<bool> sample2;
 					pw_alignment al;
+					pw_alignment self_al;
 					al.setreference1(j);
 					al.setbegin1(it->first);
 					size_t end_of_last_piece=0;
@@ -2862,21 +2922,23 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment & al) {
 						strsep(center, ":" , center_parts);
 					//	unsigned int center_dir = atoi(center_parts.at(0).c_str());
 						unsigned int center_ref = atoi(center_parts.at(1).c_str());
-						unsigned int center_left = atoi(center_parts.at(2).c_str());
+					//	unsigned int center_left = atoi(center_parts.at(2).c_str());
 						if(center_ref == cent_ref){
-							centers_are_on_the_same_ref= true;
+							centers_are_on_the_same_ref= true;//TODO always define an artificial one
 						}else{
 							centers_are_on_the_same_ref=false;
 							break;
 						}
 					}
-					if(centers_are_on_the_same_ref==true){
+				/*	if(centers_are_on_the_same_ref==true){//In this case we may need to make an al between the the center and itself.
 						al.setreference2(cent_ref);
 						al.setbegin2(cent_left);
 						al.setend2(cent_left + length-1);
-					}else{
+					}
+					else{*/
 						std::map<vector<std::string>, vector<pw_alignment> >::iterator new_cent = new_centers.find(it->second);
 						if(new_cent->second.size() == 0){
+							
 							al.setreference2(artificial_ref);
 							artificial_ref = artificial_ref+1;
 						}else{
@@ -2886,13 +2948,14 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment & al) {
 						}
 						al.setbegin2(0);
 						al.setend2(length);
-					}
+				//	}
 					std::cout<< "begin2 "<< al.getbegin2() << " end2 " << al.getend2() << std::endl;
 					//Now second reference is also set.
 					//First we should check if the alignment is not there yet
 					bool dontAdd = false;
-					std::map<vector<std::string>, vector<pw_alignment> >::iterator new_cent = new_centers.find(it->second);
-					for(size_t k =0; k < new_cent->second.size();k++){
+				//	std::map<vector<std::string>, vector<pw_alignment> >::iterator new_cent = new_centers.find(it->second);
+					assert(new_cent != new_centers.end());
+					for(size_t k =0; k < new_cent->second.size();k++){//TODO check if it is necessary to keep this loop. seems unnecessary
 						pw_alignment p1 = new_cent->second.at(k);
 						if(p1.getbegin1()==al.getbegin1()&&p1.getend1()==al.getend1()&&p1.getbegin2()==al.getbegin2()&&p1.getend2()==al.getend2()&&p1.getreference1()==al.getreference1()&&p1.getreference2()==al.getreference2()){
 							dontAdd = true;
@@ -2934,9 +2997,25 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment & al) {
 									std::vector<bool> sample2_p = p.getsample2();
 									std::cout << " sample1_p.size() " << sample1_p.size()<< " " << sample2_p.size()<< " " << p.alignment_length() <<std::endl;
 									std::cout << "pushing back samples " << std::endl;
-									for(size_t m =0; m < sample1_p.size(); m++){
-										sample1.push_back(sample1_p.at(m));
-										sample2.push_back(sample2_p.at(m));
+									std::vector< std::vector<bool> >sample;
+									p.get_reverse_complement_sample(sample);
+									if(p.getbegin1() < p.getend1()){
+										for(size_t m =0; m < sample1_p.size(); m++){
+											sample1.push_back(sample1_p.at(m));
+										}
+									}else{
+										for(size_t m = 0; m < sample.at(0).size();m++){
+											sample1.push_back(sample.at(0).at(m));
+										}
+									}
+									if(p.getbegin2()<p.getend2()){
+										for(size_t m =0; m < sample2_p.size();m++){
+											sample2.push_back(sample2_p.at(m));
+										}
+									}else{
+										for(size_t m = 0; m < sample.at(1).size();m++){
+											sample1.push_back(sample.at(1).at(m));
+										}
 									}
 									std::cout << sample1.size() << " " << sample2.size() << std::endl;
 									break;							
@@ -2974,10 +3053,32 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment & al) {
 							}
 						}
 						al.set_alignment_bits(sample1,sample2);
-						std::cout << "alignment is: " <<std::endl;
+					//	std::cout << "alignment is: " <<std::endl;
 					//	al.print();
 						new_cent->second.push_back(al);
 					}
+//TODO i think there is no need of making such als they can be considered as short al in encoding
+				/*	if(centers_are_on_the_same_ref==true && cent_ref == j && cent_left == it->first){//If all the centers are on the same reference and that reference is the current sequence
+						std::cout << "making self alignment"<<std::endl;
+						self_al.setreference1(cent_ref);
+						self_al.setbegin1(cent_left);
+						self_al.setend1(cent_left + length-1);//TODO
+						self_al.setreference2(cent_ref);
+						self_al.setbegin2(cent_left);
+						self_al.setend2(cent_left + length-1);//TODO
+
+						vector<bool>long_sample;
+						for(size_t m =cent_left; m < self_al.getend1();m++){//TODO insertions should be added!!!
+							char base = data.getSequence(j).at(m);
+							vector<bool> bits(3);
+							pw_alignment::get_bits(base,bits);
+							for(size_t n = 0; n < 3; n++){
+								long_sample.push_back(bits.at(n));
+							}						
+						}
+						self_al.set_alignment_bits(long_sample,long_sample);//TODO sample 2 has insertion
+						new_cent->second.push_back(self_al);						
+					}*/
 				}
 			}
 		}
@@ -3012,8 +3113,8 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment & al) {
 			unsigned int center_left = atoi(center_parts.at(2).c_str());
 			std::map<std::string , std::vector<pw_alignment> >::iterator it = alignments_in_a_cluster.find(centers.at(i));
 			assert(it != alignments_in_a_cluster.end());
-			std::cout<< "al size "<<it->second.size() << std::endl;
-			bool selfAligned = true;
+		//	std::cout<< "al size "<<it->second.size() << std::endl;
+		//	bool selfAligned = true;
 			for(size_t j =0; j < it->second.size();j++){
 				pw_alignment p = it->second.at(j);
 				size_t r1,r2,l1,l2;
@@ -3024,7 +3125,7 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment & al) {
 				std::cout << "l1 " << l1 << " r1 "<< r1 << " l2 "<< l2 << " r2 " << r2 << " ref1 "<<ref1 << " ref2 "<< ref2<<std::endl;
 				std::cout << "seq id " << seq_id << " cent ref "<< center_ref << " current pos " << current_position << " cent lef "<< center_left << std::endl;
 				//If center is not the seq_id
-				if((ref1== seq_id && ref2== center_ref && l1 >= current_position && l1 <= current_position + 5 && l2 ==center_left)){ //5 is the number of gaps!
+				if((ref1== seq_id && ref2== center_ref && l1 >= current_position && l1 <= current_position + ALLOWED_GAP && l2 ==center_left)){ 
 					std::cout<< "on ref 1"<<std::endl;
 					center_length += r2-l2+1;
 					current_position = r1;
@@ -3034,7 +3135,7 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment & al) {
 					}
 					break;
 				}
-				else if(ref2== seq_id && ref1== center_ref && l2 >= current_position && l2<= current_position +5 && l1 ==center_left){
+				else if(ref2== seq_id && ref1== center_ref && l2 >= current_position && l2<= current_position + ALLOWED_GAP && l1 ==center_left){
 					center_length +=r1-l1+1;
 					current_position = r2;
 					std::cout << "cur pos " << current_position << " length "<< center_length << std::endl;
@@ -3044,7 +3145,7 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment & al) {
 					break;
 				}
 				//If we need to align the same piece against itself
-				else if(ref1 == seq_id && seq_id == center_ref && center_left == l1 && center_left >= current_position && center_left <= current_position + 5){
+				else if(ref1 == seq_id && seq_id == center_ref && center_left == l1 && center_left >= current_position && center_left <= current_position + ALLOWED_GAP){
 					center_length +=r1-l1+1;
 					current_position = r1;
 					std::cout << "here!" <<std::endl;
@@ -3053,7 +3154,7 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment & al) {
 					}
 					break;
 				}
-				else if(ref2 == seq_id && seq_id == center_ref && center_left == l2 && center_left >= current_position && center_left <= current_position + 5){
+				else if(ref2 == seq_id && seq_id == center_ref && center_left == l2 && center_left >= current_position && center_left <= current_position + ALLOWED_GAP){
 					center_length +=r2-l2+1;
 					current_position = r2;
 					std::cout << "there!" <<std::endl;

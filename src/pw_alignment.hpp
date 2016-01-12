@@ -75,6 +75,7 @@ class pw_alignment {
 	pw_alignment & operator=(const pw_alignment & al);
 	std::vector<bool> reverse_complement(std::vector<bool> & ); 
 	void get_reverse(pw_alignment &);
+	void get_reverse_complement_sample(std::vector<std::vector<bool> > &);
 
 	private:
 	std::vector<std::vector<bool> > samples;
@@ -83,15 +84,19 @@ class pw_alignment {
 	std::vector<size_t> references;
 
 	// cache costs here:
+	mutable bool costs_cached;
 	mutable std::vector<double> create_costs;
 	mutable std::vector<double> modify_costs;
-	mutable bool costs_cached;
 	
 	static inline void base_translate(char base, bool & bit1, bool & bit2, bool & bit3);
 	static inline char base_translate_back(bool bit1, bool bit2, bool bit3);
 	static inline char complement(char &);
 };
 
+class compare_pointer_pw_alignment {
+	public:
+	bool operator()(const pw_alignment *ar, const pw_alignment *br) const;
+};
 
 class compare_pw_alignment {
 	public:
