@@ -95,9 +95,9 @@
 				
 		std::cout<< "low_dec size: "<< low_dec.size() << "low size "<< low.size()<< std::endl;
 		std::cout<< "high_dec size: "<< high_dec.size() << "high size "<< high.size()<< std::endl;
-		for(size_t i =0 ; i < high.size();i++){
-			cout << "high at " << i << " is " << high.at(i) << endl;
-		}
+	//	for(size_t i =0 ; i < high.size();i++){
+	//		cout << "high at " << i << " is " << high.at(i) << endl;
+	//	}
 		for(size_t i = 0; i < low_dec.size(); i++){
 			if(low.at(i)!=low_dec.at(i)){
 				cout<< "low values at " << i << " are different" << low.at(i) << " " << low_dec.at(i) <<endl;
@@ -139,7 +139,7 @@
 		std::cout<< "enc size: "<< enc_context.size() << "dec size "<< dec_context.size()<< endl;
 	//	assert(enc_context.size()==dec_context.size());
 		for(size_t i = 0; i < dec_context.size(); i++){
-//			cout<< "contexts at " << i << " is " << enc_context.at(i) << " " << dec_context.at(i) <<endl;
+			cout<< "contexts at " << i << " is " << enc_context.at(i) << " " << dec_context.at(i) <<endl;
 			if(enc_context.at(i)!= dec_context.at(i)){
 				cout<< "contexts at " << i << " are different" << enc_context.at(i) << " " << dec_context.at(i) <<endl;
 				exit(1);
@@ -150,6 +150,37 @@
 
 
 
+	}
+
+	void test_encoder::al_high_compare(std::ifstream & in, std::ifstream & in1){
+		while(in.good()){
+			char c;
+			c = in.get();
+			int h;
+			in>>h;
+			high.push_back(h);
+		}	
+		std::cout << "high size "<< high.size()<<std::endl;
+		while(in1.good()){
+		//	char c[sizeof(unsigned int)];
+		//	in1.read(c,sizeof(unsigned int));
+		//	unsigned int *temp = reinterpret_cast<unsigned int*> (c);
+		//	high_dec.push_back(*temp);
+			char c;
+			c = in1.get();
+			int h;
+			in1>>h;
+			high_dec.push_back(h);
+		}
+		std::cout << "decode high size "<< high_dec.size()<<std::endl;
+		for(size_t i =0; i < high.size();i++){
+			cout<< "high at "<< i << " are " << high.at(i) << " and "<< high_dec.at(i)<<endl;
+			if(high.at(i)!=high_dec.at(i)){
+				cout<< "high values at " << i << " are different"<<endl;
+				exit(1);
+			}
+		}
+		std::cout << "test is over! "<<std::endl;
 	}
 #endif
 

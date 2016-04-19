@@ -62,6 +62,8 @@ class all_data {
 
 		void read_fasta_maf(std::string fasta_all_sequences, std::string maf_all_alignments);
 		void read_fasta_sam(std::string fasta_all_sequences, std::string sam_all_alignments);
+		void read_accknown_fasta_sam(std::string fasta_all_sequences, std::string sam_all_alignments);
+
 		// no copy constructor, never copy all data
 		~all_data();
 
@@ -105,6 +107,7 @@ class all_data {
 
 		void insert_sequence(const std::string & acc, const std::string & seq_name, const std::string & dna);
 		static void name_split(const std::string & longname, std::string & acc, std::string & name);
+
 
 
 };
@@ -236,7 +239,6 @@ class counting_functor : public abstract_context_functor {
 
 };
 class mc_model;
-//template <typename T> class dynamic_mc_model; 
 
 
 class cost_functor : public abstract_context_functor {
@@ -257,7 +259,6 @@ class adding_functor : public abstract_context_functor {
 	public:
 
 };
-//template<class T>
 class encoding_functor : public abstract_context_functor {
 	public:
 	encoding_functor(all_data& , mc_model* , wrapper &, dlib::entropy_encoder_kernel_1 &);

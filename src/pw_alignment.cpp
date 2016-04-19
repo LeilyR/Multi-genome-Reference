@@ -631,13 +631,12 @@ size_t pw_alignment::getreference(size_t id)const{
 }
 
 void pw_alignment::get_bits(char& base, std::vector<bool> & three_bits){
-	bool b1;
-	bool b2;
-	bool b3;
+	bool b1,b2,b3;
 	base_translate(base,b1,b2,b3);
 	three_bits.push_back(b1);
 	three_bits.push_back(b2);
 	three_bits.push_back(b3);
+//	std::cout<< "b1,b2,b3 "<< b1 << " "<<b2 << " "<< b3 << std::endl;
 
 }
 void pw_alignment::get_base(char & base, bool& bit1, bool& bit2, bool& bit3){
@@ -694,15 +693,24 @@ void pw_alignment::print()const{
 	std::cout << "al1 seq "<< getreference1() << " b " << getbegin1() << " e " << getend1() <<  " l "  << alignment_length() << std::endl;
 	std::cout << "al2 seq "<< getreference2() << " b " << getbegin2() << " e " << getend2() << std::endl;
 //	if(alignment_length() > 5){
+	size_t counter = 0;
+	size_t counter1 = 0;
 //	for(size_t col = 0; col < 5; col++) {	
-	for(size_t col = 0; col < alignment_length(); col++) {
+/*	for(size_t col = 0; col < alignment_length(); col++) {
 	//	if(col < 3 || (alignment_length() - col < 3)) {
 			char c1;
 			char c2;
 			alignment_col(col, c1, c2);
 			std::cout <<col <<"\t"<< c1<<"\t"<<c2<<std::endl;
+			if(c2 == '-'){
+				counter ++;
+			}
+			if(c1 == '-'){
+				counter1 ++;
+			}
 	//	}
-	}
+	}*/
+//	std::cout << "counter "<<counter << " counter1 "<< counter1 <<std::endl;
 //}
 	
 }
