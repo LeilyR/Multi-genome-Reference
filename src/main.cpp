@@ -1801,10 +1801,6 @@ int do_dynamic_mc_model(int argc, char * argv[]) {
 	} // for connected components
 	clock_t graph_ma_time = clock();
 
-
-	//exit(0); // TODO 
-
-
 	// TODO better separation of the different applications of our program: create/read model, compress/decompress sequences, create graph
 	// write graph result in maf format
 	write_graph_maf(graphout, alignments_in_a_cluster, data);//includes clusters with no associated member.
