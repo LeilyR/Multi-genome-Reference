@@ -4,7 +4,7 @@ CXX = g++
 CFLAGS = -Wall -fmessage-length=50 -fopenmp 
 CXXFLAGS = -Wall -fmessage-length=50 -fopenmp -pedantic 
 #OPTFLAGS = -O3 -DNDEBUG
-OPTFLAGS = -O3 -DNDEBUG 
+#OPTFLAGS = -O3 -DNDEBUG 
 DEBUGFLAGS = -g3 -O0 -gdwarf-2 
 
 DEBUG = 1
@@ -29,7 +29,7 @@ LIBARGS =   apclusterunix64.so -L../dlib_build -ldlib  libStatGen-1.0.13/libStat
 # include libStatGen-1.0.13/Makefiles/Makefile.include
 
 PROGS = graph
-OBJS = pw_alignment.o data.o test.o graph.o  needleman.o dynamic_mc.o 
+OBJS = pw_alignment.o data.o test.o graph.o  needleman.o dynamic_mc.o alignment_index.o
 
 # .DEFAULT_GOAL := graph 
 all: $(PROGS)
@@ -37,10 +37,10 @@ all: $(PROGS)
 
 
 
-graph: main.cpp $(OBJS) model.cpp model.hpp pw_alignment.hpp data.hpp graph.hpp needleman.hpp encoder.hpp
+graph: main.cpp $(OBJS) model.cpp model.hpp pw_alignment.hpp data.hpp graph.hpp needleman.hpp encoder.hpp dynamic_encoder.hpp dynamic_decoder.hpp alignment_index.hpp
 	$(CXX) -o graph $(CXXFLAGS) $(INCLUDEARGS) main.cpp $(OBJS) $(LIBARGS)
 	
-graph.o: graph.cpp data.hpp needleman.hpp graph.hpp
+graph.o: graph.cpp data.hpp needleman.hpp graph.hpp 
 	$(CXX) -o graph.o $(CXXFLAGS) $(INCLUDEARGS) -c graph.cpp
 
 pw_alignment.o: pw_alignment.cpp pw_alignment.hpp
@@ -48,6 +48,9 @@ pw_alignment.o: pw_alignment.cpp pw_alignment.hpp
 
 data.o: data.cpp pw_alignment.hpp data.hpp
 	$(CXX) -o data.o $(CXXFLAGS) $(INCLUDEARGS) -c data.cpp 
+
+alignment_index.o: alignment_index.cpp alignment_index.hpp intervals.hpp intervals.cpp
+	$(CXX) -o alignment_index.o $(CXXFLAGS) $(INCLUDEARGS) -c alignment_index.cpp
 
 dynamic_mc.o: dynamic_mc.cpp dynamic_mc.hpp  data.hpp
 	$(CXX) -o dynamic_mc.o $(CXXFLAGS) $(INCLUDEARGS) -c dynamic_mc.cpp

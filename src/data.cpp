@@ -474,8 +474,7 @@ void all_data::read_fasta_sam(std::string fasta_all_sequences, std::string sam_a
 
 }
 
-
-void all_data::read_fasta_maf(std::string fasta_all_sequences, std::string maf_all_alignments) {
+void all_data::read_accknown_fasta_sam(std::string fasta_all_sequences, std::string sam_all_alignments){
 	std::ifstream fastain(fasta_all_sequences.c_str());
 	if(fastain) {
 		std::string str;
@@ -500,6 +499,190 @@ void all_data::read_fasta_maf(std::string fasta_all_sequences, std::string maf_a
 		}
 		// store last sequence
 		insert_sequence(curacc, curname, curseq.str());
+		curname = "";
+		curacc = "";
+		curseq.str("");
+		fastain.close();
+	} else {
+		std::cerr << "Error: cannot read: " << fasta_all_sequences << std::endl;
+		exit(1);
+	}
+	std::cout << "loaded " << sequences.size() << " sequences" << std::endl;
+
+	//Read the alignments from sam file
+	std::cout << "readAlignment sam file"<<std::endl;
+
+	SamFile samIn;
+	samIn.OpenForRead(sam_all_alignments.c_str());
+
+	// Read the sam header.
+	SamFileHeader samHeader;
+	samIn.ReadHeader(samHeader);
+
+	SamRecord samRecord;
+
+
+	SamStatus::Status returnStatus = SamStatus::SUCCESS;
+
+	Cigar* tmpCigar;
+	std::string alRefSeq, alReadSeq;
+	int skip_alt = 0;
+	int skip_self = 0;
+	GenomeSequence myRefSeq(fasta_all_sequences.c_str());
+	myRefSeq.setDebugFlag(1);
+	size_t skip_reverse = 0;
+	while(samIn.ReadRecord(samHeader, samRecord)){
+
+		// Achtung : sam file considere the file reference as an uniqe sequence even if there are different sequences on the reference, so the positions are concatenated.
+		//e.g. if I take the first base of the second sequence from my reference.fasta, it will not return 1 but lengthOfTheSequence1 + 1 !
+
+		// For each Record do :
+		tmpCigar = samRecord.getCigarInfo(); //Pointer to Cigar object
+		const char* currentSeq = samRecord.getSequence();
+		
+		// Loop through the read and determine the difference with the reference
+		int prevRef = -1;
+		for(int index = 0; index < samRecord.getReadLength(); index++)
+		{
+			int refOffset = tmpCigar->getRefOffset(index);
+			if(refOffset == Cigar::INDEX_NA)
+			{
+				// No reference base, meaning it is not in the reference, so add missing
+				alRefSeq += '-';
+				alReadSeq += currentSeq[index];
+			}
+			else
+			{
+				// While the reference offset is not 1 more than the previous, it means
+				// there is a deletion/N, so add missing to the read, and add the reference bases.
+				while(refOffset != ++prevRef)
+				{
+					alReadSeq += '-';
+					alRefSeq += myRefSeq[samRecord.get1BasedPosition() + prevRef];
+
+				}
+				//now we are at a spot in both the reference and the read, so add it.
+				alReadSeq += currentSeq[index];
+				alRefSeq += myRefSeq[samRecord.get1BasedPosition() + refOffset];
+			}
+		}
+
+		// Reference
+		std::string acc1;
+		std::string name1;
+		name_split(samRecord.getReferenceName(), acc1, name1);
+		size_t start1 = samRecord.get1BasedPosition() - 1 ; //XXX why -1?
+		size_t incl_end1 = start1 + tmpCigar->getExpectedReferenceBaseCount() - 1 ;
+		std::string tmpString = acc1 + ":" + samRecord.getReferenceName();
+	//	std::cout << "tmpString1 " << tmpString << std::endl;
+		std::map<std::string, size_t>::iterator findseq1 = longname2seqidx.find(samRecord.getReferenceName());
+		if(findseq1==longname2seqidx.end()) {
+			std::cerr << "Error: unknown sequence in sam file : " << samRecord.getReferenceName() << std::endl;
+			exit(1);
+		}
+		size_t idx1 = findseq1->second;
+
+		// Read
+		std::string acc2;
+		std::string name2;
+		name_split(samRecord.getReadName(), acc2, name2);
+		size_t start2;
+		if(tmpCigar->getNumBeginClips()==0)
+			start2 = 0;
+		else
+			start2 = tmpCigar->getNumBeginClips()+1; // getNumbeginClips give the number of clip and the read start at the next one ( so +1)
+
+		size_t incl_end2 = start2 + samRecord.getReadLength() -1;
+
+		// In Sam file : Reverse and Forward ??
+		std::string tmpString2 = acc2 + ":" + samRecord.getReadName();
+	//	std::cout << "tmpString2 " << tmpString << std::endl;
+		std::map<std::string, size_t>::iterator findseq2 = longname2seqidx.find((samRecord.getReadName()));
+		if(findseq2==longname2seqidx.end()) {
+			std::cerr << "Error: unknown sequence in sam file : " << samRecord.getReadName() << std::endl;
+			exit(1);
+		}
+		size_t idx2 = findseq2->second;
+		if(idx1 != idx2 || !(start1==start2 && incl_end1 == incl_end2)) {
+			bool rev_skip = false;
+			for(size_t i = 0; i < alignments.size();i++){
+				pw_alignment & p = alignments.at(i);
+				if(p.getreference1()==idx1 && p.getreference2() == idx2 && start1 == p.getend1() && incl_end1 == p.getbegin1() && start2 == p.getend2() && incl_end2 == p.getbegin2()){
+					rev_skip = true;
+					skip_reverse ++;
+					break;
+				}else if(p.getreference1()==idx2 && p.getreference2() == idx1 &&  start1 == p.getend2() && incl_end1 == p.getbegin2() && start2 == p.getend1() && incl_end2 == p.getbegin1()){
+					rev_skip = true;
+					skip_reverse ++;
+					break;
+				}
+			}
+			if(rev_skip == false){
+				bool skip = false;
+				// check if we already have an alignment with same coordinates
+				for(size_t i =0; i < alignments.size();i++){ 
+					const pw_alignment & al = alignments.at(i);
+					if(al.getreference1() == idx1 && al.getreference2()==idx2 && al.getbegin1()==start1 && al.getbegin2()==start2 && al.getend1()== incl_end1 && al.getend2()==incl_end2){
+						skip = true;
+						break;
+					}
+					if(al.getreference2() == idx1 && al.getreference1()==idx2 && al.getbegin2()==start1 && al.getbegin1()==start2 && al.getend2()== incl_end1 && al.getend1()==incl_end2){
+						skip = true;
+						break;
+					}
+				}
+				if(skip) {
+					skip_alt++;
+				} else {
+					pw_alignment al(alRefSeq, alReadSeq, start1, start2, incl_end1, incl_end2, idx1, idx2);
+					alignments.push_back(al);
+					std::cout << alignments.size()<<std::endl;
+				}
+			}
+
+		} else {
+			skip_self++;
+			std::cerr << "Warning: Skip self alignment in seq " << idx1 << " from " << start1 << " to " << incl_end1 << std::endl;			
+		}
+
+
+	}
+
+}
+void all_data::read_fasta_maf(std::string fasta_all_sequences, std::string maf_all_alignments) {
+	std::ifstream fastain(fasta_all_sequences.c_str());
+	if(fastain) {
+		std::string str;
+		std::stringstream curseq;
+		std::string curname("");
+		std::string curacc("");
+		std::cout<<"check point "<<std::endl;
+		while(getline(fastain, str)) {
+			if(str.at(0)=='>') {
+				if(0!=curname.compare("")) { // store previous sequence
+					if(curseq.str().size()!=0){
+						insert_sequence(curacc, curname, curseq.str());
+					}else{
+						std::cerr << "Warning: A sequence of length zero is skipped " <<std::endl;
+					}
+					curname = "";
+					curacc = "";
+					curseq.str("");
+				}
+
+				// read next header
+				std::string fhead = str.substr(1);
+				name_split(fhead, curacc, curname);
+			} else {
+				curseq << str;
+			}
+		}
+		// store last sequence
+		if(curseq.str().size()!=0){
+			insert_sequence(curacc, curname, curseq.str());
+		}else{
+			std::cerr << "Warning: A sequence of length zero is skipped " <<std::endl;
+		}
 		//std::cout << "R " << curseq.str().substr(62750, 15) << std::endl;
 		curname = "";
 		curacc = "";
@@ -512,12 +695,12 @@ void all_data::read_fasta_maf(std::string fasta_all_sequences, std::string maf_a
 
 	std::cout << "loaded " << sequences.size() << " sequences" << std::endl;
 	
-	std::vector< std::multimap< size_t, size_t> > als_on_reference; // sequence index -> begin pos on that sequence -> alignment index
+//	std::vector< std::multimap< size_t, size_t> > als_on_reference; // sequence index -> begin pos on that sequence -> alignment index
 	// a new multimap for each ref sequence
-	als_on_reference.resize(sequences.size());
-	for(size_t i=0; i<sequences.size(); ++i) {
-		als_on_reference.at(i) = std::multimap<size_t, size_t>();
-	}
+//	als_on_reference.resize(sequences.size());
+//	for(size_t i=0; i<sequences.size(); i++) {
+//		als_on_reference.at(i) = std::multimap<size_t, size_t>();
+//	}
 
 
 
@@ -525,6 +708,7 @@ void all_data::read_fasta_maf(std::string fasta_all_sequences, std::string maf_a
 	size_t skip_self = 0;
 	size_t skip_alt = 0;
 	size_t skip_reverse = 0;
+	std::set<pw_alignment, compare_pw_alignment> setOfAls;
 	if(mafin) {
 		std::string str;
 		while(getline(mafin, str)) {
@@ -600,65 +784,67 @@ void all_data::read_fasta_maf(std::string fasta_all_sequences, std::string maf_a
 						start2 = seqlength2 - start2 -1;
 						incl_end2 = seqlength2 - tmp - size2;
 					}
-					
+					//Skip if two references are reverse of eachother
+				//	if(idx1==idx2 && start1 == incl_end2 && start2 == incl_end1){
+				//		skip_self++;
+				//	}
 					// both al parts not identical	
-					if(idx1 != idx2 || !(start1==start2 && incl_end1 == incl_end2    )) {
+					if(idx1 != idx2 || !(start1==start2 && incl_end1 == incl_end2)) {//TODO : if idx1 != idx2 else: if(!(start1==start2 && incl_end1 == incl_end2)||!(start1==incl_end2 && start2 == incl_end1)
 						bool rev_skip = false;
-						for(size_t i = 0; i < alignments.size();i++){
-							pw_alignment & p = alignments.at(i);
-							if(p.getreference1()==idx1 && p.getreference2() == idx2 && start1 == p.getend1() && incl_end1 == p.getbegin1() && start2 == p.getend2() && incl_end2 == p.getbegin2()){
-								rev_skip = true;
-								skip_reverse ++;
-							}else if(p.getreference1()==idx2 && p.getreference2() == idx1 &&  start1 == p.getend2() && incl_end1 == p.getbegin2() && start2 == p.getend1() && incl_end2 == p.getbegin1()){
-								rev_skip = true;
-								skip_reverse ++;
-							}
+					//	for(size_t i = 0; i < alignments.size();i++){
+						pw_alignment al(al1, al2, start1, start2, incl_end1, incl_end2, idx1, idx2);
+						//Check if the reverse of the alignment exists
+						pw_alignment p;
+						al.get_reverse(p);
+						std::set<pw_alignment, compare_pw_alignment>::iterator find_al = setOfAls.find(p);
+						if(find_al!=setOfAls.end()){
+							rev_skip = true;
+							skip_reverse ++;
 						}
+					//		pw_alignment & p = alignments.at(i);
+					//		if(p.getreference1()==idx1 && p.getreference2() == idx2 && start1 == p.getend1() && incl_end1 == p.getbegin1() && start2 == p.getend2() && incl_end2 == p.getbegin2()){
+					//			rev_skip = true;
+					//			skip_reverse ++;
+					//			break;
+					//		}else if(p.getreference1()==idx2 && p.getreference2() == idx1 &&  start1 == p.getend2() && incl_end1 == p.getbegin2() && start2 == p.getend1() && incl_end2 == p.getbegin1()){
+					//			rev_skip = true;
+					//			skip_reverse ++;
+					//			break;
+					//		}
+					//	}
 						if(rev_skip == false){
 							bool skip = false;
-
 							// check if we already have an alignment with same coordinates
-							// because we are looking for identical alignment it suffices to go over only one multimap
-							std::pair<std::multimap<size_t, size_t>::iterator, std::multimap<size_t, size_t>::iterator> eqr =
-							als_on_reference.at(idx1).equal_range(start1);
-							for(std::multimap<size_t, size_t>::iterator it = eqr.first; it!=eqr.second; ++it) {
-								pw_alignment & al = alignments.at(it->second);
-								size_t same_ref = 2;
-								if(al.getreference(0)==idx1) {
-									same_ref = 0;
-								} else if(al.getreference(1)==idx1) {
-									same_ref = 1;
+							std::set<pw_alignment, compare_pw_alignment>::iterator find_al = setOfAls.find(al);
+							if(find_al!=setOfAls.end()){
+								skip = true;
+							}
+						/*	for(size_t i =0; i < alignments.size();i++){ //TODO
+								const pw_alignment & al = alignments.at(i);
+								if(al.getreference1() == idx1 && al.getreference2()==idx2 && al.getbegin1()==start1 && al.getbegin2()==start2 && al.getend1()== incl_end1 && al.getend2()==incl_end2){
+									skip = true;
+									break;
 								}
-								assert(same_ref < 2);
-								size_t other_ref = 1 - same_ref;
-								if(al.getreference(other_ref) == idx2) { // al and new alignment on same sequences
-									if(start1 == al.getbegin(same_ref) && start2 == al.getbegin(other_ref) && 
-											incl_end1 == al.getend(same_ref) && incl_end2 == al.getend(other_ref)) {
-										skip =true;
-										break;
-									}
+								if(al.getreference2() == idx1 && al.getreference1()==idx2 && al.getbegin2()==start1 && al.getbegin1()==start2 && al.getend2()== incl_end1 && al.getend1()==incl_end2){
+									skip = true;
+									break;
 								}
-						 	}
-					
+							}*/
 							if(skip) {
 								skip_alt++;
 							} else {
+							//	pw_alignment al(al1, al2, start1, start2, incl_end1, incl_end2, idx1, idx2);
+								if((idx1 == idx2)&&(start1 == incl_end2)&&(start2==incl_end1)){
 
-								pw_alignment al(al1, al2, start1, start2, incl_end1, incl_end2, idx1, idx2);
-								size_t alidx = alignments.size();
-								alignments.push_back(al);
-	
-
-								als_on_reference.at(idx1).insert(std::make_pair(start1, alidx));
-								als_on_reference.at(idx2).insert(std::make_pair(start2, alidx));
-
-
+								}else{
+									alignments.push_back(al);
+								}
 							}
 						}
 
 					} else {
 						skip_self++;
-						// std::cerr << "Warning: Skip self alignment in seq " << idx1 << " from " << start1 << " to " << incl_end1 << std::endl;
+					//	std::cerr << "Warning: Skip self alignment in seq " << idx1 << " from " << start1 << " to " << incl_end1 << std::endl;
 					
 					}
 
@@ -668,7 +854,7 @@ void all_data::read_fasta_maf(std::string fasta_all_sequences, std::string maf_a
 				}
 			
 			
-			}	
+			}
 		}
 		mafin.close();
 
@@ -679,14 +865,24 @@ void all_data::read_fasta_maf(std::string fasta_all_sequences, std::string maf_a
 		std::cout << "Loaded: " << sequences.size() << " sequences and " << alignments.size() << " pairwise alignments " << std::endl;
 		std::cout << skip_self << " self alignments were skipped" << std::endl;
 		std::cout << skip_alt << " alternative alignments of identical regions were skipped" << std::endl;
-		std::cout << skip_reverse << " reverse alignment duplicates skipped" << std::endl;
+		std::cout << skip_reverse << " reverse alignment duplicates were skipped" << std::endl;
 	
 	} else {
 		std::cerr << "Error: cannot read: " << maf_all_alignments << std::endl;
 		exit(1);
 	}
-
-
+//	std::vector<pw_alignment> intermediate;//TODO add it as a condition at the beginning when you skip
+//	for(size_t i = 0; i < alignments.size();i++){
+//		pw_alignment p = alignments.at(i);
+//		if(p.getreference1()==p.getreference2() && p.getbegin1()==p.getend2()&&p.getbegin2()==p.getend1()){
+//			p.print();
+//		}
+//		else{
+//			intermediate.push_back(p);
+//		}
+//	}
+//	alignments = intermediate;
+	std::cout << alignments.size() <<std::endl;
 }
 
 all_data::~all_data() {
@@ -743,7 +939,7 @@ all_data::~all_data() {
 		return longname2seqidx;
 	}
 
-	int all_data::findIdAlignment(std::string name,int start, int end){ // declare in graph or data ?
+	int all_data::findIdAlignment(std::string name,unsigned int start, unsigned int end){ // declare in graph or data ?
 		for(std::vector<pw_alignment>::iterator it = alignments.begin(); it != alignments.end(); ++it){
 			size_t idReference = it->getreference1();
 			std::string nameReference = get_seq_name(idReference);
@@ -761,26 +957,26 @@ all_data::~all_data() {
 		accession_name.insert(std::make_pair(acc, accession_name.size()));
 		std::cout<< "acc "<< acc <<" accession name size: " << accession_name.size() <<std::endl;
 	}
-	void all_data::insert_sequence(const std::string & acc, const std::string & seq_name, const std::string & dna) {
-	size_t seq_id = sequences.size();
-	sequences.push_back(dnastring(dna));
-	sequence_names.push_back(seq_name);
-	std::map<std::string, std::vector<size_t> >::iterator findacc = acc_sequences.find(acc);
-	size_t acc_id;
-	if(findacc == acc_sequences.end()) {
-		acc_sequences.insert(std::make_pair(acc, std::vector<size_t>(0)));
-		findacc = acc_sequences.find(acc);
-		acc_id = accession_name.size();	
-		accession_name.insert(std::make_pair(acc, acc_id));	
-	} else {
-	std::map<std::string, size_t>::iterator find_acc_id = accession_name.find(acc);
-	acc_id = find_acc_id -> second;
-	}
-	findacc->second.push_back(seq_id);
-	sequence_to_accession.push_back(acc_id);
-	std::stringstream longname;
-	longname << acc << ":" << seq_name;
-	longname2seqidx.insert(std::make_pair(longname.str(), seq_id));
+	void all_data::insert_sequence(const std::string & acc, const std::string & seq_name, const std::string & dna){
+		size_t seq_id = sequences.size();
+		sequences.push_back(dnastring(dna));
+		sequence_names.push_back(seq_name);
+		std::map<std::string, std::vector<size_t> >::iterator findacc = acc_sequences.find(acc);
+		size_t acc_id;
+		if(findacc == acc_sequences.end()) {
+			acc_sequences.insert(std::make_pair(acc, std::vector<size_t>(0)));
+			findacc = acc_sequences.find(acc);
+			acc_id = accession_name.size();	
+			accession_name.insert(std::make_pair(acc, acc_id));	
+		} else {
+			std::map<std::string, size_t>::iterator find_acc_id = accession_name.find(acc);
+			acc_id = find_acc_id -> second;
+		}
+		findacc->second.push_back(seq_id);
+		sequence_to_accession.push_back(acc_id);
+		std::stringstream longname;
+		longname << acc << ":" << seq_name;
+		longname2seqidx.insert(std::make_pair(longname.str(), seq_id));
 	}
 
 
@@ -792,27 +988,24 @@ all_data::~all_data() {
 	
 **/		
 	void all_data::name_split(const std::string & longname, std::string & acc, std::string & name) {
-	std::vector<std::string> wparts; // remove all after first space
-	strsep(longname, " ", wparts);
-	std::string wname = wparts.at(0);
-	std::vector<std::string> fparts;
-	strsep(wname, ":", fparts);
-	if(fparts.size()< 2) {
-		std::cerr << "Error: sequence " << longname << " does not contain an Accession name separated by a colon" << std::endl;
-		exit(1);
+		std::vector<std::string> wparts; // remove all after first space
+		strsep(longname, " ", wparts);
+		std::string wname = wparts.at(0);
+		std::vector<std::string> fparts;
+		strsep(wname, ":", fparts);
+		if(fparts.size()< 2) {
+			std::cerr << "Error: sequence " << longname << " does not contain an Accession name separated by a colon" << std::endl;
+			exit(1);
+		}
+		acc = fparts.at(0);
+		std::stringstream namewriter;
+		for(size_t i=1; i<fparts.size();++i) {
+			if(i!=1) namewriter << ":";
+			namewriter << fparts.at(i);
+		}
+		name = namewriter.str();
 	}
-	acc = fparts.at(0);
-	std::stringstream namewriter;
-	for(size_t i=1; i<fparts.size();++i) {
-		if(i!=1) namewriter << ":";
-		namewriter << fparts.at(i);
-	}
-	name = namewriter.str();
-
-
-}
-
-
+	
 bool all_data::alignment_fits_ref(const pw_alignment & alr) const {
 	const pw_alignment * al = &alr;
 	const dnastring & ref1 = getSequence(al->getreference1());
@@ -873,7 +1066,7 @@ bool all_data::alignment_fits_ref(const pw_alignment & alr) const {
 			//	al->print();
 				std::cerr << " at " << al2at <<std::endl;
 				std::cerr << "Warning: alignment test failed. Alignment has " << al2char << " where reference sequence has " << rchar << std::endl;
-				al->print();
+			//	al->print();
 			//	print_ref(al);
 				return false;
 			}
@@ -1001,18 +1194,63 @@ size_t all_data::get_seq_size(size_t s) const {
 	return sequences.at(s).length();
 }
 void all_data::compare_seq_with_decoding(std::ifstream & in){
+	size_t total_length = 0;
 	char c;
+//	std::cout << numSequences() << std::endl;
+//	size_t base = 0;
+//	for(size_t i = 0 ; i < numSequences();i++){
+//		dnastring sequence = sequences.at(i);
+//		base += sequence.length();
+//		if(sequence.length()==0){
+//			std::cout << "seq " << i <<" has length 0!"<<std::endl;
+//		}
+//	}
+//	std::cout << "total base " << base <<std::endl;
 	for(size_t i = 0 ; i < numSequences();i++){
-		unsigned int n;
-		in >> n;
+		size_t n = 0;
+		char c1[sizeof(uint32_t)];
+		in.read(c1,sizeof(uint32_t));
+		uint32_t *temp = reinterpret_cast<uint32_t*> (c1);
+		n = *temp;
+		std::cout<< "n " << n  << " i "<< i<< std::endl;
 		assert( n == i);
 		dnastring sequence = sequences.at(i);
 		std::cout<< "length: "<<sequence.length()<<std::endl;
+		total_length += sequence.length();
 		for(size_t j =0 ; j < sequence.length(); j++){
 			c = in.get();
-			std::cout<< "seq "<< i << " at " << j << " is " << sequence.at(j) << " and c is " << c <<std::endl;
+			std::cout<< "seq "<< i << " at " << j << " is " << sequence.at(j) << " and " << c << " is decoded " <<std::endl;
 			assert(sequence.at(j)== c);
 		}
+	}
+	std::cout << " total number of bases is "<< total_length<<std::endl;
+}
+void all_data::checkAlignmentRange(const pw_alignment & al)const{
+	size_t ref1 = al.getreference1();
+	assert(ref1 >= 0 && ref1 < sequences.size());
+	size_t ref2 = al.getreference2();
+	assert(ref2 >=0 && ref2 < sequences.size());
+	size_t l1,r1,l2,r2;
+	al.get_lr1(l1,r1);
+	al.get_lr2(l2,r2);
+	assert(l1 < sequences.at(ref1).length() && r1 < sequences.at(ref1).length());//it checks if both left and right are smaller than length of the sequence
+	assert(l2 < sequences.at(ref2).length()&& r2 < sequences.at(ref2).length());
+	// check if it is part of an existing alignment:
+	bool boundaryExists = false;
+	for(size_t i =0; i < alignments.size();i++){
+		const pw_alignment & p = alignments.at(i);
+		size_t left1,right1,left2,right2;
+		p.get_lr1(left1,right1);
+		p.get_lr2(left2,right2);
+		if(p.getreference1() == ref1 && l1 >= left1 && r1 <= right1){
+			if(p.getreference2() == ref2 && l2 >= left2 && r2 <= right2){
+				boundaryExists = true;
+				break;
+			}
+		}
+	}
+	if(boundaryExists==false){
+		exit(1);
 	}
 }
 
@@ -1333,39 +1571,39 @@ void overlap::test_overlap()const{
 		}
 	}	
 }
-void overlap::test_no_overlap_between_ccs(const pw_alignment & p, std::set<pw_alignment, compare_pw_alignment> & ccs)const{
-	for(std::set< pw_alignment , compare_pw_alignment>::iterator it = ccs.begin();it != ccs.end();it++){
-		const pw_alignment & al = *it;
+void overlap::test_no_overlap_between_ccs(const pw_alignment & p, std::set<const pw_alignment*, compare_pointer_pw_alignment> & ccs)const{
+	for(std::set< const pw_alignment* , compare_pointer_pw_alignment>::iterator it = ccs.begin();it != ccs.end();it++){
+		const pw_alignment * al = *it;
 		size_t l1,r1,l2,r2,pl1,pr1,pl2,pr2;
-		al.get_lr1(l1,r1);
-		al.get_lr2(l2,r2);
+		al->get_lr1(l1,r1);
+		al->get_lr2(l2,r2);
 		p.get_lr1(pl1,pr1);
 		p.get_lr2(pl2,pr2);
-		if(p.getreference1() == al.getreference1()){
+		if(p.getreference1() == al->getreference1()){
 			if(pl1 <=r1 && pr1 >= l1){
 				std::cout << "overlap1! "<<std::endl;
-				al.print();
+				al->print();
 				exit(1);
 			}
 		}
-		if(p.getreference1() == al.getreference2()){
+		if(p.getreference1() == al->getreference2()){
 			if(pl1 <=r2 && pr1 >= l2){
 				std::cout << "overlap2! "<<std::endl;
-				al.print();
+				al->print();
 				exit(1);
 			}
 		}
-		if(p.getreference2() == al.getreference1()){
+		if(p.getreference2() == al->getreference1()){
 			if(pl2 <=r1 && pr2 >= l1){
 				std::cout << "overlap3! "<<std::endl;
-				al.print();
+				al->print();
 				exit(1);
 			}
 		}
-		if(p.getreference2() == al.getreference2()){
+		if(p.getreference2() == al->getreference2()){
 			if(pl2 <=r2 && pr2 >= l2){
 				std::cout << "overlap4! "<<std::endl;
-				al.print();
+				al->print();
 				exit(1);
 			}
 		}
@@ -1381,7 +1619,6 @@ bool overlap::checkAlignments(const pw_alignment & p)const{
 	else return false;	
 }
 	
-
 
 
 size_t overlap::size() const {
@@ -2759,8 +2996,9 @@ void mc_model::markov_chain_alignment(){
 	// count all edit operations contained in the alignments (per context)
 	for(size_t k = 0; k < data.numAlignments(); k++){
 		const pw_alignment & p = data.getAlignment(k);
+		size_t acc2 = data.accNumber(p.getreference2());
 		computing_modification_oneToTwo(p,functor);
-		computing_modification_twoToOne(p,functor);
+		computing_modification_twoToOne(p,acc2,functor);
 	}
 	functor.total_context();
 	for(size_t i = 0; i< data.numAcc();i++){
@@ -2799,7 +3037,7 @@ void mc_model::markov_chain_alignment(){
 				std::vector<unsigned int> high_value(NUM_DELETE+NUM_KEEP+10,0);
 				unsigned int l = 0;
 			//	unsigned int total = 0;
-				size_t bit = 12; // number of bits to use for encoding event width
+				size_t bit = 12; // number of bits to use for encoding event width //TODO
 				std::string current_pattern = *it;
 				// it1: high values for current pattern/accession pair
                                	highValue.at(i).at(j).insert(std::make_pair(current_pattern,std::vector<unsigned int>(NUM_DELETE+NUM_KEEP+10,0)));
@@ -2897,12 +3135,12 @@ void mc_model::cost_function(const pw_alignment& p, double & c1, double & c2, do
 //	p.print();
 //	size_t length = p.alignment_length();
 //	std::cout<<"length: "<< length<<std::endl;
-	computing_modification_oneToTwo(p,f);
-	computing_modification_twoToOne(p,f);
-	std::vector<double> cost_on_sample(2,0);
-	std::vector<double> modify_cost(2,0);
 	size_t acc1 = data.accNumber(p.getreference1());
 	size_t acc2 = data.accNumber(p.getreference2());
+	computing_modification_oneToTwo(p,f);
+	computing_modification_twoToOne(p,acc2,f);
+	std::vector<double> cost_on_sample(2,0);
+	std::vector<double> modify_cost(2,0);
 	char s1chr;
 	char s2chr;
 	size_t left1;
@@ -3424,7 +3662,7 @@ void mc_model::make_all_alignments_patterns(){
 					counter = counter +1;
 				}
 		//		std::cout<< "counter: "<< counter<<std::endl;
-				it -> second.at(NUM_KEEP+NUM_DELETE+9)=powersOfTwo.at(bit); 
+				it -> second.at(NUM_KEEP+NUM_DELETE+9)=powersOfTwo.at(bit); //TODO
 		//		std::cout<< "size of high value: "<< it ->second.size() << std::endl;
 			}
 			c= in.get();	
@@ -3835,7 +4073,9 @@ void mc_model::make_all_alignments_patterns(){
 			//	for (uint32_t m = 0; m <32 ; m++)
 			//		uint32_t power_of_two = initial << m; 
 			//		if((klength & power_of_two) !=0)
-			last_context = seq1;
+		//	std::cout<< "seq1" << seq1 <<std::endl;
+		//	std::cout<< "seq2" << seq2 <<std::endl;
+			last_context = seq2;
 		}
 
 	//	std::cout<<"The alignment is: "<<std::endl;
@@ -3849,10 +4089,10 @@ void mc_model::make_all_alignments_patterns(){
 	}
 
 	
-	void mc_model::computing_modification_twoToOne(const pw_alignment & p, abstract_context_functor & functor)const{
+	void mc_model::computing_modification_twoToOne(const pw_alignment & p, size_t & acc2, abstract_context_functor & functor)const{//I needed to add acc2 as an argument because otherwise couldn't encode the long centers
 		std::string seq = "";
 		size_t acc1 = data.accNumber(p.getreference1());
-		size_t acc2 = data.accNumber(p.getreference2());
+	//	size_t acc2 = data.accNumber(p.getreference2());
 		size_t first_patterns = Alignment_level;
 	/*	if(p.getreference2()==28&&p.getreference1()==0 && p.getbegin2()==176557){
 			std::cout << "forward"<<std::endl;
@@ -3997,7 +4237,7 @@ void mc_model::make_all_alignments_patterns(){
 		//	std::cout<<"last char in mod function: "<<int(seq2)<<std::endl;
 			i=i+n;
 		//	std::cout<< "i in modification : " << i << std::endl;
-			last_context = seq1;
+			last_context = seq2;
 		}		
 	//	std::cout<<"encoded sequence from two to one is: "<<std::endl;
 	/*	for(size_t m = 0; m < seq.size(); m ++){
@@ -4028,8 +4268,9 @@ void mc_model::make_all_alignments_patterns(){
 //		}
 
 	}
-	void mc_model ::get_encoded_member(pw_alignment & al,size_t center_ref,size_t center_left, encoding_functor & functor,std::ofstream& outs)const{
+	void mc_model ::get_encoded_member(const pw_alignment & al,size_t center_ref,size_t center_left, encoding_functor & functor,std::ofstream& outs)const{
 		size_t acc1 = data.accNumber(al.getreference1());
+		size_t acc2 = data.accNumber(al.getreference2());
 		size_t accession = data.accNumber(center_ref);
 		size_t left_1; 
 		size_t left_2;
@@ -4046,31 +4287,32 @@ void mc_model::make_all_alignments_patterns(){
 		}
 		else{
 			std::cout<< "center is on ref2"<<std::endl;
-			computing_modification_twoToOne(al, functor);
+			computing_modification_twoToOne(al, acc2 ,functor);
 		}
 	}
-	void mc_model ::get_encoded_member_long_center(pw_alignment & al,size_t center_ref,size_t center_left, std::string & final_context,encoding_functor & functor,std::ofstream& outs)const{
-		size_t acc1 = data.accNumber(al.getreference1());
+	void mc_model ::get_encoded_member_long_center(const pw_alignment & al,unsigned int & center_ref,encoding_functor & functor,std::ofstream& outs)const{
+	//	size_t acc1 = data.accNumber(al.getreference1());
 		size_t accession = data.accNumber(center_ref);
-		size_t left_1; 
+	//	size_t left_1; 
 		size_t left_2;
-		size_t right_1;
+	//	size_t right_1;
 		size_t right_2;
-		std::cout<< "al length: "<< al.alignment_length()<<std::endl;
-		al.get_lr1(left_1,right_1);
+		std::cout<< "long al length: "<< al.alignment_length()<<std::endl;
+	//	al.get_lr1(left_1,right_1);
 		al.get_lr2(left_2,right_2);
-		std::cout<< " left1: "<< left_1 << " left2: "<<left_2<< "center left: "<< center_left << std::endl;
-		std::cout << "center accession: "<< accession << " accession1: "<< acc1 << std::endl;
-		if(al.getreference1()==center_ref && left_1 == center_left){
+		std::cout << "size of center " << right_2 - left_2 +1;
+	//	std::cout<< " left1: "<< left_1 << "center left: "<< center_left << std::endl;
+	//	std::cout << "center accession: "<< accession << " accession1: "<< acc1 << std::endl;
+	/*	if(al.getreference1()==center_ref && left_1 == center_left){
 			std::cout<< "center is on ref1"<<std::endl;
 			computing_modification_oneToTwo(al, functor);
 			final_context= last_context;	
 		}
-		else{
-			std::cout<< "center is on ref2"<<std::endl;
-			computing_modification_twoToOne(al, functor);
-			final_context= last_context;	
-		}
+		else{*/
+			std::cout<< "center is always on ref2 " << center_ref << " its accession is " << accession <<std::endl;
+			computing_modification_twoToOne(al, accession ,functor);
+		//	final_context= last_context;	
+	//	}
 	}
 	void mc_model::get_insertion_high_between_centers(size_t& seq_id ,char & seq_base, char & last_center_base, unsigned int& center_ref, std::string & final_pattern, unsigned int & high, unsigned int & low)const{
 		size_t acc1 = data.accNumber(center_ref);		
@@ -4082,16 +4324,24 @@ void mc_model::make_all_alignments_patterns(){
 				final_pattern += modification_character(-1,-1,-1,(Alignment_level-i));
 			}
 		}
-		final_pattern += last_center_base;
+		size_t last_base = dnastring::base_to_index(last_center_base);
+		final_pattern += last_base;
+//		std::cout<<"final pattern "<<std::endl;
+		for(size_t i =0; i < final_pattern.size();i++){
+			std::cout << int(final_pattern.at(i))<< " ";
+		}
+		std::cout << " " << std::endl;
 		size_t insertion = dnastring::base_to_index(seq_base);
 		char insert = modification_character(-1,-1,insertion,-1);
 		std::map<std::string , std::vector<unsigned int> >::const_iterator it = highValue.at(acc1).at(acc2).find(final_pattern);
+		assert(it!= highValue.at(acc1).at(acc2).end());
 		if(insert != NUM_KEEP+NUM_DELETE+10-1){
 			high = it->second.at(insert);
 		}else{
 			high = powersOfTwo.at(bit);
 		}
 		low = it->second.at(insert -1);
+		assert(low< powersOfTwo.at(bit));
 	}
 	void mc_model::get_a_keep(unsigned int & cent_left, unsigned int& cent_ref, size_t & length, std::vector<unsigned int> & low, std::vector<unsigned int> & high)const{
 		size_t acc1 = data.accNumber(cent_ref);	
@@ -4295,6 +4545,7 @@ double counting_functor::get_total(size_t acc1, size_t acc2, std::string context
 		size_t bit = 13;
 	//	dlib::entropy_encoder_kernel_1 * enc = new dlib::entropy_encoder_kernel_1();
 	//	enc->std::set_stream(outs);
+	//	std::cout << p.alignment_length() <<std::endl;
 	//	unsigned int total = model->get_powerOfTwo().at(bit)+20; //it is used for original encoding function
 		unsigned int total = 2*model->get_powerOfTwo().at(bit); // didnt work for old encoding just want to get sure if the problem is the total value.
 		std::map<std::string, std::vector<unsigned int> >::const_iterator it1 = model->get_highValue(acc1,acc2).find(context);// if modification is from acc2 to acc1 the order is already exchanged. So this is true
@@ -4312,7 +4563,7 @@ double counting_functor::get_total(size_t acc1, size_t acc2, std::string context
 			}
 		}
 	//	for(size_t h =0; h < NUM_DELETE+NUM_KEEP+10; h++){
-		//	std::cout<< "high values: " << high.at(h)<<std::endl;
+	//		std::cout << "low values " << low.at(h) << " high values: " << high.at(h)<<std::endl;
 	//	}
 
 	//	std::cout<< "context at " << pos << " is: ";
@@ -4325,8 +4576,10 @@ double counting_functor::get_total(size_t acc1, size_t acc2, std::string context
 	//	std::cout<< "actual acc1 " << data.accNumber(p.getreference1())  << " actual acc2 " << data.accNumber(p.getreference2()) <<std::endl;
 	//	std::cout << "encoding form acc: " << acc1 << " to acc: "<< acc2 << std::endl;
 	//	std::cout<< "center acc should be: " << acc1 << std::endl;
-	//	std::cout << " ended char in al: "<< int(last_char)<<std::endl;
-	//	std::cout<< "encoded low: "<< low.at(last_char)<<" encoded high: "<< high.at(last_char)<<std::endl;
+		if(acc2 == 0 && p.getreference1()==3 && p.getbegin1()==121543){
+			std::cout << " ended char in al: "<< int(last_char)<<std::endl;
+		}
+		std::cout<< "encoded low: "<< low.at(last_char)<<" encoded high: "<< high.at(last_char)<<std::endl;
 		enc.encode(low.at(last_char),high.at(last_char),total);
 		wrappers.encode(low.at(last_char),high.at(last_char),total);
 	//	delete enc;

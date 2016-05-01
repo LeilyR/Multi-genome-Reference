@@ -2,14 +2,14 @@
 #define DYNAMIC_MC_HPP
 
 #include "data.hpp"
-
+#include "pw_alignment.hpp"
 
 #define MIN_ENCODING_WIDTH_BITS 1
 #define MAX_ENCODING_WIDTH_BITS 20
 #define NUM_ENCODING_TYPES 40 // (max - min + 1)*2, 40 types encoded 0 to 39, 40 is used as flag for no model
 #define MAX_SEQUENCE_MARKOV_CHAIN_LEVEL 5
 #define MAX_ALIGNMENT_MARKOV_CHAIN_LEVEL 2 // context is two modification instructions + current base on known strand
-#define TOTAL_FOR_ENCODING 4294967295 // 2^32-1
+#define TOTAL_FOR_ENCODING 16384 //2^14 
 #define ENCODING_MIN_WIDTH 3 // min difference between low and high value for arithmetic encoding
 #define NUM_DELETE_DYN 5 // number of delete encodings, 2^0, ... , 2^4
 #define NUM_KEEP_DYN 10 // number of keep encodings, 2^0, ..., 2^9
@@ -102,8 +102,20 @@ public:
 
 };
 
+class a_reader_encode{
+public:
+	a_reader_encode(const std::map<std::string, std::vector<uint32_t> > & mhigh, wrapper &);
+	~a_reader_encode();
+	inline void see_context(const std::string & context , size_t modification);
+
+	const std::map<std::string, std::vector<uint32_t> > & model_high;
+	std::vector<std::vector<unsigned int> > low_high_values;
+	wrapper& wrappers;
 
 
+};
+
+typedef alignment_contexts<a_reader_encode> acontext_encode;
 typedef alignment_contexts<a_reader_counter> acontext_counter;
 typedef alignment_contexts<a_reader_costs> acontext_cost;
 typedef sequence_contexts<s_reader_counter> scontext_counter;
@@ -112,7 +124,7 @@ typedef sequence_contexts<s_reader_costs> scontext_cost;
 class dynamic_mc_model {
 
 	public:
-		dynamic_mc_model(all_data &, size_t num_threads = 1);
+		dynamic_mc_model(all_data &, wrapper &, size_t num_threads = 1);
 		~dynamic_mc_model();
 
 		void train(std::ofstream &);
@@ -134,29 +146,56 @@ class dynamic_mc_model {
 
 
 		void cost_function(const pw_alignment& , double & , double & , double & , double & )const ;
-		void gain_function(const pw_alignment& , double & , double & )const ;
+		inline	void gain_function(const pw_alignment& p, double & g1, double & g2)const{
+			double c1;
+			double c2;
+			double m1;
+			double m2;
+			cost_function(p, c1, c2, m1,m2);
+			g1 = c2 - m1;
+			g2 = c1 - m2;
+		}
+		double get_the_gain(const pw_alignment&, std::string &)const;
+		const std::vector<uint32_t> & get_seq_high_at_position(size_t & ref, size_t & position)const;
+		const std::vector<uint32_t> & get_center_high_at_position(size_t & ref, size_t & left , size_t & position)const;
+		void calculate_center_flags(vector<size_t> & counts , uint32_t & target_total , unsigned char & model_index, std::vector<uint32_t> & bits, std::vector<uint32_t> & widths);
+		void calculate_center_high_values(uint32_t & target_total);
+		void get_seq_flag(size_t & acc, std::vector<uint32_t> & al_begin , std::vector<uint32_t> & seq_acc_end)const;
+		void get_end_al_flag(size_t& acc1, size_t & acc2, std::vector<uint32_t> & al_end);
+		void get_center_flag(std::vector<uint32_t> & bits, unsigned char model_index, uint32_t & target_total, std::vector<uint32_t> & widths)const;
+		const std::map< std::string, std::vector<uint32_t>  > & get_sequence_model_highs(size_t & acc)const;
+		const std::map< std::string, std::vector<uint32_t>  > & get_center_model_highs(size_t & acc)const;
+		const std::map< std::string, std::vector<uint32_t>  > & get_alignment_model_highs(size_t & acc1, size_t & acc2)const;
+		void arith_encode_al(const pw_alignment & p, unsigned int & cent_ref, unsigned int & cent_left, std::vector< std::vector< unsigned int> > &);
+		void arith_encode_long_al(const pw_alignment & p, size_t & acc1, size_t & acc2, unsigned int & cent_ref, unsigned int & cent_left, std::vector<std::vector< unsigned int> > & low_high);
+		void write_al_high_onstream(std::ofstream & al_high_out);
+
+
+
 	
 
 
 	private:
 
 		all_data & data;
+		wrapper& wrappers;
 		size_t num_threads;
 
 
 // model parameters which are stored in encoded file:
-		std::vector<std::map< std::string, std::pair<unsigned char, std::vector<uint32_t> > > > sequence_models; // acc -> context -> (model_type, bits)
+		std::vector<std::map< std::string, std::pair<unsigned char, std::vector<uint32_t> > > > sequence_models; // acc -> context (of all lengths) -> (model_type, bits)
 		// low/high of data and flags for sequence data. In each accession we have base encodings from 0 to all_bases_total
 		// alignment begin encodings from all_bases_total to alignment_flag
 		// sequence end encodings from alignment_flag to TOTAL_FOR_ENCODING 	
 		std::vector<uint32_t> acc_sequence_all_bases_total;
 		std::vector<uint32_t> acc_sequence_alignment_flag;
 
-		std::vector<std::vector<uint32_t> > alignments_all_modification_total;
+		std::vector<std::vector<uint32_t> > alignments_all_modification_total;// End of alignment flag ---> acc1(acc2)
 
 		std::vector<std::vector< std::map< std::string, std::pair<unsigned char, std::vector<uint32_t> > > > > alignment_models; // acc_from -> acc_to -> context -> (model_type, bits) 	
 // model parameters which are computed from stored parameters:
 		std::vector<std::map< std::string, std::vector<uint32_t>  > > sequence_model_highs; // acc -> pattern (length is MAX_SEQUENCE_MARKOV_CHAIN_LEVEL  ) -> encoding high value per base 
+		std::vector<std::map< std::string, std::vector<uint32_t>  > > center_model_highs; 
 		std::vector<std::map< std::string, std::vector<double>  > > sequence_model_costs;
 
 		std::vector<std::vector<std::map<std::string, std::vector<uint32_t>  > > > alignment_model_highs; //  acc-from -> acc-to -> pattern (length is MAX_ALIGNMENT_MARKOV_CHAIN_LEVEL +1 ) -> encoding high value per base 
@@ -176,6 +215,9 @@ class dynamic_mc_model {
 		void train_alignment_model();	
 		void compute_sequence_model();
 		void compute_alignment_model();
+		void compute_sequence_model_decoding();
+		void compute_alignment_model_decoding();
+
 
 		/*
 			This is the function to convert statistical models (probability distribution function on a finite set)
@@ -187,19 +229,18 @@ class dynamic_mc_model {
 			The sum of all widths is total
 
 		*/
+		static double counts_to_bits_eval(const std::vector<size_t> & counts, uint32_t target_total, unsigned char & model_index, std::vector<uint32_t> & bits);
 		static void distribution_to_sqroot_bits(const std::vector< double > & distri, size_t bits, std::vector<uint32_t> & sqbits); 
 		static void distribution_to_bits(const std::vector<double> & distri, size_t bits, std::vector<uint32_t> & vbits);
 		static void sqroot_bits_to_width_encoding(const std::vector<uint32_t> & sqbits, uint32_t target_total, std::vector<uint32_t> & widths);
 		static void bits_to_width_encoding(const std::vector<uint32_t> & bits, uint32_t target_total, std::vector<uint32_t> & widths);
 		static double distri_to_bits(const std::vector<double> & distri, unsigned char model_index, std::vector<uint32_t> & bits);
-		static double counts_to_bits_eval(const std::vector<size_t> & counts, uint32_t target_total, unsigned char & model_index, std::vector<uint32_t> & bits);
 
 		static unsigned char get_model_index(bool use_sqroot, size_t num_bits);
 		static void get_model_type(unsigned char model_index, bool & use_sqroot, size_t & num_bits);
 
 		static void counts_to_distribution(const std::vector<size_t> & counts, std::vector<double> & distri);
 		static double count_cost_eval(const std::vector<size_t> & counts, const std::vector<uint32_t> & enc_widths);
-		static void model_to_widths(const std::vector<uint32_t> bits, unsigned char model_index, uint32_t target_total, std::vector<uint32_t> & widths);
 		static double model_to_costs(const std::vector<uint32_t> bits, unsigned char model_index, uint32_t target_total, std::vector<double> & costs);
 		static void width_correct(std::vector<uint32_t> & widths, uint32_t target_total);
 
@@ -207,7 +248,7 @@ class dynamic_mc_model {
 			std::map< std::string, std::pair<unsigned char, std::vector<uint32_t> > > & cpref_bits, size_t max_length );
 		static void context_subtree_cost(const std::string & cur_context, const std::map< std::string, std::vector<size_t> > & context_counts, const std::vector<unsigned char> & alphabet, size_t max_length, 
 			std::map< std::string, std::vector<size_t> > & sum_counts);
-
+		static void model_to_widths(const std::vector<uint32_t> bits, unsigned char model_index, uint32_t target_total, std::vector<uint32_t> & widths);
 		static void model_bits_to_full_high_values(const std::map< std::string, std::pair<unsigned char, std::vector<uint32_t> > > & bitmodel, uint32_t target_total, size_t target_pattern_length, 
 			const std::vector<unsigned char> & alphabet, std::map< std::string, std::vector<uint32_t> > & hv_results, std::map<std::string, std::vector<double> > & cost_results);
 

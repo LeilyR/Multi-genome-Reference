@@ -1,16 +1,22 @@
 #ifndef MODEL_HPP
 #define MODEL_HPP
 
+#include "dynamic_mc.hpp"
 #include"data.hpp"
 #include "pw_alignment.hpp"
+#include "alignment_index.hpp"
 #include <map>
 #include <vector>
 #include <cassert>
+#include <omp.h>
 
 extern "C" {
 #include "apcluster.h"
 }
-
+//ICL library header files: 
+#include <boost/icl/discrete_interval.hpp>
+#include <boost/icl/interval_map.hpp>
+#include <boost/icl/interval_set.hpp>
 
 
 typedef  std::set<const pw_alignment*, compare_pw_alignment> alset;
@@ -18,13 +24,14 @@ typedef  std::set<const pw_alignment*, compare_pw_alignment> alset;
 template<typename T>
 class initial_alignment_set {
 	public:
-	initial_alignment_set(const all_data & d, const T & a_model, double base_cost): data(d), common_model(a_model) {
+	initial_alignment_set(const all_data & d, const T & a_model, double base_cost): data(d), common_model(a_model) {//TODO Since we don't use it for the moment, I am not so sure if this constructor works correctly. I have some doubt that it doesn't return the same alignment in sorter. It should be checked!
 		this->base_cost = base_cost;
-		std::multimap<double, const pw_alignment &> sorter;
+		std::multimap<double, const pw_alignment&> sorter;
 		double sumgain = 0;
+//		std::cout << "cur "<<std::endl;
 		for(size_t i=0; i<data.numAlignments(); ++i) {
 			const pw_alignment & cur = data.getAlignment(i);
-	
+//			cur.print();
 			double gain1, gain2;
 			common_model.gain_function(cur, gain1, gain2);
 			double vgain = (gain1+gain2)/2 - base_cost;
@@ -35,33 +42,36 @@ class initial_alignment_set {
 			}
 		}
 
-		sorted_original_als = std::vector<pw_alignment >(sorter.size(), NULL);
-		size_t pos = 0;
+//		sorted_original_als = std::vector<pw_alignment >(sorter.size(), NULL);
+//		size_t pos = 0;
 		for(std::multimap<double, const pw_alignment &>::reverse_iterator rit = sorter.rbegin(); rit!=sorter.rend(); ++rit) {
 			const pw_alignment & alit = rit->second;
 		//	std::cout << " ral " << alit << std::endl;
 		//	alit.print();
 		//	std::cout << std::endl;
-			sorted_original_als.at(pos) = alit;
-			pos++;
+			sorted_original_als.push_back(&alit);
+//			pos++;
 		}
 		max_gain = sumgain;
-		assert(pos == sorter.size());
+	//	assert(pos == sorter.size());
 	//	std::cout << " " << sorter.size() << " input alignments, total gain: " << sumgain << " bit " << std::endl;
 	}
-	initial_alignment_set(const all_data & d, const std::set< pw_alignment, compare_pw_alignment> & als, const T & a_model, double base_cost): data(d), common_model(a_model) {
+	initial_alignment_set(const all_data & d, const std::set< const pw_alignment*, compare_pointer_pw_alignment> & als, const T & a_model, double base_cost, size_t & num_threads): data(d), common_model(a_model) {
 		this->base_cost = base_cost;
-		std::multimap<double, pw_alignment> sorter;
+		this->num_threads = num_threads;
+		std::multimap<double, const pw_alignment*> sorter;
 		double sumgain = 0;
-		for(std::set<pw_alignment , compare_pw_alignment>::iterator it = als.begin(); it!=als.end(); ++it) {
-			pw_alignment cur = *it;
-	
+		std::cout << "calculating vgain! "<<std::endl;
+		for(std::set<const pw_alignment* , compare_pointer_pw_alignment>::iterator it = als.begin(); it!=als.end(); it++) { //XXX It is unnecessary since we already know that gains are positive!
+			const pw_alignment * cur = *it;
 			double gain1, gain2;
-			common_model.gain_function(cur, gain1, gain2);
+			common_model.gain_function(*cur, gain1, gain2);
 			double vgain = (gain1+gain2)/2 - base_cost;
 		//	if(gain2 > gain1) gain1 = gain2;
 		//	std::cout << " al length " << cur->alignment_length() << " gain1 " << gain1 << " gain2 " << gain2 <<  std::endl;
-			if(vgain>0.0) {
+			std::cout<< "vgain "<< vgain << std::endl;
+			assert(vgain >=0.0);
+		//	if(vgain>0.0){
 			//	std::cout << " ins " << vgain << " at " << cur << std::endl;
 				sorter.insert(std::make_pair(vgain, cur));
 
@@ -72,14 +82,14 @@ class initial_alignment_set {
 				assert(vgain>=0);
 				*/
 
-			}
+		//	}
 			sumgain+=vgain;
 		}
 
-		sorted_original_als = std::vector<pw_alignment>(sorter.size());
-		size_t pos = 0;
-		for(std::multimap<double, pw_alignment>::reverse_iterator rit = sorter.rbegin(); rit!=sorter.rend(); ++rit) {
-			pw_alignment alit = rit->second;
+	//	sorted_original_als = std::vector<pw_alignment & >(sorter.size()); 
+	//	size_t pos = 0;
+		for(std::multimap<double, const pw_alignment * >::reverse_iterator rit = sorter.rbegin(); rit!=sorter.rend(); rit++) {
+			const pw_alignment * alit = rit->second;
 		//	std::cout << " ins2 " << pos << " weight " << rit->first << " at " << alit <<  std::endl;
 			
 			/*
@@ -90,13 +100,29 @@ class initial_alignment_set {
 			assert(vgain >=0);
 */
 
-			sorted_original_als.at(pos) = alit;
-			pos++;
+			sorted_original_als.push_back(alit);
+	//		pos++;
 		}
 		max_gain = sumgain;
-		assert(pos == sorter.size());
+	//	assert(pos == sorter.size());
 	//	std::cout << " " << sorter.size() << " input alignments, total gain: " << sumgain << " bit " << std::endl;
 	}
+/*	initial_alignment_set(const all_data & d, std::multimap<double, const pw_alignment*>& sorter, const T & a_model, double base_cost, double& sumgain): data(d), common_model(a_model) {
+		this->base_cost = base_cost;
+		for(std::multimap<double, const pw_alignment * >::reverse_iterator rit = sorter.rbegin(); rit!=sorter.rend(); rit++) {
+			const pw_alignment * alit = rit->second;
+			//XXX JUST A TEST! REMOVE IT LATER!
+			
+			double g1, g2;
+			common_model.gain_function(*alit, g1, g2);
+			double vgain = (g1+g2)/2 - base_cost;
+			std::cout << " cached gain " << vgain << std::endl;
+			assert(vgain >=0);
+			////// END OF THE TEST
+			sorted_original_als.push_back(alit);
+		}
+		max_gain = sumgain;		
+	}*/
 
 	~initial_alignment_set() {}
 
@@ -111,11 +137,11 @@ class initial_alignment_set {
 	void compute_vcover_clarkson(overlap & o);
 	void compute_simple_lazy_splits(overlap & o);
 	void lazy_split_insert_step
-		(overlap & ovrlp, size_t level, size_t & rec_calls, pw_alignment al, std::vector<pw_alignment> & inserted_alignments, vector<pw_alignment> & removed_alignments, double & local_gain);
+		(overlap & ovrlp, size_t level, size_t & rec_calls, const pw_alignment & al, std::vector<pw_alignment> & inserted_alignments, vector<pw_alignment> & removed_alignments, double & local_gain);
 	void lazy_split_full_insert_step
-		(overlap & ovrlp, size_t level, size_t & rec_calls, pw_alignment alin, std::vector<pw_alignment> & inserted_alignments, vector<pw_alignment > & removed_alignments, double & local_gain);
+		(overlap & ovrlp, size_t level, size_t & rec_calls, const pw_alignment & alin, std::vector<pw_alignment> & inserted_alignments, vector<pw_alignment > & removed_alignments, double & local_gain);
 	void all_push_back(std::vector<pw_alignment> & inserted_alignments, vector<pw_alignment > & removed_alignments, std::set<pw_alignment , compare_pw_alignment> & all_inserted, std::set<pw_alignment, compare_pw_alignment> & all_removed );
-	void local_undo(overlap & ovrlp, std::set<pw_alignment, compare_pw_alignment > & all_inserted, std::set<pw_alignment, compare_pw_alignment> & all_removed);
+	void local_undo(overlap & ovrlp, std::set<pw_alignment, compare_pw_alignment > & all_inserted, std::set< pw_alignment , compare_pw_alignment> & all_removed);
 	void insert_alignment_sets(overlap & ovrlp, std::set<pw_alignment, compare_pw_alignment> & all_ins, std::set<pw_alignment, compare_pw_alignment> & all_rem, std::vector<pw_alignment> & this_ins, std::vector<pw_alignment> & this_rem);
 
 
@@ -135,8 +161,9 @@ class initial_alignment_set {
 	private:
 	const all_data & data;
 	const T & common_model;
-	std::vector<pw_alignment> sorted_original_als; // highest gain first
+	std::vector<const pw_alignment *> sorted_original_als; // highest gain first 
 	double base_cost;
+	size_t num_threads;
 	double max_gain;
 	double result_gain;
 	size_t used_alignments;
@@ -239,9 +266,139 @@ main.cpp:rse_iterator rit = sorter.rbegin(); rit!=sorter.rend(); ++rit) {
 };
 
 */
+
+class compute_cc_avl {
+	public:
+	compute_cc_avl(const std::set<const pw_alignment*, compare_pointer_pw_alignment> & als_in, size_t num_sequences, size_t num_threads):alind(num_sequences){
+		this->num_threads = num_threads;
+	//	RIGHT = 0;
+		for(std::set<const pw_alignment*, compare_pointer_pw_alignment>::const_iterator it = als_in.begin(); it!=als_in.end(); it++){
+			const pw_alignment * al = *it;
+			alind.insert(al);
+			alignments.insert(al);
+		}
+	}
+	compute_cc_avl(const overlap & ovrlp, size_t num_sequences, size_t num_threads): alind(num_sequences){
+		this->num_threads = num_threads;
+		const std::set<pw_alignment, compare_pw_alignment> & als = ovrlp.get_all();
+		for(std::set<pw_alignment, compare_pw_alignment>::const_iterator it = als.begin(); it!=als.end(); it++) {//TODO you can save this step by doing it when you choose positive als
+			const pw_alignment & al = *it;
+			alind.insert(&al);
+			alignments.insert(&al);
+		}
+	}
+
+	~compute_cc_avl(){}
+//	void add_on_intmap(const pw_alignment*);
+//	void remove_from_intmaps(const pw_alignment* al);//TODO
+	void compute(std::vector<std::set< const pw_alignment* , compare_pointer_pw_alignment> > &);
+	void get_cc(const pw_alignment & , std::set <const pw_alignment*, compare_pointer_pw_alignment> & , std::set <const pw_alignment*, compare_pointer_pw_alignment> & );
+	void cc_step(size_t , size_t , size_t , std::set <const pw_alignment*, compare_pointer_pw_alignment> & , std::set <const pw_alignment* , compare_pointer_pw_alignment>  & );
+//	void cc_step_current(size_t & , size_t & , size_t & , std::set<size_t>& , std::set<size_t> & );
+	private:
+	
+	std::set<const pw_alignment*, compare_pointer_pw_alignment> alignments; 
+	alignment_index alind;
+
+//	std::map<const pw_alignment*, size_t>al_id; //alignments and their ids. //TODO
+//	std::vector<boost::icl::interval_map<size_t, std::set<size_t> >  > als_on_reference;
+//	boost::icl::interval_map<std::set<size_t>,size_t >reverse_als_on_ref; //XXX It was used only for the simple library test.
+//	boost::icl::interval_map<size_t, std::set<size_t> >als_on_ref; //XXX It was used only for the simple library test.
+//	std::map<size_t , std::pair<size_t,size_t> > id_and_bounds;
+//	std::vector< boost::icl::interval_set<size_t> >all_intervals; //All the intervals are kept here, while they will be removed gradually from the als_on_reference
+	size_t num_threads;
+
+
+
+
+};
+
+
+
+class compute_cc_with_icl{
+	public:
+	compute_cc_with_icl(const std::set<const pw_alignment*, compare_pointer_pw_alignment> & als_in, size_t num_sequences, size_t num_threads):als_on_reference(num_sequences){
+		this->num_threads = num_threads;
+	//	RIGHT = 0;
+		for(std::set<const pw_alignment*, compare_pointer_pw_alignment>::const_iterator it = als_in.begin(); it!=als_in.end(); it++){
+			const pw_alignment * al = *it;
+			alignments.push_back(al);
+			add_on_intmap(al); //All the als are added to an interval map.
+		}
+		std::cout<< "map is filled! "<<std::endl;
+
+	//	for(size_t i =0 ; i< num_sequences;i++){
+		//	std::cout << "seq id "<< i << std::endl;
+		//	for(boost::icl::interval_map<size_t, std::set<size_t> >::iterator it =als_on_reference.at(i).begin();it!=als_on_reference.at(i).end();it++){
+			//	boost::icl::discrete_interval<size_t> itv  = (*it).first;
+			//	all_intervals.at(i).insert(itv);
+			//	std::set<size_t> overlaps_al = (*it).second;
+			//	std::cout << "in interval " << itv << std::endl;
+			//	std::cout << "size of overlaps_al "<< overlaps_al.size()<<std::endl;
+			//	for(std::set<size_t>::iterator it1 = overlaps_al.begin(); it1 != overlaps_al.end(); it1++){
+			//		std::cout << *it1 <<std::endl;
+			//		size_t al_id = *it1;
+			//		const pw_alignment * pw_al = alignments.at(*it1);
+			//		pw_al->print();
+			//	}
+		//	}
+	//	}
+	}
+	compute_cc_with_icl(const overlap & ovrlp, size_t num_sequences, size_t num_threads): als_on_reference(num_sequences){
+		this->num_threads = num_threads;
+		const std::set<pw_alignment, compare_pw_alignment> & als = ovrlp.get_all();
+		for(std::set<pw_alignment, compare_pw_alignment>::const_iterator it = als.begin(); it!=als.end(); it++) {//TODO you can save this step by doing it when you choose positive als
+			const pw_alignment & al = *it;
+			alignments.push_back(&al);
+			add_on_intmap(&al);
+		}
+		std::cout<< "map is filled! "<<std::endl;
+	
+	}
+
+	compute_cc_with_icl(std::vector<std::pair<size_t,size_t> > & common_int){///XXX it was only for testing the library.
+		for(size_t i =0; i < common_int.size();i++){
+			boost::icl::discrete_interval<size_t> bounds = boost::icl::construct<boost::icl::discrete_interval<size_t> >(common_int.at(i).first,common_int.at(i).second);
+			std::set<size_t> id;
+			id.insert(i);
+			als_on_ref.add(make_pair(bounds, id));	
+		//	reverse_als_on_ref.add(make_pair(id,bounds));
+			id_and_bounds.insert(make_pair(i,common_int.at(i)));
+		}
+		for(boost::icl::interval_map<size_t, std::set<size_t> >::iterator it =als_on_ref.begin();it!=als_on_ref.end();it++){
+			boost::icl::discrete_interval<size_t> itv  = (*it).first;
+			std::cout << "from "<< first(itv)   << " to " << last(itv) <<std::endl;
+			std::set<size_t> overlaps_al = (*it).second;
+			std::cout << "in interval " << itv << std::endl;
+			for(std::set<size_t>::iterator it1 = overlaps_al.begin(); it1 != overlaps_al.end(); it1++){
+				std::cout << *it1 <<std::endl;
+			}
+		}
+	}
+	~compute_cc_with_icl(){}
+	void add_on_intmap(const pw_alignment*);
+	void remove_from_intmaps(const pw_alignment* al);//TODO
+	void compute(std::vector<std::set< const pw_alignment* , compare_pointer_pw_alignment> > &);
+	void compute_test(std::vector<std::set<size_t> >&);
+	void get_cc(const pw_alignment & , std::set <const pw_alignment*, compare_pointer_pw_alignment> & , std::set <const pw_alignment*, compare_pointer_pw_alignment> & );
+	void cc_step(size_t , size_t , size_t , std::set <const pw_alignment*, compare_pointer_pw_alignment> & , std::set <const pw_alignment* , compare_pointer_pw_alignment>  & );
+	void cc_step_current(size_t & , size_t & , size_t & , std::set<size_t>& , std::set<size_t> & );
+	private:
+	std::vector<const pw_alignment*> alignments;
+	std::map<const pw_alignment*, size_t>al_id; //alignments and their ids. //TODO
+	std::vector<boost::icl::interval_map<size_t, std::set<size_t> >  > als_on_reference;
+//	boost::icl::interval_map<std::set<size_t>,size_t >reverse_als_on_ref; //XXX It was used only for the simple library test.
+	boost::icl::interval_map<size_t, std::set<size_t> >als_on_ref; //XXX It was used only for the simple library test.
+	std::map<size_t , std::pair<size_t,size_t> > id_and_bounds;
+//	std::vector< boost::icl::interval_set<size_t> >all_intervals; //All the intervals are kept here, while they will be removed gradually from the als_on_reference
+	size_t num_threads;
+
+
+};
+
 class compute_cc {
 	public:
-	compute_cc(const std::set<pw_alignment, compare_pw_alignment> & als_in, size_t num_sequences):alignments(als_in), als_on_reference(num_sequences), last_pos(num_sequences, 0) {
+/*	compute_cc(const std::set<pw_alignment, compare_pw_alignment> & als_in, size_t num_sequences):alignments(als_in), als_on_reference(num_sequences), last_pos(num_sequences, 0) {
 		max_al_ref_length = 0;
 
 		for(std::set<pw_alignment, compare_pw_alignment>::const_iterator it = als_in.begin(); it!=als_in.end(); ++it) {
@@ -249,15 +406,25 @@ class compute_cc {
 			add_on_mmaps(al);
 		}
 	
+	}*/
+	compute_cc(const std::set<const pw_alignment*, compare_pointer_pw_alignment> & als_in, size_t num_sequences, size_t num_threads):alignments(als_in), als_on_reference(num_sequences), last_pos(num_sequences, 0) {//XXX This is the one is currently used for creating CCs.
+		max_al_ref_length = 0;
+		numThreads = num_threads;
+		for(std::set<const pw_alignment*, compare_pointer_pw_alignment>::const_iterator it = als_in.begin(); it!=als_in.end(); it++) {
+			const pw_alignment * al = *it;
+			add_on_mmaps(al);
+		}
+//		std::cout << "al size " << alignments.size() << std::endl;
 	}
 
-	compute_cc(const overlap & ovrlp, size_t num_sequences): als_on_reference(num_sequences), last_pos(num_sequences, 0) {
+	compute_cc(const overlap & ovrlp, size_t num_sequences, size_t num_threads): als_on_reference(num_sequences), last_pos(num_sequences, 0) {
+		numThreads = num_threads;
 		max_al_ref_length = 0;
 		const std::set<pw_alignment, compare_pw_alignment> & als = ovrlp.get_all();
-		for(std::set<pw_alignment, compare_pw_alignment>::const_iterator it = als.begin(); it!=als.end(); ++it) {
+		for(std::set<pw_alignment, compare_pw_alignment>::const_iterator it = als.begin(); it!=als.end(); it++) {
 			const pw_alignment & al = *it;
-			alignments.insert(al);
-			add_on_mmaps(al);
+			alignments.insert(&al);
+			add_on_mmaps(&al);
 		}
 	
 	}
@@ -266,18 +433,18 @@ class compute_cc {
 	compute_cc(const all_data & dat);
 	~compute_cc() {}
 
-	void compute(std::vector<std::set< pw_alignment, compare_pw_alignment> > & ccs); 
+	void compute(std::vector<std::set<const pw_alignment*, compare_pointer_pw_alignment> > & ccs); 
 
 	private:
-	std::set<pw_alignment, compare_pw_alignment> alignments; // real objects here, references everywhere else
-	std::vector< std::multimap< size_t, pw_alignment> > als_on_reference; // sequence index -> pos on that sequence -> alignment reference
+	std::set<const pw_alignment*, compare_pointer_pw_alignment> alignments; // real objects here, references everywhere else 
+	std::vector< std::multimap< size_t, const pw_alignment*> > als_on_reference; // sequence index -> pos on that sequence -> alignment reference
 	std::vector<size_t> last_pos;
 	size_t max_al_ref_length;
-
-	void add_on_mmaps(const pw_alignment & pwa);
-	void remove_on_mmaps(const pw_alignment & al);
-	void get_cc(const pw_alignment & al, std::set <pw_alignment , compare_pw_alignment> & cc, std::set <pw_alignment , compare_pw_alignment> & seen);
-	void cc_step(size_t ref, size_t left, size_t right, std::set <pw_alignment, compare_pw_alignment> & cc, std::set <pw_alignment, compare_pw_alignment> & seen );
+	size_t numThreads;
+	void add_on_mmaps(const pw_alignment* pwa);
+	void remove_on_mmaps(const pw_alignment* al);
+	void get_cc(const pw_alignment & al, std::set <const pw_alignment* , compare_pointer_pw_alignment> & , std::set < const pw_alignment* , compare_pointer_pw_alignment> & );
+	void cc_step(size_t ref, size_t left, size_t right, std::set <const pw_alignment*, compare_pointer_pw_alignment> & cc, std::set < const pw_alignment*, compare_pointer_pw_alignment> & seen );
 
 };
 
@@ -314,27 +481,27 @@ template<typename tmodel>
 class affpro_clusters {
 	public:
 
-	affpro_clusters(const overlap & ovlp, const tmodel & model, double base_cost,std::ofstream& outs):model(model), base_cost(base_cost) {
+	affpro_clusters(const overlap & ovlp, const tmodel & model, double base_cost):model(model), base_cost(base_cost) {
 
 		const std::set<pw_alignment*, compare_pw_alignment> & als = ovlp.get_all();
 		for(std::set<pw_alignment*, compare_pw_alignment>::const_iterator it = als.begin(); it!=als.end(); ++it) {
 			const pw_alignment * al = *it;
-			add_alignment(al,outs);
+			add_alignment(*al);
 		}
 
 	}
 
-	affpro_clusters(const std::set<pw_alignment , compare_pw_alignment> & inset, const tmodel & model, double base_cost,std::ofstream & outs):model(model), base_cost(base_cost) {
+	affpro_clusters(const std::set<const pw_alignment* , compare_pointer_pw_alignment> & inset, const tmodel & model, double base_cost):model(model), base_cost(base_cost) {
 	//	std::cout<<"instd::set size"<<inset.size()<<std::endl;	
 		//	std::cout<<"data1 ad in afp: "<< & dat << std::endl;	
-		for(std::set<pw_alignment, compare_pw_alignment>::iterator it = inset.begin(); it!=inset.end(); ++it) {
+		for(std::set<const pw_alignment*, compare_pointer_pw_alignment>::iterator it = inset.begin(); it!=inset.end(); ++it) {
 		//	std::cout<<"data2 ad in afp: "<< & dat << std::endl;	
-			const pw_alignment & al = *it;
+			const pw_alignment * al = *it;
 		//	std::cout<<"alignment from instd::set: "<<std::endl;
 		//	al->print();
 		//	dat.numAcc();
 		//	std::cout<<"data3 ad in afp: "<< & dat << std::endl;	
-			add_alignment(al); 
+			add_alignment(*al); 
 		//	std::cout<<"data4 ad in afp: "<< & dat << std::endl;	
 
 		}
@@ -362,14 +529,14 @@ void run(std::map<std::string, std::vector<std::string> > & cluster_result) {
 		apoptions.progress=NULL; apoptions.progressf=NULL;
 		double netsim;	
 		int iter = apcluster32(data, NULL, NULL, simmatrix.size()*simmatrix.size(), result, &netsim, &apoptions);
-//		std::cout << "iter " << iter << "result[0] "<< result[0] << " netsim "<< netsim<< std::endl;
+		std::cout << "iter " << iter << "result[0] "<< result[0] << " netsim "<< netsim<< std::endl;
 		if(iter <= 0 || result[0]==-1) {
 			apoptions.minimum_iterations = 10000;
 			apoptions.converge_iterations = 15000;
 			apoptions.maximum_iterations = 150000;
 			apoptions.lambda = 0.6;
 			iter = apcluster32(data, NULL, NULL, simmatrix.size()*simmatrix.size(), result, &netsim, &apoptions);
-		//	std::cout << "iter " << iter << std::endl;
+			std::cout << "iter " << iter << std::endl;
 		}
 		if(iter <= 0 || result[0]==-1) {
 			apoptions.minimum_iterations = 100000;
@@ -377,17 +544,20 @@ void run(std::map<std::string, std::vector<std::string> > & cluster_result) {
 			apoptions.maximum_iterations = 250000;
 			apoptions.lambda = 0.99;
 			iter = apcluster32(data, NULL, NULL, simmatrix.size()*simmatrix.size(), result, &netsim, &apoptions);
-	//		std::cout << "iter1 " << iter << "result[0] " <<result[0]<< std::endl;
+			std::cout << "iter1 " << iter << "result[0] " <<result[0]<< std::endl;
 		}
 	} else {
 		if(simmatrix.size()==1) {
 			result[0] = 0;
+			std::cout << "result[0] " <<result[0]<< std::endl;
+
 		} else {
 		// simpler algorithm for only 2 element
-			double one = simmatrix.at(0).at(0) + simmatrix.at(1).at(0);
-			double two = simmatrix.at(1).at(1) + simmatrix.at(0).at(1);
+			result[0] = 0;
+			double one = simmatrix.at(0).at(0) + simmatrix.at(0).at(1);
+			double two = simmatrix.at(1).at(1) + simmatrix.at(1).at(0);
 			double separate = simmatrix.at(0).at(0) + simmatrix.at(1).at(1);
-
+			std::cout << "one "<< one << " two "<< two << " sep "<< separate << std::endl;
 			if(one > two && one > separate) {
 				result[0] = 0;
 				result[1] = 0;
@@ -398,7 +568,7 @@ void run(std::map<std::string, std::vector<std::string> > & cluster_result) {
 				result[0] = 0;
 				result[1] = 1;
 			}
-
+			std::cout << "2 elements: " << "result[0] " <<result[0] << " result[1] "<< result[1] << std::endl;		
 		}
 	}
 // TODO conv error res -1
@@ -486,7 +656,7 @@ void run(std::map<std::string, std::vector<std::string> > & cluster_result) {
 	std::map<std::string, char> cluster_centers;
 	void add_alignment(const pw_alignment  & al);
 };
-
+#define ALLOWED_GAP 5
 class finding_centers{
 	public:
 	finding_centers(all_data &);
@@ -494,7 +664,7 @@ class finding_centers{
 	void setOfAlignments(std::map<std::string,std::vector<pw_alignment> > &);
 	void findMemberOfClusters(std::map<std::string,std::vector<pw_alignment> > &);
 	void center_frequency(std::map<std::string,std::vector<pw_alignment> > &, std::vector<std::map<size_t, std::string> > & );
-	std::map<size_t, std::vector<size_t> >get_center(size_t)const;
+	std::map<size_t, std::vector<size_t> >get_center(size_t &)const;//Returns long centers and their locations
 	size_t get_number_of_centers()const;//Returns the total number of centers
 	std::map< size_t, std::string> get_sequence_centers(size_t & )const;//It returns all the centers of a sequence, a center may happen more than once, thus it might be repeated in the vector. size_t shows the position of each center
 	std::string find_center_name(size_t &)const;
@@ -504,8 +674,9 @@ class finding_centers{
 	std::vector< std::map<size_t , pw_alignment*> >AlignmentsFromClustering;//It is changing in each call of clustering
 	std::map<std::string,std::string> memberOfCluster; //first string is assocciated member and second one is its center
 	std::vector< std::map< size_t, std::string> >centersOnSequence;//all the centers that happen on each sequence and their positions 
-	std::vector< std::map< size_t , std::vector<size_t> > > centersOfASequence;//centers that happen on each sequence and have less than 5 bases difference and their position.
+	std::vector< std::map< size_t , std::vector<size_t> > > centersOfASequence;//centers that happen on each sequence and have less than ALLOWED_GAP bases difference and their position. Fully reveresed are removed.
 	std::vector<std::string> center_index;
+//	std::map<std::string, int>oriented_index;// centers, their indecies which can be negative if they are used in their reverse direction.
 };
 class suffix_tree{
 	public:
@@ -513,11 +684,8 @@ class suffix_tree{
 	~suffix_tree();
 	void create_suffix(size_t);
 	void update_successive_centers(std::vector<size_t> &,size_t &, size_t & ); // Updating successive center vector by replacing a new merged center 
-	void find_a_node(size_t& ,size_t&, std::vector<size_t>&);
-	void find_sibling(size_t&, vector<size_t>&);
 	void find_parent(size_t&, size_t&);
 	void delete_relation(size_t & , size_t& );
-	void insert_node(std::vector<size_t>);
 	void count_branches();
 	std::vector<std::vector<size_t> > get_nodes()const;
 	std::map<std::vector<size_t>, size_t> get_count()const;//Returns 'branch counter'
@@ -527,8 +695,8 @@ class suffix_tree{
 	void first_parent_index(size_t & , size_t &); //current index, its first parent index
 	void create_tree(std::vector<size_t> &, size_t &);
 	size_t get_power_of_two(size_t &)const;
-	void shift_node_relation(std::multimap<size_t,size_t> & , size_t & , size_t & , size_t & );
-	void shift_first_parent();
+	void shift_node_relation(size_t & , size_t & , size_t & );
+	void shift_first_parent(size_t & , size_t&, std::vector<size_t> &);
 	std::map<size_t, std::vector<size_t> > get_center_on_a_sequence(size_t &)const;
 	private:
 	all_data & data;
@@ -548,14 +716,18 @@ class merging_centers{
 		void updating_centers(std::vector<size_t> & , size_t &);
 		void merg_gain_value( );
 		void adding_new_centers(std::vector<std::vector<std::string> >&, std::vector<std::map<size_t , std::vector<std::string> > >&);// Saves new centers in the 'long_centers' vector in main. It gives a unique id to each of them(Their row in the outer vector). vector<string> includes are the centers in the new one. they are saved in the form of ref:left.
+		void index_centers(std::map<std::string , std::vector<pw_alignment> > & );
+		void add_long_centers_to_map(std::vector<std::vector<std::string> > & , std::map<vector<std::string>, std::vector<pw_alignment> > &); //Initially fills in the new_centers map
 		void create_alignment(std::vector<std::vector<std::string> > &, std::map<vector<std::string>, vector<pw_alignment> >&, std::map<std::string , std::vector<pw_alignment> > &,  std::vector<std::map<size_t , std::vector<std::string> > > &,  std::vector<std::map<size_t , std::string> > & ); //Creates all the als using long centers 
+		void remove_fully_reverse_refs(vector<vector<std::string> > & ,std::map<std::vector<std::string>, std::vector<pw_alignment> > &);
 		void find_new_centers(size_t &, std::vector<std::string> & , size_t &, std::vector<std::map<size_t, std::vector<std::string> > >& );//Finds long centers on a certain sequence	
-		void find_long_center_length(std::vector<std::string> & , std::map<std::string,std::vector<pw_alignment> > & , size_t & ,size_t & ,size_t &,size_t &);
+		void find_long_center_length(std::vector<std::string> & , std::map<std::string,std::vector<pw_alignment> > & , size_t & ,size_t & ,size_t &,size_t &, std::vector<std::map<size_t , std::string> > &);
 
 	private:
 		all_data & data;
 		finding_centers & centers;
 		suffix_tree & tree;
+		std::map<std::string, int> center_index;
 		std::map<std::vector<size_t> , size_t> merged_centers;//merged centers, vector<size_t> ----> original indices of megerd centers , size_t ----> its new index
 		std::map<std::vector<size_t>, int >gains; // vector<size_t> ----> series of centers, int ----> gain of it. It includes the last combination of centers
 };

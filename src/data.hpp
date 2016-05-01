@@ -62,6 +62,8 @@ class all_data {
 
 		void read_fasta_maf(std::string fasta_all_sequences, std::string maf_all_alignments);
 		void read_fasta_sam(std::string fasta_all_sequences, std::string sam_all_alignments);
+		void read_accknown_fasta_sam(std::string fasta_all_sequences, std::string sam_all_alignments);
+
 		// no copy constructor, never copy all data
 		~all_data();
 
@@ -86,8 +88,9 @@ class all_data {
 		void add_accession(const std::string & acc);
 		size_t numOfAcc() const;
 		const std::map< std::string, size_t>& getLongname2seqidx()const;
-		int findIdAlignment(std::string name,int start, int end);
+		int findIdAlignment(std::string name,unsigned int start, unsigned int end);
 		void compare_seq_with_decoding(std::ifstream &);
+		void checkAlignmentRange(const pw_alignment &)const;
 	
 	private:
 		// data
@@ -106,6 +109,7 @@ class all_data {
 		static void name_split(const std::string & longname, std::string & acc, std::string & name);
 
 
+
 };
 
 
@@ -122,7 +126,7 @@ public:
 	void test_all() const;
 	void test_all_part()const;// Change it later to check all those pieces with gap in one sample. Put them all in a std::set and check if the only missed parts of coverage are those parts.
 	void test_overlap()const;
-	void test_no_overlap_between_ccs(const pw_alignment &, std::set<pw_alignment, compare_pw_alignment> &)const;
+	void test_no_overlap_between_ccs(const pw_alignment &, std::set<const pw_alignment*, compare_pointer_pw_alignment> &)const;
 	void print_all_alignment() const;
 	const pw_alignment * get_al_at_left_end(size_t ref1, size_t ref2, size_t left1, size_t left2) const;
 	std::multimap<size_t, const pw_alignment &>& get_als_on_reference(size_t sequence) ;
@@ -138,7 +142,6 @@ public:
 	static void test_partial_overlap_set(std::set< const pw_alignment *, compare_pw_alignment> & als);
 	static void test_partial_overlap_vec(std::vector< const pw_alignment *> & als);
 	static bool check_po(size_t l1, size_t r1, size_t l2, size_t r2);
-
 
 	size_t size() const;
 private:
@@ -236,7 +239,6 @@ class counting_functor : public abstract_context_functor {
 
 };
 class mc_model;
-//template <typename T> class dynamic_mc_model; 
 
 
 class cost_functor : public abstract_context_functor {
@@ -257,7 +259,6 @@ class adding_functor : public abstract_context_functor {
 	public:
 
 };
-//template<class T>
 class encoding_functor : public abstract_context_functor {
 	public:
 	encoding_functor(all_data& , mc_model* , wrapper &, dlib::entropy_encoder_kernel_1 &);
@@ -303,7 +304,7 @@ class mc_model{
 		char modification_character(int modify_base, int num_delete, int insert_base, int num_keep)const;
 		void modification(char enc, int & modify_base, int & num_delete, int & insert_base, int & num_keep)const;
 		void computing_modification_oneToTwo(const pw_alignment & p, abstract_context_functor & functor)const;
-		void computing_modification_twoToOne(const pw_alignment & p, abstract_context_functor & functor)const;
+		void computing_modification_twoToOne(const pw_alignment & p, size_t & , abstract_context_functor & functor)const;
 		void cost_function( pw_alignment& p) const;
 		std::string print_modification_character(char enc)const;
 		const std::map<std::string, std::vector<double> > & getPattern(size_t acc)const;
@@ -326,8 +327,8 @@ class mc_model{
 		const std::map<std::string, std::vector<unsigned int> >& get_highValue(size_t acc1, size_t acc2)const;
 		void computing_modification_in_cluster(std::string center, std::string member)const;
 		size_t modification_length(char mod)const;
-		void get_encoded_member(pw_alignment & al, size_t center_ref, size_t center_left, encoding_functor & functor,std::ofstream&)const;
-		void get_encoded_member_long_center(pw_alignment & al, size_t center_ref, size_t center_left, std::string & , encoding_functor & functor,std::ofstream&)const;
+		void get_encoded_member(const pw_alignment & al, size_t center_ref, size_t center_left, encoding_functor & functor,std::ofstream&)const;
+		void get_encoded_member_long_center(const pw_alignment & , unsigned int& , encoding_functor & functor,std::ofstream&)const;
 		void get_insertion_high_between_centers(size_t& seq_id ,char & seq_base, char & last_center_base, unsigned int& center_ref,std::string & ,unsigned int& high, unsigned int& low)const;
 		void get_a_keep(unsigned int & , unsigned int & , size_t & , std::vector<unsigned int> & , std::vector<unsigned int> & )const;
 	private:
