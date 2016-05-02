@@ -15,6 +15,8 @@
 #include "dynamic_decoder.hpp"
 #include "test.hpp"
 #include "graph.hpp"
+//#include "interval_tree.hpp"
+
 #define NO_MAKEFILE
 #include "dlib/entropy_encoder/entropy_encoder_kernel_1.h"
 #include "dlib/entropy_decoder/entropy_decoder_kernel_1.h"
@@ -1798,10 +1800,24 @@ int do_dynamic_mc_model(int argc, char * argv[]) {
 	//Makes components of partially overlapped alignments
 	std::cout << "al with postive gains are kept"<<std::endl;
 	clock_t initial_cc_time = clock();
-	compute_cc_with_icl cccs(al_with_pos_gain, data.numSequences(),num_threads);
+//	compute_cc(al_with_pos_gain, data.numSequences(),num_threads);
+	compute_cc_with_interval_tree cccs(al_with_pos_gain, data.numSequences());
 	std::vector<std::set<const pw_alignment* , compare_pointer_pw_alignment> > ccs; 
-	cccs.compute(ccs); //fill in ccs, ordered by size(Notice that they are just connected to each other if they have overlap!) //XXX This is also pretty slow.
+	cccs.compute(ccs); //fill in ccs, ordered by size(Notice that they are just connected to each other if they have overlap!)
 	initial_cc_time = clock() - initial_cc_time;
+/*	for(size_t i=0; i<ccs.size()-1; i++) {//A test function that chckes overlap between components. There shouldn't be any overlap between them.
+		std::cout << "Connected component "<< i << " contains " << ccs.at(i).size() << " alignments" << std::endl;
+		for(std::set< const pw_alignment* , compare_pointer_pw_alignment>::iterator it = ccs.at(i).begin();it != ccs.at(i).end();it++){
+			const pw_alignment * p = *it;
+		//	p.print();
+			for(size_t j = i+1; j < ccs.size();j++){
+				std::set< const pw_alignment* , compare_pointer_pw_alignment> ccs_j = ccs.at(j);
+				ol.test_no_overlap_between_ccs(*p, ccs_j);//XXX this is just a test function, comment it the first run!
+				data.checkAlignmentRange(*p);//XXX this is just a test function, comment it after the first run!
+			}
+		}
+	}*/
+
 	std::cout<< "ccs are made!"<<std::endl;
 // Select an initial alignment set for each connected component (in parallel)
 	std::vector<overlap> cc_overlap(ccs.size(), overlap(data));// An overlap class object is needed for each connected component, thus we cannot use ol
@@ -1850,7 +1866,7 @@ int do_dynamic_mc_model(int argc, char * argv[]) {
 		use_ias ias(data,cc, m, cluster_base_cost,num_threads);
 		ias.compute(cc_overlap.at(i));//Cutting partial overlaps! XXX Slow!
 		ias_time_local = clock() - ias_time_local;
-
+		std::cout<< "DONE"<<std::endl;
 		clock_t test_time_local = clock();
 #ifndef NDEBUG
 		cc_overlap.at(i).test_partial_overlap(); 
@@ -1865,12 +1881,11 @@ int do_dynamic_mc_model(int argc, char * argv[]) {
 }
 
 
-		// TODO this can be done a lot faster because there is no partial overlap here
 		clock_t second_cc_time_local = clock();
-		std::vector< std::set<const pw_alignment* , compare_pointer_pw_alignment> > cc_cluster_in; //has shorter length than original sequence pieces
+		std::vector< std::set<const pw_alignment* , compare_pointer_pw_alignment> > cc_cluster_in; //have shorter length than original alignemnts
 		std::cout<< "using the cc again!"<<std::endl;
-		compute_cc_with_icl occ(cc_overlap.at(i), data.numSequences(),1);
-		occ.compute(cc_cluster_in);//Oredered by the gain value
+		compute_cc occ(cc_overlap.at(i), data.numSequences(),1);
+		occ.compute(cc_cluster_in);//Here we find fully overlapped pieces and save them in a single component, They are oredered by their gain value
 		second_cc_time_local = clock() - second_cc_time_local;
 //		for(size_t i =0; i < cc_cluster_in.size();i++){
 //			for(std::set<const pw_alignment*, compare_pointer_pw_alignment>::iterator it = cc_cluster_in.at(i).begin(); it != cc_cluster_in.at(i).end();it++){
@@ -2099,7 +2114,7 @@ int do_dynamic_mc_model(int argc, char * argv[]) {
 		merging_centers merg(data, centers, tree);
 		//From this point on orientation matters! It shoud be taken into account in counting the number of each center happening when we are looking for the long centers!
 		centers.center_frequency(al_of_a_ccs,centerOnSequence);//All the centers of each sequence are detected and centerOnSequence is filled in. It contains all the cneters on each sequence.
-		merg.adding_new_centers(local_long_centers,centersPositionOnASeq);//After merging a group of centers we iteratively create new suffixes and a new tree based on them, then recalculate the gains again. At the end those with gain>0 go to the long_centers and centersPositionOnASeq.//XXX Should be fixed! Most probably 'tree' function has a bug
+		merg.adding_new_centers(local_long_centers,centersPositionOnASeq);//After merging a group of centers we iteratively create new suffixes and a new tree based on them, then recalculate the gains again. At the end those with gain>0 go to the long_centers and centersPositionOnASeq.
 		std::cout<< "new centers are made! "<<std::endl;
 		for(size_t j  =0; j < local_long_centers.size();j++){
 			long_centers.push_back(local_long_centers.at(j));
@@ -2392,8 +2407,8 @@ int do_dynamic_mc_model(int argc, char * argv[]) {
 	clock_t graph_ma_time = clock();
 
 	// write graph result in maf format
-	write_graph_maf(graphout, alignments_in_a_cluster, data);//includes clusters with no associated member.
-	//write_graph_maf_with_long_centers(graphout,new_centers,data);//TODO Future work: It can be changed in a way that includes long centers themselves.
+//	write_graph_maf(graphout, alignments_in_a_cluster, data);//includes clusters with no associated member.
+	write_graph_maf_with_long_centers(graphout,new_centers,data);//TODO Future work: It can be changed in a way that includes long centers themselves.
 
 	graph_ma_time = clock() - graph_ma_time;
 
@@ -2782,7 +2797,7 @@ int do_simple_test_on_new_cc(int argc, char* argv[]){
 }
 int do_test_new_cc(int argc, char * argv[]) {
 	typedef dynamic_mc_model use_model;
-	if(argc < 6) {
+	if(argc < 5) {
 		usage();
 		cerr << "Program: test_cc" << std::endl;
 		cerr << "Parameters:" << std::endl;
@@ -2811,7 +2826,7 @@ int do_test_new_cc(int argc, char * argv[]) {
 	std::set<const pw_alignment*, compare_pointer_pw_alignment> al_with_pos_gain; 
 #pragma omp parallel for num_threads(num_threads)
 	for(size_t i =0; i < data.numAlignments();i++){
-//	for(size_t i =0; i < 16;i++){
+//	for(size_t i =0; i < 5;i++){
 		const pw_alignment & al = data.getAlignment(i);
 		double g1 ,g2;
 		m.gain_function(al,g1,g2);
@@ -2822,10 +2837,13 @@ int do_test_new_cc(int argc, char * argv[]) {
 		}
 	}
 	//Makes components of partially overlapped alignments
+
 	std::cout << "al with postive gains are kept " << al_with_pos_gain.size() <<std::endl;
-	compute_cc_with_icl cccs(al_with_pos_gain, data.numSequences(),num_threads);
+	compute_cc_with_interval_tree component(al_with_pos_gain,data.numSequences());
+//	compute_cc_with_icl cccs(al_with_pos_gain, data.numSequences(),num_threads);
 	std::vector<std::set<const pw_alignment* , compare_pointer_pw_alignment> > ccs; 
-	cccs.compute(ccs); //fill in ccs, ordered by size(Notice that they are just connected to each other if they have overlap!)
+//	cccs.compute(ccs); //fill in ccs, ordered by size(Notice that they are just connected to each other if they have overlap!)
+	component.compute(ccs);
 	std::cout<< "ccs are made!"<<std::endl;
 	size_t counter = 0;
 //	for(size_t i=0; i<ccs.size(); ++i) {

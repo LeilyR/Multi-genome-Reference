@@ -34,6 +34,9 @@ void initial_alignment_set<T>::insert_alignment_sets(overlap & ovrlp, std::set<p
 			const pw_alignment & al = this_rem.at(i);
 			all_ins.erase(al);
 			all_rem.erase(al);
+	std::cout << "is gonna be removed3: "<<&al <<std::endl;
+		al.print();
+
 			ovrlp.remove_alignment(al); 
 		} else {
 			all_rem.insert(this_rem.at(i));
@@ -46,6 +49,8 @@ template<typename T>
 void initial_alignment_set<T>::local_undo(overlap & ovrlp, std::set<pw_alignment, compare_pw_alignment> & all_inserted, std::set<pw_alignment , compare_pw_alignment> & all_removed) {
 	for(std::set< pw_alignment , compare_pw_alignment >::iterator it = all_inserted.begin(); it!=all_inserted.end(); it++) {
 		const pw_alignment & al = *it;
+		std::cout << "is gonna be removed2: "<<&al <<std::endl;
+		al.print();
 		ovrlp.remove_alignment(al);
 	}
 
@@ -73,14 +78,16 @@ void initial_alignment_set<T>::all_push_back(std::vector<pw_alignment> & inserte
 template<typename T>
 void initial_alignment_set<T>::lazy_split_full_insert_step(overlap & ovrlp, size_t level, size_t & rec_calls, const pw_alignment & alin, std::vector<pw_alignment> & inserted_alignments, vector<pw_alignment> & removed_alignments, double & local_gain) {
 
-//	std::cout << " full insert step on level " << level  << std::endl;
+	std::cout << " full insert step on level " << level  << std::endl;
 
 	std::set<pw_alignment, compare_pw_alignment> remove_als; 
 	std::vector<pw_alignment> insert_als;
 	splitpoints spl2(alin, ovrlp, data);
 	spl2.recursive_splits();
-	spl2.split_all(remove_als, insert_als);
+	std::cout<< "inja!"<<std::endl;
 
+	spl2.split_all(remove_als, insert_als);
+	std::cout<< "inja1!"<<std::endl;
 
 	size_t inserted_counter = 0;
 	if(remove_als.empty()) {
@@ -90,7 +97,7 @@ void initial_alignment_set<T>::lazy_split_full_insert_step(overlap & ovrlp, size
 			double g2;
 			common_model.gain_function(insert_als.at(i), g1, g2);
 			double avg = (g1 + g2) / 2.0 - base_cost;
-	//		std::cout << "avg "<< avg <<std::endl;
+			std::cout << "avg "<< avg <<std::endl;
 			if(avg > 0) {
 				ovrlp.insert_without_partial_overlap(insert_als.at(i));
 				inserted_alignments.push_back(insert_als.at(i));
@@ -109,6 +116,8 @@ void initial_alignment_set<T>::lazy_split_full_insert_step(overlap & ovrlp, size
 			common_model.gain_function(ral, gain1, gain2);
 			double rav_gain = (gain1 + gain2)/2 - base_cost;
 			lost_gain += rav_gain;
+	std::cout << "is gonna be removed1: " << &ral<<std::endl;
+		ral.print();
 
 			ovrlp.remove_alignment(ral);
 			all_removed.insert(ral);
@@ -197,6 +206,8 @@ void initial_alignment_set<T>::lazy_split_insert_step(overlap & ovrlp, size_t le
 		// sets of alignments that need to be removed and inserted if we want the current alignment 
 		std::set<pw_alignment, compare_pw_alignment> remove_als; // remove alignments are pointers to objects contained in the overlap structure
 		std::vector<pw_alignment> insert_als;
+		std::cout << "split all is called 1! "<<std::endl;
+
 		spl.split_all(remove_als, insert_als);
 
 //		std::cout <<"initial: level " << level << " positive gain: " << av_al_gain << " split res rem " << remove_als.size() << " ins " << insert_als.size() << std::endl;
@@ -242,6 +253,7 @@ void initial_alignment_set<T>::lazy_split_insert_step(overlap & ovrlp, size_t le
 				}
 			}*/
 			const pw_alignment & nal = *ordered_parts.begin()->second;
+		//	nal.print();
 			// full split step, we can just copy local gain
 			lazy_split_full_insert_step(ovrlp, level, rec_calls, nal, inserted_alignments, removed_alignments, local_gain);
 			return;
@@ -271,7 +283,9 @@ void initial_alignment_set<T>::lazy_split_insert_step(overlap & ovrlp, size_t le
 	//			std::cout <<"level " << level << "REMOVE NOW: " << std::endl;
 	//			pwa->print();
 	//			std::cout << " ovrlp size " << ovrlp.size() << std::endl;
-				
+				std::cout << "is gonna be removed5: " << &pwa<<std::endl;
+				pwa.print();
+
 				ovrlp.remove_alignment(pwa);
 
 
@@ -456,6 +470,7 @@ void initial_alignment_set<T>::compute_simple(overlap & o) {
 
 		splitpoints spl(al, o, data);
 		spl.recursive_splits();
+		std::cout << "split all is called! "<<std::endl;
 		spl.split_all(remove_als, insert_als);
 		std::vector<double> insert_gains(insert_als.size(), 0);
 
@@ -493,6 +508,9 @@ void initial_alignment_set<T>::compute_simple(overlap & o) {
 		if(gain_of_al>=0) {
 			used++;
 			for(std::set<pw_alignment, compare_pw_alignment>::const_iterator it = remove_als.begin(); it!=remove_als.end(); ++it) {
+	std::cout << "is gonna be removed4: "  << &*it<<std::endl;
+			pw_alignment &al=*it;
+al.print();
 				o.remove_alignment(*it);
 				pcs_rem++;
 			}	
@@ -539,7 +557,7 @@ void initial_alignment_set<T>::overlap_graph(std::vector<std::set<size_t> > & ed
 	std::vector<std::multimap<size_t, size_t> > all_left_pos(data.numSequences()); // reference -> alignment left pos, alignment index
 
 	// all alignment left pos into a vector of multimaps
-	for(size_t i=0; i<sorted_original_als.size(); ++i) {//TODO think! Maybe you can use boost interval here too
+	for(size_t i=0; i<sorted_original_als.size(); ++i) {
 		const pw_alignment * al = sorted_original_als.at(i);
 		size_t r1 = al->getreference1();
 		size_t r2 = al->getreference2();
@@ -672,16 +690,16 @@ void initial_alignment_set<T>::compute_vcover_clarkson(overlap & o) {
 	std::map<size_t, double> index_to_weight;
 	std::multimap<double, size_t> weight_to_index;
 	vector<double> orig_weights(sorted_original_als.size());
-//	double total_in_weight = 0;
+	double total_in_weight = 0;
 # pragma omp parallel for num_threads(num_threads)
 	for(size_t i=0; i<edges.size(); ++i) {
 		const pw_alignment * al = sorted_original_als.at(i);
 		double gain1, gain2;
-		common_model.gain_function(*al, gain1, gain2);//XXX This can also be replaced
+		common_model.gain_function(*al, gain1, gain2);
 		double vgain = (gain1+gain2)/2 - base_cost;
 	//	cout << " al " << i << " gain " << vgain <<  " at " << al << endl;
 		assert(vgain >= 0.0);
-//		total_in_weight += vgain;//XXX This can be replaced by max gain
+		total_in_weight += vgain;
 		orig_weights.at(i) = vgain;
 		double weight = vgain / edges.at(i).size();
 		index_to_weight.insert(std::make_pair(i, weight));
@@ -748,7 +766,7 @@ void initial_alignment_set<T>::compute_vcover_clarkson(overlap & o) {
 	}
 	assert(at == sorted_original_als.size());
 
-//	cout << " on " << backup_soa.size() << " alignments with total gain of " << total_in_weight << endl;
+	cout << " on " << backup_soa.size() << " alignments with total gain of " << total_in_weight << endl;
 	cout << " on " << backup_soa.size() << " alignments with total gain of " << max_gain << endl;
 	cout << " found an INDEPENDENT SET of " << indep_set_size << " alignments with total gain " << weight_in_independent_set <<endl;
 	cout << " remainder contains " << removed.size() << " alignments with total gain of " << remainder_weight << endl;
@@ -772,6 +790,98 @@ void initial_alignment_set<T>::compute_vcover_clarkson(overlap & o) {
 
 
 }
+void compute_cc_with_interval_tree::add_the_interval(const pw_alignment* p){
+	size_t ref1 = p->getreference1();
+	size_t ref2 = p->getreference2();
+	size_t l1,l2,r1,r2;
+	p->get_lr1(l1,r1);
+	p->get_lr2(l2,r2);
+
+	intervals.at(ref1).push_back(Interval<const pw_alignment*>(l1,r1,p));
+	intervals.at(ref2).push_back(Interval<const pw_alignment*>(l2,r2,p));
+/*	AlignmentInterval itv1(p,0);
+	std::cout<< &itv1<<std::endl;
+	itv1.Print();
+	IntervalTree & tree1 = trees.at(ref1);
+	tree1.Insert(&itv1);
+	AlignmentInterval itv2(p,1);
+	itv2.Print();
+	IntervalTree& tree2 = trees.at(ref2);
+	tree2.Insert(&itv2);*/
+
+}
+void compute_cc_with_interval_tree::compute(std::vector<std::set<const pw_alignment*, compare_pointer_pw_alignment> > & ccs){
+//	IntervalTree::findOverlapping
+	std::set <const pw_alignment*, compare_pointer_pw_alignment> seen;
+	std::multimap<size_t , std::set<const pw_alignment*, compare_pointer_pw_alignment> > sorter; // sorts ccs to give largest first
+	for(size_t i = 0; i < alignments.size();i++) {
+	//	std::cout << "i "<< i << std::endl;
+		const pw_alignment * al = alignments.at(i);
+	//	al->print();
+		std::set< const pw_alignment*, compare_pointer_pw_alignment>::iterator seenal = seen.find(al);
+		if(seenal == seen.end()) {
+			std::set< const pw_alignment*, compare_pointer_pw_alignment> cc;
+			get_cc(*al, cc, seen);
+			sorter.insert(std::make_pair(cc.size(), cc));
+			std::cout << "cc size is "<< cc.size()<<std::endl;
+		}
+	}
+	for(std::multimap<size_t , std::set<const pw_alignment*, compare_pointer_pw_alignment> >::reverse_iterator it = sorter.rbegin(); it!=sorter.rend(); it++) {
+		ccs.push_back(it->second);
+	}	std::cout << "ccs size is "<< ccs.size()<<std::endl;
+}
+void compute_cc_with_interval_tree::get_cc(const pw_alignment & al, std::set <const pw_alignment*, compare_pointer_pw_alignment> & cc, std::set <const pw_alignment*, compare_pointer_pw_alignment> & seen) {
+	std::vector<size_t> left(2);
+	std::vector<size_t> right(2);
+	al.get_lr1(left.at(0), right.at(0));
+	al.get_lr2(left.at(1), right.at(1));
+	std::vector<size_t>reference(2);
+	reference.at(0) = al.getreference1();
+	reference.at(1) = al.getreference2();
+//#pragma omp parallel for num_threads(num_threads)
+	for(size_t i =0; i < 2;i++){
+	//	std::cout << "on reference "<< i << std::endl;
+	//	std::cout << reference.at(i) << " " << left.at(i)<< " "<< right.at(i)<<std::endl;
+		cc_step(reference.at(i), left.at(i), right.at(i), cc, seen);	
+	}	
+}
+void compute_cc_with_interval_tree::cc_step(size_t ref, size_t left, size_t right, std::set <const pw_alignment*, compare_pointer_pw_alignment> & cc, std::set <const pw_alignment* , compare_pointer_pw_alignment>  & seen ) {
+	std::set <const pw_alignment * , compare_pointer_pw_alignment> seen1;
+	std::vector<Interval<const pw_alignment*> > ov;
+	trees.at(ref).findOverlapping(left, right, ov);
+//	std::cout << "ref " << ref << " left "<< left << " right "<<right <<std::endl;
+	for(size_t i =0;i < ov.size();i++){
+		const pw_alignment* al = ov.at(i).GetId();
+	//	ov.at(i).PrintInterval();
+		std::set <const pw_alignment* , compare_pointer_pw_alignment>::iterator seenal = seen.find(al);
+		if(seenal == seen.end()){ // if current al not contained in any connected component
+			size_t aleft1, aright1,aleft2, aright2;	
+			al->get_lr1(aleft1, aright1);//current alignment
+			al->get_lr2(aleft2, aright2);
+			seen.insert(al);
+			seen1.insert(al);
+			cc.insert(al);
+		}else { }
+	}
+	//TODO remove seen1 objects
+	std::vector<const pw_alignment* > seen2;
+	for(std::set<const pw_alignment * , compare_pointer_pw_alignment>::iterator it = seen1.begin(); it!=seen1.end(); ++it) {
+		const pw_alignment * al = *it;
+		seen2.push_back(al);
+	//	Interval<const pw_alignment> itv1(l1,r1,ref);
+	}
+//	std::cout << "seen2 size "<< seen2.size()<<std::endl;
+//#pragma omp parallel for num_threads(num_threads)
+	for(size_t i =0; i< seen2.size(); i++){
+		const pw_alignment * al;
+		al = seen2.at(i);
+		size_t aleft, aright;
+		al->get_lr2(aleft, aright);
+		cc_step(al->getreference2(), aleft, aright, cc, seen);
+		al->get_lr1(aleft, aright);
+		cc_step(al->getreference1(), aleft, aright, cc, seen);
+	} 
+}
 void compute_cc_with_icl::add_on_intmap(const pw_alignment * al){
 	size_t ref1 = al->getreference1();
 	size_t ref2 = al->getreference2();
@@ -790,6 +900,64 @@ void compute_cc_with_icl::add_on_intmap(const pw_alignment * al){
 //	all_intervals.at(ref1).insert(bounds_int1);
 //	all_intervals.at(ref2).insert(bounds_int2);
 	als_on_reference.at(ref2).add(make_pair(bounds_int2,id));
+}
+void compute_cc_with_icl::remove_from_intmap(size_t & id, size_t & ref1, size_t & ref2, size_t& left1, size_t & right1, size_t & left2, size_t & right2){
+	std::cout << "id " << id << " ref1 "<< ref1 << " left 1 "<< left1 << " right1 "<<right1 <<std::endl;
+	for(boost::icl::interval_map<size_t, std::set<size_t> >::iterator it = als_on_reference.at(ref1).begin(); it != als_on_reference.at(ref1).end(); ++it){//TODO change it to the equal_range
+//	for(boost::icl::interval_map<size_t, std::set<size_t> >::const_iterator it = als_on_reference.at(ref1).find(left1); it != als_on_reference.at(ref1).end(); ++it){//TODO change it to the equal_range
+		//Check all the alignments in this interval
+		boost::icl::discrete_interval<size_t> itv  = (*it).first;
+if(lower(itv)>=left1 && lower(itv) <= right1){
+		std::set<size_t> overlaps_al = (*it).second;
+	//	std::cout << "in interval " << itv << std::endl;
+	//	std::cout<< "size of set "<< overlaps_al.size() << std::endl;
+	//	if(boost::icl::lower(itv) > right1){
+	//		std::cout << "break! " << lower(itv) << " > " << right1 <<std::endl;
+	//		break;
+	//	}
+		std::set<size_t>::iterator setit = (*it).second.find(id);
+		if(setit != (*it).second.end()){
+			(*it).second.erase(setit);
+		}
+	//	TODO can not change the const set!
+	//	(*it).second = overlaps_al;
+}
+if(boost::icl::lower(itv) > right1){
+			std::cout << "break! " << lower(itv) << " > " << right1 <<std::endl;
+			break;
+}
+
+	}
+	std::cout << "id " << id << " ref2 " << ref2 << " left 2 "<< left2 << " right2 "<<right2 <<std::endl;
+	for(boost::icl::interval_map<size_t, std::set<size_t> >::iterator it = als_on_reference.at(ref2).begin(); it != als_on_reference.at(ref2).end(); ++it){//TODO change it to the equal_range
+//	for(boost::icl::interval_map<size_t, std::set<size_t> >::const_iterator it = als_on_reference.at(ref2).find(left2); it != als_on_reference.at(ref2).end(); ++it){//TODO change it to the equal_range
+		//Check all the alignments in this interval
+		boost::icl::discrete_interval<size_t> itv  = (*it).first;
+if(lower(itv)>=left2 && lower(itv) <= right2){
+
+		std::set<size_t> overlaps_al = (*it).second;
+	//	std::cout << "in interval " << itv << std::endl;
+	//	std::cout<< "size of set "<< overlaps_al.size() << std::endl;
+//		if(boost::icl::lower(itv) > right2){
+//			std::cout << "break! " << lower(itv) << " > " << right2 <<std::endl;
+//			break;
+//		}
+		std::set<size_t>::iterator setit = (*it).second.find(id);
+		if(setit != (*it).second.end()){
+			(*it).second.erase(setit);
+}
+	//	TODO can not change the const set!
+	//	(*it).second = overlaps_al;
+}
+if(boost::icl::lower(itv) > right2){
+			std::cout << "break! " << lower(itv) << " > " << right2 <<std::endl;
+			break;
+}
+
+	}
+
+
+
 }
 void compute_cc_with_icl::compute_test(std::vector<std::set<size_t> >& ccs){
 	std::set<size_t> seen;
@@ -817,10 +985,6 @@ void compute_cc_with_icl::compute_test(std::vector<std::set<size_t> >& ccs){
 	}
 
 }
-//void compute_cc_with_icl::remove_from_intmap(const pw_alignment * al){
-//
-//
-//}
 void compute_cc_with_icl::cc_step_current(size_t & current, size_t & left, size_t & right, std::set<size_t>& cc, std::set<size_t> & seen){
 
 	boost::icl::interval_map<size_t, std::set<size_t> >::const_iterator searchbegin;
@@ -859,7 +1023,7 @@ void compute_cc_with_icl::compute(std::vector<std::set< const pw_alignment* , co
 	std::set <const pw_alignment*, compare_pointer_pw_alignment> seen;
 	std::multimap<size_t , std::set<const pw_alignment*, compare_pointer_pw_alignment> > sorter; // sorts ccs to give largest first
 	for(size_t i = 0; i < alignments.size();i++) {
-		std::cout << "i "<< i << std::endl;
+	//	std::cout << "i "<< i << std::endl;
 		const pw_alignment * al = alignments.at(i);
 	//	al->print();
 		std::set< const pw_alignment*, compare_pointer_pw_alignment>::iterator seenal = seen.find(al);
@@ -886,8 +1050,8 @@ void compute_cc_with_icl::get_cc(const pw_alignment & al, std::set <const pw_ali
 	reference.at(1) = al.getreference2();
 //#pragma omp parallel for num_threads(num_threads)
 	for(size_t i =0; i < 2;i++){
-		std::cout << "on reference "<< i << std::endl;
-		std::cout << reference.at(i) << " " << left.at(i)<< " "<< right.at(i)<<std::endl;
+	//	std::cout << "on reference "<< i << std::endl;
+	//	std::cout << reference.at(i) << " " << left.at(i)<< " "<< right.at(i)<<std::endl;
 		cc_step(reference.at(i), left.at(i), right.at(i), cc, seen);	
 	}	
 }
@@ -922,11 +1086,17 @@ void compute_cc_with_icl::cc_step(size_t ref, size_t left, size_t right, std::se
 	// search for overlap first, then do all recursive calls after overlapping alignments have been put to seen 
 	// this reduces the maximal recursion level
 //	size_t numseen = 0;
+//	for(boost::icl::interval_map<size_t, std::set<size_t> >::iterator it =  als_on_reference.at(ref).begin(); it != als_on_reference.at(ref).end(); ++it){
+//		boost::icl::discrete_interval<size_t> itv  = (*it).first;
+//		if(lower(itv) >= left && lower(itv) <= right){
+//			std::cout << "in interval_test " << itv << std::endl;
+//		}
+//	}
 	for(boost::icl::interval_map<size_t, std::set<size_t> >::const_iterator it = searchbegin; it != als_on_reference.at(ref).end(); ++it){//TODO change it to the equal_range
 		//Check all the alignments in this interval
 		boost::icl::discrete_interval<size_t> itv  = (*it).first;
 		std::set<size_t> overlaps_al = (*it).second;
-	//	std::cout << "in interval " << itv << std::endl;
+		std::cout << "in interval " << itv << std::endl;
 	//	std::cout<< "lower is "<< boost::icl::lower(itv)<<std::endl;
 		std::cout<< "size of set "<< overlaps_al.size() << std::endl;
 		if(boost::icl::lower(itv) > right){
@@ -937,8 +1107,8 @@ void compute_cc_with_icl::cc_step(size_t ref, size_t left, size_t right, std::se
 		for(std::set<size_t>::iterator setit = overlaps_al.begin(); setit != overlaps_al.end();setit++){
 			const pw_alignment* al = alignments.at(*setit);
 		//	al->print();
-#pragma omp critical(seen)
-{
+//#pragma omp critical(seen)
+//{
 			std::set <const pw_alignment* , compare_pointer_pw_alignment>::iterator seenal = seen.find(al);
 			if(seenal == seen.end()){ // if current al not contained in any connected component
 				size_t aleft1, aright1,aleft2, aright2;	
@@ -948,6 +1118,7 @@ void compute_cc_with_icl::cc_step(size_t ref, size_t left, size_t right, std::se
 				seen1.insert(al);
 				cc.insert(al);
 				intermediate.insert(*setit);
+//(*it).second.erase(*setit);
 			//	std::cout << "left "<< left << " right "<<right <<std::endl;
 				assert((aright1 >= left && aleft1 <= right)||(aright2 >= left && aleft2 <= right));
 			}
@@ -955,14 +1126,23 @@ void compute_cc_with_icl::cc_step(size_t ref, size_t left, size_t right, std::se
 			//	std::cout << "numseen "<<numseen << std::endl;
 			//	numseen++;
 			}
-}
+//}
 		}
-//		std::cout<< "size of intermediate " << intermediate.size()<<std::endl;
-		for(std::set<size_t>::iterator it = intermediate.begin(); it!=intermediate.end();it++){
-			std::set<size_t>::iterator it1 = overlaps_al.find(*it);
-			overlaps_al.erase(it1);
-		}
-		std::cout<< "size of set after removing "<< overlaps_al.size()<<std::endl;
+		std::cout<< "size of intermediate " << intermediate.size()<<std::endl;
+//		for(std::set<size_t>::iterator it = intermediate.begin(); it!=intermediate.end();it++){
+//			std::cout<< *it <<std::endl;
+//			std::set<size_t>::iterator it1 = overlaps_al.find(*it);
+//			const pw_alignment* al = alignments.at(*it1);
+//			size_t aleft1, aright1,aleft2, aright2,ref1,ref2;	
+//			al->get_lr1(aleft1, aright1);
+//			al->get_lr2(aleft2, aright2);
+//			ref1 = al->getreference1();
+//			ref2 = al->getreference2();
+//			size_t id = *it;
+//			remove_from_intmap(id , ref1, ref2, aleft1, aright1, aleft2, aright2);
+//		//	overlaps_al.erase(it1);//I should be able to remove this!
+//		}
+		std::cout<< "After removing "<<std::endl;
 	}
 //	boost::icl::discrete_interval<size_t> bounds = boost::icl::construct<boost::icl::discrete_interval<size_t> >(left,right);
 //	als_on_reference.at(ref) -= bounds;
@@ -1171,14 +1351,14 @@ void compute_cc::cc_step(size_t ref, size_t left, size_t right, std::set <const 
 {
 		std::set <const pw_alignment* , compare_pointer_pw_alignment>::iterator seenal = seen.find(al);
 		if(seenal == seen.end()) { // if current al not contained in any connected component
-			std::cout << " not seen" << std::endl;
+		//	std::cout << " not seen" << std::endl;
 			size_t aleft, aright;	
 	//		size_t leftmost_point_of_al_on_ref = numeric_limits<size_t>::max(); 
 			if(al->getreference1()==ref) {
 				al->get_lr1(aleft, aright);//current alignment
-				std::cout << "alleft "<< aleft << "alright "<<aright <<std::endl;
+		//		std::cout << "alleft "<< aleft << "alright "<<aright <<std::endl;
 				if(aright >= left && aleft <= right) {
-					std::cout << "on ref 1 "<<std::endl;
+				//	std::cout << "on ref 1 "<<std::endl;
 					seen.insert(al);
 					seen1.insert(al);
 					cc.insert(al);
@@ -1191,9 +1371,9 @@ void compute_cc::cc_step(size_t ref, size_t left, size_t right, std::set <const 
 			}
 			if(al->getreference2()==ref) {
 				al->get_lr2(aleft, aright);
-				std::cout << "alleft "<< aleft << "alright "<<aright <<std::endl;
+		//		std::cout << "alleft "<< aleft << "alright "<<aright <<std::endl;
 				if(aright >= left && aleft <= right) {
-					std::cout<<"on ref 2 "<<std::endl;
+				//	std::cout<<"on ref 2 "<<std::endl;
 			//		al->print();
 					seen.insert(al);
 					seen1.insert(al);
@@ -2029,14 +2209,14 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment & al) {
 			}
 		}
 	//	std::cout<< "first parent in read function:" <<std::endl;
-		for(std::map<std::vector<size_t>, size_t>::iterator it = firstParent.begin();it != firstParent.end(); it++){
-			std::vector<size_t> f_parent = it->first;
+	///	for(std::map<std::vector<size_t>, size_t>::iterator it = firstParent.begin();it != firstParent.end(); it++){
+	//		std::vector<size_t> f_parent = it->first;
 		//	std::cout << "node index is " << it->second << " ";
 		//	for( size_t j =0; j < f_parent.size() ; j ++){
 		//		std::cout << f_parent.at(j)<< " ";
 		//	}
 		//	std::cout<< " " << std::endl;
-		}
+//		}
 //		std::cout<< "all the nodes:"<<std::endl;
 //		for(size_t i = 0; i < nodes.size(); i++){
 //			std::string node = nodes.at(i);
@@ -2046,6 +2226,12 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment & al) {
 //			}
 //			std::cout << " " <<std::endl;
 //		}
+	}
+	void suffix_tree::check_first_nodes_after_root(std::vector<size_t> & current, size_t & node_index){
+		std::map<size_t,size_t>::iterator it = FirstCenterOnFirstNodes.find(current.at(0));
+		if(it!=FirstCenterOnFirstNodes.end()){
+			node_index = it->second;
+		}
 	}
 	void suffix_tree::find_child_nodes(size_t & index, vector<size_t>& childs){
 		childs.clear();
@@ -2084,16 +2270,22 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment & al) {
 				//	std::cout << "suffixes at " << i  << " at " << q <<std::endl;
 					std::vector<size_t> first_parent;
 					get_first_parent(suffixes.at(seq_id).at(i).at(q),first_parent);
+				//	size_t FirstParentNodeIndex = nodes.size();
+				//	check_first_nodes_after_root(suffixes.at(seq_id).at(i).at(q),FirstParentNodeIndex);
 				//	std::cout<< "f_parent "<<std::endl;
 				//	for(size_t j =0; j < first_parent.size(); j++){
 				//		std::cout << first_parent.at(j)<< " ";
 				//	}
 				//	std::cout << "" << std::endl;
 					if(first_parent.size()==0){//if there is no first parent starts with the current suffix
+				//	if(FirstParentNodeIndex==nodes.size()){
 					//	std::cout << "if first parent is empty"<<std::endl;
 						nodes.push_back(suffixes.at(seq_id).at(i).at(q));
 						firstParent.insert(make_pair(suffixes.at(seq_id).at(i).at(q),nodes.size()-1));	
+					//	FirstCenterOnFirstNodes.insert(make_pair(suffixes.at(seq_id).at(i).at(q).at(0),nodes.size()-1));//TODO should be updated!
+					//	IndexOfFirstNodesAfterRoot.insert(nodes.size()-1);//TODO should be updated
 					}else{
+					//	std::vector<size_t> first_parent =  nodes.at(FirstParentNodeIndex);
 					//	std::cout << "else "<<std::endl;// there is already a first parent starts with the current suffix
 						std::vector<size_t> common_part;
 						size_t shorter_length = suffixes.at(seq_id).at(i).at(q).size();
@@ -2170,17 +2362,29 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment & al) {
 											nodes_relation.insert(make_pair(node_index,node_index+1));
 											nodes_relation.insert(make_pair(node_index,node_index+2));
 											std::map<std::vector<size_t>, size_t>::iterator it = firstParent.find(last_node); 
+											std::map<size_t,size_t>::iterator it1 = FirstCenterOnFirstNodes.find(last_node.at(0));
 											if(it != firstParent.end() && it->second == node_index+1){
 												it->second = node_index+3;
+												it1->second = node_index+3;
+											//	std::set<size_t>::iterator it2 = IndexOfFirstNodesAfterRoot.find(node_index+1);
+											//	assert(it2 != IndexOfFirstNodesAfterRoot.end());
+											//	IndexOfFirstNodesAfterRoot.erase(it2);
+											//	IndexOfFirstNodesAfterRoot.insert(node_index+3);
 											}
 										}else{
 											if(current_parent.at(current_parent.size()-1) != powerOfTwo.at(31)){
 												nodes.at(node_index +1) = new_suffix;
 												nodes_relation.insert(make_pair(node_index,node_index+1));
-												std::map<std::vector<size_t>, size_t>::iterator it_1 = firstParent.find(last_node); 
+												std::map<std::vector<size_t>, size_t>::iterator it_1 = firstParent.find(last_node);
+												std::map<size_t,size_t>::iterator it1 = FirstCenterOnFirstNodes.find(last_node.at(0)); 
 												if(it_1 != firstParent.end() && it_1->second == node_index+1){
 												//	std::cout << "i m testing! "<<std::endl;
 													it_1->second = node_index+2;
+													it1->second = node_index+2;
+												//	std::set<size_t>::iterator it2 = IndexOfFirstNodesAfterRoot.find(node_index+1);
+												//	assert(it2 != IndexOfFirstNodesAfterRoot.end());
+												//	IndexOfFirstNodesAfterRoot.erase(it2);
+												//	IndexOfFirstNodesAfterRoot.insert(node_index+2);
 												}
 											}else{
 												making_tree = false;
@@ -2513,8 +2717,14 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment & al) {
 										nodes.push_back(non_common);
 										nodes.push_back(last_node);
 										std::map<std::vector<size_t>, size_t>::iterator it = firstParent.find(last_node);
+										std::map<size_t,size_t>::iterator it1 = FirstCenterOnFirstNodes.find(last_node.at(0));//XXX HERE! 
 										if(it != firstParent.end() && it->second == node_index+1){
 											firstParent.insert(make_pair(last_node,node_index+3));
+											it1->second = node_index+3;
+										//	std::set<size_t>::iterator it2 = IndexOfFirstNodesAfterRoot.find(node_index+1);
+										//	assert(it2 != IndexOfFirstNodesAfterRoot.end());
+										//	IndexOfFirstNodesAfterRoot.erase(it2);
+										//	IndexOfFirstNodesAfterRoot.insert(node_index+3);
 										}
 									}else{//Indices of all the nodes after that should be shifted 
 										std::vector<size_t> last_node = nodes.at(nodes.size()-1);
@@ -2853,9 +3063,23 @@ void affpro_clusters<tmodel>::add_alignment(const pw_alignment & al) {
 	}
 	void suffix_tree::shift_first_parent(size_t & node_index , size_t & shifting_value, std::vector<size_t> & common_part){
 		for(size_t i = node_index+1; i <nodes.size()-shifting_value; i++){
-			std::map<std::vector<size_t>, size_t>::iterator it = firstParent.find(nodes.at(i+shifting_value));		
+			std::map<std::vector<size_t>, size_t>::iterator it = firstParent.find(nodes.at(i+shifting_value));
+			std::map<size_t,size_t>::iterator it1 = FirstCenterOnFirstNodes.find(nodes.at(i+shifting_value).at(0));
+			std::cout<< "nodes.at(i+shifting_value).at(0) "<< nodes.at(i+shifting_value).at(0) <<std::endl;
 			if(it != firstParent.end() && it->second == i){
+				std::cout << it->second << " " << i << " " << shifting_value <<std::endl;
+
+			//	assert(it1 != FirstCenterOnFirstNodes.end() );
+			//	for(std::set<size_t>::iterator it2 = IndexOfFirstNodesAfterRoot.begin(); it2 != IndexOfFirstNodesAfterRoot.end(); it2++){//TODO
+			//		std::cout << *it2 <<std::endl;
+			//	}
+			//	std::set<size_t>::iterator it2 = IndexOfFirstNodesAfterRoot.find(it->second);
+			//	assert(it2 != IndexOfFirstNodesAfterRoot.end());
+			//	IndexOfFirstNodesAfterRoot.erase(it2);
+			//	IndexOfFirstNodesAfterRoot.insert(it->second+shifting_value);
 				it->second = it->second+shifting_value;
+				it1->second = it1->second+shifting_value;
+			 
 			}
 		}
 		std::cout<< "first parent shift function: " << " node index " << node_index << " its content size " << nodes.at(node_index).size()<<std::endl;

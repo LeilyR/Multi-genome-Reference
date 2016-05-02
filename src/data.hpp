@@ -16,6 +16,10 @@
 #include "dlib/entropy_encoder/entropy_encoder_kernel_1.h"
 #include "dlib/entropy_decoder/entropy_decoder_kernel_1.h"
 
+//ICL library header files: 
+#include <boost/icl/discrete_interval.hpp>
+#include <boost/icl/interval_map.hpp>
+#include <boost/icl/interval_set.hpp>
 
 // Library to read Sam File
 #include "SamFile.h"
@@ -131,6 +135,7 @@ public:
 	const pw_alignment * get_al_at_left_end(size_t ref1, size_t ref2, size_t left1, size_t left2) const;
 	std::multimap<size_t, const pw_alignment &>& get_als_on_reference(size_t sequence) ;
 	const std::multimap<size_t, const pw_alignment & >& get_als_on_reference_const(size_t sequence) const ;
+	const boost::icl::interval_map<size_t, std::set<const pw_alignment*> > & get_alignments_interval(size_t sequence)const;
 	void test_multimaps()  ;
 	bool checkAlignments(const pw_alignment & p)const;
 
@@ -148,8 +153,8 @@ private:
 	const all_data & data;
 	std::set<pw_alignment, compare_pw_alignment> alignments;
 	std::vector< std::multimap< size_t, const pw_alignment &> > als_on_reference; // sequence index -> pos on that sequence -> alignment reference
-	//04.11.15 changed it from a copy to a reference from "alignments"
-
+//	std::vector< boost::icl::interval_map<size_t , std::set<const pw_alignment*> > > alignments_intervals;
+	
 	
 };
 

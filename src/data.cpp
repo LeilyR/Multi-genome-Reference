@@ -1258,7 +1258,7 @@ overlap::overlap(const all_data & d): data(d), als_on_reference(d.numSequences()
 
 	}
 
-overlap::overlap(const overlap & o): data(o.data), als_on_reference(o.data.numSequences()){}
+overlap::overlap(const overlap & o): data(o.data),als_on_reference(o.data.numSequences()){}
 
 
 	
@@ -1305,6 +1305,62 @@ void overlap::remove_alignment(const pw_alignment & removeR){
 //	assert(findr!=alignments.end()); // TODO check again
 	alignments.erase(removeR);
 
+	//TODO Should be removed from both alignments and interval map
+/*	size_t left1,right1,left2,right2;
+	removeR.get_lr1(left1,right1);
+	removeR.get_lr2(left2,right2);
+	//Remove the reference one:
+	boost::icl::discrete_interval<size_t> bounds1 =  boost::icl::construct<boost::icl::discrete_interval<size_t> >(left1,right1+1);
+	std::pair<boost::icl::interval_map<size_t, std::set<const pw_alignment*> >::const_iterator , boost::icl::interval_map<size_t, std::set<const pw_alignment*> >::const_iterator > interval1 = alignments_intervals.at(removeR.getreference1()).equal_range(bounds1);
+	const pw_alignment* intermediate1;
+	for(boost::icl::interval_map<size_t,std::set<const pw_alignment*> >::const_iterator it = interval1.first ; it !=interval1.second; it++){
+		std::set<const pw_alignment*>  als = (*it).second;
+		for(std::set<const pw_alignment*>::iterator it1 = als.begin(); it1 !=als.end(); it1++){
+			const pw_alignment *p = *it1;
+			std::cout<< *it1 << " "<< &removeR <<std::endl;
+			removeR.print();
+			if(removeR.equals(*p)){
+				std::cout<< "on ref1"<<std::endl;
+				intermediate1 = p;
+				break;
+			}	
+		}
+		std::set<const pw_alignment*>::iterator setit = als.find(intermediate1);
+		assert(setit !=als.end());
+		als.erase(setit);
+	}
+
+	//Remove the reference two:
+	boost::icl::discrete_interval<size_t> bounds2 =  boost::icl::construct<boost::icl::discrete_interval<size_t> >(left2,right2+1);
+	std::pair<boost::icl::interval_map<size_t, std::set<const pw_alignment*> >::const_iterator , boost::icl::interval_map<size_t, std::set<const pw_alignment*> >::const_iterator > interval2 = alignments_intervals.at(removeR.getreference2()).equal_range(bounds2);
+	const pw_alignment* intermediate2;
+	for(boost::icl::interval_map<size_t,std::set<const pw_alignment*> >::const_iterator it = interval2.first ; it !=interval2.second; it++){
+		std::set<const pw_alignment*>  als = (*it).second;
+		std::cout<<"interval on second ref is"<<(*it).first <<std::endl;
+		for(std::set<const pw_alignment*>::const_iterator it1 = als.begin(); it1 !=als.end(); it1++){
+			const pw_alignment *p = *it1;
+			std::cout<< *it1 << " "<< &removeR <<std::endl;
+			removeR.print();
+			if(removeR.equals(*p)){
+				std::cout<< "on ref2"<<std::endl;
+				intermediate2 = p;		
+				break;
+			}	
+		}
+		std::set<const pw_alignment*>::const_iterator setit = als.find(intermediate2);
+		assert(setit !=als.end());
+		als.erase(setit);
+	//	(*it).second = als;//TODO
+	}
+	for(boost::icl::interval_map<size_t,std::set<const pw_alignment*> >::const_iterator it = interval2.first ; it !=interval2.second; it++){
+		std::set<const pw_alignment*>  als = (*it).second;
+		std::cout<< als.size() <<std::endl;
+	}
+	std::cout << &removeR << " is removed !"<<std::endl;
+	//Remove from alignmment set:
+	std::set<pw_alignment, compare_pw_alignment>::iterator findr = alignments.find(removeR);
+	assert(findr!=alignments.end());
+	alignments.erase(*findr);*/
 }
 
 
@@ -1404,14 +1460,27 @@ void overlap::insert_without_partial_overlap(const pw_alignment & p){
 //		const pw_alignment & al = *it;
 	//	al.print();
 //	}
+	std::cout << "filling the map!" <<std::endl;
 	assert(alignments.find(p) == alignments.end());
 	std::pair<std::set<pw_alignment, compare_pw_alignment>::iterator, bool > npp = alignments.insert(p);
 	std::set<pw_alignment, compare_pw_alignment>::iterator npi = npp.first;
 	const pw_alignment & np = *(npi);
+//	np.print();
+//	size_t left1,left2,right1,right2;
+//	np.get_lr1(left1,right1);
+//	np.get_lr2(left2,right2);
  	
+//	boost::icl::interval_map<size_t, std::set<const pw_alignment*> > & al_on_ref1 = alignments_intervals.at(np.getreference1());
+//	boost::icl::interval_map<size_t, std::set<const pw_alignment*> > & al_on_ref2 = alignments_intervals.at(np.getreference2());
+//	std::set<const pw_alignment*> pointer_set;
+//	const pw_alignment *temp = &(*npi);
+//	pointer_set.insert(temp);
+//	al_on_ref1.add(make_pair(boost::icl::discrete_interval<size_t>(left1,right1+1) ,pointer_set));
+//	al_on_ref2.add(make_pair(boost::icl::discrete_interval<size_t>(left2,right2+1),pointer_set));
+
 	std::multimap<size_t , const pw_alignment &> & alignment_on_reference1 = als_on_reference.at(np.getreference1());
 	std::multimap<size_t , const pw_alignment &> & alignment_on_reference2 = als_on_reference.at(np.getreference2());
-
+	
 	std::pair<size_t, const pw_alignment &> begin2(np.getbegin2(),np);
 	alignment_on_reference2.insert(begin2);
 	std::pair<size_t, const pw_alignment &> end2(np.getend2(),np);
@@ -1425,7 +1494,7 @@ void overlap::insert_without_partial_overlap(const pw_alignment & p){
 }
 
 const pw_alignment * overlap::get_al_at_left_end(size_t ref1, size_t ref2, size_t left1, size_t left2) const {
-		const std::multimap<size_t, const pw_alignment &> & r1map = als_on_reference.at(ref1);
+/*		const std::multimap<size_t, const pw_alignment &> & r1map = als_on_reference.at(ref1);
 		std::pair<std::multimap<size_t, const pw_alignment &>::const_iterator,std::multimap<size_t, const pw_alignment &>::const_iterator> eqr = r1map.equal_range(left1);
 		for( std::multimap<size_t, const pw_alignment &>::const_iterator it = eqr.first; it!= eqr.second; ++it) {
 			const pw_alignment & calr = it->second;
@@ -1452,7 +1521,7 @@ const pw_alignment * overlap::get_al_at_left_end(size_t ref1, size_t ref2, size_
 				if(cal_left2!=left1) continue;
 				return cal;
 			}
-		}
+		}*/
 		return NULL;
 }
 
@@ -1462,6 +1531,9 @@ std::multimap<size_t, const pw_alignment &> &  overlap::get_als_on_reference(siz
 const std::multimap<size_t, const pw_alignment &> &  overlap::get_als_on_reference_const(size_t sequence) const {
 	return als_on_reference.at(sequence);
 }
+/*const boost::icl::interval_map<size_t, std::set<const pw_alignment*> > & overlap::get_alignments_interval(size_t sequence)const{
+	return alignments_intervals.at(sequence);
+}*/
 
 
 
@@ -1731,11 +1803,11 @@ void overlap::test_partial_overlap() const {
 
 }
 void overlap::test_al_on_ref()const{
-	for(size_t i = 0; i < data.numSequences();i++){
+/*	for(size_t i = 0; i < data.numSequences();i++){
 		for(std::multimap< size_t, const pw_alignment &>::const_iterator it = als_on_reference.at(i).begin(); it != als_on_reference.at(i).end();it++){
 				check_alignment_address(it->second , & it->second);
 		}
-	}
+	}*/
 }
 bool overlap::check_alignment_address(const pw_alignment & p, const pw_alignment * p1)const{
 	std::set<pw_alignment, compare_pw_alignment>::const_iterator it=alignments.find(p);
@@ -1767,12 +1839,18 @@ splitpoints::~splitpoints() {}
 
 void splitpoints::find_initial_split_points_nonrecursive(size_t sequence, size_t left, size_t right) {
 		const std::multimap<size_t , const pw_alignment & > & alignments_on_reference = overl.get_als_on_reference_const(sequence);
+	//	const boost::icl::interval_map<size_t , std::set<const pw_alignment*> > & alignments_on_reference = overl.get_alignments_interval(sequence);
 
 #if SPLITPRINT		
 		std::cout << " seach for initial split points on " << sequence << " from " << left << std::endl;
 		size_t count = 0;
 #endif
-
+	/*	boost::icl::discrete_interval<size_t> bounds =  boost::icl::construct<boost::icl::discrete_interval<size_t> >(left,right+1);
+		std::pair<boost::icl::interval_map<size_t, std::set<const pw_alignment*> >::const_iterator , boost::icl::interval_map<size_t, std::set<const pw_alignment*> >::const_iterator > interval = alignments_on_reference.equal_range(bounds);
+		for(boost::icl::interval_map<size_t,std::set<const pw_alignment*> >::const_iterator it = interval.first ; it !=interval.second; it++){
+			std::set<const pw_alignment*> als = (*it).second;
+			for(std::set<const pw_alignment*>::iterator it1 = als.begin(); it1 !=als.end(); it1++){
+				const pw_alignment *p = *it1;*/
 		for( std::multimap<size_t, const pw_alignment &>::const_iterator it=alignments_on_reference.lower_bound(left);it!=alignments_on_reference.end(); ++it){
 			const pw_alignment & alr = it->second;
 			const pw_alignment * al = &alr;
@@ -1786,7 +1864,7 @@ void splitpoints::find_initial_split_points_nonrecursive(size_t sequence, size_t
 			// loop break condition. This special treatment is needed to avoid to-early break in case of both parts of al being on the same reference
 			size_t al_leftmost_leftbound = (size_t)-1;
 
-			if(al->getreference1() == sequence) {
+			if(al->getreference1()== sequence){
 				size_t alleft;
 				size_t alright;
 				al->get_lr1(alleft, alright);
@@ -1841,9 +1919,9 @@ void splitpoints::find_initial_split_points_nonrecursive(size_t sequence, size_t
 				size_t alleft;
 				size_t alright;
 				al->get_lr2(alleft, alright);
-				if(alleft < al_leftmost_leftbound) {
-					al_leftmost_leftbound = alleft;
-				}
+			//	if(alleft < al_leftmost_leftbound) {
+			//		al_leftmost_leftbound = alleft;
+			//	}
 
 
 
@@ -1893,16 +1971,21 @@ void splitpoints::find_initial_split_points_nonrecursive(size_t sequence, size_t
 			}
 		}
 
-
 }
 
 void splitpoints::find_initial_split_points(size_t sequence, size_t left, size_t right) {
 		const std::multimap<size_t , const pw_alignment & > & alignments_on_reference = overl.get_als_on_reference_const(sequence);
-
+	//	const boost::icl::interval_map<size_t , std::set<const pw_alignment*> > & alignments_on_reference = overl.get_alignments_interval(sequence);
 #if SPLITPRINT		
 		std::cout << " seach for initial split points on " << sequence << " from " << left << std::endl;
 		size_t count = 0;
 #endif
+	/*	boost::icl::discrete_interval<size_t> bounds =  boost::icl::construct<boost::icl::discrete_interval<size_t> >(left,right+1);
+		std::pair<boost::icl::interval_map<size_t, std::set<const pw_alignment*> >::const_iterator , boost::icl::interval_map<size_t, std::set<const pw_alignment*> >::const_iterator > interval = alignments_on_reference.equal_range(bounds);
+		for(boost::icl::interval_map<size_t,std::set<const pw_alignment*> >::const_iterator it = interval.first ; it !=interval.second; it++){
+			std::set<const pw_alignment*> als = (*it).second;
+			for(std::set<const pw_alignment*>::iterator it1 = als.begin(); it1 !=als.end(); it1++){
+				const pw_alignment *p = *it1;*/
 
 		for( std::multimap<size_t, const pw_alignment & >::const_iterator it=alignments_on_reference.lower_bound(left);it!=alignments_on_reference.end(); ++it){
 			const pw_alignment & alr = it->second;
@@ -1910,7 +1993,7 @@ void splitpoints::find_initial_split_points(size_t sequence, size_t left, size_t
 			
 #if SPLITPRINT
 			std::cout << count++ <<" See " << std::endl;
-			al->print();
+	//		al->print();
 			std::cout << std::endl;
 #endif
 
@@ -1928,20 +2011,20 @@ void splitpoints::find_initial_split_points(size_t sequence, size_t left, size_t
 
 
 				if(alleft < left && left <= alright) {
-	//				std::cout<<"here1"<<std::endl;
+					std::cout<<"here1"<<std::endl;
 				//	std::cout<<"al: "<<std::endl;
 				//	al->print();
 					insert_split_point(sequence, left);
 				}
 				if(alleft <= right && right < alright) {
-	//				std::cout<<"here2"<<std::endl;
+					std::cout<<"here2"<<std::endl;
 				//	std::cout<<"al: "<<std::endl;
 				//	al->print();
 					insert_split_point(sequence, right+1);
 
 				}
 				if(left < alleft && alleft < right) {
-	//				std::cout<<"here3"<<std::endl;
+					std::cout<<"here3"<<std::endl;
 	//				std::cout<<"al: "<<std::endl;
 				/*	for(size_t col = 0; col < al->alignment_length(); col++) {
 						char c1;
@@ -1957,7 +2040,7 @@ void splitpoints::find_initial_split_points(size_t sequence, size_t left, size_t
 
 				}
 				if(left < alright && alright < right) {
-		//			std::cout<<"here4"<<std::endl;
+					std::cout<<"here4"<<std::endl;
 				//	std::cout<<"al: "<<std::endl;
 		//			al->print();
 				//	std::cout<<"newal: "<<std::endl;
@@ -1979,7 +2062,7 @@ void splitpoints::find_initial_split_points(size_t sequence, size_t left, size_t
 
 
 				if(alleft < left && left <= alright) {
-				//	std::cout<<"here5"<<std::endl;
+					std::cout<<"here5"<<std::endl;
 				//	std::cout<<"al: "<<std::endl;
 				//	al->print();
 				//	std::cout<<"newal: "<<std::endl;
@@ -1989,12 +2072,12 @@ void splitpoints::find_initial_split_points(size_t sequence, size_t left, size_t
 				
 				}
 				if(alleft <= right && right < alright) {
-		//			std::cout<<"here6"<<std::endl;
+					std::cout<<"here6"<<std::endl;
 				//	al->print();
 					insert_split_point(sequence, right+1);
 				}
 				if(left < alleft && alleft < right) {
-		//			std::cout<<"here7"<<std::endl;
+					std::cout<<"here7"<<std::endl;
 				//	std::cout<<"al: "<<std::endl;
 				//	al->print();
 				//	std::cout<<"newal: "<<std::endl;
@@ -2002,7 +2085,7 @@ void splitpoints::find_initial_split_points(size_t sequence, size_t left, size_t
 					insert_split_point(sequence, alleft);
 				}
 				if(left < alright && alright < right) {
-		//			std::cout<<"here8"<<std::endl;
+					std::cout<<"here8"<<std::endl;
 				//	std::cout<<"al: "<<std::endl;
 		//			al->print();
 				//	std::cout<<"newal: "<<std::endl;
@@ -2047,14 +2130,19 @@ void splitpoints::find_initial_split_points(size_t sequence, size_t left, size_t
 #if SPLITPRINT
 		std::cout << " Check ref 2 overlaps " << std::endl;
 #endif
+		std::cout<< "recursive split"<<std::endl;
 		find_initial_split_points(newal.getreference2(), left2, right2);
-	
+		std::cout << "done "<<std::endl;
 		if(newal.getreference1()==newal.getreference2()) {
+			std::cout<< "ref1 == ref2"<<std::endl;
 			if(right1>=left2 && left1 < left2){
+				std::cout<< "here1"<<std::endl;
 				insert_split_point(newal.getreference2(),left2);
 				insert_split_point(newal.getreference2(),right1+1);
 			}
 			if(right2>=left1 && left2 < left1){
+				std::cout<< "here2"<<std::endl;
+
 				insert_split_point(newal.getreference2(),left1);
 				insert_split_point(newal.getreference2(),right2+1);
 			}
@@ -2064,6 +2152,7 @@ void splitpoints::find_initial_split_points(size_t sequence, size_t left, size_t
 		insert_split_point(newal.getreference1(), right1+1);
 		insert_split_point(newal.getreference2(), left2);
 		insert_split_point(newal.getreference2(), right2+1);
+		std::cout<<"the end!"<<std::endl;
 	
 }
 
@@ -2086,6 +2175,7 @@ void splitpoints::nonrecursive_splits(){
 #if SPLITPRINT
 		std::cout << " Check ref 2 overlaps " << std::endl;
 #endif
+		std::cout<< "got here!"<<std::endl;
 		find_initial_split_points_nonrecursive(newal.getreference2(), left2, right2);
 	
 		if(newal.getreference1()==newal.getreference2()) {
@@ -2127,6 +2217,7 @@ void splitpoints::insert_split_point(size_t sequence, size_t position) {
 #if SPLITPRINT
 		std::cout << " new split point " << sequence << " at " << position << std::endl;
 #endif	
+		std::cout << " new split point " << sequence << " at " << position << std::endl;
 		size_t left1;
 		size_t right1;
 		newal.get_lr1(left1, right1);
@@ -2138,6 +2229,7 @@ void splitpoints::insert_split_point(size_t sequence, size_t position) {
 
 
 		if(newal.getreference1()==sequence) {
+			std::cout << "on ref 1"<<std::endl;
 			if(left1<position && right1>=position) {
 				pw_alignment fp;
 				pw_alignment sp;
@@ -2177,6 +2269,7 @@ void splitpoints::insert_split_point(size_t sequence, size_t position) {
 
 
 				if(newal.getbegin2() < newal.getend2()) {
+						
 			//			std::cout << " try ins " << newal.getreference2() << " : " << spleft2 << std::endl;
 					if(!sgaps) {
 						insert_split_point(newal.getreference2(), speleft2);
@@ -2199,7 +2292,7 @@ void splitpoints::insert_split_point(size_t sequence, size_t position) {
 		}
 		if(newal.getreference2()==sequence) {
 			if(left2<position && right2>=position) {
-			//	std::cout<<"HERE!!"<<std::endl;
+				std::cout<<"HERE!!"<<std::endl;
 				pw_alignment fp;
 				pw_alignment sp;
 				newal.split(false, position, fp, sp);
@@ -2255,9 +2348,12 @@ void splitpoints::insert_split_point(size_t sequence, size_t position) {
 			}
 		}
 
-
-
-
+/*		const boost::icl::interval_map<size_t , std::set<const pw_alignment*> > & alonref = overl.get_alignments_interval(sequence);
+		boost::icl::interval_map<size_t, std::set<const pw_alignment*> >::const_iterator interval = alonref.find(position);
+	if(interval != alonref.end()){
+		std::set<const pw_alignment*> als = (*interval).second;
+		for(std::set<const pw_alignment*>::iterator it1 = als.begin(); it1 !=als.end(); it1++){
+			const pw_alignment *al = *it1;*/
 
 		const std::multimap<size_t, const pw_alignment &> & alonref = overl.get_als_on_reference_const(sequence);
 		for(std::multimap<size_t, const pw_alignment & >::const_iterator it = alonref.lower_bound(position); it!=alonref.end(); ++it) {
@@ -2270,7 +2366,8 @@ void splitpoints::insert_split_point(size_t sequence, size_t position) {
 	//			std::cout << std::endl;
 
 
-			if(al->getreference1()!=al->getreference2()) {
+			if(al->getreference1()!=al->getreference2()) {//TODO add the condition that ref1 == ref2 and two refs have overlap with each other
+			//	std::cout << "ref1 != ref2" <<std::endl;
 				size_t alleft;
 				size_t alright;
 				al->get_lr_on_reference(sequence, alleft, alright);
@@ -2294,7 +2391,7 @@ void splitpoints::insert_split_point(size_t sequence, size_t position) {
 				//	std::cout<<"position"<<position<<std::endl;
 				//	std::cout<<"alleft"<<alleft<<std::endl;
 				//	std::cout<<"alright"<<alright<<std::endl;
-				assert(alleft < position && position <= alright);
+			//	assert(alleft < position && position <= alright);
 				pw_alignment fp;
 				pw_alignment sp;
 				pw_alignment fpe;
@@ -2509,8 +2606,7 @@ void splitpoints::insert_split_point(size_t sequence, size_t position) {
 				}
 			}
 			
-		}
-		
+		}	
 
 	}
 
@@ -2536,10 +2632,44 @@ void splitpoints::insert_split_point(size_t sequence, size_t position) {
 			std::cout << "REFERENCE " << i << std::endl;
 #endif
 			const std::multimap<size_t, const pw_alignment &> & als_on_ref = overl.get_als_on_reference_const(i);
+
+		//	const boost::icl::interval_map<size_t, std::set<const pw_alignment*> > & als_intervals = overl.get_alignments_interval(i);
+		//	for(boost::icl::interval_map<size_t, std::set<const pw_alignment*> >::const_iterator it = als_intervals.begin();it !=als_intervals.end();it++){
+		//		std::cout<< "interval "<< (*it).first<<std::endl;
+		//	}
+
 			for(std::set<size_t>::iterator split = split_points.at(i).begin(); split!= split_points.at(i).end(); ++split){
 #if SPLITPRINT
 				std::cout << "SPLIT " << *split << std::endl;
 #endif
+	/*			boost::icl::interval_map<size_t , std::set<const pw_alignment*> >::const_iterator itv = als_intervals.find(*split);
+				std::cout << "SPLIT " << *split<< " ref "<< i << std::endl;
+				if(itv != als_intervals.end()){
+					std::cout<< "interval "<< (*itv).first<<std::endl;
+					std::set<const pw_alignment*> als = (*itv).second;
+					std::cout << "size of set "<< als.size()<<std::endl;
+					for(std::set<const pw_alignment*>::iterator it = als.begin(); it != als.end();it++){
+						const pw_alignment* al = *it;
+						std::cout<< al << std::endl;
+						al->print();
+						if(al->getreference1() == i) {
+							size_t alleft1;
+							size_t alright1;
+							al->get_lr1(alleft1,alright1);
+							if( alleft1<*split && alright1>=*split){
+								remove_alignments.insert(*al);	
+							}
+						}
+						else if(al->getreference2() == i) {
+							size_t alleft2;
+							size_t alright2;
+							al->get_lr2(alleft2,alright2);
+							if( alleft2<*split && alright2>=*split){
+								remove_alignments.insert(*al);	
+							}
+						}
+					}
+				}*/
 				for(std::multimap<size_t, const pw_alignment &>::const_iterator it =als_on_ref.lower_bound(*split); it!=als_on_ref.end(); ++it){
 					const pw_alignment & pr = it-> second;
 					const pw_alignment * p = & pr;
@@ -2576,7 +2706,7 @@ void splitpoints::insert_split_point(size_t sequence, size_t position) {
 			}
 		}
 
-	//	std::cout << " in split all "<< remove_alignments.size() << " remove_alignments " << std::endl;
+		std::cout << " in split all "<< remove_alignments.size() << " remove_alignments " << std::endl;
 		std::vector<pw_alignment>  split_pieces;
 		splits(newal, split_pieces);
 	//	std::cout << "new al "	<< std::endl;

@@ -1,6 +1,6 @@
 
 
-CXX = g++
+CXX = g++ -std=c++0x
 CFLAGS = -Wall -fmessage-length=50 -fopenmp 
 CXXFLAGS = -Wall -fmessage-length=50 -fopenmp -pedantic 
 #OPTFLAGS = -O3 -DNDEBUG
@@ -37,7 +37,7 @@ all: $(PROGS)
 
 
 
-graph: main.cpp $(OBJS) model.cpp model.hpp pw_alignment.hpp data.hpp graph.hpp needleman.hpp encoder.hpp dynamic_encoder.hpp dynamic_decoder.hpp
+graph: main.cpp $(OBJS) model.cpp model.hpp pw_alignment.hpp data.hpp graph.hpp needleman.hpp encoder.hpp dynamic_encoder.hpp dynamic_decoder.hpp IntervalTree.hpp
 	$(CXX) -o graph $(CXXFLAGS) $(INCLUDEARGS) main.cpp $(OBJS) $(LIBARGS)
 	
 graph.o: graph.cpp data.hpp needleman.hpp graph.hpp

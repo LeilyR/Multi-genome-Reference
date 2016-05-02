@@ -4,6 +4,9 @@
 #include "dynamic_mc.hpp"
 #include"data.hpp"
 #include "pw_alignment.hpp"
+//#include "interval_tree.hpp"
+#include "IntervalTree.hpp"
+
 #include <map>
 #include <vector>
 #include <cassert>
@@ -12,10 +15,6 @@
 extern "C" {
 #include "apcluster.h"
 }
-//ICL library header files: 
-#include <boost/icl/discrete_interval.hpp>
-#include <boost/icl/interval_map.hpp>
-#include <boost/icl/interval_set.hpp>
 
 
 typedef  std::set<const pw_alignment*, compare_pw_alignment> alset;
@@ -61,18 +60,18 @@ class initial_alignment_set {
 		std::multimap<double, const pw_alignment*> sorter;
 		double sumgain = 0;
 		std::cout << "calculating vgain! "<<std::endl;
-		for(std::set<const pw_alignment* , compare_pointer_pw_alignment>::iterator it = als.begin(); it!=als.end(); it++) { //XXX It is unnecessary since we already know that gains are positive!
+		for(std::set<const pw_alignment* , compare_pointer_pw_alignment>::iterator it = als.begin(); it!=als.end(); it++) { 
 			const pw_alignment * cur = *it;
 			double gain1, gain2;
 			common_model.gain_function(*cur, gain1, gain2);
 			double vgain = (gain1+gain2)/2 - base_cost;
 		//	if(gain2 > gain1) gain1 = gain2;
 		//	std::cout << " al length " << cur->alignment_length() << " gain1 " << gain1 << " gain2 " << gain2 <<  std::endl;
-			std::cout<< "vgain "<< vgain << std::endl;
+		//	std::cout<< "vgain "<< vgain << std::endl;
 			assert(vgain >=0.0);
 		//	if(vgain>0.0){
 			//	std::cout << " ins " << vgain << " at " << cur << std::endl;
-				sorter.insert(std::make_pair(vgain, cur));
+			sorter.insert(std::make_pair(vgain, cur));
 
 				/*
 				common_model.gain_function(*cur, gain1, gain2);
@@ -265,6 +264,57 @@ main.cpp:rse_iterator rit = sorter.rbegin(); rit!=sorter.rend(); ++rit) {
 };
 
 */
+class compute_cc_with_interval_tree{
+	public:
+	compute_cc_with_interval_tree(const std::set<const pw_alignment*, compare_pointer_pw_alignment> & als_in, size_t num_sequences):intervals(num_sequences),trees(num_sequences){
+		for(std::set<const pw_alignment*, compare_pointer_pw_alignment>::const_iterator it = als_in.begin(); it!=als_in.end(); it++){
+			const pw_alignment * al = *it;
+			add_the_interval(al);
+		//	std::cout << "on ref one: "<<std::endl;
+			for(size_t j = 0; j < intervals.at(al->getreference1()).size();j++){
+				Interval<const pw_alignment*> itv = intervals.at(al->getreference1()).at(j);
+			//	itv.PrintInterval();
+			}
+		//	std::cout << "on ref two: "<<std::endl;
+			for(size_t j = 0; j < intervals.at(al->getreference2()).size();j++){
+				Interval<const pw_alignment*> itv = intervals.at(al->getreference2()).at(j);
+			//	itv.PrintInterval();
+			}
+
+			alignments.push_back(al);
+		}
+		for(size_t i = 0; i < num_sequences;i++){
+			IntervalTree<const pw_alignment*> tree;
+			tree = IntervalTree<const pw_alignment*>(intervals.at(i));
+			trees.at(i)=tree;
+
+		}
+//		for(size_t i =0; i < num_sequences;i++){
+//			std::cout<< "on seq: "<< i <<std::endl;
+//			for(size_t j = 0; j < intervals.at(i).size();j++){
+//				Interval<const pw_alignment*> itv = intervals.at(i).at(j);
+//				itv.PrintInterval();
+//			}
+//		}
+	}
+	~compute_cc_with_interval_tree(){}
+	void add_the_interval(const pw_alignment*);
+	void compute(std::vector<std::set<const pw_alignment*, compare_pointer_pw_alignment> > & ccs);
+	void get_cc(const pw_alignment & , std::set <const pw_alignment*, compare_pointer_pw_alignment> & , std::set <const pw_alignment*, compare_pointer_pw_alignment> & );
+	void cc_step(size_t , size_t , size_t , std::set <const pw_alignment*, compare_pointer_pw_alignment> & , std::set <const pw_alignment* , compare_pointer_pw_alignment>  & );
+
+
+
+	private:
+	
+	std::vector<std::vector<Interval<const pw_alignment*> > >intervals;
+	std::vector<IntervalTree<const pw_alignment*> > trees;
+	std::vector<const pw_alignment*> alignments;
+
+
+
+
+};
 class compute_cc_with_icl{
 	public:
 	compute_cc_with_icl(const std::set<const pw_alignment*, compare_pointer_pw_alignment> & als_in, size_t num_sequences, size_t num_threads):als_on_reference(num_sequences){
@@ -297,7 +347,7 @@ class compute_cc_with_icl{
 	compute_cc_with_icl(const overlap & ovrlp, size_t num_sequences, size_t num_threads): als_on_reference(num_sequences){
 		this->num_threads = num_threads;
 		const std::set<pw_alignment, compare_pw_alignment> & als = ovrlp.get_all();
-		for(std::set<pw_alignment, compare_pw_alignment>::const_iterator it = als.begin(); it!=als.end(); it++) {//TODO you can save this step by doing it when you choose positive als
+		for(std::set<pw_alignment, compare_pw_alignment>::const_iterator it = als.begin(); it!=als.end(); it++) {
 			const pw_alignment & al = *it;
 			alignments.push_back(&al);
 			add_on_intmap(&al);
@@ -327,7 +377,7 @@ class compute_cc_with_icl{
 	}
 	~compute_cc_with_icl(){}
 	void add_on_intmap(const pw_alignment*);
-	void remove_from_intmaps(const pw_alignment* al);//TODO
+	void remove_from_intmap(size_t & id, size_t & ref1, size_t & ref2, size_t& left1, size_t & right1, size_t & left2, size_t & right2);
 	void compute(std::vector<std::set< const pw_alignment* , compare_pointer_pw_alignment> > &);
 	void compute_test(std::vector<std::set<size_t> >&);
 	void get_cc(const pw_alignment & , std::set <const pw_alignment*, compare_pointer_pw_alignment> & , std::set <const pw_alignment*, compare_pointer_pw_alignment> & );
@@ -335,7 +385,6 @@ class compute_cc_with_icl{
 	void cc_step_current(size_t & , size_t & , size_t & , std::set<size_t>& , std::set<size_t> & );
 	private:
 	std::vector<const pw_alignment*> alignments;
-	std::map<const pw_alignment*, size_t>al_id; //alignments and their ids. //TODO
 	std::vector<boost::icl::interval_map<size_t, std::set<size_t> >  > als_on_reference;
 //	boost::icl::interval_map<std::set<size_t>,size_t >reverse_als_on_ref; //XXX It was used only for the simple library test.
 	boost::icl::interval_map<size_t, std::set<size_t> >als_on_ref; //XXX It was used only for the simple library test.
@@ -641,6 +690,7 @@ class suffix_tree{
 	std::map<std::vector<size_t>, size_t> get_count()const;//Returns 'branch counter'
 	std::vector<size_t> get_first_parent()const;
 	void get_first_parent(std::vector<size_t> & , std::vector<size_t> &);
+	void check_first_nodes_after_root(std::vector<size_t> & current, size_t & node_index);
 	void find_child_nodes(size_t &, std::vector<size_t> &);
 	void first_parent_index(size_t & , size_t &); //current index, its first parent index
 	void create_tree(std::vector<size_t> &, size_t &);
@@ -656,8 +706,10 @@ class suffix_tree{
 	std::vector<std::vector<size_t> > nodes;
 	std::vector<size_t> powerOfTwo;
 	std::multimap<size_t , size_t> nodes_relation; //first size_t shows the parent and second one shows kids
-	std::map<std::vector<size_t>, size_t>firstParent; // size_t shows its node index
+	std::map<std::vector<size_t>, size_t>firstParent; // size_t shows its node index //TODO Can be removed and be replaced by FirstCenterOnFirstNodes and IndexOfFirstNodesAfterRoot
 	std::map<std::vector<size_t>,size_t>branch_counter;//vector represents all nodes of a branch , size_t shows the number of that branch is happening
+	std::map<size_t,size_t> FirstCenterOnFirstNodes; //size_t -> is the first node on the first row nodes after the root,  size_t -> is the the index of that node
+	std::set<size_t> IndexOfFirstNodesAfterRoot; //Index of first row nodes after the root //TODO
 };
 class merging_centers{
 	public:
