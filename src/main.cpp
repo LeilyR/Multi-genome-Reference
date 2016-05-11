@@ -17,6 +17,8 @@
 #include "graph.hpp"
 //#include "interval_tree.hpp"
 
+#include "intervals.hpp"
+#include "alignment_index.hpp"
 #define NO_MAKEFILE
 #include "dlib/entropy_encoder/entropy_encoder_kernel_1.h"
 #include "dlib/entropy_decoder/entropy_decoder_kernel_1.h"
@@ -2010,8 +2012,7 @@ int do_dynamic_mc_model(int argc, char * argv[]) {
 					global_results.insert(*result_it);
 					assert(rev_result_it != global_results.end());
 					global_results.erase(rev_result_it);
-				}
-				else{//Reverse of the center exists and has couple of members
+				} else{ //Reverse of the center exists and has couple of members
 					double sum = 0;
 					double reverse_sum = 0;
 					for(size_t i =0; i < it->second.size();i++){//forward
@@ -2426,7 +2427,6 @@ int do_dynamic_mc_model(int argc, char * argv[]) {
 		std::map<std::string, std::vector<pw_alignment> >::iterator it1 = alignments_in_a_cluster.find(cent);
 		alignments_in_a_cluster.erase(it1);				
 	}
-
 	//Defining weights of global clustering results! 
 	//On original centers:
 	std::map<std::vector<std::string>, size_t> numberOfACenter;
@@ -2771,7 +2771,6 @@ int do_simple_test_on_new_cc(int argc, char* argv[]){
 	if(argc < 2) {
 		cerr << "Program: simple_test_cc" << std::endl;
 	}
-		
 	std::vector<std::pair<size_t,size_t> > common_int;
 	common_int.push_back(make_pair(0,3)); //form left to right +1
 	common_int.push_back(make_pair(2,5));
@@ -2797,7 +2796,9 @@ int do_simple_test_on_new_cc(int argc, char* argv[]){
 }
 int do_test_new_cc(int argc, char * argv[]) {
 	typedef dynamic_mc_model use_model;
-	if(argc < 5) {
+//	typedef compute_cc_with_icl cc_type;
+	typedef compute_cc_avl cc_type;
+	if(argc < 6) {
 		usage();
 		cerr << "Program: test_cc" << std::endl;
 		cerr << "Parameters:" << std::endl;
@@ -2826,7 +2827,9 @@ int do_test_new_cc(int argc, char * argv[]) {
 	std::set<const pw_alignment*, compare_pointer_pw_alignment> al_with_pos_gain; 
 #pragma omp parallel for num_threads(num_threads)
 	for(size_t i =0; i < data.numAlignments();i++){
-//	for(size_t i =0; i < 5;i++){
+//	for(size_t i =0; i < 300;i++){
+//	if(i%1000==0) std::cout << ".";
+//	for(size_t i =0; i < 16;i++){
 		const pw_alignment & al = data.getAlignment(i);
 		double g1 ,g2;
 		m.gain_function(al,g1,g2);
@@ -2836,14 +2839,16 @@ int do_test_new_cc(int argc, char * argv[]) {
 		//	al.print();
 		}
 	}
+	std::cout << std::endl;
 	//Makes components of partially overlapped alignments
 
 	std::cout << "al with postive gains are kept " << al_with_pos_gain.size() <<std::endl;
-	compute_cc_with_interval_tree component(al_with_pos_gain,data.numSequences());
+//	compute_cc_with_interval_tree component(al_with_pos_gain,data.numSequences());
 //	compute_cc_with_icl cccs(al_with_pos_gain, data.numSequences(),num_threads);
+	cc_type cccs(al_with_pos_gain, data.numSequences(), num_threads);
 	std::vector<std::set<const pw_alignment* , compare_pointer_pw_alignment> > ccs; 
-//	cccs.compute(ccs); //fill in ccs, ordered by size(Notice that they are just connected to each other if they have overlap!)
-	component.compute(ccs);
+	cccs.compute(ccs); //fill in ccs, ordered by size(Notice that they are just connected to each other if they have overlap!)
+//	component.compute(ccs);
 	std::cout<< "ccs are made!"<<std::endl;
 	size_t counter = 0;
 //	for(size_t i=0; i<ccs.size(); ++i) {
@@ -3008,6 +3013,7 @@ int main(int argc, char * argv[]) {
 #include "model.cpp"
 #include "dynamic_encoder.cpp"
 #include "dynamic_decoder.cpp"
+#include "intervals.cpp"
 
 
 

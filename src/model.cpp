@@ -844,6 +844,50 @@ void compute_cc_with_interval_tree::get_cc(const pw_alignment & al, std::set <co
 	//	std::cout << reference.at(i) << " " << left.at(i)<< " "<< right.at(i)<<std::endl;
 		cc_step(reference.at(i), left.at(i), right.at(i), cc, seen);	
 	}	
+
+}
+void compute_cc_avl::compute(std::vector<std::set< const pw_alignment* , compare_pointer_pw_alignment> > & ccs) {
+	alind.debug_print(); // TODO 
+	std::cout << "compute CC on " << alignments.size() << std::endl;
+	std::set <const pw_alignment*, compare_pointer_pw_alignment> seen;
+	std::multimap<size_t , std::set<const pw_alignment*, compare_pointer_pw_alignment> > sorter; // sorts ccs to give largest first
+	for(std::set<const pw_alignment *, compare_pointer_pw_alignment>::iterator it = alignments.begin(); it!=alignments.end(); ++it) {
+		std::cout << "compute_cc" <<std::endl;
+		const pw_alignment * al = *it;
+		al->print();
+		std::set< const pw_alignment*, compare_pointer_pw_alignment>::iterator seenal = seen.find(al);
+//		std::cout << " seen " << seen.size() << std::endl;
+		if(seenal == seen.end()) {
+			std::cout << " getcc" << std::endl;
+			std::set< const pw_alignment*, compare_pointer_pw_alignment> cc;
+			get_cc(*al, cc, seen);
+			std::cout << "FOUND CC size " << cc.size() << std::endl;
+			for(std::set<const pw_alignment*,compare_pointer_pw_alignment>::const_iterator it = cc.begin(); it != cc.end();it++){
+				const pw_alignment * test = *it;
+				test->print();
+			}
+			sorter.insert(std::make_pair(cc.size(), cc));
+		}	
+	}
+	for(std::multimap<size_t , std::set<const pw_alignment*, compare_pointer_pw_alignment> >::reverse_iterator it = sorter.rbegin(); it!=sorter.rend(); it++) {
+		ccs.push_back(it->second);
+	}
+}
+
+void compute_cc_avl::get_cc(const pw_alignment & al , std::set <const pw_alignment*, compare_pointer_pw_alignment> & cc, std::set <const pw_alignment*, compare_pointer_pw_alignment> & seen) {
+	std::vector<size_t> left(2);
+	std::vector<size_t> right(2);
+	al.get_lr1(left.at(0), right.at(0));
+	al.get_lr2(left.at(1), right.at(1));
+	std::vector<size_t>reference(2);
+	reference.at(0) = al.getreference1();
+	reference.at(1) = al.getreference2();
+//#pragma omp parallel for num_threads(num_threads)
+	for(size_t i =0; i < 2;i++){
+		std::cout << "on reference "<< i << std::endl;
+	//	std::cout << reference.at(i) << " " << left.at(i)<< " "<< right.at(i)<<std::endl;
+		cc_step(reference.at(i), left.at(i), right.at(i), cc, seen);	
+	}	
 }
 void compute_cc_with_interval_tree::cc_step(size_t ref, size_t left, size_t right, std::set <const pw_alignment*, compare_pointer_pw_alignment> & cc, std::set <const pw_alignment* , compare_pointer_pw_alignment>  & seen ) {
 	std::set <const pw_alignment * , compare_pointer_pw_alignment> seen1;
@@ -882,6 +926,42 @@ void compute_cc_with_interval_tree::cc_step(size_t ref, size_t left, size_t righ
 		cc_step(al->getreference1(), aleft, aright, cc, seen);
 	} 
 }
+//=======
+//		std::cout << "on reference "<< i << std::endl;
+//		std::cout << reference.at(i) << " " << left.at(i)<< " "<< right.at(i)<<std::endl;
+//		cc_step(reference.at(i), left.at(i), right.at(i), cc, seen);	
+//	}	
+
+//}
+
+
+void compute_cc_avl::cc_step(size_t current , size_t left, size_t right, std::set <const pw_alignment*, compare_pointer_pw_alignment> & cc, std::set <const pw_alignment* , compare_pointer_pw_alignment>  & seen ) {
+	std::cout<< "ref " << current << " l " << left << " r "<< right<<std::endl;
+	vector<const pw_alignment *> seen1;
+	std::multimap<size_t, std::pair<size_t, size_t> > touched_intervals;
+	alind.super_search_overlap_and_remove(current, left, right, seen1, touched_intervals);
+	std::cout << "seen1 "<<seen1.size() << " " << touched_intervals.size()<<std::endl;
+	for(size_t i=0; i<seen1.size(); ++i) {
+		seen.insert(seen1.at(i)); // TODO for now we keep seen, but it should not be necessary as all alignments are deleted from the index
+		cc.insert(seen1.at(i));
+	}
+//	for(std::multimap<size_t, std::pair<size_t, size_t> >::iterator it= touched_intervals.begin(); it!=touched_intervals.end(); ++it) {
+//		size_t ref = it->first;
+//		size_t l = it->second.first;
+//		size_t r = it->second.second;
+//		std::cout<< "ref " << ref << " l " << l << " r "<< r <<std::endl;
+//	}
+
+	for(std::multimap<size_t, std::pair<size_t, size_t> >::iterator it= touched_intervals.begin(); it!=touched_intervals.end(); ++it) {
+		size_t ref = it->first;
+		size_t l = it->second.first;
+		size_t r = it->second.second;
+		std::cout<< " touched ref " << ref << " l " << l << " r "<< r <<std::endl;
+
+		cc_step(ref, l, r, cc, seen);
+	}
+}
+
 void compute_cc_with_icl::add_on_intmap(const pw_alignment * al){
 	size_t ref1 = al->getreference1();
 	size_t ref2 = al->getreference2();

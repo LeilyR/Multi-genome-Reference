@@ -67,7 +67,6 @@ public:
         , right(nullptr)
         , center(0)
     { }
-
 private:
     std::unique_ptr<intervalTree> copyTree(const intervalTree& orig){
         return std::unique_ptr<intervalTree>(new intervalTree(orig));

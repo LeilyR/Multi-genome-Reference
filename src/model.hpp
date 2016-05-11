@@ -7,6 +7,7 @@
 //#include "interval_tree.hpp"
 #include "IntervalTree.hpp"
 
+#include "alignment_index.hpp"
 #include <map>
 #include <vector>
 #include <cassert>
@@ -286,8 +287,7 @@ class compute_cc_with_interval_tree{
 		for(size_t i = 0; i < num_sequences;i++){
 			IntervalTree<const pw_alignment*> tree;
 			tree = IntervalTree<const pw_alignment*>(intervals.at(i));
-			trees.at(i)=tree;
-
+			trees.at(i)=tree;		
 		}
 //		for(size_t i =0; i < num_sequences;i++){
 //			std::cout<< "on seq: "<< i <<std::endl;
@@ -310,9 +310,48 @@ class compute_cc_with_interval_tree{
 	std::vector<std::vector<Interval<const pw_alignment*> > >intervals;
 	std::vector<IntervalTree<const pw_alignment*> > trees;
 	std::vector<const pw_alignment*> alignments;
+};
 
+class compute_cc_avl {
+	public:
+	compute_cc_avl(const std::set<const pw_alignment*, compare_pointer_pw_alignment> & als_in, size_t num_sequences, size_t num_threads):alind(num_sequences){//Is used to create partially overlapped connected components
+		this->num_threads = num_threads;
+	//	RIGHT = 0;
+		for(std::set<const pw_alignment*, compare_pointer_pw_alignment>::const_iterator it = als_in.begin(); it!=als_in.end(); it++){
+			const pw_alignment * al = *it;
+			alind.insert(al);
+			alignments.insert(al);
+		}
+	}
+	compute_cc_avl(const overlap & ovrlp, size_t num_sequences, size_t num_threads): alind(num_sequences){
+		this->num_threads = num_threads;
+		const std::set<pw_alignment, compare_pw_alignment> & als = ovrlp.get_all();
+		for(std::set<pw_alignment, compare_pw_alignment>::const_iterator it = als.begin(); it!=als.end(); it++) {
+			const pw_alignment & al = *it;
+			alind.insert(&al);
+			alignments.insert(&al);
+		}
+	}
 
+	~compute_cc_avl(){}
+//	void add_on_intmap(const pw_alignment*);
+//	void remove_from_intmaps(const pw_alignment* al);//TODO
+	void compute(std::vector<std::set< const pw_alignment* , compare_pointer_pw_alignment> > &);
+	void get_cc(const pw_alignment & , std::set <const pw_alignment*, compare_pointer_pw_alignment> & , std::set <const pw_alignment*, compare_pointer_pw_alignment> & );
+	void cc_step(size_t , size_t , size_t , std::set <const pw_alignment*, compare_pointer_pw_alignment> & , std::set <const pw_alignment* , compare_pointer_pw_alignment>  & );
+//	void cc_step_current(size_t & , size_t & , size_t & , std::set<size_t>& , std::set<size_t> & );
+	private:
+	
+	std::set<const pw_alignment*, compare_pointer_pw_alignment> alignments; 
+	alignment_index alind;
 
+//	std::map<const pw_alignment*, size_t>al_id; //alignments and their ids. //TODO
+//	std::vector<boost::icl::interval_map<size_t, std::set<size_t> >  > als_on_reference;
+//	boost::icl::interval_map<std::set<size_t>,size_t >reverse_als_on_ref; //XXX It was used only for the simple library test.
+//	boost::icl::interval_map<size_t, std::set<size_t> >als_on_ref; //XXX It was used only for the simple library test.
+//	std::map<size_t , std::pair<size_t,size_t> > id_and_bounds;
+//	std::vector< boost::icl::interval_set<size_t> >all_intervals; //All the intervals are kept here, while they will be removed gradually from the als_on_reference
+	size_t num_threads;
 
 };
 class compute_cc_with_icl{
