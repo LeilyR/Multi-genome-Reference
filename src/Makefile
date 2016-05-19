@@ -39,7 +39,7 @@ all: $(PROGS)
 
 #graph: main.cpp $(OBJS) model.cpp model.hpp pw_alignment.hpp data.hpp graph.hpp needleman.hpp encoder.hpp dynamic_encoder.hpp dynamic_decoder.hpp IntervalTree.hpp
 
-graph: main.cpp $(OBJS) model.cpp model.hpp pw_alignment.hpp data.hpp graph.hpp needleman.hpp encoder.hpp dynamic_encoder.hpp dynamic_decoder.hpp alignment_index.hpp IntervalTree.hpp
+graph: main.cpp $(OBJS) model.cpp model.hpp pw_alignment.hpp data.hpp graph.hpp needleman.hpp encoder.hpp dynamic_encoder.hpp dynamic_decoder.hpp alignment_index.hpp IntervalTree.hpp overlap.hpp
 	$(CXX) -o graph $(CXXFLAGS) $(INCLUDEARGS) main.cpp $(OBJS) $(LIBARGS)
 	
 graph.o: graph.cpp data.hpp needleman.hpp graph.hpp 
@@ -53,6 +53,9 @@ data.o: data.cpp pw_alignment.hpp data.hpp
 
 alignment_index.o: alignment_index.cpp alignment_index.hpp intervals.hpp intervals.cpp
 	$(CXX) -o alignment_index.o $(CXXFLAGS) $(INCLUDEARGS) -c alignment_index.cpp
+#overlap.o: overlap.cpp overlap.hpp
+#	$(CXX) -o overlap.o $(CXXFLAGS) $(INCLUDEARGS) -c overlap.cpp
+
 
 dynamic_mc.o: dynamic_mc.cpp dynamic_mc.hpp  data.hpp
 	$(CXX) -o dynamic_mc.o $(CXXFLAGS) $(INCLUDEARGS) -c dynamic_mc.cpp
@@ -65,7 +68,7 @@ test.o: test.cpp test.hpp
 needleman.o: needleman.cpp needleman.hpp
 	$(CXX) -o needleman.o $(CXXFLAGS) $(INCLUDEARGS) -c needleman.cpp
 
-#model.o: model.cpp pw_alignment.hpp data.hpp model.hpp
+#model.o: model.cpp model.hpp
 #	$(CXX) -o model.o $(CXXFLAGS) $(INCLUDEARGS) -c model.cpp
 
 clean:

@@ -116,7 +116,7 @@ class all_data {
 
 };
 
-
+template<typename overlap_type>
 class compute_cc;
 class overlap{
 public:

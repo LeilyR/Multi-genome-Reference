@@ -1,13 +1,15 @@
 #ifndef MODEL_HPP
 #define MODEL_HPP
 
-#include "dynamic_mc.hpp"
-#include"data.hpp"
 #include "pw_alignment.hpp"
-//#include "interval_tree.hpp"
-#include "IntervalTree.hpp"
+#include"data.hpp"
+#include "dynamic_mc.hpp"
+#include"overlap.hpp"
 
+//Interval tree:
+#include "IntervalTree.hpp"
 #include "alignment_index.hpp"
+
 #include <map>
 #include <vector>
 #include <cassert>
@@ -20,7 +22,7 @@ extern "C" {
 
 typedef  std::set<const pw_alignment*, compare_pw_alignment> alset;
 
-template<typename T>
+template<typename T, typename overlap_type>
 class initial_alignment_set {
 	public:
 	initial_alignment_set(const all_data & d, const T & a_model, double base_cost): data(d), common_model(a_model) {//TODO Since we don't use it for the moment, I am not so sure if this constructor works correctly. I have some doubt that it doesn't return the same alignment in sorter. It should be checked!
@@ -63,6 +65,7 @@ class initial_alignment_set {
 		std::cout << "calculating vgain! "<<std::endl;
 		for(std::set<const pw_alignment* , compare_pointer_pw_alignment>::iterator it = als.begin(); it!=als.end(); it++) { 
 			const pw_alignment * cur = *it;
+			
 			double gain1, gain2;
 			common_model.gain_function(*cur, gain1, gain2);
 			double vgain = (gain1+gain2)/2 - base_cost;
@@ -125,23 +128,23 @@ class initial_alignment_set {
 
 	~initial_alignment_set() {}
 
-	void compute(overlap & o);
-	void compute_simple(overlap & o);
+	void compute(overlap_type & o);
+	void compute_simple(overlap_type & o);
 
 /*
 	This method starts with a weighted INDEPENDENT SET of alignments without partial overlap which is computed
 	using a fast and easy to implement VERTEX COVER 2-approximation 
 	(Clarkson, KL. A modification of the greedy algorithm for vertex cover. Information Processing Letters. 1983.)
 */
-	void compute_vcover_clarkson(overlap & o);
-	void compute_simple_lazy_splits(overlap & o);
+	void compute_vcover_clarkson(overlap_type & o);
+	void compute_simple_lazy_splits(overlap_type & o);
 	void lazy_split_insert_step
-		(overlap & ovrlp, size_t level, size_t & rec_calls, const pw_alignment & al, std::vector<pw_alignment> & inserted_alignments, vector<pw_alignment> & removed_alignments, double & local_gain);
+		(overlap_type & ovrlp, size_t level, size_t & rec_calls, const pw_alignment & al, std::vector<pw_alignment> & inserted_alignments, vector<pw_alignment> & removed_alignments, double & local_gain);
 	void lazy_split_full_insert_step
-		(overlap & ovrlp, size_t level, size_t & rec_calls, const pw_alignment & alin, std::vector<pw_alignment> & inserted_alignments, vector<pw_alignment > & removed_alignments, double & local_gain);
+		(overlap_type & ovrlp, size_t level, size_t & rec_calls, const pw_alignment & alin, std::vector<pw_alignment> & inserted_alignments, vector<pw_alignment > & removed_alignments, double & local_gain);
 	void all_push_back(std::vector<pw_alignment> & inserted_alignments, vector<pw_alignment > & removed_alignments, std::set<pw_alignment , compare_pw_alignment> & all_inserted, std::set<pw_alignment, compare_pw_alignment> & all_removed );
-	void local_undo(overlap & ovrlp, std::set<pw_alignment, compare_pw_alignment > & all_inserted, std::set< pw_alignment , compare_pw_alignment> & all_removed);
-	void insert_alignment_sets(overlap & ovrlp, std::set<pw_alignment, compare_pw_alignment> & all_ins, std::set<pw_alignment, compare_pw_alignment> & all_rem, std::vector<pw_alignment> & this_ins, std::vector<pw_alignment> & this_rem);
+	void local_undo(overlap_type & ovrlp, std::set<pw_alignment, compare_pw_alignment > & all_inserted, std::set< pw_alignment , compare_pw_alignment> & all_removed);
+	void insert_alignment_sets(overlap_type & ovrlp, std::set<pw_alignment, compare_pw_alignment> & all_ins, std::set<pw_alignment, compare_pw_alignment> & all_rem, std::vector<pw_alignment> & this_ins, std::vector<pw_alignment> & this_rem);
 
 
 
@@ -265,7 +268,8 @@ main.cpp:rse_iterator rit = sorter.rbegin(); rit!=sorter.rend(); ++rit) {
 };
 
 */
-class compute_cc_with_interval_tree{
+template<typename overlap_type>
+class compute_cc_with_interval_tree{ //XXX this interval tree is designed by Eric Garisson
 	public:
 	compute_cc_with_interval_tree(const std::set<const pw_alignment*, compare_pointer_pw_alignment> & als_in, size_t num_sequences):intervals(num_sequences),trees(num_sequences){
 		for(std::set<const pw_alignment*, compare_pointer_pw_alignment>::const_iterator it = als_in.begin(); it!=als_in.end(); it++){
@@ -311,7 +315,7 @@ class compute_cc_with_interval_tree{
 	std::vector<IntervalTree<const pw_alignment*> > trees;
 	std::vector<const pw_alignment*> alignments;
 };
-
+template<typename overlap_type>
 class compute_cc_avl {
 	public:
 	compute_cc_avl(const std::set<const pw_alignment*, compare_pointer_pw_alignment> & als_in, size_t num_sequences, size_t num_threads):alind(num_sequences){//Is used to create partially overlapped connected components
@@ -323,7 +327,7 @@ class compute_cc_avl {
 			alignments.insert(al);
 		}
 	}
-	compute_cc_avl(const overlap & ovrlp, size_t num_sequences, size_t num_threads): alind(num_sequences){
+	compute_cc_avl(const overlap_type & ovrlp, size_t num_sequences, size_t num_threads): alind(num_sequences){
 		this->num_threads = num_threads;
 		const std::set<pw_alignment, compare_pw_alignment> & als = ovrlp.get_all();
 		for(std::set<pw_alignment, compare_pw_alignment>::const_iterator it = als.begin(); it!=als.end(); it++) {
@@ -354,7 +358,8 @@ class compute_cc_avl {
 	size_t num_threads;
 
 };
-class compute_cc_with_icl{
+template<typename overlap_type>
+class compute_cc_with_icl{ //XXX Boost icl library
 	public:
 	compute_cc_with_icl(const std::set<const pw_alignment*, compare_pointer_pw_alignment> & als_in, size_t num_sequences, size_t num_threads):als_on_reference(num_sequences){
 		this->num_threads = num_threads;
@@ -383,7 +388,7 @@ class compute_cc_with_icl{
 		//	}
 	//	}
 	}
-	compute_cc_with_icl(const overlap & ovrlp, size_t num_sequences, size_t num_threads): als_on_reference(num_sequences){
+	compute_cc_with_icl(const overlap_type & ovrlp, size_t num_sequences, size_t num_threads): als_on_reference(num_sequences){
 		this->num_threads = num_threads;
 		const std::set<pw_alignment, compare_pw_alignment> & als = ovrlp.get_all();
 		for(std::set<pw_alignment, compare_pw_alignment>::const_iterator it = als.begin(); it!=als.end(); it++) {
@@ -433,7 +438,7 @@ class compute_cc_with_icl{
 
 
 };
-
+template<typename overlap_type>
 class compute_cc {
 	public:
 /*	compute_cc(const std::set<pw_alignment, compare_pw_alignment> & als_in, size_t num_sequences):alignments(als_in), als_on_reference(num_sequences), last_pos(num_sequences, 0) {
@@ -455,7 +460,7 @@ class compute_cc {
 //		std::cout << "al size " << alignments.size() << std::endl;
 	}
 
-	compute_cc(const overlap & ovrlp, size_t num_sequences, size_t num_threads): als_on_reference(num_sequences), last_pos(num_sequences, 0) {
+	compute_cc(const overlap_type & ovrlp, size_t num_sequences, size_t num_threads): als_on_reference(num_sequences), last_pos(num_sequences, 0) {
 		numThreads = num_threads;
 		max_al_ref_length = 0;
 		const std::set<pw_alignment, compare_pw_alignment> & als = ovrlp.get_all();
@@ -486,10 +491,10 @@ class compute_cc {
 
 };
 
-template<typename tmodel>
+template<typename tmodel, typename overlap_type>
 class clustering {
 	public:
-	clustering(overlap &,all_data &, tmodel&);
+	clustering(overlap_type &,all_data &, tmodel&);
 	~clustering();
 	void als_on_reference(const pw_alignment * p);
 	void calculate_similarity();//Fill in a matrix with gain values for each two accessions.
@@ -497,7 +502,7 @@ class clustering {
 	void update_clusters(size_t acc);
 	void update_clusters();
 	private:
-	overlap & overl;
+	overlap_type & overl;
 	all_data & data;
 	tmodel & model;
 //	std::set<const pw_alignment *, compare_pw_alignment> alignments;
@@ -515,11 +520,11 @@ class clustering {
 
 */
 
-template<typename tmodel>
+template<typename tmodel,typename overlap_type>
 class affpro_clusters {
 	public:
 
-	affpro_clusters(const overlap & ovlp, const tmodel & model, double base_cost):model(model), base_cost(base_cost) {
+	affpro_clusters(const overlap_type & ovlp, const tmodel & model, double base_cost):model(model), base_cost(base_cost) {
 
 		const std::set<pw_alignment*, compare_pw_alignment> & als = ovlp.get_all();
 		for(std::set<pw_alignment*, compare_pw_alignment>::const_iterator it = als.begin(); it!=als.end(); ++it) {

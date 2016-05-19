@@ -9,16 +9,17 @@
 #include "pw_alignment.hpp"
 #include "data.hpp"
 #include "dynamic_mc.hpp"
+#include "overlap.hpp"
 #include "model.hpp"
 #include "encoder.hpp"
 #include "dynamic_encoder.hpp"
 #include "dynamic_decoder.hpp"
 #include "test.hpp"
 #include "graph.hpp"
-//#include "interval_tree.hpp"
-
+//interval tree:
 #include "intervals.hpp"
 #include "alignment_index.hpp"
+
 #define NO_MAKEFILE
 #include "dlib/entropy_encoder/entropy_encoder_kernel_1.h"
 #include "dlib/entropy_decoder/entropy_decoder_kernel_1.h"
@@ -645,10 +646,15 @@ std::string get_reverse(const std::string & seq){
 }
 int do_mc_model(int argc, char * argv[]) {
 	typedef mc_model use_model;
+	typedef overlap_interval_tree overlap_type;
 //	typedef dynamic_mc_model use_model;
 //	typedef clustering<use_model> use_clustering;
-	typedef initial_alignment_set<use_model> use_ias;
-	typedef affpro_clusters<use_model> use_affpro;
+//	typedef overlap overlap_type;
+
+	typedef initial_alignment_set<use_model,overlap_type> use_ias;
+	typedef compute_cc<overlap_type> compute_cc_type;
+
+	typedef affpro_clusters<use_model,overlap_type> use_affpro;
 	typedef encoder<use_model> use_encode;
 	if(argc < 6) {
 		usage();
@@ -679,7 +685,7 @@ int do_mc_model(int argc, char * argv[]) {
 // Read all data
 	all_data data;
 	data.read_fasta_maf(fastafile, maffile);
-	overlap ol(data);
+	overlap_type ol(data);
 	wrapper wrap;
 	test_encoder test;
 	read_data_time = clock() - read_data_time;
@@ -763,7 +769,7 @@ int do_mc_model(int argc, char * argv[]) {
 	}
 //	std::cout << "al_with_pos_gain size " << al_with_pos_gain.size() << std::endl;
 	clock_t initial_cc_time = clock();
-	compute_cc cccs(al_with_pos_gain, data.numSequences(),num_threads);
+	compute_cc_type cccs(al_with_pos_gain, data.numSequences(),num_threads);
 	std::vector<std::set<const pw_alignment* , compare_pointer_pw_alignment> > ccs; 
 	cccs.compute(ccs); //fill in ccs, order by size(Notice that they are just connected to each other if they have overlap!)
 	initial_cc_time = clock() - initial_cc_time;
@@ -780,7 +786,7 @@ int do_mc_model(int argc, char * argv[]) {
 		//	}
 		}
 	}
-	std::vector<overlap> cc_overlap(ccs.size(), overlap(data));// An overlap class object is needed for each connected component, thus we cannot use ol
+	std::vector<overlap_type> cc_overlap(ccs.size(), overlap_type(data));// An overlap class object is needed for each connected component, thus we cannot use ol
 // Select an initial alignment std::set for each connected component (in parallel)
 	
 	std::map<std::string, std::vector<string> > global_results;//for each center returns all its cluster members
@@ -840,7 +846,7 @@ int do_mc_model(int argc, char * argv[]) {
 		// TODO this can be done a lot faster because there is no partial overlap here
 		clock_t second_cc_time_local = clock();
 		std::vector< std::set<const pw_alignment* , compare_pointer_pw_alignment> > cc_cluster_in; //has shorter length than original sequence pieces
-		compute_cc occ(cc_overlap.at(i), data.numSequences(), 1);
+		compute_cc_type occ(cc_overlap.at(i), data.numSequences(), 1);
 		occ.compute(cc_cluster_in);//makes different components with related pieces of the alignments with no partial overlap, they are sroted by the size of components
 
 		second_cc_time_local = clock() - second_cc_time_local;
@@ -1739,9 +1745,16 @@ int do_mc_model(int argc, char * argv[]) {
 	return 0;
 }
 int do_dynamic_mc_model(int argc, char * argv[]) {
+//	typedef overlap overlap_type;
+	typedef overlap_interval_tree overlap_type;
+
+	typedef compute_cc_avl<overlap_type> compute_cc_type;
+//	typedef compute_cc compute_cc_type;
+//	typedef compute_cc_with_interval_tree compute_cc_type;
+
 	typedef dynamic_mc_model use_model;
-	typedef initial_alignment_set<use_model> use_ias;
-	typedef affpro_clusters<use_model> use_affpro;
+	typedef initial_alignment_set<use_model,overlap_type> use_ias;
+	typedef affpro_clusters<use_model,overlap_type> use_affpro;
 	typedef dynamic_encoder<use_model> use_encode;
 	if(argc < 6) {
 		usage();
@@ -1769,7 +1782,7 @@ int do_dynamic_mc_model(int argc, char * argv[]) {
 	all_data data;
 	// TODO also allow for reading sam
 	data.read_fasta_maf(fastafile, maffile);
-	overlap ol(data);
+	overlap_type ol(data);
 	wrapper wrap;
 	test_encoder test;
 	read_data_time = clock() - read_data_time;
@@ -1802,8 +1815,9 @@ int do_dynamic_mc_model(int argc, char * argv[]) {
 	//Makes components of partially overlapped alignments
 	std::cout << "al with postive gains are kept"<<std::endl;
 	clock_t initial_cc_time = clock();
-//	compute_cc(al_with_pos_gain, data.numSequences(),num_threads);
-	compute_cc_with_interval_tree cccs(al_with_pos_gain, data.numSequences());
+//	compute_cc cccs(al_with_pos_gain, data.numSequences(),num_threads);
+//	compute_cc_with_interval_tree cccs(al_with_pos_gain, data.numSequences());
+	compute_cc_type cccs(al_with_pos_gain, data.numSequences(),num_threads);
 	std::vector<std::set<const pw_alignment* , compare_pointer_pw_alignment> > ccs; 
 	cccs.compute(ccs); //fill in ccs, ordered by size(Notice that they are just connected to each other if they have overlap!)
 	initial_cc_time = clock() - initial_cc_time;
@@ -1822,7 +1836,7 @@ int do_dynamic_mc_model(int argc, char * argv[]) {
 
 	std::cout<< "ccs are made!"<<std::endl;
 // Select an initial alignment set for each connected component (in parallel)
-	std::vector<overlap> cc_overlap(ccs.size(), overlap(data));// An overlap class object is needed for each connected component, thus we cannot use ol
+	std::vector<overlap_type> cc_overlap(ccs.size(), overlap_type(data));// An overlap class object is needed for each connected component
 	std::map<std::string, std::vector<std::string> > global_results;
 	std::map<std::string, std::vector<pw_alignment> > alignments_in_a_cluster;//string ---> center of a cluster, vector ---> alignments with that center
 	std::map<vector<std::string>, std::vector<pw_alignment> > new_centers;//Equivalent to alignments_in_a_cluster for long centers.
@@ -1886,7 +1900,7 @@ int do_dynamic_mc_model(int argc, char * argv[]) {
 		clock_t second_cc_time_local = clock();
 		std::vector< std::set<const pw_alignment* , compare_pointer_pw_alignment> > cc_cluster_in; //have shorter length than original alignemnts
 		std::cout<< "using the cc again!"<<std::endl;
-		compute_cc occ(cc_overlap.at(i), data.numSequences(),1);
+		compute_cc_type occ(cc_overlap.at(i), data.numSequences(),1);
 		occ.compute(cc_cluster_in);//Here we find fully overlapped pieces and save them in a single component, They are oredered by their gain value
 		second_cc_time_local = clock() - second_cc_time_local;
 //		for(size_t i =0; i < cc_cluster_in.size();i++){
@@ -2756,6 +2770,7 @@ int do_read_data(int argc, char * argv[]) {
 
 // Read all data
 	all_data data;
+	typedef overlap overlap_type;
 	data.read_fasta_maf(fastafile, maffile);
 
 //	data.read_accknown_fasta_sam(fastafile,samfile);
@@ -2779,7 +2794,7 @@ int do_simple_test_on_new_cc(int argc, char* argv[]){
 	common_int.push_back(make_pair(4,7));
 	common_int.push_back(make_pair(8,11));
 	std::vector<std::set<size_t> > ccs;
-	compute_cc_with_icl cccs(common_int);
+	compute_cc_with_icl<overlap> cccs(common_int);
 	cccs.compute_test(ccs);
 	size_t counter = 0;
 	for(size_t i=0; i<ccs.size(); ++i) {
@@ -2795,9 +2810,12 @@ int do_simple_test_on_new_cc(int argc, char* argv[]){
 
 }
 int do_test_new_cc(int argc, char * argv[]) {
+	typedef overlap_interval_tree overlap_type;
 	typedef dynamic_mc_model use_model;
 //	typedef compute_cc_with_icl cc_type;
-	typedef compute_cc_avl cc_type;
+	typedef compute_cc_avl<overlap_type> cc_type;
+	typedef initial_alignment_set<use_model,overlap_type> use_ias;
+
 	if(argc < 6) {
 		usage();
 		cerr << "Program: test_cc" << std::endl;
@@ -2817,7 +2835,7 @@ int do_test_new_cc(int argc, char * argv[]) {
 // Read all data
 	all_data data;
 	data.read_fasta_maf(fastafile, maffile);
-	overlap ol(data);
+	overlap_type ol(data);
 	wrapper wrap;
 // Train the model on all data
 	use_model m(data,wrap, num_threads);
@@ -2826,8 +2844,8 @@ int do_test_new_cc(int argc, char * argv[]) {
 // Find connected components of alignments with some overlap // Moved it here after training to be able to remove small als first and then connect them to each other.
 	std::set<const pw_alignment*, compare_pointer_pw_alignment> al_with_pos_gain; 
 #pragma omp parallel for num_threads(num_threads)
-	for(size_t i =0; i < data.numAlignments();i++){
-//	for(size_t i =0; i < 300;i++){
+//	for(size_t i =0; i < data.numAlignments();i++){
+	for(size_t i =0; i < 5;i++){
 //	if(i%1000==0) std::cout << ".";
 //	for(size_t i =0; i < 16;i++){
 		const pw_alignment & al = data.getAlignment(i);
@@ -2842,7 +2860,7 @@ int do_test_new_cc(int argc, char * argv[]) {
 	std::cout << std::endl;
 	//Makes components of partially overlapped alignments
 
-	std::cout << "al with postive gains are kept " << al_with_pos_gain.size() <<std::endl;
+	std::cout << "al with positive gains are kept " << al_with_pos_gain.size() <<std::endl;
 //	compute_cc_with_interval_tree component(al_with_pos_gain,data.numSequences());
 //	compute_cc_with_icl cccs(al_with_pos_gain, data.numSequences(),num_threads);
 	cc_type cccs(al_with_pos_gain, data.numSequences(), num_threads);
@@ -2867,6 +2885,34 @@ int do_test_new_cc(int argc, char * argv[]) {
 	}
 
 	std::cout<< "returned number is "<< counter <<std::endl;
+
+	//Cutting partial overlaps:
+	std::vector<overlap_type> cc_overlap(ccs.size(), overlap_type(data));
+	size_t cluster_base_cost =0;
+	for(size_t i=0; i<ccs.size(); ++i) {
+		std::set< const pw_alignment*, compare_pointer_pw_alignment> & cc = ccs.at(i);
+		std::cout << "this cc size is "<< cc.size() << std::endl;
+		use_ias ias(data,cc, m, cluster_base_cost,num_threads);
+		ias.compute(cc_overlap.at(i));
+		std::cout<< "DONE on CC "<< i << " with " << cc_overlap.at(i).size() << " fragments "<<std::endl;
+		cc_overlap.at(i).test_partial_overlap();
+		std::vector< std::set<const pw_alignment* , compare_pointer_pw_alignment> > cc_cluster_in; 
+		cc_type occ(cc_overlap.at(i), data.numSequences(),1);
+		occ.compute(cc_cluster_in);
+		std::cout << "cluster in size: " << cc_cluster_in.size() <<std::endl;
+		for(size_t j =0; j < cc_cluster_in.size();j++){
+			for(std::set<const pw_alignment*, compare_pointer_pw_alignment>::iterator it = cc_cluster_in.at(j).begin(); it != cc_cluster_in.at(j).end();it++){
+				const pw_alignment * p = *it;
+				p->print();
+				double g1,g2;
+				m.gain_function(*p,g1,g2);
+				assert((g1+g2)/2 >= 0);
+				std::cout << "g1 " << g1 << " g2 " << g2 << std::endl;
+			}
+		}
+
+	}
+	std::cout << "cutting is over!"<<std::endl;
 	return 0;
 }
 
@@ -3014,6 +3060,7 @@ int main(int argc, char * argv[]) {
 #include "dynamic_encoder.cpp"
 #include "dynamic_decoder.cpp"
 #include "intervals.cpp"
+#include "overlap.cpp"
 
 
 

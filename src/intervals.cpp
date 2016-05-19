@@ -27,16 +27,16 @@ avl_interval_tree<T>::avl_interval_tree(): root(NULL), num_nodes(0),test_erase(0
 
 template<typename T>
 avl_interval_tree<T>::~avl_interval_tree() {
-	std::cout << " Destroy tree " << std::endl;
+//	std::cout << " Destroy tree " << std::endl;
 	if(root!=NULL) {
 		node_type * root_node = root;
-		std::cout << " call delete on l " << root->left << " r " << root->right << " d " << root->value << std::endl; 
+	//	std::cout << " call delete on l " << root->left << " r " << root->right << " d " << root->value << std::endl; 
 		prune_subtree(root);
 		delete_subtree(root_node);
 	}
 
 
-	std::cout << " tree destroyed " << std::endl;
+//	std::cout << " tree destroyed " << std::endl;
 }
 
 template<typename T>
@@ -50,7 +50,7 @@ void avl_interval_tree<T>::insert(const size_t & left, const size_t & right, con
 	node_type * new_node = new node_type(left, right, v);
 	num_nodes++;
 	if(root == NULL) {
-		std::cout << "root is NULL "<<std::endl;
+//		std::cout << "root is NULL "<<std::endl;
 		root = new_node;
 	} else {
 		insert_at_node(root, new_node);
@@ -164,7 +164,7 @@ size_t avl_interval_tree<T>::erase(const size_t & left, const size_t & right, co
 
 	size_t num_erased = 0;
 	if(root!=NULL) {
-		std::cout<< "before single erase: "<< left << " "<< right <<std::endl;
+	//	std::cout<< "before single erase: "<< left << " "<< right <<std::endl;
 		num_erased = single_erase_at_node(root, left, right, value);
 		num_nodes -= num_erased; 
 
@@ -186,7 +186,7 @@ size_t avl_interval_tree<T>::erase(const size_t & left, const size_t & right, co
 
 
 template<typename T>	
-void avl_interval_tree<T>::overlap_search(const size_t & left, const size_t & right, std::vector<value_type> & results) {
+void avl_interval_tree<T>::overlap_search(const size_t & left, const size_t & right, std::vector<value_type> & results)const{
 #if DO_SLOW_CHECKS
 	std::cout << " Before overlap search check: " << std::endl;
 	std::cout << " check for overlap with l " << left << " r " << right <<  std::endl;
@@ -196,7 +196,7 @@ void avl_interval_tree<T>::overlap_search(const size_t & left, const size_t & ri
 
 	if(root!=NULL) {
 		overlap_search_at_node(root, left, right, results);
-		std::cout<< "ROOT is not NULL"<<std::endl;
+	//	std::cout<< "ROOT is not NULL"<<std::endl;
 	}
 
 #if DO_SLOW_CHECKS
@@ -232,13 +232,18 @@ void avl_interval_tree<T>::overlap_search(const size_t & left, const size_t & ri
 		}
 		assert(found);
 	}
+	for(size_t j=0; j<results.size(); ++j) {
+		std::cout << results.at(j) <<std::endl;
+	}
 #endif
 
-
-
-
 }
-
+template<typename T>
+void avl_interval_tree<T>::overlap_search(const size_t & value, std::vector<value_type> & results)const{
+	if(root!=NULL) {
+		overlap_search_for_a_value(root, value, results);
+	}
+}
 template<typename T>	
 void avl_interval_tree<T>::overlap_search_erase(const size_t & left, const size_t & right, std::vector<value_type> & results) {
 #if DO_SLOW_CHECKS
@@ -316,7 +321,7 @@ void avl_interval_tree<T>::join_intervals(std::vector<std::pair<size_t, size_t> 
 
 template <typename T>	
 void avl_interval_tree<T>::debug_print() const {
-	std::cout << " AVL Interval tree printout: " << std::endl;
+//	std::cout << " AVL Interval tree printout: " << std::endl;
 	if(root!=NULL) {
 		size_t id = 0;
 		debug_print_at_node(root, 0, id, 0);
@@ -335,7 +340,7 @@ void avl_interval_tree<T>::insert_at_node(node_type * atn, node_type * newn) {
 	size_t max_subtr_height = 0;
 	if(atn==NULL) {
 		if(root == NULL) {
-			std::cout << "root == NULL"<<std::endl;
+		//	std::cout << "root == NULL"<<std::endl;
 			root = newn;
 		} else {
 			insert_at_node(root, newn);
@@ -345,12 +350,12 @@ void avl_interval_tree<T>::insert_at_node(node_type * atn, node_type * newn) {
 		}
 		return;
 	}
-	std::cout << "root is not null" <<std::endl;
+//	std::cout << "root is not null" <<std::endl;
 	if(newn->right < atn->left) {
-		std::cout << "on the left branch! "<<std::endl;
+//		std::cout << "on the left branch! "<<std::endl;
 // insert into left subtree
 		if(atn->str_left==NULL) {
-			std::cout<< "left is null!"<<std::endl;
+	//		std::cout<< "left is null!"<<std::endl;
 			left_attach(atn, newn);
 		} else {
 			std::cout << atn->str_left<< " "<< newn<<std::endl;
@@ -378,7 +383,7 @@ void avl_interval_tree<T>::insert_at_node(node_type * atn, node_type * newn) {
 
 template<typename T>
 void avl_interval_tree<T>::forest_add(node_type * atn, node_type * insert_node, node_map_type & roots_to_parents, node_set_type & valid_parents) {
-	std::cout << "insert node "<< insert_node <<std::endl;
+//	std::cout << "insert node "<< insert_node <<std::endl;
 	roots_to_parents.insert(std::make_pair(atn, insert_node));
 	if(insert_node!= NULL){ //XXX I added the if
 		valid_parents.insert(insert_node);
@@ -389,12 +394,12 @@ template<typename T>
 void avl_interval_tree<T>::redo_height_up(node_type * n) {
 	while(n != NULL){
 		node_type * nr = n->str_right;
-		std::cout <<"n is not null " << n << " " << nr << std::endl;
+	//	std::cout <<"n is not null " << n << " " << nr << std::endl;
 		redo_height_and_minmax_at_node(n);
-		std::cout << "n right"<< n->right << "n max right"<< n->max_right <<std::endl;
+	//	std::cout << "n right"<< n->right << "n max right"<< n->max_right <<std::endl;
 		n=n->parent;
 		if(n == NULL){
-			std::cout<< "n assigned to be null"<<std::endl;
+	//		std::cout<< "n assigned to be null"<<std::endl;
 		}
 	}	
 }
@@ -402,29 +407,29 @@ void avl_interval_tree<T>::redo_height_up(node_type * n) {
 template<typename T>
 void avl_interval_tree<T>::forest_insert(node_map_type & roots_to_parents, node_set_type & valid_parents) {
 	for(typename node_map_type::iterator it = roots_to_parents.begin(); it!=roots_to_parents.end(); ++it) {
-		std::cout << "map size "<< roots_to_parents.size() << std::endl;
+	//	std::cout << "map size "<< roots_to_parents.size() << std::endl;
 		node_type * subtree_root = it->first;
 		node_type * ins_node = it->second;
 		typename node_set_type::iterator find_ian = valid_parents.find(ins_node);
 		if(find_ian==valid_parents.end()) {
-			std::cout<< "ins node null"<<std::endl;
+	//		std::cout<< "ins node null"<<std::endl;
 		//	ins_node = NULL;
 		}
-		std::cout<< "move"<< subtree_root -> left << std::endl;
+	//	std::cout<< "move"<< subtree_root -> left << std::endl;
 		move_subtree(subtree_root, ins_node);
 	}
 
 	// TODO all downwards rotations first, then all upwards rotations
 
 // Correct upwards heights, from all parents where we did insert
-	std::cout<< "valid parents size "<< valid_parents.size()<<std::endl;
+//	std::cout<< "valid parents size "<< valid_parents.size()<<std::endl;
 	for(typename node_set_type::iterator it = valid_parents.begin(); it!=valid_parents.end(); it++) {
 
 		node_type * n = *it;
 		redo_height_up(n); // TODO here or in move_subtree?
 			
 	}
-	std::cout << "roots_to_parents "<<roots_to_parents.size()<<std::endl;
+//	std::cout << "roots_to_parents "<<roots_to_parents.size()<<std::endl;
 	for(typename node_map_type::iterator it = roots_to_parents.begin(); it!=roots_to_parents.end(); ++it) {
 		node_type * n = it->first;
 		std::cout << n->left << " " << n->max_right << std::endl;
@@ -481,36 +486,36 @@ void avl_interval_tree<T>::erase_this_node(node_type * atn) {
 	node_type * strc = atn->str_center;
 	node_type * strr = atn->str_right;
 	if(strc!=NULL) {
-	std::cout<<"here1"<<std::endl;
+//	std::cout<<"here1"<<std::endl;
 
 		prune_subtree(strc);
 		forest_add(strc, ins_node, roots_to_parents, valid_parents);
 	}
 	if(strl!=NULL) {
-	std::cout<<"here2"<<std::endl;
+//	std::cout<<"here2"<<std::endl;
 
 		prune_subtree(strl);
 		forest_add(strl, ins_node, roots_to_parents, valid_parents);
 		}
 	if(strr!=NULL) {
-	std::cout<<"here3" <<std::endl;
+//	std::cout<<"here3" <<std::endl;
 		std::cout<< strr->left <<std::endl;
 		prune_subtree(strr);
-		std::cout << "pruning is done!"<<std::endl;
+//		std::cout << "pruning is done!"<<std::endl;
 		forest_add(strr, ins_node, roots_to_parents, valid_parents);
 	}
-	std::cout<<"here4"<<std::endl;
+//	std::cout<<"here4"<<std::endl;
 
 	delete_node(atn);
 
 	forest_insert(roots_to_parents, valid_parents);
-	std::cout << "finally erased! "<<std::endl;
+//	std::cout << "finally erased! "<<std::endl;
 }
 
 
 template<typename T>
 void avl_interval_tree<T>::erase_at_node(node_type * atn, const size_t & left, const size_t & right, std::vector<value_type> & erased) {
-	std::cout << " erasing at l " << atn->left << " r " << atn->right << " d " << atn->value << std::endl;
+//	std::cout << " erasing at l " << atn->left << " r " << atn->right << " d " << atn->value << std::endl;
 	if(right < atn->left) {
 		if(atn->str_left!=NULL) {
 			erase_at_node(atn->str_left, left, right, erased);
@@ -535,8 +540,8 @@ void avl_interval_tree<T>::erase_at_node(node_type * atn, const size_t & left, c
 
 template<typename T>
 size_t avl_interval_tree<T>::single_erase_at_node(node_type * atn, const size_t & left, const size_t & right, const value_type & value) {
-	std::cout << "atn " << atn << " " <<left << " "<<right <<std::endl;
-	std::cout << " erasing at l " << atn->left << " r " << atn->right << " d " << atn->value << std::endl;
+//	std::cout << "atn " << atn << " " <<left << " "<<right <<std::endl;
+//	std::cout << " erasing at l " << atn->left << " r " << atn->right << " d " << atn->value << std::endl;
 	size_t num_erased = 0;
 	if(right < atn->left) {
 		if(atn->str_left!=NULL) {
@@ -556,16 +561,16 @@ size_t avl_interval_tree<T>::single_erase_at_node(node_type * atn, const size_t 
 		}
 		if((left == atn->left && right==atn->right) && value == atn->value) {
 // Here we have to delete:
-			std::cout << "ERASE THIS: " << atn->left << " r " << atn->right << " d " << atn->value << " max "<< atn->max_right<< std::endl;
+//			std::cout << "ERASE THIS: " << atn->left << " r " << atn->right << " d " << atn->value << " max "<< atn->max_right<< std::endl;
 			erase_this_node(atn);
 			num_erased++;
 		//	num_nodes -= num_erased;
 		//	std::cout << "n_nodes "<< num_nodes <<std::endl;
-			std::cout<< "should be returned to the erase function!"<<std::endl;
+//			std::cout<< "should be returned to the erase function!"<<std::endl;
 			return num_erased; // no redo height on now invalid atn
 		}
 	}
-	std::cout<< "ATN "<< atn <<std::endl;
+//	std::cout<< "ATN "<< atn <<std::endl;
 	
 //	num_nodes -=num_erased; //XXX I added
 	test_erase= num_erased;
@@ -576,35 +581,50 @@ size_t avl_interval_tree<T>::single_erase_at_node(node_type * atn, const size_t 
 
 
 template<typename T>	
-void avl_interval_tree<T>::overlap_search_at_node(node_type * atn, const size_t & left, const size_t & right, std::vector<value_type> & results) {
-	std::cout << " ovlrp search for l " << left << " r " << right << " at  l " << atn->left << " r " << atn->right << " d " << atn->value <<std::endl;
+void avl_interval_tree<T>::overlap_search_at_node(node_type * atn, const size_t & left, const size_t & right, std::vector<value_type> & results)const{
+//	std::cout << " ovlrp search for l " << left << " r " << right << " at  l " << atn->left << " r " << atn->right << " d " << atn->value <<std::endl;
 	if(left < atn->left) {
 		if(atn->str_left!=NULL) {
 			overlap_search_at_node(atn->str_left, left, right, results);
 		}
-	//	if(atn->str_center!=NULL){//XXX I added, it makes it less efficient!!!
-	//		overlap_search_at_node(atn->str_center, left, right, results);
-	//	}
 	}
 	if(right > atn->right) {
 		if(atn->str_right!=NULL) {
 			overlap_search_at_node(atn->str_right, left, right, results);
 		}
 	}	
-//	if(right >= atn->left && left <= atn->right) {
-		if(atn->str_center!=NULL) {
-			overlap_search_at_node(atn->str_center, left, right, results);
-		}
-if(right >= atn->left && left <= atn->right) {//XXX I changed it
+	if(atn->str_center!=NULL) {
+		overlap_search_at_node(atn->str_center, left, right, results);
+	}
+	if(right >= atn->left && left <= atn->right) {
 		std::cout << " FOUND l " << atn->left << " r " << atn->right << " d " << atn->value << std::endl;
 		results.push_back(atn->value);
-}
-//	}
+	}
 }
 
 template<typename T>
+void avl_interval_tree<T>::overlap_search_for_a_value(node_type * atn, const size_t & value, std::vector<value_type> & results)const{
+	if(value < atn->left) {
+		if(atn->str_left!=NULL) {
+			overlap_search_for_a_value(atn->str_left, value, results);
+		}
+	}
+	if(value > atn->right) {
+		if(atn->str_right!=NULL) {
+			overlap_search_for_a_value(atn->str_right, value, results);
+		}
+	}
+	if(atn->str_center!=NULL) {
+		overlap_search_for_a_value(atn->str_center, value, results);
+	}
+	if(value >= atn->left && value <= atn->right) {	
+//		std::cout << " FOUND l " << atn->left << " r " << atn->right << " d " << atn->value << std::endl;
+		results.push_back(atn->value);
+	}
+}
+template<typename T>
 void avl_interval_tree<T>::overlap_search_erase_at_node(node_type * atn, const size_t & left, const size_t & right, std::vector<value_type> & results, node_set_type & to_Delete) {
-	std::cout << " ovlrp search erase for l " << left << " r " << right << " at  l " << atn->left << " r " << atn->right << " d " << atn->value <<std::endl;
+//	std::cout << " ovlrp search erase for l " << left << " r " << right << " at  l " << atn->left << " r " << atn->right << " d " << atn->value <<std::endl;
 	if(left < atn->left) {
 		if(atn->str_left!=NULL) {
 			overlap_search_erase_at_node(atn->str_left, left, right, results, to_Delete);
@@ -620,7 +640,7 @@ void avl_interval_tree<T>::overlap_search_erase_at_node(node_type * atn, const s
 		if(atn->str_center!=NULL) {
 			overlap_search_erase_at_node(atn->str_center, left, right, results, to_Delete);
 		}
-		std::cout << " FOUND l " << atn->left << " r " << atn->right << " d " << atn->value << std::endl;
+//		std::cout << " FOUND l " << atn->left << " r " << atn->right << " d " << atn->value << std::endl;
 		results.push_back(atn->value);
 		to_Delete.insert(atn);
 
@@ -721,13 +741,13 @@ void avl_interval_tree<T>::debug_print_at_node(node_type * atn, const size_t & l
 */	
 template<typename T>
 void avl_interval_tree<T>::move_subtree(node_type * from, node_type * to) { //XXX Why do we need to rotate the entire subtree?
-	std::cout << "move subtree on from " << from->value << "from left " << from->left << std::endl;
+//	std::cout << "move subtree on from " << from->value << "from left " << from->left << std::endl;
 	assert(from->parent == NULL);
 	node_type * strc = from->str_center;
 	node_type * strl = from->str_left;
 	node_type * strr = from->str_right;
 	if(strc!=NULL) { // center first should be more efficient (less rebalancing)
-		std::cout << "on center"<<std::endl;
+//		std::cout << "on center"<<std::endl;
 		prune_subtree(strc);
 		move_subtree(strc, to);
 	}
@@ -742,10 +762,12 @@ void avl_interval_tree<T>::move_subtree(node_type * from, node_type * to) { //XX
 		prune_subtree(strr);
 		move_subtree(strr, to);
 	}
-	if(to == NULL){std::cout << "to is null"<<std::endl;}
-	std::cout << "from left is "<< from->left <<std::endl;
+	if(to == NULL){
+		//std::cout << "to is null"<<std::endl;
+	}
+//	std::cout << "from left is "<< from->left <<std::endl;
 	insert_at_node(to, from); 
-	std::cout << "nodes are inserted!"<<std::endl;
+//	std::cout << "nodes are inserted!"<<std::endl;
 	redo_height_up(from); // TODO
 }
 
@@ -934,13 +956,13 @@ void avl_interval_tree<T>::delete_node(node_type * n) {
 
 template<typename T>	
 void avl_interval_tree<T>::redo_height_and_minmax_at_node(node_type * n) {//TODO !! 
-	std::cout << "n left in redo "<< n->left <<std::endl;
+//	std::cout << "n left in redo "<< n->left <<std::endl;
 	size_t nh = 0;
 	node_type * nl = n->str_left;
 	node_type * nr = n->str_right;
 	node_type * nc = n->str_center;
 	if(nl!=NULL) {
-		std::cout << "nl!=NULL"<<std::endl;
+	//	std::cout << "nl!=NULL"<<std::endl;
 		size_t lh = nl->height + 1;
 		if(lh>nh) nh = lh;
 		std::cout << nl->min_left << " " << n->min_left<<std::endl;
@@ -948,35 +970,35 @@ void avl_interval_tree<T>::redo_height_and_minmax_at_node(node_type * n) {//TODO
 		if(nl->max_right > n->max_right) n->max_right = nl->max_right;
 	}
 	if(nr!=NULL) {
-		std::cout << "nr!=NULL"<<std::endl;
+	//	std::cout << "nr!=NULL"<<std::endl;
 		size_t rh = nr->height + 1;
 		if(rh>nh) nh = rh;
 		if(nr->min_left < n->min_left) n->min_left = nr->min_left;
 		if(nr->max_right > n->max_right) n->max_right = nr->max_right;
 	}
 	if(nc!=NULL) {
-		std::cout << "nc!=NULL"<<std::endl;
+	//	std::cout << "nc!=NULL"<<std::endl;
 
 		if(nc->min_left < n->min_left) n->min_left = nc->min_left;
 		if(nc->max_right > n->max_right) n->max_right = nc->max_right;
 
 	}
-	std::cout << "num nodes"<< num_nodes << "num_erased " << test_erase <<std::endl;
+//	std::cout << "num nodes"<< num_nodes << "num_erased " << test_erase <<std::endl;
 
 	if(nc == NULL && nr ==NULL && nl==NULL && (num_nodes - test_erase) ==1){
-		std::cout << "num nodes"<< num_nodes << "num_erased " << test_erase <<std::endl;
-		std::cout << "if all are null! and node size is one" <<std::endl;
+	//	std::cout << "num nodes"<< num_nodes << "num_erased " << test_erase <<std::endl;
+	//	std::cout << "if all are null! and node size is one" <<std::endl;
 		n->min_left = n->left;
 		n->max_right = n->right;
 	}
 	if(nc == NULL && nr ==NULL && nl==NULL && n != root){
 		n->min_left = n->left;
 		n->max_right = n->right;
-		std::cout << "last leave!!"<<std::endl;
+	//	std::cout << "last leave!!"<<std::endl;
 	}
 	n->height = nh;
 
-	std::cout << " redo node " << n->value << " new h " << n->height << " str limits l " << n->min_left << " r " << n->max_right << std::endl; 
+//	std::cout << " redo node " << n->value << " new h " << n->height << " str limits l " << n->min_left << " r " << n->max_right << std::endl; 
 }
 /** Do all kinds of slow checks 
 

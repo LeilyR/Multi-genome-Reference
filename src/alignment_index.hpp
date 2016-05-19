@@ -20,7 +20,9 @@ class alignment_index {
 		* we return pointers to all alignments in index that overlap with al on its reference reference
 	*/
 	void search_overlap(const pw_alignment & al, const size_t & reference, std::vector<const pw_alignment *> & result);
-	void search_overlap(const size_t & reference, const size_t & left, const size_t & right, std::vector<const pw_alignment *> & result);
+	void search_overlap(const size_t & reference, const size_t & left, const size_t & right, std::vector<const pw_alignment *> & result)const;
+	void search_overlap(const size_t & reference, const size_t & value, std::vector<const pw_alignment*> & result)const;
+
 
 	/*
 		same as above plus:

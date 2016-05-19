@@ -25,7 +25,7 @@ size_t alignment_index::erase(const pw_alignment * al) {
 	size_t ref1 = al->getreference1();
 	size_t res1 = trees.at(ref1).erase(l, r, al);
 	std::cout << "res1 "<< res1 << "tree is "<< std::endl;
-	trees.at(ref1).debug_print();
+//	trees.at(ref1).debug_print();
 
 	al->get_lr2(l, r);
 	size_t ref2 = al->getreference2();
@@ -50,15 +50,24 @@ void alignment_index::search_overlap(const pw_alignment & al, const size_t & ref
 	trees.at(fref).overlap_search(fleft, fright, result);	
 
 }
-void alignment_index::search_overlap(const size_t & reference, const size_t & left, const size_t & right, std::vector<const pw_alignment *> & result) {
-	trees.at(reference).overlap_search(left, right, result);	
+void alignment_index::search_overlap(const size_t & reference, const size_t & left, const size_t & right, std::vector<const pw_alignment *> & result)const{
+	trees.at(reference).overlap_search(left, right, result);
+	if(result.size()>0){
+		std::cout << result.at(0) <<std::endl;
+		const pw_alignment* p = result.at(0);
+		p->print();
+	}
+
 }
 
+void alignment_index::search_overlap(const size_t & reference, const size_t & value, std::vector<const pw_alignment*> & result)const{
+	trees.at(reference).overlap_search(value,result);
 
+}
 void alignment_index::super_search_overlap_and_remove(const size_t & reference, const size_t & left, const size_t & right, std::vector<const pw_alignment *> & result, std::multimap<size_t, std::pair<size_t, size_t> > & touched_intervals) {
 	trees.at(reference).overlap_search(left, right, result);
 
-	std::cout << "SUPER SEARCH found " << result.size() << " alignments" << std::endl;
+//	std::cout << "SUPER SEARCH found " << result.size() << " alignments" << std::endl;
 
 	std::multimap<size_t, std::pair<size_t, size_t> > all_intervals; 
 	std::set<size_t> used_refs;
@@ -86,13 +95,13 @@ void alignment_index::super_search_overlap_and_remove(const size_t & reference, 
 			this_tree.insert(thisl, thisr, NULL);
 		}
 		std::cout << " Ref " << this_ref << " interval tree " << std::endl;
-		this_tree.debug_print();
+	//	this_tree.debug_print();
 
 		std::vector<std::pair<size_t, size_t> > this_intervals;
 		this_tree.join_intervals(this_intervals);
-		std::cout << "touched intervals: "<<std::endl;
+	//	std::cout << "touched intervals: "<<std::endl;
 		for(size_t i=0; i<this_intervals.size(); ++i) {//XXX Basically this_interval could be already removed from the tree of that ref but we need to find any interval on the tree that has overlap with them.
-			std::cout << " ref " << this_ref << " l " << this_intervals.at(i).first << " r " << this_intervals.at(i).second << std::endl;
+	//		std::cout << " ref " << this_ref << " l " << this_intervals.at(i).first << " r " << this_intervals.at(i).second << std::endl;
 			touched_intervals.insert(std::make_pair( this_ref, std::make_pair( this_intervals.at(i).first, this_intervals.at(i).second) ) );
 		}
 	}
@@ -101,8 +110,8 @@ void alignment_index::super_search_overlap_and_remove(const size_t & reference, 
 
 	for(size_t i=0; i<result.size(); ++i) {
 		const pw_alignment * al = result.at(i);
-		std::cout<< "result at "<< i  << " is " << std::endl;
-		al->print();
+	//	std::cout<< "result at "<< i  << " is " << std::endl;
+	//	al->print();
 		size_t erase_res = erase(result.at(i));
 //		assert(erase_res);
 	}

@@ -9,7 +9,7 @@
 #include <set>
 
 #define DO_REBALANCING 1
-#define DO_SLOW_CHECKS 1
+#define DO_SLOW_CHECKS 0
 
 template<typename T>
 class avl_interval_tree;
@@ -73,7 +73,8 @@ class avl_interval_tree {
 	void erase_all(const size_t & left, const size_t & right, std::vector<value_type> & erased);
 	// erases all intervals with that left and right and value, return number of erased intervals
 	size_t erase(const size_t & left, const size_t & right, const value_type & value);
-	void overlap_search(const size_t & left, const size_t & right, std::vector<value_type> & results);
+	void overlap_search(const size_t & left, const size_t & right, std::vector<value_type> & results)const;
+	void overlap_search(const size_t & value, std::vector<value_type> & results)const;
 	void overlap_search_erase(const size_t & left, const size_t & right, std::vector<value_type> & results);
 	void join_intervals(std::vector<std::pair<size_t, size_t> > & results);
 	
@@ -87,9 +88,9 @@ class avl_interval_tree {
 	node_type * root;
 	size_t num_nodes;
 	size_t test_erase;
-#if DO_SLOW_CHECKS
+//#if DO_SLOW_CHECKS
 	std::vector< std::pair<std::pair<size_t, size_t>, value_type> > slow_index;
-#endif
+//#endif
 
 	void insert_at_node(node_type * atn, node_type * newn);
 	void forest_insert(node_map_type & roots_to_parents, node_set_type & valid_parents);
@@ -101,7 +102,9 @@ class avl_interval_tree {
 	void delete_nodes(const node_set_type & to_Delete);
 	void erase_at_node(node_type * atn, const size_t & left, const size_t & right, std::vector<value_type> & erased);
 	size_t single_erase_at_node(node_type * atn, const size_t & left, const size_t & right, const value_type & value);
-	void overlap_search_at_node(node_type * atn, const size_t & left, const size_t & right, std::vector<value_type> & results);
+	void overlap_search_at_node(node_type * atn, const size_t & left, const size_t & right, std::vector<value_type> & results)const;
+	void overlap_search_for_a_value(node_type * atn, const size_t & value, std::vector<value_type> & results)const;
+
 	void overlap_search_erase_at_node(node_type * atn, const size_t & left, const size_t & right, std::vector<value_type> & results, node_set_type & to_Delete );
 	void join_intervals_at_node(node_type * atn, std::map<size_t, size_t> & joined_intervals);
 	void subtree_max_interval(node_type * atn, size_t & left, size_t & right);
