@@ -711,6 +711,8 @@ class finding_centers{
 	size_t get_number_of_centers()const;//Returns the total number of centers
 	std::map< size_t, std::string> get_sequence_centers(size_t & )const;//It returns all the centers of a sequence, a center may happen more than once, thus it might be repeated in the vector. size_t shows the position of each center
 	std::string find_center_name(size_t &)const;
+	std::vector<size_t> get_long_center_position(size_t & seq_id , std::vector<std::string> & long_center);
+	
 	
 	private://all these containers are local and their containts are replacing after each call of clustering:
 	all_data & data;
@@ -718,6 +720,7 @@ class finding_centers{
 	std::map<std::string,std::string> memberOfCluster; //first string is assocciated member and second one is its center
 	std::vector< std::map< size_t, std::string> >centersOnSequence;//all the centers that happen on each sequence and their positions 
 	std::vector< std::map< size_t , std::vector<size_t> > > centersOfASequence;//centers that happen on each sequence and have less than ALLOWED_GAP bases difference and their position. Fully reveresed are removed.
+	std::vector<std::multimap<std::vector<size_t>,size_t > > initial_suffixes;
 	std::vector<std::string> center_index;
 //	std::map<std::string, int>oriented_index;// centers, their indecies which can be negative if they are used in their reverse direction.
 };
@@ -742,10 +745,11 @@ class suffix_tree{
 	void shift_node_relation(size_t & , size_t & , size_t & );
 	void shift_first_parent(size_t & , size_t&, std::vector<size_t> &);
 	std::map<size_t, std::vector<size_t> > get_center_on_a_sequence(size_t &)const;
+	std::vector<std::vector<std::vector<size_t> > > get_suffix_of_sequence(size_t &)const;
 	private:
 	all_data & data;
 	finding_centers & centers;
-	std::vector<std::map<size_t,std::vector<size_t> > >successive_centers;//It is updated in each round of making a suffix tree
+	std::vector<std::map<size_t,std::vector<size_t> > >successive_centers;//It is updated in each round of making a suffix tree 
 	std::vector<std::vector<std::vector<std::vector<size_t> > > >suffixes;//all the suffixes of all the sequences at each around
 	std::vector<std::vector<size_t> > nodes;
 	std::vector<size_t> powerOfTwo;

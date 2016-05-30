@@ -1841,7 +1841,7 @@ int do_dynamic_mc_model(int argc, char * argv[]) {
 	std::map<std::string, std::vector<pw_alignment> > alignments_in_a_cluster;//string ---> center of a cluster, vector ---> alignments with that center
 	std::map<vector<std::string>, std::vector<pw_alignment> > new_centers;//Equivalent to alignments_in_a_cluster for long centers.
 	std::vector<std::map<size_t, std::vector<std::string> > >centersPositionOnASeq(data.numSequences());//all the long centers of each sequence and their position
-	std::vector<std::map<size_t, std::string> > centerOnSequence(data.numSequences());//all the centers on a seq and their position(It is used when we use long centers)
+	std::vector<std::map<size_t, std::string> > centerOnSequence(data.numSequences());//all the centers on a seq and their position(It is used when we create long centers)
 	vector<vector<std::string> > long_centers;
 
 	size_t num_clusters = 0;
@@ -1903,14 +1903,29 @@ int do_dynamic_mc_model(int argc, char * argv[]) {
 		compute_cc_type occ(cc_overlap.at(i), data.numSequences(),1);
 		occ.compute(cc_cluster_in);//Here we find fully overlapped pieces and save them in a single component, They are oredered by their gain value
 		second_cc_time_local = clock() - second_cc_time_local;
-//		for(size_t i =0; i < cc_cluster_in.size();i++){
-//			for(std::set<const pw_alignment*, compare_pointer_pw_alignment>::iterator it = cc_cluster_in.at(i).begin(); it != cc_cluster_in.at(i).end();it++){
-//				const pw_alignment * p = *it;
+	/*	for(size_t i=0; i<cc_cluster_in.size()-1; i++) {//A test function that chckes overlap between components. There shouldn't be any overlap between them.
+			std::cout << "cc cluster in  "<< i << " contains " << cc_cluster_in.at(i).size() << " alignments" << std::endl;
+			for(std::set< const pw_alignment* , compare_pointer_pw_alignment>::iterator it = cc_cluster_in.at(i).begin();it != cc_cluster_in.at(i).end();it++){
+				const pw_alignment * p = *it;
+				p->print();
+				for(size_t j = i+1; j < cc_cluster_in.size();j++){
+					std::set< const pw_alignment* , compare_pointer_pw_alignment> ccs_j = cc_cluster_in.at(j);
+					ol.test_no_overlap_between_ccs(*p, ccs_j);//XXX this is just a test function, comment it the first run!
+					data.checkAlignmentRange(*p);//XXX this is just a test function, comment it after the first run!
+				}
+			}
+		}
+		std::cout << "cc cluster in  "<< cc_cluster_in.size()-1 << " contains " << cc_cluster_in.at(cc_cluster_in.size()-1).size() << " alignments" << std::endl;*/
+		for(size_t i =0; i < cc_cluster_in.size();i++){
+			std::cout << "cc cluster in  "<< i << " contains " << cc_cluster_in.at(i).size() << " alignments" << std::endl;
+			for(std::set<const pw_alignment*, compare_pointer_pw_alignment>::iterator it = cc_cluster_in.at(i).begin(); it != cc_cluster_in.at(i).end();it++){
+				const pw_alignment * p = *it;
+				p->print();
 //				double g1,g2;
 //				m.gain_function(*p,g1,g2);
 //				std::cout << "g1 " << g1 << " g2 " << g2 << std::endl;
-//			}
-//		}
+			}
+		}
 #if TIMING
 #pragma omp critical(time)
 {
@@ -2128,11 +2143,18 @@ int do_dynamic_mc_model(int argc, char * argv[]) {
 		suffix_tree tree(data,centers);
 		merging_centers merg(data, centers, tree);
 		//From this point on orientation matters! It shoud be taken into account in counting the number of each center happening when we are looking for the long centers!
-		centers.center_frequency(al_of_a_ccs,centerOnSequence);//All the centers of each sequence are detected and centerOnSequence is filled in. It contains all the cneters on each sequence.
-		merg.adding_new_centers(local_long_centers,centersPositionOnASeq);//After merging a group of centers we iteratively create new suffixes and a new tree based on them, then recalculate the gains again. At the end those with gain>0 go to the long_centers and centersPositionOnASeq.
+		centers.center_frequency(al_of_a_ccs,centerOnSequence);//All the centers of each sequence are detected and centerOnSequence is filled in. It contains all the cneters on each sequence. 
+		merg.adding_new_centers(local_long_centers,centersPositionOnASeq);//After merging a group of centers we iteratively create new suffixes and a new tree based on them, then recalculate the gains again. At the end those with gain>0 go to the long_centers and centersPositionOnASeq.//TODO seems all the long centers are not added.
 		std::cout<< "new centers are made! "<<std::endl;
 		for(size_t j  =0; j < local_long_centers.size();j++){
 			long_centers.push_back(local_long_centers.at(j));
+		}
+		std::cout<< "long center on 0 "<<std::endl;
+		for(std::map<size_t, std::vector<std::string> >::iterator test_it = centersPositionOnASeq.at(0).begin(); test_it != centersPositionOnASeq.at(0).end(); test_it++){
+			for(size_t k =0; k < test_it->second.size();k++){
+				std::cout<< test_it->second.at(k)<< " ";
+			}
+			std::cout << " " <<std::endl;
 		}
 		merg.create_alignment(local_long_centers,new_centers,al_of_a_ccs,centersPositionOnASeq,centerOnSequence);//Here we fill in the 'new_centers' with longer alignments in the way that center is always the second ref
 
@@ -2423,7 +2445,7 @@ int do_dynamic_mc_model(int argc, char * argv[]) {
 
 	// write graph result in maf format
 //	write_graph_maf(graphout, alignments_in_a_cluster, data);//includes clusters with no associated member.
-	write_graph_maf_with_long_centers(graphout,new_centers,data);//TODO Future work: It can be changed in a way that includes long centers themselves.
+	write_graph_maf_with_long_centers(graphout,new_centers,data);//TODO It can be changed in a way that includes long centers themselves as well.
 
 	graph_ma_time = clock() - graph_ma_time;
 
@@ -2613,7 +2635,7 @@ int do_dynamic_mc_model(int argc, char * argv[]) {
 	if(0!=encoding_out.compare("noencode")){
 		dlib::entropy_encoder_kernel_1 * enc = new dlib::entropy_encoder_kernel_1();
 	//	en.al_encode(weight,member_of_cluster,alignments_in_a_cluster,outs,*enc);
-		en.al_encode_with_long_center(centerOnSequence,long_center_weight,alignments_in_a_cluster, centersPositionOnASeq, member_of_cluster ,outs, *enc,new_centers);//TODO change it in a way that flags are written from the dymodel!!
+		en.al_encode_with_long_center(centerOnSequence,long_center_weight,alignments_in_a_cluster, centersPositionOnASeq, member_of_cluster ,outs, *enc,new_centers);
 		delete enc;
 		outs.close();
 	}
@@ -2812,9 +2834,10 @@ int do_simple_test_on_new_cc(int argc, char* argv[]){
 int do_test_new_cc(int argc, char * argv[]) {
 	typedef overlap_interval_tree overlap_type;
 	typedef dynamic_mc_model use_model;
+	typedef compute_cc_with_interval_tree<overlap_type> cc_type; //Eric Garisson implementation
 //	typedef compute_cc_with_icl cc_type;
-	typedef compute_cc_avl<overlap_type> cc_type;
-	typedef initial_alignment_set<use_model,overlap_type> use_ias;
+//	typedef compute_cc_avl<overlap_type> cc_type;
+//	typedef initial_alignment_set<use_model,overlap_type> use_ias;
 
 	if(argc < 6) {
 		usage();
@@ -2844,8 +2867,8 @@ int do_test_new_cc(int argc, char * argv[]) {
 // Find connected components of alignments with some overlap // Moved it here after training to be able to remove small als first and then connect them to each other.
 	std::set<const pw_alignment*, compare_pointer_pw_alignment> al_with_pos_gain; 
 #pragma omp parallel for num_threads(num_threads)
-//	for(size_t i =0; i < data.numAlignments();i++){
-	for(size_t i =0; i < 5;i++){
+	for(size_t i =0; i < data.numAlignments();i++){
+//	for(size_t i =0; i < 5;i++){
 //	if(i%1000==0) std::cout << ".";
 //	for(size_t i =0; i < 16;i++){
 		const pw_alignment & al = data.getAlignment(i);
@@ -2861,17 +2884,17 @@ int do_test_new_cc(int argc, char * argv[]) {
 	//Makes components of partially overlapped alignments
 
 	std::cout << "al with positive gains are kept " << al_with_pos_gain.size() <<std::endl;
-//	compute_cc_with_interval_tree component(al_with_pos_gain,data.numSequences());
+	cc_type component(al_with_pos_gain,data.numSequences());
 //	compute_cc_with_icl cccs(al_with_pos_gain, data.numSequences(),num_threads);
-	cc_type cccs(al_with_pos_gain, data.numSequences(), num_threads);
+//	cc_type cccs(al_with_pos_gain, data.numSequences(), num_threads);
 	std::vector<std::set<const pw_alignment* , compare_pointer_pw_alignment> > ccs; 
-	cccs.compute(ccs); //fill in ccs, ordered by size(Notice that they are just connected to each other if they have overlap!)
-//	component.compute(ccs);
+//	cccs.compute(ccs); //fill in ccs, ordered by size(Notice that they are just connected to each other if they have overlap!)
+	component.compute(ccs);
 	std::cout<< "ccs are made!"<<std::endl;
 	size_t counter = 0;
-//	for(size_t i=0; i<ccs.size(); ++i) {
+	for(size_t i=0; i<ccs.size(); ++i) {
 
-	for(size_t i=0; i<ccs.size()-1; ++i) {
+/*	for(size_t i=0; i<ccs.size()-1; ++i) {
 		std::cout << " on initial CC " << i << " size " << ccs.at(i).size() << std::endl;
 		counter += ccs.at(i).size();
 		for(std::set< const pw_alignment* , compare_pointer_pw_alignment>::iterator it = ccs.at(i).begin();it != ccs.at(i).end();it++){
@@ -2881,13 +2904,13 @@ int do_test_new_cc(int argc, char * argv[]) {
 				ol.test_no_overlap_between_ccs(*p, ccs_j);//XXX this is just a test function, comment it the first run!
 				data.checkAlignmentRange(*p);//XXX this is just a test function, comment it after the first run!
 			}
-		}
+		}*/
 	}
 
 	std::cout<< "returned number is "<< counter <<std::endl;
 
 	//Cutting partial overlaps:
-	std::vector<overlap_type> cc_overlap(ccs.size(), overlap_type(data));
+/*	std::vector<overlap_type> cc_overlap(ccs.size(), overlap_type(data));
 	size_t cluster_base_cost =0;
 	for(size_t i=0; i<ccs.size(); ++i) {
 		std::set< const pw_alignment*, compare_pointer_pw_alignment> & cc = ccs.at(i);
@@ -2911,7 +2934,7 @@ int do_test_new_cc(int argc, char * argv[]) {
 			}
 		}
 
-	}
+	}*/
 	std::cout << "cutting is over!"<<std::endl;
 	return 0;
 }

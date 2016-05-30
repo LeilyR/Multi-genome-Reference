@@ -24,13 +24,13 @@ size_t alignment_index::erase(const pw_alignment * al) {
 	al->get_lr1(l, r);
 	size_t ref1 = al->getreference1();
 	size_t res1 = trees.at(ref1).erase(l, r, al);
-	std::cout << "res1 "<< res1 << "tree is "<< std::endl;
+//	std::cout << "res1 "<< res1 << "tree is "<< std::endl;
 //	trees.at(ref1).debug_print();
 
 	al->get_lr2(l, r);
 	size_t ref2 = al->getreference2();
 	size_t res2 = trees.at(ref2).erase(l, r, al);
-	std::cout << "res2 "<< res2 << std::endl;
+//	std::cout << "res2 "<< res2 << std::endl;
 	assert(res1 == res2);
 	return res1;
 }
@@ -53,9 +53,9 @@ void alignment_index::search_overlap(const pw_alignment & al, const size_t & ref
 void alignment_index::search_overlap(const size_t & reference, const size_t & left, const size_t & right, std::vector<const pw_alignment *> & result)const{
 	trees.at(reference).overlap_search(left, right, result);
 	if(result.size()>0){
-		std::cout << result.at(0) <<std::endl;
+	//	std::cout << result.at(0) <<std::endl;
 		const pw_alignment* p = result.at(0);
-		p->print();
+	//	p->print();
 	}
 
 }
@@ -73,8 +73,8 @@ void alignment_index::super_search_overlap_and_remove(const size_t & reference, 
 	std::set<size_t> used_refs;
 	for(size_t i=0; i<result.size(); ++i) {
 		const pw_alignment * al = result.at(i);
-		al->print(); // TODO 
-		std::cout << std::endl;
+	//	al->print(); // TODO 
+	//	std::cout << std::endl;
 		size_t l, r;
 		al->get_lr1(l, r);
 		all_intervals.insert(std::make_pair(al->getreference1(), std::make_pair(l, r) ) );
@@ -94,7 +94,7 @@ void alignment_index::super_search_overlap_and_remove(const size_t & reference, 
 		//	std::cout << " r " << this_ref << " l " << thisl << " r " << thisr << std::endl;
 			this_tree.insert(thisl, thisr, NULL);
 		}
-		std::cout << " Ref " << this_ref << " interval tree " << std::endl;
+	//	std::cout << " Ref " << this_ref << " interval tree " << std::endl;
 	//	this_tree.debug_print();
 
 		std::vector<std::pair<size_t, size_t> > this_intervals;
@@ -106,7 +106,7 @@ void alignment_index::super_search_overlap_and_remove(const size_t & reference, 
 		}
 	}
 
-	std::cout << " SUPER SEARCH simplified alignments to " << touched_intervals.size() << " intervals on " << used_refs.size() << " references " << std::endl;
+//	std::cout << " SUPER SEARCH simplified alignments to " << touched_intervals.size() << " intervals on " << used_refs.size() << " references " << std::endl;
 
 	for(size_t i=0; i<result.size(); ++i) {
 		const pw_alignment * al = result.at(i);

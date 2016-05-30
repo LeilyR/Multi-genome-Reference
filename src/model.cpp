@@ -78,16 +78,16 @@ void initial_alignment_set<T,overlap_type>::all_push_back(std::vector<pw_alignme
 template<typename T, typename overlap_type>
 void initial_alignment_set<T,overlap_type>::lazy_split_full_insert_step(overlap_type & ovrlp, size_t level, size_t & rec_calls, const pw_alignment & alin, std::vector<pw_alignment> & inserted_alignments, vector<pw_alignment> & removed_alignments, double & local_gain) {
 
-	std::cout << " full insert step on level " << level  << std::endl;
+//	std::cout << " full insert step on level " << level  << std::endl;
 
 	std::set<pw_alignment, compare_pw_alignment> remove_als; 
 	std::vector<pw_alignment> insert_als;
 	splitpoints_interval_tree<overlap_type> spl2(alin, ovrlp, data);
 	spl2.recursive_splits();
-	std::cout<< "inja!"<<std::endl;
+//	std::cout<< "inja!"<<std::endl;
 
 	spl2.split_all(remove_als, insert_als);
-	std::cout<< "inja1!"<<std::endl;
+//	std::cout<< "inja1!"<<std::endl;
 
 	size_t inserted_counter = 0;
 	if(remove_als.empty()) {
@@ -97,7 +97,7 @@ void initial_alignment_set<T,overlap_type>::lazy_split_full_insert_step(overlap_
 			double g2;
 			common_model.gain_function(insert_als.at(i), g1, g2);
 			double avg = (g1 + g2) / 2.0 - base_cost;
-			std::cout << "avg "<< avg <<std::endl;
+		//	std::cout << "avg "<< avg <<std::endl;
 			if(avg > 0) {
 				ovrlp.insert_without_partial_overlap(insert_als.at(i));
 				inserted_alignments.push_back(insert_als.at(i));
@@ -116,8 +116,8 @@ void initial_alignment_set<T,overlap_type>::lazy_split_full_insert_step(overlap_
 			common_model.gain_function(ral, gain1, gain2);
 			double rav_gain = (gain1 + gain2)/2 - base_cost;
 			lost_gain += rav_gain;
-			std::cout << "is gonna be removed1: " << &ral<<std::endl;
-			ral.print();
+		//	std::cout << "is gonna be removed1: " << &ral<<std::endl;
+		//	ral.print();
 
 			ovrlp.remove_alignment(ral);
 			all_removed.insert(ral);
@@ -206,11 +206,11 @@ void initial_alignment_set<T,overlap_type>::lazy_split_insert_step(overlap_type 
 		// sets of alignments that need to be removed and inserted if we want the current alignment 
 		std::set<pw_alignment, compare_pw_alignment> remove_als; // remove alignments are pointers to objects contained in the overlap structure
 		std::vector<pw_alignment> insert_als;
-		std::cout << "split all is called 1! "<<std::endl;
+	//	std::cout << "split all is called 1! "<<std::endl;
 
 		spl.split_all(remove_als, insert_als);
 
-		std::cout <<"initial: level " << level << " positive gain: " << av_al_gain << " split res rem " << remove_als.size() << " ins " << insert_als.size() << std::endl;
+	//	std::cout <<"initial: level " << level << " positive gain: " << av_al_gain << " split res rem " << remove_als.size() << " ins " << insert_als.size() << std::endl;
 	
 		// we evaluate an upper bound of information gain for the current alignment
 		double lost_information_gain = 0;
@@ -239,12 +239,12 @@ void initial_alignment_set<T,overlap_type>::lazy_split_insert_step(overlap_type 
 		//	std::cout << std::endl;
 		}
 
-		std::cout << "splits: level " << level << " on al length " << al.alignment_length() << " gain " << av_al_gain << " causes to remove " << remove_als.size() << " alignments with " << lost_information_gain << 
-			" gain. We could insert " << ordered_parts.size() << " small pieces. Upper bound of gain is " << max_parts_gain << std::endl;
+//		std::cout << "splits: level " << level << " on al length " << al.alignment_length() << " gain " << av_al_gain << " causes to remove " << remove_als.size() << " alignments with " << lost_information_gain << 
+//			" gain. We could insert " << ordered_parts.size() << " small pieces. Upper bound of gain is " << max_parts_gain << std::endl;
 
 		// here: we actually decide to insert a small part (in the next function we check more carefully for indirectly induced splits)
 		if(remove_als.empty() && (ordered_parts.size() == 1)) {
-			std::cout << "ordered size 1 "<<std::endl;
+//			std::cout << "ordered size 1 "<<std::endl;
 		/*	for(std::multimap<double , const pw_alignment &>::iterator it = ordered_parts.begin(); it!= ordered_parts.end();it++){
 				std::pair<std::multimap<double, const pw_alignment&>::iterator, std::multimap<double, const pw_alignment&>::iterator  > r2 = ordered_parts.equal_range(it->first);
 				for(std::multimap<double, const pw_alignment &>::iterator it1 = r2.first; it1!=r2.second; ++it1) {
@@ -376,7 +376,7 @@ void initial_alignment_set<T,overlap_type>::compute_simple_lazy_splits(overlap_t
 		double gain_of_al = 0;
 		std::cout << "on alignment " << i << std::endl;
 	//	cout << " start recursive lazy insert tree on " << endl;
-		al->print();
+	//	al->print();
 	//	cout << endl;
 
 		std::vector<pw_alignment> ins_als;
@@ -411,7 +411,7 @@ void initial_alignment_set<T,overlap_type>::compute_simple_lazy_splits(overlap_t
 			total_gain+=gain_of_al;
 			pcs_ins+=ins_als.size();
 			pcs_rem+=rem_als.size();
-			std::cout << " alignment taken "<< std::endl;
+		//	std::cout << " alignment taken "<< std::endl;
 		} else {
 			not_used++;
 	//		std::cout << " alignment not taken " << std::endl;
@@ -852,50 +852,7 @@ void compute_cc_with_interval_tree<overlap_type>::get_cc(const pw_alignment & al
 	}	
 
 }
-template<typename overlap_type>
-void compute_cc_avl<overlap_type>::compute(std::vector<std::set< const pw_alignment* , compare_pointer_pw_alignment> > & ccs) {
-	alind.debug_print(); // TODO 
-	std::cout << "compute CC on " << alignments.size() << std::endl;
-	std::set <const pw_alignment*, compare_pointer_pw_alignment> seen;
-	std::multimap<size_t , std::set<const pw_alignment*, compare_pointer_pw_alignment> > sorter; // sorts ccs to give largest first
-	for(std::set<const pw_alignment *, compare_pointer_pw_alignment>::iterator it = alignments.begin(); it!=alignments.end(); ++it) {
-	//	std::cout << "compute_cc" <<std::endl;
-		const pw_alignment * al = *it;
-	//	al->print();
-		std::set< const pw_alignment*, compare_pointer_pw_alignment>::iterator seenal = seen.find(al);
-//		std::cout << " seen " << seen.size() << std::endl;
-		if(seenal == seen.end()) {
-			std::cout << " getcc" << std::endl;
-			std::set< const pw_alignment*, compare_pointer_pw_alignment> cc;
-			get_cc(*al, cc, seen);
-			std::cout << "FOUND CC size " << cc.size() << std::endl;
-			for(std::set<const pw_alignment*,compare_pointer_pw_alignment>::const_iterator it = cc.begin(); it != cc.end();it++){
-				const pw_alignment * test = *it;
-				test->print();
-			}
-			sorter.insert(std::make_pair(cc.size(), cc));
-		}	
-	}
-	for(std::multimap<size_t , std::set<const pw_alignment*, compare_pointer_pw_alignment> >::reverse_iterator it = sorter.rbegin(); it!=sorter.rend(); it++) {
-		ccs.push_back(it->second);
-	}
-}
-template<typename overlap_type>
-void compute_cc_avl<overlap_type>::get_cc(const pw_alignment & al , std::set <const pw_alignment*, compare_pointer_pw_alignment> & cc, std::set <const pw_alignment*, compare_pointer_pw_alignment> & seen) {
-	std::vector<size_t> left(2);
-	std::vector<size_t> right(2);
-	al.get_lr1(left.at(0), right.at(0));
-	al.get_lr2(left.at(1), right.at(1));
-	std::vector<size_t>reference(2);
-	reference.at(0) = al.getreference1();
-	reference.at(1) = al.getreference2();
-//#pragma omp parallel for num_threads(num_threads)
-	for(size_t i =0; i < 2;i++){
-		std::cout << "on reference "<< i << std::endl;
-	//	std::cout << reference.at(i) << " " << left.at(i)<< " "<< right.at(i)<<std::endl;
-		cc_step(reference.at(i), left.at(i), right.at(i), cc, seen);	
-	}	
-}
+
 template<typename overlap_type>
 void compute_cc_with_interval_tree<overlap_type>::cc_step(size_t ref, size_t left, size_t right, std::set <const pw_alignment*, compare_pointer_pw_alignment> & cc, std::set <const pw_alignment* , compare_pointer_pw_alignment>  & seen ) {
 	std::set <const pw_alignment * , compare_pointer_pw_alignment> seen1;
@@ -934,21 +891,59 @@ void compute_cc_with_interval_tree<overlap_type>::cc_step(size_t ref, size_t lef
 		cc_step(al->getreference1(), aleft, aright, cc, seen);
 	} 
 }
-//=======
-//		std::cout << "on reference "<< i << std::endl;
-//		std::cout << reference.at(i) << " " << left.at(i)<< " "<< right.at(i)<<std::endl;
-//		cc_step(reference.at(i), left.at(i), right.at(i), cc, seen);	
-//	}	
 
-//}
+template<typename overlap_type>
+void compute_cc_avl<overlap_type>::compute(std::vector<std::set< const pw_alignment* , compare_pointer_pw_alignment> > & ccs) {
+	alind.debug_print(); // TODO 
+//	std::cout << "compute CC on " << alignments.size() << std::endl;
+	std::set <const pw_alignment*, compare_pointer_pw_alignment> seen;
+	std::multimap<size_t , std::set<const pw_alignment*, compare_pointer_pw_alignment> > sorter; // sorts ccs to give largest first
+	for(std::set<const pw_alignment *, compare_pointer_pw_alignment>::iterator it = alignments.begin(); it!=alignments.end(); ++it) {
+	//	std::cout << "compute_cc" <<std::endl;
+		const pw_alignment * al = *it;
+	//	al->print();
+		std::set< const pw_alignment*, compare_pointer_pw_alignment>::iterator seenal = seen.find(al);
+//		std::cout << " seen " << seen.size() << std::endl;
+		if(seenal == seen.end()) {
+		//	std::cout << " getcc" << std::endl;
+			std::set< const pw_alignment*, compare_pointer_pw_alignment> cc;
+			get_cc(*al, cc, seen);
+		//	std::cout << "FOUND CC size " << cc.size() << std::endl;
+		//	for(std::set<const pw_alignment*,compare_pointer_pw_alignment>::const_iterator it = cc.begin(); it != cc.end();it++){
+		//		const pw_alignment * test = *it;
+		//		test->print();
+		//	}
+			sorter.insert(std::make_pair(cc.size(), cc));
+		}	
+	}
+	for(std::multimap<size_t , std::set<const pw_alignment*, compare_pointer_pw_alignment> >::reverse_iterator it = sorter.rbegin(); it!=sorter.rend(); it++) {
+		ccs.push_back(it->second);
+	}
+}
+template<typename overlap_type>
+void compute_cc_avl<overlap_type>::get_cc(const pw_alignment & al , std::set <const pw_alignment*, compare_pointer_pw_alignment> & cc, std::set <const pw_alignment*, compare_pointer_pw_alignment> & seen) {
+	std::vector<size_t> left(2);
+	std::vector<size_t> right(2);
+	al.get_lr1(left.at(0), right.at(0));
+	al.get_lr2(left.at(1), right.at(1));
+	std::vector<size_t>reference(2);
+	reference.at(0) = al.getreference1();
+	reference.at(1) = al.getreference2();
+//#pragma omp parallel for num_threads(num_threads)
+	for(size_t i =0; i < 2;i++){
+	//	std::cout << "on reference "<< i << std::endl;
+	//	std::cout << reference.at(i) << " " << left.at(i)<< " "<< right.at(i)<<std::endl;
+		cc_step(reference.at(i), left.at(i), right.at(i), cc, seen);	
+	}	
+}
 
 template<typename overlap_type>
 void compute_cc_avl<overlap_type>::cc_step(size_t current , size_t left, size_t right, std::set <const pw_alignment*, compare_pointer_pw_alignment> & cc, std::set <const pw_alignment* , compare_pointer_pw_alignment>  & seen ) {
-	std::cout<< "ref " << current << " l " << left << " r "<< right<<std::endl;
+//	std::cout<< "ref " << current << " l " << left << " r "<< right<<std::endl;
 	vector<const pw_alignment *> seen1;
 	std::multimap<size_t, std::pair<size_t, size_t> > touched_intervals;
 	alind.super_search_overlap_and_remove(current, left, right, seen1, touched_intervals);
-	std::cout << "seen1 "<<seen1.size() << " " << touched_intervals.size()<<std::endl;
+//	std::cout << "seen1 "<<seen1.size() << " " << touched_intervals.size()<<std::endl;
 	for(size_t i=0; i<seen1.size(); ++i) {
 		seen.insert(seen1.at(i)); // TODO for now we keep seen, but it should not be necessary as all alignments are deleted from the index
 		cc.insert(seen1.at(i));
@@ -964,7 +959,7 @@ void compute_cc_avl<overlap_type>::cc_step(size_t current , size_t left, size_t 
 		size_t ref = it->first;
 		size_t l = it->second.first;
 		size_t r = it->second.second;
-		std::cout<< " touched ref " << ref << " l " << l << " r "<< r <<std::endl;
+	//	std::cout<< " touched ref " << ref << " l " << l << " r "<< r <<std::endl;
 
 		cc_step(ref, l, r, cc, seen);
 	}
@@ -1795,7 +1790,7 @@ void affpro_clusters<tmodel,overlap_type>::add_alignment(const pw_alignment & al
 		return 	sequence_lengths.at(ref_idx);
 	}
 //Finds all the centers the happen on a sequence:
-	finding_centers::finding_centers(all_data & d):data(d),AlignmentsFromClustering(data.numSequences()),centersOnSequence(data.numSequences()), centersOfASequence(data.numSequences()){
+	finding_centers::finding_centers(all_data & d):data(d),AlignmentsFromClustering(data.numSequences()),centersOnSequence(data.numSequences()), centersOfASequence(data.numSequences()),initial_suffixes(data.numSequences()){
 	}
 	finding_centers::~finding_centers(){}
 	void finding_centers::setOfAlignments(std::map<std::string,std::vector<pw_alignment> > & alignmentsOfClusters){//set alignments of each reference
@@ -1993,6 +1988,7 @@ void affpro_clusters<tmodel,overlap_type>::add_alignment(const pw_alignment & al
 			size_t first_position;
 			std::map<size_t, std::vector<size_t> > AllConnectedOnes;
 			vector<size_t> vectorOfcenters;
+			std::vector<size_t> position_of_each_suffix; //First one is position, second of is center
 			for(std::map<size_t, std::string>::iterator it = centersOnSequence.at(i).begin(); it != centersOnSequence.at(i).end();it++){
 				if(vectorOfcenters.size()==0){
 					last_position = it->first;
@@ -2016,6 +2012,7 @@ void affpro_clusters<tmodel,overlap_type>::add_alignment(const pw_alignment & al
 					assert(it2 != oriented_index.end());
 					index = it2->second;*/
 					vectorOfcenters.push_back(index);
+					position_of_each_suffix.push_back(it->first);
 					std::cout << "index "<< index << std::endl;
 					
 				}else{
@@ -2025,6 +2022,17 @@ void affpro_clusters<tmodel,overlap_type>::add_alignment(const pw_alignment & al
 					}
 					std::cout << "-------"<<std::endl;
 					AllConnectedOnes.insert(make_pair(first_position, vectorOfcenters));
+					//Creates suffix and their related position , then clear the 'position_of_each_suffix' 
+					if(vectorOfcenters.size()>1){
+						for(size_t j =0; j < vectorOfcenters.size(); j++){
+							std::vector<size_t> suffix;
+							for(size_t k =j; k < vectorOfcenters.size();k++){
+								suffix.push_back(vectorOfcenters.at(k));
+							}
+							initial_suffixes.at(i).insert(make_pair(suffix,position_of_each_suffix.at(j)));//TODO what is happening to the fully reverse ones?
+						}
+					}
+					position_of_each_suffix.clear();
 					vectorOfcenters.clear();
 				}
 				std::map<size_t, pw_alignment*>::iterator it1=AlignmentsFromClustering.at(i).find(it->first);
@@ -2040,7 +2048,18 @@ void affpro_clusters<tmodel,overlap_type>::add_alignment(const pw_alignment & al
 				}
 				std::cout << "last position "<< last_position << std::endl;
 			}
+			//If the last center had ALLOWED_GAP with its previous one and there is no more left to go through the else
 			AllConnectedOnes.insert(make_pair(first_position, vectorOfcenters));
+			if(vectorOfcenters.size()>1){
+				for(size_t j =0; j < vectorOfcenters.size(); j++){
+					std::vector<size_t> suffix;
+					for(size_t k =j; k < vectorOfcenters.size();k++){
+						suffix.push_back(vectorOfcenters.at(k));
+					}
+					initial_suffixes.at(i).insert(make_pair(suffix,position_of_each_suffix.at(j)));
+				}
+			}
+
 			for(std::map<size_t, std::vector<size_t> >::iterator it = AllConnectedOnes.begin(); it != AllConnectedOnes.end(); it++){
 				if(it->second.size() != 1 && it->second.size() != 0){
 					std::cout<< "pos "<< it->first <<std::endl;
@@ -2131,7 +2150,24 @@ void affpro_clusters<tmodel,overlap_type>::add_alignment(const pw_alignment & al
 		assert(center.size()>0);
 		return center;*/
 		return center_index.at(centerIndex);
-	}	
+	}
+	std::vector<size_t> finding_centers::get_long_center_position(size_t & seq_id , std::vector<std::string> & long_center){
+		std::vector<size_t> position;
+		std::vector<size_t> centers;//TODO it is too bad should be changed to another data container like a map.
+		for(size_t i =0; i < long_center.size();i++){
+			for(size_t j =0; j < center_index.size();j++){
+				if(center_index.at(j)==long_center.at(i)){
+					centers.push_back(j);
+					break;
+				}
+			}
+		}
+		pair<std::multimap<std::vector<size_t>,size_t>::iterator , std::multimap<std::vector<size_t>,size_t>::iterator > it = initial_suffixes.at(seq_id).equal_range(centers);
+		for(std::multimap<std::vector<size_t>,size_t>::iterator it1 = it.first ; it1 != it.second; it1++){
+			position.push_back(it1->second);
+		}	
+		return position;
+	}
 	std::map<size_t, std::vector<size_t> >finding_centers::get_center(size_t & seq_id)const{
 		return centersOfASequence.at(seq_id);
 	}
@@ -2965,7 +3001,7 @@ void affpro_clusters<tmodel,overlap_type>::add_alignment(const pw_alignment & al
 			}
 			}
 		}
-		std::cout<< "all the nodes:"<<std::endl;
+	/*	std::cout<< "all the nodes:"<<std::endl;
 		for(size_t i = 0; i < nodes.size(); i++){
 			std::vector<size_t> node = nodes.at(i);
 			std::cout << "node at " << i << " is ";
@@ -2977,7 +3013,7 @@ void affpro_clusters<tmodel,overlap_type>::add_alignment(const pw_alignment & al
 		std::cout<<"nodes relation: "<<std::endl;
 		for(std::multimap<size_t , size_t>::iterator it = nodes_relation.begin(); it != nodes_relation.end(); it++){
 			std::cout << it->first <<" "<< it->second << std::endl;
-		}
+		}*/
 	}
 		count_branches();
 	}
@@ -2989,87 +3025,87 @@ void affpro_clusters<tmodel,overlap_type>::add_alignment(const pw_alignment & al
 			for(size_t i = 0; i < suffixes.at(seq).size(); i++){
 				std::cout<< "i: "<<i << std::endl;
 				for(size_t q = 0; q < suffixes.at(seq).at(i).size();q++){
-				std::vector<size_t> current = suffixes.at(seq).at(i).at(q);
-				for(size_t j =0; j < current.size(); j++){
-				std::cout << current.at(j) << " ";
-				}
-				std::cout << " " << std::endl;
-				vector<size_t> branch;//insert this vector to the branch _counter map
-				for(map<std::vector<size_t>,size_t>::iterator it = firstParent.begin();it!=firstParent.end();it++){
-					std::vector<size_t> first_parent = it->first;
-					if(first_parent.at(0)==current.at(0)){
-						std::vector<size_t> updated_current;
-						if(first_parent.size()==current.size()){
-							std::cout<<"All the current is on the first parent!"<<std::endl;
-						}else{//Note that first parent can not be longer than current.
-							std::cout << "first updated current"<<std::endl;
-							for(size_t j =first_parent.size() ; j < current.size(); j++){
-								updated_current.push_back(current.at(j));
-								std::cout << current.at(j)<<std::endl;
+					std::vector<size_t> current = suffixes.at(seq).at(i).at(q);
+					for(size_t j =0; j < current.size(); j++){
+						std::cout << current.at(j) << " ";
+					}
+					std::cout << " " << std::endl;
+					vector<size_t> branch;//insert this vector to the branch _counter map
+					for(map<std::vector<size_t>,size_t>::iterator it = firstParent.begin();it!=firstParent.end();it++){
+						std::vector<size_t> first_parent = it->first;
+						if(first_parent.at(0)==current.at(0)){
+							std::vector<size_t> updated_current;
+							if(first_parent.size()==current.size()){
+								std::cout<<"All the current is on the first parent!"<<std::endl;
+							}else{//Note that first parent can not be longer than current.
+								std::cout << "first updated current"<<std::endl;
+								for(size_t j =first_parent.size() ; j < current.size(); j++){
+									updated_current.push_back(current.at(j));
+									std::cout << current.at(j)<<std::endl;
+								}
 							}
-						}
-						size_t parent_index = it->second;
-						branch.push_back(it->second);
-						current = updated_current;
-						while(current.size()>0){
-							std::cout << "parent_index "<< parent_index <<std::endl;
-							multimap<size_t,size_t>::iterator check = nodes_relation.find(parent_index);
-							if(check != nodes_relation.end()){
-								pair<multimap<size_t,size_t>::iterator , multimap<size_t,size_t>::iterator > p1 = nodes_relation.equal_range(parent_index);
-								bool ItIsNotOnAnyChildNode = true;
-								for(multimap<size_t,size_t>::iterator it1 = p1.first ; it1 != p1.second; it1++){
-									size_t CurrentParentIndex = it1->second;
-									std::cout << "CurrentParentIndex "<< CurrentParentIndex <<std::endl;
-									if(current.at(0)==nodes.at(CurrentParentIndex).at(0)){
-										ItIsNotOnAnyChildNode = false;										
-										branch.push_back(CurrentParentIndex);
-										std::vector<size_t> updatedCurrent;
-										if(nodes.at(CurrentParentIndex).size()==current.size()){
-											std::cout<<"All the current is on the parent!"<<std::endl;
-										}else{
-											std::cout<< "next updated current: "<<std::endl;
-											for(size_t j = nodes.at(CurrentParentIndex).size(); j<current.size(); j++){
-												updatedCurrent.push_back(current.at(j));
-												std::cout << current.at(j)<<std::endl;
+							size_t parent_index = it->second;
+							branch.push_back(it->second);
+							current = updated_current;
+							while(current.size()>0){
+								std::cout << "parent_index "<< parent_index <<std::endl;
+								multimap<size_t,size_t>::iterator check = nodes_relation.find(parent_index);
+								if(check != nodes_relation.end()){
+									pair<multimap<size_t,size_t>::iterator , multimap<size_t,size_t>::iterator > p1 = nodes_relation.equal_range(parent_index);
+									bool ItIsNotOnAnyChildNode = true;
+									for(multimap<size_t,size_t>::iterator it1 = p1.first ; it1 != p1.second; it1++){
+										size_t CurrentParentIndex = it1->second;
+										std::cout << "CurrentParentIndex "<< CurrentParentIndex <<std::endl;
+										if(current.at(0)==nodes.at(CurrentParentIndex).at(0)){
+											ItIsNotOnAnyChildNode = false;										
+											branch.push_back(CurrentParentIndex);
+											std::vector<size_t> updatedCurrent;
+											if(nodes.at(CurrentParentIndex).size()==current.size()){
+												std::cout<<"All the current is on the parent!"<<std::endl;
+											}else{
+												std::cout<< "next updated current: "<<std::endl;
+												for(size_t j = nodes.at(CurrentParentIndex).size(); j<current.size(); j++){
+													updatedCurrent.push_back(current.at(j));
+													std::cout << current.at(j)<<std::endl;
+												}
 											}
+											current = updatedCurrent;
+											parent_index = CurrentParentIndex;
+											break;
 										}
-										current = updatedCurrent;
-										parent_index = CurrentParentIndex;
-										break;
 									}
+									if(ItIsNotOnAnyChildNode == true){
+										std::cout<< "There is something wrong! "<<std::endl;
+									}
+								} else{ 
+									std::cout<< "Parent has no kid! It shouldn't happen"<<std::endl;
+									break;
 								}
-								if(ItIsNotOnAnyChildNode == true){
-									std::cout<< "There is something wrong! "<<std::endl;
-								}
-							} else{ 
-								std::cout<< "Parent has no kid! It shouldn't happen"<<std::endl;
-								break;
 							}
+							break;
 						}
-						break;
 					}
-				}
-				std::vector<size_t> sub_branch;
-				cout<< "branch size: "<< branch.size() << endl;
-				for(size_t i = 0 ; i < branch.size(); i++){
-					sub_branch.push_back(branch.at(i));
-					std::map<std::vector<size_t>,size_t>::iterator it1 = branch_counter.find(sub_branch);
-					if(it1 == branch_counter.end()){
-						branch_counter.insert(make_pair(sub_branch,0));
-						it1 = branch_counter.find(sub_branch);
+					std::vector<size_t> sub_branch;
+					cout<< "branch size: "<< branch.size() << endl;
+					for(size_t i = 0 ; i < branch.size(); i++){
+						sub_branch.push_back(branch.at(i));
+						std::map<std::vector<size_t>,size_t>::iterator it1 = branch_counter.find(sub_branch);
+						if(it1 == branch_counter.end()){
+							branch_counter.insert(make_pair(sub_branch,0));
+							it1 = branch_counter.find(sub_branch);
+						}
+					//	for(size_t j = 0; j < sub_branch.size();j++){
+					//		std::cout << sub_branch.at(j)<< " ";
+					//	}					
+						it1->second = it1->second +1;
+					//	std::cout<< "number of happening "<< it1->second << std::endl;
 					}
-					for(size_t j = 0; j < sub_branch.size();j++){
-						std::cout << sub_branch.at(j)<< " ";
-					}					
-					it1->second = it1->second +1;
-					std::cout<< "number of happening "<< it1->second << std::endl;
-				}
-			}			
+				}			
 			}
 
 		}
 		cout<< "branch counter: "<<endl;
-		for(std::map<std::vector<size_t> , size_t>::iterator it = branch_counter.begin(); it != branch_counter.end(); it++){
+	/*	for(std::map<std::vector<size_t> , size_t>::iterator it = branch_counter.begin(); it != branch_counter.end(); it++){
 			vector<size_t> br = it->first;
 			for(size_t i =0; i < br.size();i++){
 				cout<< br.at(i)<< " ";
@@ -3077,7 +3113,7 @@ void affpro_clusters<tmodel,overlap_type>::add_alignment(const pw_alignment & al
 			cout<< " number "<<it->second;
 			cout << " " <<endl;
 			
-		}
+		}*/
 		std::cout << "counting the branches is done! "<<std::endl;
 	}
 	std::vector<std::vector<size_t> > suffix_tree::get_nodes()const{
@@ -3104,7 +3140,7 @@ void affpro_clusters<tmodel,overlap_type>::add_alignment(const pw_alignment & al
 		return power_of_two;
 	}
 	void suffix_tree::shift_node_relation( size_t & node_index, size_t & upper_bound , size_t & shift){
-		std::cout << "node_index "<< node_index << " upper_bound "<< upper_bound << " shift "<< shift <<std::endl;
+	//	std::cout << "node_index "<< node_index << " upper_bound "<< upper_bound << " shift "<< shift <<std::endl;
 		std::multimap<size_t,size_t> intermediate;
 		for(size_t i = upper_bound; i > node_index;i--){
 			pair<std::multimap<size_t,size_t>::iterator , std::multimap<size_t,size_t>::iterator > p1 = nodes_relation.equal_range(i);
@@ -3126,7 +3162,7 @@ void affpro_clusters<tmodel,overlap_type>::add_alignment(const pw_alignment & al
 		size_t ItsfirstPar = nodes.size();
 		find_parent(node_index,ItsParent);
 		first_parent_index(node_index,ItsfirstPar);
-		std::cout <<"node index "<< node_index<< "ItsParent " << ItsParent << " ItsFirstPar "<< ItsfirstPar << " node size "<< nodes.size() << std::endl;
+	//	std::cout <<"node index "<< node_index<< "ItsParent " << ItsParent << " ItsFirstPar "<< ItsfirstPar << " node size "<< nodes.size() << std::endl;
 		if(ItsParent != nodes.size()){
 			while(ItsParent > ItsfirstPar){
 				std::vector<size_t> children;
@@ -3149,7 +3185,7 @@ void affpro_clusters<tmodel,overlap_type>::add_alignment(const pw_alignment & al
 					if(children.at(in) > node_index){
 						delete_relation(ItsParent,children.at(in));
 						intermediate.insert(make_pair(ItsParent,children.at(in)+shift));
-						std::cout << "ItsParent " << ItsParent << " children index + shift " << children.at(in)+shift <<std::endl;	
+					//	std::cout << "ItsParent " << ItsParent << " children index + shift " << children.at(in)+shift <<std::endl;	
 					}
 				}
 			}
@@ -3162,9 +3198,9 @@ void affpro_clusters<tmodel,overlap_type>::add_alignment(const pw_alignment & al
 		for(size_t i = node_index+1; i <nodes.size()-shifting_value; i++){
 			std::map<std::vector<size_t>, size_t>::iterator it = firstParent.find(nodes.at(i+shifting_value));
 			std::map<size_t,size_t>::iterator it1 = FirstCenterOnFirstNodes.find(nodes.at(i+shifting_value).at(0));
-			std::cout<< "nodes.at(i+shifting_value).at(0) "<< nodes.at(i+shifting_value).at(0) <<std::endl;
+		//	std::cout<< "nodes.at(i+shifting_value).at(0) "<< nodes.at(i+shifting_value).at(0) <<std::endl;
 			if(it != firstParent.end() && it->second == i){
-				std::cout << it->second << " " << i << " " << shifting_value <<std::endl;
+		//		std::cout << it->second << " " << i << " " << shifting_value <<std::endl;
 
 			//	assert(it1 != FirstCenterOnFirstNodes.end() );
 			//	for(std::set<size_t>::iterator it2 = IndexOfFirstNodesAfterRoot.begin(); it2 != IndexOfFirstNodesAfterRoot.end(); it2++){//TODO
@@ -3179,7 +3215,7 @@ void affpro_clusters<tmodel,overlap_type>::add_alignment(const pw_alignment & al
 			 
 			}
 		}
-		std::cout<< "first parent shift function: " << " node index " << node_index << " its content size " << nodes.at(node_index).size()<<std::endl;
+	//	std::cout<< "first parent shift function: " << " node index " << node_index << " its content size " << nodes.at(node_index).size()<<std::endl;
 		std::map<std::vector<size_t>,size_t>::iterator it = firstParent.find(nodes.at(node_index));
 		if(it != firstParent.end() && it->second == node_index){
 			firstParent.erase(it);
@@ -3189,6 +3225,9 @@ void affpro_clusters<tmodel,overlap_type>::add_alignment(const pw_alignment & al
 	std::map<size_t, std::vector<size_t> > suffix_tree::get_center_on_a_sequence(size_t & seq_id)const{
 		return successive_centers.at(seq_id);
 	}
+	std::vector<std::vector<std::vector<size_t> > > suffix_tree::get_suffix_of_sequence(size_t & seq_id)const{
+		return suffixes.at(seq_id);
+	}
 	merging_centers::merging_centers(all_data & d, finding_centers & cent , suffix_tree & t):data(d), centers(cent),tree(t){}
 	merging_centers::~merging_centers(){}
 	void merging_centers::updating_centers(std::vector<size_t> & center_string, size_t & index){//replace 'center_string' with its new 'index' where ever 'center_sting' occurs on the tree and updates the number of happening.
@@ -3196,15 +3235,15 @@ void affpro_clusters<tmodel,overlap_type>::add_alignment(const pw_alignment & al
 		tree.create_tree(center_string,index);
 		std::vector<std::vector<size_t> > nodes = tree.get_nodes();
 		std::map<std::vector<size_t>, size_t > counts = tree.get_count(); // Updated number of happening for each updated string of centers(Notice that it has node number not the centers indices)
-		std::cout << "size of the tree: " << nodes.size() << " number of branches: "<< counts.size() <<std::endl;
+	//	std::cout << "size of the tree: " << nodes.size() << " number of branches: "<< counts.size() <<std::endl;
 		std::map<std::vector<size_t>, int> intermediate;
 		for(std::map<std::vector<size_t> , size_t>::iterator it = counts.begin(); it != counts.end(); it++){
 			vector<size_t> br = it->first;//list of nodes of a path
-			std::cout << "number of nodes on a path : " << br.size() <<std::endl;
-			for(size_t i =0; i < br.size();i++){
-				std::cout << br.at(i)<< " ";
-			}
-			std::cout << " "<< std::endl;
+		//	std::cout << "number of nodes on a path : " << br.size() <<std::endl;
+		//	for(size_t i =0; i < br.size();i++){
+		//		std::cout << br.at(i)<< " ";
+		//	}
+		//	std::cout << " "<< std::endl;
 			size_t number = it->second;//number of the path happening
 			std::vector<size_t> seriesOfCenters;
 		//	std::cout<< "centers on these nodes are "<<std::endl;
@@ -3279,7 +3318,7 @@ void affpro_clusters<tmodel,overlap_type>::add_alignment(const pw_alignment & al
 			gain = number*(centers.size())-(number+centers.size());
 			if(centers.size()!= 0){// We may get zero when the original path only had the extra endign char.
 				gains.insert(make_pair(centers,gain));//centers-->index of centers, gain of the long center
-	//			cout<< "gain "<<gain <<endl;
+				cout<< "gain "<<gain <<endl;
 			}
 		}
 		int highest_gain=0;
@@ -3344,7 +3383,7 @@ void affpro_clusters<tmodel,overlap_type>::add_alignment(const pw_alignment & al
 //			
 //		}		
 	}
-	void merging_centers::adding_new_centers(std::vector<std::vector<std::string> > & long_centers, std::vector<std::map<size_t, std::vector<std::string> > > & centersPositionOnASeq){//Filling in the long centers vector and centersPositionOnASeq which contains all the long centers
+	void merging_centers::adding_new_centers(std::vector<std::vector<std::string> > & long_centers, std::vector<std::map<size_t, std::vector<std::string> > > & centersPositionOnASeq){//Filling in the long centers vector and centersPositionOnASeq which contains all the long centers 
 		//First the initial tree is built:
 		std::vector<size_t> h_gain;//it is only used for the first time of making tree. for the next times the center with the highest gain is used.
 		size_t index = 0; // The index of the center with the highest gain is used frome the next rounds.
@@ -3420,10 +3459,11 @@ void affpro_clusters<tmodel,overlap_type>::add_alignment(const pw_alignment & al
 				size_t id = list.at(j);
 				std::string center = centers.find_center_name(id);
 				sequence_of_centers.push_back(center);
+				std::cout << center << std::endl;
 			}
 			long_centers.push_back(sequence_of_centers);
 			for(size_t i = 0; i < data.numSequences(); i++){
-				find_new_centers(it->second,sequence_of_centers,i, centersPositionOnASeq);
+				find_new_centers(it->second,sequence_of_centers,i, centersPositionOnASeq);//TODO !!!
 			}
 			sequence_of_centers.clear();
 		}
@@ -3644,7 +3684,7 @@ void affpro_clusters<tmodel,overlap_type>::add_alignment(const pw_alignment & al
 			std::cout << " " <<std::endl;
 			for(size_t j = 0 ; j < data.numSequences(); j++){
 				std::cout << "num seq "<< j <<std::endl;
-				for(std::map<size_t , std::vector<std::string> >::iterator it = centersPositionOnASeq.at(j).begin(); it != centersPositionOnASeq.at(j).end(); it++){//It includes all the long centers on a sequence
+				for(std::map<size_t , std::vector<std::string> >::iterator it = centersPositionOnASeq.at(j).begin(); it != centersPositionOnASeq.at(j).end(); it++){//It includes all the long centers on a sequence //TODO make a better container that one doesn't need to loop over!
 					if(it->second == long_centers.at(i)){//If the long center is on that sequence
 						//first ref is considered on the forward strand of a sequence 
 						for(size_t k =0; k < it->second.size(); k++){
@@ -3750,7 +3790,7 @@ void affpro_clusters<tmodel,overlap_type>::add_alignment(const pw_alignment & al
 										}
 									}
 									break;
-								}else if(p.getreference2() == j && cent_ref == j && cent_left == l2){//Instead of using samples sequence bases should be used! Samples are including gaps!
+								}else if(p.getreference2() == j && cent_ref == j && cent_left == l2 && cent_left == left_of_a_sample){//Instead of using samples sequence bases should be used! Samples are including gaps! //XXX Just added cent_left == left_of_a_sample
 									std::cout << "center on the ref - second sample "<<std::endl;
 									right = r2;
 								//	if(cent_dir == 0){ //seq from l2 to r2 for both refs
@@ -3779,7 +3819,7 @@ void affpro_clusters<tmodel,overlap_type>::add_alignment(const pw_alignment & al
 											std::cout << "dunno! " <<std::endl;
 									}*/
 									break;
-								}else if(p.getreference1()== j && cent_ref == j && cent_left == l1){
+								}else if(p.getreference1()== j && cent_ref == j && cent_left == l1 && cent_left == left_of_a_sample ){ //XXX Just added cent_left == left_of_a_sample
 									std::cout << "center on the ref - first sample "<<std::endl;
 									right = r1;
 							//		if(cent_dir == 0){
@@ -3811,7 +3851,9 @@ void affpro_clusters<tmodel,overlap_type>::add_alignment(const pw_alignment & al
 							if(i != it->second.size()-1){//gap between two centers
 								size_t left_of_next_center=0;
 								for(std::map<size_t , std::string>::iterator leftOfNextCenter = centerOnSequence.at(j).begin(); leftOfNextCenter != centerOnSequence.at(j).end(); leftOfNextCenter++){
-									if (it->second.at(i+1)== leftOfNextCenter->second){
+									size_t left_1,right_1;
+									al.get_lr1(left_1,right_1);
+									if (it->second.at(i+1)== leftOfNextCenter->second && leftOfNextCenter->first >= left_1 && leftOfNextCenter->first <= right_1){//TODO a center can happen couple of times on a sequence, the right one should be chosen!
 										left_of_next_center = leftOfNextCenter->first;
 										std::cout<< "left of next center is set! " << it->second.at(i+1) <<" "<< left_of_next_center <<std::endl;
 										break;
@@ -3867,6 +3909,7 @@ void affpro_clusters<tmodel,overlap_type>::add_alignment(const pw_alignment & al
 					//	}
 						new_cent->second.push_back(al);
 						std::cout << "al is added! "<<std::endl;
+						al.print();
 					}// no break is needed at the end of this if loop becasue a long center can occur more than one time on a sequence
 				}
 			}
@@ -3939,21 +3982,47 @@ void affpro_clusters<tmodel,overlap_type>::add_alignment(const pw_alignment & al
 	}
 //The following function finds long centers on dna sequences
 	void merging_centers::find_new_centers(size_t & center_indices, std::vector<std::string > & current_long_center, size_t & seq_id , std::vector<std::map<size_t, std::vector<std::string> > > & centersPositionOnASeq){
-		std::map<size_t,std::vector<size_t> > all_centers = tree.get_center_on_a_sequence(seq_id);
+	//	std::map<size_t,std::vector<size_t> > all_centers = tree.get_center_on_a_sequence(seq_id);
+		std::vector<size_t> positions = centers.get_long_center_position(seq_id , current_long_center);
+	//	std::vector<std::vector<std::vector<size_t> > > all_suffix = tree.get_suffix_of_sequence(seq_id);
+	//	std::cout << "all the suffixes on "<< seq_id << std::endl;
+	//	for(size_t i =0;i <all_suffix.size();i++){
+	//		for(size_t j = 0; j < all_suffix.at(i).size();j++){
+	//			for(size_t k =0; k < all_suffix.at(i).at(j).size();k++){
+	//				std::cout <<all_suffix.at(i).at(j).at(k)<< " ";
+	//			}
+	//			std::cout << " "<<std::endl;
+	//		}
+	//		std::cout << " "<<std::endl;
+	//	}
 		std::cout<<"sequence is "<< seq_id << std::endl;
 		std::cout << "current index "<< center_indices<< std::endl;
-		for(std::map<size_t,std::vector<size_t> >::iterator it1 = all_centers.begin(); it1!= all_centers.end();it1++){
-				std::cout << " " <<std::endl;
-				std::cout << "at position "<< it1->first << std::endl;
-				for(size_t i =0; i < it1->second.size(); i++){
-					std::cout << it1->second.at(i)<< " ";
-				}
-				std::cout << " " <<std::endl;
-				if(it1->second.at(0) == center_indices){//XXX Why at(0)?
-					centersPositionOnASeq.at(seq_id).insert(make_pair(it1->first,current_long_center));
-					std::cout << "seq "<<seq_id << "position "<<it1->first << std::endl;
-				}
+		std::cout << "long center is "<<std::endl;
+		for(size_t i =0; i < current_long_center.size();i++){
+			std::cout << current_long_center.at(i) << " ";
 		}
+		std::cout << " " <<std::endl;
+		for(size_t  i =0; i < positions.size(); i++){
+			std::cout << "at position "<< positions.at(i) << std::endl;
+			centersPositionOnASeq.at(seq_id).insert(make_pair(positions.at(i),current_long_center));			
+		}
+	//	for(std::map<size_t,std::vector<size_t> >::iterator it1 = all_centers.begin(); it1!= all_centers.end();it1++){
+	//			std::cout << " " <<std::endl;
+	//			std::cout << "at position "<< it1->first << std::endl;
+	//			for(size_t i =0; i < it1->second.size(); i++){
+	//				std::cout << it1->second.at(i)<< " ";
+	//			}
+	//			std::cout << " " <<std::endl;
+	//			if(it1->second.at(0) == center_indices){//XXX Why at(0)?
+	//				centersPositionOnASeq.at(seq_id).insert(make_pair(it1->first,current_long_center));
+	//				std::cout << "seq "<<seq_id << "position "<<it1->first << std::endl;
+	//			}
+	//			for(size_t i =0; i < it1->second.size();i++){
+	//				if(it1->second.at(i)==center_indices){
+//
+//					}
+//				}
+//		}
 	}
 	void merging_centers::find_long_center_length(std::vector<std::string> & centers, std::map<std::string,std::vector<pw_alignment> > & alignments_in_a_cluster, size_t & seq_id,size_t & position ,size_t & center_length, size_t & end_of_last_piece, std::vector<std::map<size_t , std::string> > & centerOnSequence){
 //		end_of_last_piece = 0;

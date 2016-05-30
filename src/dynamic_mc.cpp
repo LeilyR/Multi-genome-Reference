@@ -2364,10 +2364,12 @@ void dynamic_mc_model::arith_encode_long_al(const pw_alignment & p, size_t & acc
 	//		std::cout << " " << std::endl;
 	//		std::cout << "length of context " << it->first.length() << std::endl;
 	//	}
+		std::cout << high21.size() << std::endl;
 		a_reader_encode encode21(high21,wrappers);
 		acontext_encode enc21(encode21, MAX_ALIGNMENT_MARKOV_CHAIN_LEVEL);
 		enc21.read_alignment_2_1(p);
 		low_high = encode21.low_high_values;
+		std::cout << "size of low_high is "<< low_high.size()<<std::endl;
 }
 
 void dynamic_mc_model::write_al_high_onstream(std::ofstream & al_high_out){

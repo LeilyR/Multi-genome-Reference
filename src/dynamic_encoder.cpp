@@ -1047,8 +1047,9 @@
 								const pw_alignment & p = it2->second.at(k);
 								p.get_lr1(left_1,right_1);
 								std::cout << " " << std::endl;
+								p.print();
 								if(p.getreference1()== sequenceId && left_1 ==n){	
-									std::cout << " seq id "<< sequenceId << "l1 " << n <<std::endl;
+									std::cout << " seq id "<< sequenceId << " l1 " << n <<std::endl;
 									//The non center reference of the alignment is always forward
 									//If center is reverse (50% it is not reverse, 50% it is reverse!!)
 									if(p.getbegin2() > p.getend2()){

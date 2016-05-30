@@ -232,9 +232,9 @@ void avl_interval_tree<T>::overlap_search(const size_t & left, const size_t & ri
 		}
 		assert(found);
 	}
-	for(size_t j=0; j<results.size(); ++j) {
-		std::cout << results.at(j) <<std::endl;
-	}
+//	for(size_t j=0; j<results.size(); ++j) {
+//		std::cout << results.at(j) <<std::endl;
+//	}
 #endif
 
 }
@@ -358,7 +358,7 @@ void avl_interval_tree<T>::insert_at_node(node_type * atn, node_type * newn) {
 	//		std::cout<< "left is null!"<<std::endl;
 			left_attach(atn, newn);
 		} else {
-			std::cout << atn->str_left<< " "<< newn<<std::endl;
+		//	std::cout << atn->str_left<< " "<< newn<<std::endl;
 			insert_at_node(atn->str_left, newn);
 		}
 	} else if(newn->left > atn->right) {
@@ -432,7 +432,7 @@ void avl_interval_tree<T>::forest_insert(node_map_type & roots_to_parents, node_
 //	std::cout << "roots_to_parents "<<roots_to_parents.size()<<std::endl;
 	for(typename node_map_type::iterator it = roots_to_parents.begin(); it!=roots_to_parents.end(); ++it) {
 		node_type * n = it->first;
-		std::cout << n->left << " " << n->max_right << std::endl;
+	//	std::cout << n->left << " " << n->max_right << std::endl;
 		redo_height_up(n);
 	}
 
@@ -556,7 +556,7 @@ size_t avl_interval_tree<T>::single_erase_at_node(node_type * atn, const size_t 
 		if(left <= atn->right && right >= atn->left){
 			if(atn->str_center!=NULL) {
 				num_erased += single_erase_at_node(atn->str_center, left, right, value);
-				std::cout<< "center: "<< atn->str_center <<std::endl;
+			//	std::cout<< "center: "<< atn->str_center <<std::endl;
 			} 
 		}
 		if((left == atn->left && right==atn->right) && value == atn->value) {
@@ -597,7 +597,7 @@ void avl_interval_tree<T>::overlap_search_at_node(node_type * atn, const size_t 
 		overlap_search_at_node(atn->str_center, left, right, results);
 	}
 	if(right >= atn->left && left <= atn->right) {
-		std::cout << " FOUND l " << atn->left << " r " << atn->right << " d " << atn->value << std::endl;
+	//	std::cout << " FOUND l " << atn->left << " r " << atn->right << " d " << atn->value << std::endl;
 		results.push_back(atn->value);
 	}
 }
@@ -841,7 +841,7 @@ void avl_interval_tree<T>::update_max_right_after_pruning_node(node_type * n){ /
 	node_type * pr = p->str_right;
 	node_type * pc = p->str_center;
 	if(n->right == p->max_right){
-		std::cout << "n right is max right"<<std::endl;
+	//	std::cout << "n right is max right"<<std::endl;
 		p->max_right = p->right;
 		if(pl!=NULL) {
 			if(p->max_right < pl->max_right) p->max_right = pl->max_right;
@@ -852,11 +852,11 @@ void avl_interval_tree<T>::update_max_right_after_pruning_node(node_type * n){ /
 		if(pc!=NULL) {
 			if(p->max_right < pc->max_right) p->max_right = pc->max_right;
 		}
-		std::cout << "the max right is "<< p->max_right << std::endl;
+	//	std::cout << "the max right is "<< p->max_right << std::endl;
 		node_type * n1 = p->parent;
 		while(n1 != NULL){
 			if(n1->max_right== n->right){
-				std::cout<< "n1 max right is: "<<std::endl;
+			//	std::cout<< "n1 max right is: "<<std::endl;
 				node_type * n1l = n1->str_left;
 				node_type * n1r = n1->str_right;
 				node_type * n1c = n1->str_center;
@@ -883,31 +883,31 @@ void avl_interval_tree<T>::prune_subtree(node_type * n) {//XXX max_right and min
 		root = NULL;
 	} else {
 		node_type * p = n->parent;
-		std::cout<< "parent left" << p->left << " parent right "<< p->right <<std::endl;
+	//	std::cout<< "parent left" << p->left << " parent right "<< p->right <<std::endl;
 		if(p->str_left == n) {
-			std::cout<<"h1"<<std::endl;
+	//		std::cout<<"h1"<<std::endl;
 			p->height = 0; // if we prune left/right children, height becomes invalid. Calling function should take care of that
 			p->str_left = NULL;
 			update_min_left_after_pruning_node(n);
 			update_max_right_after_pruning_node(n);
 		} else if(p->str_center == n) {
-			std::cout<<"h2"<<std::endl;
+	//		std::cout<<"h2"<<std::endl;
 			p->height = 0;
 			p->str_center = NULL;
 			update_min_left_after_pruning_node(n);
 			update_max_right_after_pruning_node(n);
 		} else if(p->str_right == n) {
-			std::cout<<"h3"<<std::endl;
+		//	std::cout<<"h3"<<std::endl;
 			p->height = 0;
 			p->str_right = NULL;
 			update_min_left_after_pruning_node(n);
 			update_max_right_after_pruning_node(n);
 		} else {
-			std::cout<<"h4"<<std::endl;
+		//	std::cout<<"h4"<<std::endl;
 
 			assert(0);
 		}
-		n->parent = NULL; //XXX Why?
+		n->parent = NULL; 
 
 		redo_height_up(p); // TODO can we get faster here?
 	}
