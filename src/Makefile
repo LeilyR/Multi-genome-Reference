@@ -1,8 +1,8 @@
 
 
 CXX = g++ -std=c++0x
-CFLAGS = -Wall -fmessage-length=50 -fopenmp 
-CXXFLAGS = -Wall -fmessage-length=50 -fopenmp -pedantic 
+CFLAGS = -Wall -fmessage-length=50 -fopenmp -march=bdver2
+CXXFLAGS = -Wall -fmessage-length=50 -fopenmp -pedantic -march=bdver2
 #OPTFLAGS = -O3 -DNDEBUG
 #OPTFLAGS = -O3 -DNDEBUG 
 DEBUGFLAGS = -g3 -O0 -gdwarf-2 

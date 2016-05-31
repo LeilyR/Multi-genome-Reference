@@ -920,7 +920,7 @@ void avl_interval_tree<T>::left_attach(node_type * parent, node_type * child) {
 	parent->str_left = child;
 	child->parent = parent;
 	child->max_right = child->right;
-	std::cout << parent->max_right << child->max_right <<std::endl; //XXX I added
+//	std::cout << parent->max_right << child->max_right <<std::endl; //XXX I added
 	if(parent->max_right < child->max_right){parent->max_right = child->max_right; } //XXX I added
 }
 
@@ -965,7 +965,7 @@ void avl_interval_tree<T>::redo_height_and_minmax_at_node(node_type * n) {//TODO
 	//	std::cout << "nl!=NULL"<<std::endl;
 		size_t lh = nl->height + 1;
 		if(lh>nh) nh = lh;
-		std::cout << nl->min_left << " " << n->min_left<<std::endl;
+	//	std::cout << nl->min_left << " " << n->min_left<<std::endl;
 		if(nl->min_left < n->min_left) n->min_left = nl->min_left;
 		if(nl->max_right > n->max_right) n->max_right = nl->max_right;
 	}

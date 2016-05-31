@@ -1813,7 +1813,7 @@ int do_dynamic_mc_model(int argc, char * argv[]) {
 		}
 	}
 	//Makes components of partially overlapped alignments
-	std::cout << "al with postive gains are kept"<<std::endl;
+	std::cout << "al with postive gains are kept "<< al_with_pos_gain.size() <<std::endl;
 	clock_t initial_cc_time = clock();
 //	compute_cc cccs(al_with_pos_gain, data.numSequences(),num_threads);
 //	compute_cc_with_interval_tree cccs(al_with_pos_gain, data.numSequences());
@@ -2834,10 +2834,10 @@ int do_simple_test_on_new_cc(int argc, char* argv[]){
 int do_test_new_cc(int argc, char * argv[]) {
 	typedef overlap_interval_tree overlap_type;
 	typedef dynamic_mc_model use_model;
-	typedef compute_cc_with_interval_tree<overlap_type> cc_type; //Eric Garisson implementation
+//	typedef compute_cc_with_interval_tree<overlap_type> cc_type; //Eric Garisson implementation
 //	typedef compute_cc_with_icl cc_type;
-//	typedef compute_cc_avl<overlap_type> cc_type;
-//	typedef initial_alignment_set<use_model,overlap_type> use_ias;
+	typedef compute_cc_avl<overlap_type> cc_type;
+	typedef initial_alignment_set<use_model,overlap_type> use_ias;
 
 	if(argc < 6) {
 		usage();
@@ -2884,15 +2884,15 @@ int do_test_new_cc(int argc, char * argv[]) {
 	//Makes components of partially overlapped alignments
 
 	std::cout << "al with positive gains are kept " << al_with_pos_gain.size() <<std::endl;
-	cc_type component(al_with_pos_gain,data.numSequences());
+//	cc_type component(al_with_pos_gain,data.numSequences());
 //	compute_cc_with_icl cccs(al_with_pos_gain, data.numSequences(),num_threads);
-//	cc_type cccs(al_with_pos_gain, data.numSequences(), num_threads);
+	cc_type cccs(al_with_pos_gain, data.numSequences(), num_threads);
 	std::vector<std::set<const pw_alignment* , compare_pointer_pw_alignment> > ccs; 
-//	cccs.compute(ccs); //fill in ccs, ordered by size(Notice that they are just connected to each other if they have overlap!)
-	component.compute(ccs);
+	cccs.compute(ccs); //fill in ccs, ordered by size(Notice that they are just connected to each other if they have overlap!)
+//	component.compute(ccs);
 	std::cout<< "ccs are made!"<<std::endl;
-	size_t counter = 0;
-	for(size_t i=0; i<ccs.size(); ++i) {
+//	size_t counter = 0;
+//	for(size_t i=0; i<ccs.size(); ++i) {
 
 /*	for(size_t i=0; i<ccs.size()-1; ++i) {
 		std::cout << " on initial CC " << i << " size " << ccs.at(i).size() << std::endl;
@@ -2905,12 +2905,12 @@ int do_test_new_cc(int argc, char * argv[]) {
 				data.checkAlignmentRange(*p);//XXX this is just a test function, comment it after the first run!
 			}
 		}*/
-	}
+//	}
 
-	std::cout<< "returned number is "<< counter <<std::endl;
+//	std::cout<< "returned number is "<< counter <<std::endl;
 
 	//Cutting partial overlaps:
-/*	std::vector<overlap_type> cc_overlap(ccs.size(), overlap_type(data));
+	std::vector<overlap_type> cc_overlap(ccs.size(), overlap_type(data));
 	size_t cluster_base_cost =0;
 	for(size_t i=0; i<ccs.size(); ++i) {
 		std::set< const pw_alignment*, compare_pointer_pw_alignment> & cc = ccs.at(i);
@@ -2934,7 +2934,7 @@ int do_test_new_cc(int argc, char * argv[]) {
 			}
 		}
 
-	}*/
+	}
 	std::cout << "cutting is over!"<<std::endl;
 	return 0;
 }

@@ -895,7 +895,7 @@ void compute_cc_with_interval_tree<overlap_type>::cc_step(size_t ref, size_t lef
 template<typename overlap_type>
 void compute_cc_avl<overlap_type>::compute(std::vector<std::set< const pw_alignment* , compare_pointer_pw_alignment> > & ccs) {
 	alind.debug_print(); // TODO 
-//	std::cout << "compute CC on " << alignments.size() << std::endl;
+	std::cout << "compute CC on " << alignments.size() << std::endl;
 	std::set <const pw_alignment*, compare_pointer_pw_alignment> seen;
 	std::multimap<size_t , std::set<const pw_alignment*, compare_pointer_pw_alignment> > sorter; // sorts ccs to give largest first
 	for(std::set<const pw_alignment *, compare_pointer_pw_alignment>::iterator it = alignments.begin(); it!=alignments.end(); ++it) {
