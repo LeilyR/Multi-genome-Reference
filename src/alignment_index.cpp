@@ -73,7 +73,7 @@ void alignment_index::super_search_overlap_and_remove(const size_t & reference, 
 	std::set<size_t> used_refs;
 	for(size_t i=0; i<result.size(); ++i) {
 		const pw_alignment * al = result.at(i);
-	//	al->print(); // TODO 
+	//	al->print(); 
 	//	std::cout << std::endl;
 		size_t l, r;
 		al->get_lr1(l, r);

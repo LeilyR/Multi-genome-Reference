@@ -2800,6 +2800,12 @@ int do_read_data(int argc, char * argv[]) {
 	size_t seq_length = 0;
 	for(size_t i =0; i < data.numSequences();i++){
 		seq_length += data.getSequence(i).length();
+		if(i == 114){
+			for(size_t j = 0; j < 30; j++){
+				std::cout << data.getSequence(i).at(j)<< " " ;
+			}
+			std::cout<< "" <<std::endl;
+		}
 	}
 	std::cout << "total base number is " << seq_length <<std::endl;
 	return 0;

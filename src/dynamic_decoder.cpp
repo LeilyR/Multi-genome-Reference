@@ -1357,7 +1357,7 @@
 						dec.decode(low_par,high_par);
 						wrappers.decode(low_par,high_par,total);
 						target = dec.get_target(total);
-						std::cout << "tar 2 "<< target << std::endl;
+						std::cout << "tar2: "<< target << std::endl;
 						for(size_t j =0; j < long_centers_high_value.at(number_of_par).size();j++){
 							if(long_centers_high_value.at(number_of_par).at(j).second.at(0)<=target && long_centers_high_value.at(number_of_par).at(j).second.at(1)>target){
 								std::cout << long_centers_high_value.at(number_of_par).at(j).second.at(0) << " " << long_centers_high_value.at(number_of_par).at(j).second.at(1) <<std::endl;

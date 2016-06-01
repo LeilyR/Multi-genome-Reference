@@ -393,14 +393,14 @@ a_reader_encode::~a_reader_encode(){}
 
 void a_reader_encode::see_context(const std::string & context,size_t modification){
 //	std::cout << "context size "<< context.size()<<std::endl;
-//	std::cout << "context: "; 
+	std::cout << "context: "; 
 	for(size_t i = 0; i < context.size();i++){
-//		std::cout << int(context.at(i)) << " ";
+		std::cout << int(context.at(i)) << " ";
 		int con = int(context.at(i));
 		wrappers.context(con);
 	}
-//	std::cout << " " <<std::endl;
-//	std::cout << "modification "<< modification << std::endl;
+	std::cout << " " <<std::endl;
+	std::cout << "modification "<< modification << std::endl;
 	std::map<std::string, std::vector<uint32_t> >::const_iterator it = model_high.find(context);
 	assert(it!=model_high.end());
 	std::vector<unsigned int> low_high;
@@ -410,7 +410,7 @@ void a_reader_encode::see_context(const std::string & context,size_t modificatio
 	if(modification != 0){
 		l = high.at(modification-1);
 	}
-//	std::cout<< "l_model "<< l << "h_model: "<< h <<std::endl;
+	std::cout<< "l_model "<< l << "h_model: "<< h <<std::endl;
 	low_high.push_back(l);
 	low_high.push_back(h);
 	low_high_values.push_back(low_high);
@@ -2355,8 +2355,8 @@ void dynamic_mc_model::arith_encode_al(const pw_alignment & p, unsigned int & ce
 }
 void dynamic_mc_model::arith_encode_long_al(const pw_alignment & p, size_t & acc1, size_t & acc2, unsigned int & cent_ref, unsigned int & cent_left, std::vector<std::vector< unsigned int> > & low_high){
 		const std::map< std::string, std::vector<uint32_t> > & high21 = alignment_model_highs.at(acc2).at(acc1);
-		if(p.getreference1()==0 && p.getreference2()==984){
-			for(std::map<std::string, std::vector<uint32_t> >::const_iterator it = high21.begin(); it!= high21.end();it++){
+	//	if(p.getreference1()==0 && p.getreference2()==984){
+		/*	for(std::map<std::string, std::vector<uint32_t> >::const_iterator it = high21.begin(); it!= high21.end();it++){
 				std::string patterns = it->first;
 				std::cout << patterns.size() <<std::endl;
 				for(size_t i =0; i < patterns.size();i++){
@@ -2364,9 +2364,9 @@ void dynamic_mc_model::arith_encode_long_al(const pw_alignment & p, size_t & acc
 				}
 				std::cout << " " << std::endl;
 				std::cout << "length of context " << it->first.length() << std::endl;
-			}
-		}
-		std::cout << high21.size() << std::endl;
+			}*/
+	//	}
+	//	std::cout << high21.size() << std::endl;
 		a_reader_encode encode21(high21,wrappers);
 		acontext_encode enc21(encode21, MAX_ALIGNMENT_MARKOV_CHAIN_LEVEL);
 		enc21.read_alignment_2_1(p);

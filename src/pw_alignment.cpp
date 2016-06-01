@@ -696,20 +696,22 @@ void pw_alignment::print()const{
 	size_t counter = 0;
 	size_t counter1 = 0;
 //	for(size_t col = 0; col < 5; col++) {	
-/*	for(size_t col = 0; col < alignment_length(); col++) {
-	//	if(col < 3 || (alignment_length() - col < 3)) {
-			char c1;
-			char c2;
-			alignment_col(col, c1, c2);
-			std::cout <<col <<"\t"<< c1<<"\t"<<c2<<std::endl;
-			if(c2 == '-'){
-				counter ++;
-			}
-			if(c1 == '-'){
-				counter1 ++;
-			}
-	//	}
-	}*/
+	if(getreference1()==0 && getreference2()==984){
+		for(size_t col = 0; col < alignment_length(); col++) {
+		//	if(col < 3 || (alignment_length() - col < 3)) {
+				char c1;
+				char c2;
+				alignment_col(col, c1, c2);
+				std::cout <<col <<"\t"<< c1<<"\t"<<c2<<std::endl;
+				if(c2 == '-'){
+					counter ++;
+				}
+				if(c1 == '-'){
+					counter1 ++;
+				}
+		//	}
+		}
+	}
 //	std::cout << "counter "<<counter << " counter1 "<< counter1 <<std::endl;
 //}
 	

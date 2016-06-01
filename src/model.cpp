@@ -35,7 +35,7 @@ void initial_alignment_set<T,overlap_type>::insert_alignment_sets(overlap_type &
 			all_ins.erase(al);
 			all_rem.erase(al);
 	std::cout << "is gonna be removed3: "<<&al <<std::endl;
-		al.print();
+	//	al.print();
 
 			ovrlp.remove_alignment(al); 
 		} else {
@@ -50,7 +50,7 @@ void initial_alignment_set<T,overlap_type>::local_undo(overlap_type & ovrlp, std
 	for(std::set< pw_alignment , compare_pw_alignment >::iterator it = all_inserted.begin(); it!=all_inserted.end(); it++) {
 		const pw_alignment & al = *it;
 		std::cout << "is gonna be removed2: "<<&al <<std::endl;
-		al.print();
+	//	al.print();
 		ovrlp.remove_alignment(al);
 	}
 
@@ -254,7 +254,7 @@ void initial_alignment_set<T,overlap_type>::lazy_split_insert_step(overlap_type 
 				}
 			}*/
 			const pw_alignment & nal = *ordered_parts.begin()->second;
-			nal.print();
+		//	nal.print();
 			// full split step, we can just copy local gain
 			lazy_split_full_insert_step(ovrlp, level, rec_calls, nal, inserted_alignments, removed_alignments, local_gain);
 			return;
@@ -286,7 +286,7 @@ void initial_alignment_set<T,overlap_type>::lazy_split_insert_step(overlap_type 
 	//			pwa->print();
 	//			std::cout << " ovrlp size " << ovrlp.size() << std::endl;
 				std::cout << "is gonna be removed5: " << &pwa<<std::endl;
-				pwa.print();
+		//		pwa.print();
 
 				ovrlp.remove_alignment(pwa);
 
@@ -510,9 +510,9 @@ void initial_alignment_set<T,overlap_type>::compute_simple(overlap_type & o) {
 		if(gain_of_al>=0) {
 			used++;
 			for(std::set<pw_alignment, compare_pw_alignment>::const_iterator it = remove_als.begin(); it!=remove_als.end(); ++it) {
-	std::cout << "is gonna be removed4: "  << &*it<<std::endl;
-			pw_alignment &al=*it;
-al.print();
+				std::cout << "is gonna be removed4: "  << &*it<<std::endl;
+				pw_alignment &al=*it;
+			//	al.print();
 				o.remove_alignment(*it);
 				pcs_rem++;
 			}	
@@ -894,7 +894,7 @@ void compute_cc_with_interval_tree<overlap_type>::cc_step(size_t ref, size_t lef
 
 template<typename overlap_type>
 void compute_cc_avl<overlap_type>::compute(std::vector<std::set< const pw_alignment* , compare_pointer_pw_alignment> > & ccs) {
-	alind.debug_print(); // TODO 
+//	alind.debug_print(); 
 	std::cout << "compute CC on " << alignments.size() << std::endl;
 	std::set <const pw_alignment*, compare_pointer_pw_alignment> seen;
 	std::multimap<size_t , std::set<const pw_alignment*, compare_pointer_pw_alignment> > sorter; // sorts ccs to give largest first
