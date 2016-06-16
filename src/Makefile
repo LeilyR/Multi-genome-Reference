@@ -29,7 +29,7 @@ LIBARGS =   apclusterunix64.so -L../dlib_build -ldlib  libStatGen-1.0.13/libStat
 # include libStatGen-1.0.13/Makefiles/Makefile.include
 
 PROGS = graph
-OBJS = pw_alignment.o data.o test.o graph.o  needleman.o dynamic_mc.o alignment_index.o
+OBJS = pw_alignment.o data.o test.o graph.o  needleman.o dynamic_mc.o alignment_index.o strongly_connected_alignments.o
 
 # .DEFAULT_GOAL := graph 
 all: $(PROGS)
@@ -39,7 +39,7 @@ all: $(PROGS)
 
 #graph: main.cpp $(OBJS) model.cpp model.hpp pw_alignment.hpp data.hpp graph.hpp needleman.hpp encoder.hpp dynamic_encoder.hpp dynamic_decoder.hpp IntervalTree.hpp
 
-graph: main.cpp $(OBJS) model.cpp model.hpp pw_alignment.hpp data.hpp graph.hpp needleman.hpp encoder.hpp dynamic_encoder.hpp dynamic_decoder.hpp alignment_index.hpp IntervalTree.hpp overlap.hpp
+graph: main.cpp $(OBJS) model.cpp model.hpp pw_alignment.hpp data.hpp graph.hpp needleman.hpp encoder.hpp dynamic_encoder.hpp dynamic_decoder.hpp suffix_tree.hpp alignment_index.hpp IntervalTree.hpp overlap.hpp strongly_connected_alignments.hpp
 	$(CXX) -o graph $(CXXFLAGS) $(INCLUDEARGS) main.cpp $(OBJS) $(LIBARGS)
 	
 graph.o: graph.cpp data.hpp needleman.hpp graph.hpp 
@@ -67,6 +67,12 @@ test.o: test.cpp test.hpp
 
 needleman.o: needleman.cpp needleman.hpp
 	$(CXX) -o needleman.o $(CXXFLAGS) $(INCLUDEARGS) -c needleman.cpp
+
+suffix_tree.o: suffix_tree.hpp suffix_tree.cpp
+	$(CXX) -o suffix_tree.o $(CXXFLAGS) $(INCLUDEARGS) -c suffix_tree.cpp
+
+strongly_connected_alignments.o: strongly_connected_alignments.hpp strongly_connected_alignments.cpp 
+	$(CXX) -o strongly_connected_alignments.o $(CXXFLAGS) $(INCLUDEARGS) -c strongly_connected_alignments.cpp
 
 #model.o: model.cpp model.hpp
 #	$(CXX) -o model.o $(CXXFLAGS) $(INCLUDEARGS) -c model.cpp

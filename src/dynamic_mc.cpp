@@ -332,7 +332,9 @@ void a_reader_counter::see_context(const std::string & context, size_t modificat
 	
 	std::map<std::string, std::vector<size_t> >::iterator findc = countsmap.find(context);
 	if(findc == countsmap.end()) {
+
 		countsmap.insert(std::make_pair(context, vector<size_t>(NUM_MODIFICATIONS, 0)));
+
 		findc = countsmap.find(context);
 	}
 	findc->second.at(modification)++;
@@ -1956,7 +1958,7 @@ void dynamic_mc_model::train_alignment_model() {
 		size_t batch_size = num / num_threads + 1;
 		if(batch_size > max_batch_size) batch_size = max_batch_size;
 		size_t num_batchs = num / batch_size + 1;
-
+	//	std::cout << "here!!!"<< batch_size << " " << num <<std::endl;
 #pragma omp parallel for schedule(dynamic), num_threads(num_threads)
 		for(size_t b = 0; b < num_batchs; ++b) {
 			size_t from = b*batch_size;
@@ -1968,22 +1970,26 @@ void dynamic_mc_model::train_alignment_model() {
 			
 
 
-
 			for(size_t i=from; i<to; ++i) {
 				const pw_alignment * al = sorted_als.at(a1).at(a2).at(i);
-
+		//		std::cout << "here1!!!"<<std::endl;
+//#pragma omp critical(counts)
+//{
 				lensum1+= al->alignment_length();
+//}
 				local_counter.read_alignment_1_2(*al);
+
 			}
 #pragma omp critical(counts)
 {
 			alignment_counts_add(result_counts.at(a1).at(a2), local_counts.countsmap);
 			alignment_length_sums.at(a1).at(a2)+=lensum1;
+		//	std::cout << "here2!!!"<<std::endl;
 }
 
 		}
 
-
+	//	std::cout << "end of the first loop"<<std::endl;
 		num = sorted_als.at(a2).at(a1).size();
 		batch_size = num / num_threads + 1;
 		if(batch_size > max_batch_size) batch_size = max_batch_size;
@@ -2002,8 +2008,10 @@ void dynamic_mc_model::train_alignment_model() {
 			for(size_t i=from; i<to; ++i) {
 				const pw_alignment * al = sorted_als.at(a2).at(a1).at(i);
 				local_counter.read_alignment_2_1(*al);
-
+//#pragma omp critical(counts)
+//{
 				lensum2+=al->alignment_length();
+//}
 			}
 #pragma omp critical(counts)
 {
@@ -2051,7 +2059,7 @@ void dynamic_mc_model::train_alignment_model() {
 		distribution_to_bits(distri, MAX_ENCODING_WIDTH_BITS, flag_bits);
 		vector<uint32_t> flag_widths;
 		bits_to_width_encoding(flag_bits, TOTAL_FOR_ENCODING, flag_widths);
-		std::cout <<"align acc " << a1 << " to " << a2 << ": encoding widhts: any mod: "<< flag_widths.at(0) << " (" << distri.at(0)<<") " <<   " alignment end: " << flag_widths.at(1) << " ("<<distri.at(1)<<") "<< std::endl;
+	//	std::cout <<"align acc " << a1 << " to " << a2 << ": encoding widhts: any mod: "<< flag_widths.at(0) << " (" << distri.at(0)<<") " <<   " alignment end: " << flag_widths.at(1) << " ("<<distri.at(1)<<") "<< std::endl;
 		
 
 		uint32_t new_total = flag_widths.at(0);
@@ -2074,9 +2082,9 @@ void dynamic_mc_model::train_alignment_model() {
 */		
 		std::map<std::string, std::pair<unsigned char, std::vector<uint32_t> > > mod_model;
 
-		std::cout << " run context selector on " << counts.size() << " contexts " << " from " <<  alignment_length_sums.at(a1).at(a2) << " total alignment length" << std::endl;
+	//	std::cout << " run context selector on " << counts.size() << " contexts " << " from " <<  alignment_length_sums.at(a1).at(a2) << " total alignment length" << std::endl;
 		double enc_cost = context_selector(counts, alphabet, new_total, mod_model, MAX_ALIGNMENT_MARKOV_CHAIN_LEVEL +1);
-		std::cout << " select " << mod_model.size() << " contexts, cost: " << enc_cost << " ( " << (enc_cost/(double) alignment_length_sums.at(a1).at(a2))<< " bits/alignment column)" << std::endl;
+	//	std::cout << " select " << mod_model.size() << " contexts, cost: " << enc_cost << " ( " << (enc_cost/(double) alignment_length_sums.at(a1).at(a2))<< " bits/alignment column)" << std::endl;
 		alignment_models.at(a1).at(a2) = mod_model;
 	}
 	compute_alignment_model();
@@ -2086,6 +2094,7 @@ void dynamic_mc_model::train_alignment_model() {
 
 void dynamic_mc_model::train(std::ofstream & outs){	
 	train_sequence_model();	
+	std::cout << "done on sequences"<<std::endl;
 	train_alignment_model();
 	write_parameters(outs);
 

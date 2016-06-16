@@ -1043,30 +1043,47 @@
 							assert(it2 != new_centers.end());
 							assert(it2->second.size()>=1);
 							for(size_t k =0; k < it2->second.size(); k++){
-								size_t left_1,right_1;
+								size_t left_1,right_1,left_2,right_2;
 								const pw_alignment & p = it2->second.at(k);
 								p.get_lr1(left_1,right_1);
+								p.get_lr1(left_2,right_2);
 								std::cout << " " << std::endl;
 								p.print();
 								if(p.getreference1()== sequenceId && left_1 ==n){	
 									std::cout << " seq id "<< sequenceId << " l1 " << n <<std::endl;
 									//The non center reference of the alignment is always forward
 									//If center is reverse (50% it is not reverse, 50% it is reverse!!)
-									if(p.getbegin2() > p.getend2()){
+									if(p.getbegin2() > p.getend2() && p.getbegin1() < p.getend1()){
 										std::cout << "reverse long center " << std::endl; 
 										//Center is reverse
 										unsigned int l1 =  0;
 										unsigned int h1 = TOTAL_FOR_ENCODING/4;
 										enc.encode(l1,h1,total);
 										wrappers.encode(l1,h1,total);
+									}else if(p.getbegin2() > p.getend2() && p.getbegin1() > p.getend1()){
+										//both reverse
+										unsigned int l1 = TOTAL_FOR_ENCODING/2;
+										unsigned int h1 = 3*TOTAL_FOR_ENCODING/4;
+										enc.encode(l1,h1,total);
+										wrappers.encode(l1,h1,total);
+									}else if(p.getbegin2() < p.getend2() && p.getbegin1() > p.getend1()){
+										//center forwards
+										unsigned int l1 = TOTAL_FOR_ENCODING/4;
+										unsigned int h1 = TOTAL_FOR_ENCODING/2;
+										enc.encode(l1,h1,total);
+										wrappers.encode(l1,h1,total);
 									}else{
 										//Both are forwards
+										assert(p.getbegin2() < p.getend2() && p.getbegin1() < p.getend1());
 										std::cout << "Forward long center " << std::endl; 
 										unsigned int l1 = 3*TOTAL_FOR_ENCODING/4;
 										unsigned int h1 = TOTAL_FOR_ENCODING;
 										enc.encode(l1,h1,total);
 										wrappers.encode(l1,h1,total);
 									}
+								//	unsigned int ref2 = p.getreference2();
+								//	unsigned int l2 = left_2;
+								//	encoding_directions(ref2, l2, p, outs, enc);
 									size_t accession = data.accNumber(cent_ref);
 									model.get_end_al_flag(accession,i, al_end);// It should be found between the acc of current seq and the acc of the first piece of the center
 									std::cout << "al end: " << al_end.at(0) << " "<<al_end.at(1) <<std::endl;

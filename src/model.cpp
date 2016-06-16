@@ -2,13 +2,13 @@
 
 #ifndef MODEL_CPP
 #define MODEL_CPP
-
+#define PRINT 0
 template<typename T, typename overlap_type>
 void initial_alignment_set<T,overlap_type>::compute(overlap_type & o) {
 
-	compute_simple_lazy_splits(o);
+//	compute_simple_lazy_splits(o);
 //	compute_simple(o);
-//	compute_vcover_clarkson(o);
+	compute_vcover_clarkson(o);
 
 }
 
@@ -34,7 +34,7 @@ void initial_alignment_set<T,overlap_type>::insert_alignment_sets(overlap_type &
 			const pw_alignment & al = this_rem.at(i);
 			all_ins.erase(al);
 			all_rem.erase(al);
-	std::cout << "is gonna be removed3: "<<&al <<std::endl;
+//	std::cout << "is gonna be removed3: "<<&al <<std::endl;
 	//	al.print();
 
 			ovrlp.remove_alignment(al); 
@@ -49,7 +49,7 @@ template<typename T, typename overlap_type>
 void initial_alignment_set<T,overlap_type>::local_undo(overlap_type & ovrlp, std::set<pw_alignment, compare_pw_alignment> & all_inserted, std::set<pw_alignment , compare_pw_alignment> & all_removed) {
 	for(std::set< pw_alignment , compare_pw_alignment >::iterator it = all_inserted.begin(); it!=all_inserted.end(); it++) {
 		const pw_alignment & al = *it;
-		std::cout << "is gonna be removed2: "<<&al <<std::endl;
+	//	std::cout << "is gonna be removed2: "<<&al <<std::endl;
 	//	al.print();
 		ovrlp.remove_alignment(al);
 	}
@@ -197,8 +197,10 @@ void initial_alignment_set<T,overlap_type>::lazy_split_insert_step(overlap_type 
 	double av_al_gain = (gain1 + gain2) / 2 - base_cost;
 	// we continue if information gain is possible from the current alignment
 	local_gain = 0;
-//	std::cout<< "al in lazy split "<< std::endl;
-//	al.print();
+#if PRINT
+	std::cout<< "al in lazy split recurssion level " << level << std::endl;
+	al.print();
+#endif
 //	std::cout << "av_al_gain "<< av_al_gain <<std::endl;
 	if(av_al_gain > 0) {
 		splitpoints_interval_tree<overlap_type> spl(al, ovrlp, data);
@@ -209,9 +211,9 @@ void initial_alignment_set<T,overlap_type>::lazy_split_insert_step(overlap_type 
 	//	std::cout << "split all is called 1! "<<std::endl;
 
 		spl.split_all(remove_als, insert_als);
-
-	//	std::cout <<"initial: level " << level << " positive gain: " << av_al_gain << " split res rem " << remove_als.size() << " ins " << insert_als.size() << std::endl;
-	
+#if PRINT
+		std::cout <<"initial: level " << level << " positive gain: " << av_al_gain << " split res rem " << remove_als.size() << " ins " << insert_als.size() << std::endl;
+#endif
 		// we evaluate an upper bound of information gain for the current alignment
 		double lost_information_gain = 0;
 		for(std::set<pw_alignment, compare_pw_alignment>::iterator it = remove_als.begin(); it!=remove_als.end(); ++it) {
@@ -244,7 +246,9 @@ void initial_alignment_set<T,overlap_type>::lazy_split_insert_step(overlap_type 
 
 		// here: we actually decide to insert a small part (in the next function we check more carefully for indirectly induced splits)
 		if(remove_als.empty() && (ordered_parts.size() == 1)) {
-//			std::cout << "ordered size 1 "<<std::endl;
+#if PRINT
+			std::cout << "Only 1 al to insert and no al to delete "<<std::endl;
+#endif
 		/*	for(std::multimap<double , const pw_alignment &>::iterator it = ordered_parts.begin(); it!= ordered_parts.end();it++){
 				std::pair<std::multimap<double, const pw_alignment&>::iterator, std::multimap<double, const pw_alignment&>::iterator  > r2 = ordered_parts.equal_range(it->first);
 				for(std::multimap<double, const pw_alignment &>::iterator it1 = r2.first; it1!=r2.second; ++it1) {
@@ -285,7 +289,7 @@ void initial_alignment_set<T,overlap_type>::lazy_split_insert_step(overlap_type 
 	//			std::cout <<"level " << level << "REMOVE NOW: " << std::endl;
 	//			pwa->print();
 	//			std::cout << " ovrlp size " << ovrlp.size() << std::endl;
-				std::cout << "is gonna be removed5: " << &pwa<<std::endl;
+		//		std::cout << "is gonna be removed5: " << &pwa<<std::endl;
 		//		pwa.print();
 
 				ovrlp.remove_alignment(pwa);
@@ -371,23 +375,25 @@ void initial_alignment_set<T,overlap_type>::compute_simple_lazy_splits(overlap_t
 	size_t pcs_ins = 0;
 	size_t pcs_rem = 0;
 
-	for (size_t i=0; i<sorted_original_als.size(); ++i) {
+	for (size_t i=0; i<sorted_original_als.size(); ++i) {//XXX Can we optimize it a bit by not walking on all these als? Since we may already cut them.
 		const pw_alignment * al = sorted_original_als.at(i);
 		double gain_of_al = 0;
+#if PRINT
 		std::cout << "on alignment " << i << std::endl;
-	//	cout << " start recursive lazy insert tree on " << endl;
-	//	al->print();
-	//	cout << endl;
+		cout << " start recursive lazy insert tree on " << endl;
+		al->print();
+		cout << endl;
+#endif
 
 		std::vector<pw_alignment> ins_als;
 		std::vector<pw_alignment> rem_als;
 		size_t count_rec_calls = 0;
 		lazy_split_insert_step(o,0, count_rec_calls, *al, ins_als, rem_als, gain_of_al);//Splits alignments that have overlap with 'al'
 		
-		double gain1;
-		double gain2;
-		common_model.gain_function(*al, gain1, gain2);
-		double vgain = (gain1 + gain2) / 2 - base_cost;
+	//	double gain1;
+	//	double gain2;
+	//	common_model.gain_function(*al, gain1, gain2);
+	//	double vgain = (gain1 + gain2) / 2 - base_cost;
 
 
 /*//XXX Commented double rgain = 0;
@@ -472,7 +478,7 @@ void initial_alignment_set<T,overlap_type>::compute_simple(overlap_type & o) {
 
 		splitpoints_interval_tree<overlap_type> spl(al, o, data);
 		spl.recursive_splits();
-		std::cout << "split all is called! "<<std::endl;
+	//	std::cout << "split all is called! "<<std::endl;
 		spl.split_all(remove_als, insert_als);
 		std::vector<double> insert_gains(insert_als.size(), 0);
 
@@ -510,7 +516,7 @@ void initial_alignment_set<T,overlap_type>::compute_simple(overlap_type & o) {
 		if(gain_of_al>=0) {
 			used++;
 			for(std::set<pw_alignment, compare_pw_alignment>::const_iterator it = remove_als.begin(); it!=remove_als.end(); ++it) {
-				std::cout << "is gonna be removed4: "  << &*it<<std::endl;
+			//	std::cout << "is gonna be removed4: "  << &*it<<std::endl;
 				pw_alignment &al=*it;
 			//	al.print();
 				o.remove_alignment(*it);
@@ -702,11 +708,14 @@ void initial_alignment_set<T,overlap_type>::compute_vcover_clarkson(overlap_type
 		double vgain = (gain1+gain2)/2 - base_cost;
 	//	cout << " al " << i << " gain " << vgain <<  " at " << al << endl;
 		assert(vgain >= 0.0);
+#pragma omp critical(gain)
+{
 		total_in_weight += vgain;
 		orig_weights.at(i) = vgain;
 		double weight = vgain / edges.at(i).size();
 		index_to_weight.insert(std::make_pair(i, weight));
-		weight_to_index.insert(std::make_pair(weight, i));	
+		weight_to_index.insert(std::make_pair(weight, i));
+}	
 	}
 
 
@@ -725,17 +734,17 @@ void initial_alignment_set<T,overlap_type>::compute_vcover_clarkson(overlap_type
 			removed.insert(minind);
 			orig_weight_removed += orig_weights.at(minind);
 		}
-		cout << " remove: " << minind << " now removed: " << removed.size() << endl;
-		cout << "orig weight " << orig_weights.at(minind) << " clarkson weight " << minit->first << endl;
+//		cout << " remove: " << minind << " now removed: " << removed.size() << endl;
+//		cout << "orig weight " << orig_weights.at(minind) << " clarkson weight " << minit->first << endl;
 		update_remove(minind, edges, index_to_weight, weight_to_index);
-		cout << " size " << weight_to_index.size() << endl;
+//		cout << " size " << weight_to_index.size() << endl;
 
 
 		size_t numedges = 0;
 		for(size_t i=0; i<edges.size(); ++i) {
 			numedges+=edges.at(i).size();
 		}
-		cout << " num edges now " << numedges << endl;
+//		cout << " num edges now " << numedges << endl;
 
 		if(numedges==0) {
 			break;
@@ -750,10 +759,12 @@ void initial_alignment_set<T,overlap_type>::compute_vcover_clarkson(overlap_type
 	// add independent set
 	size_t at = 0;
 	double weight_in_independent_set = 0;
+	std::set<const pw_alignment*> independent_als;
 	for(size_t i=0; i<sorted_original_als.size(); i++) {
 		std::set<size_t>::iterator findi = removed.find(i);
 		if(findi == removed.end()) {
 			sorted_original_als.at(at) = backup_soa.at(i);
+			independent_als.insert(backup_soa.at(i));
 			weight_in_independent_set += orig_weights.at(i);
 			at++;
 		//	cout << " keep " << i << " weight " << orig_weights.at(i) << " degree " << edges.at(i).size() << endl;
@@ -761,18 +772,20 @@ void initial_alignment_set<T,overlap_type>::compute_vcover_clarkson(overlap_type
 	}
 	size_t indep_set_size = at;
 	double remainder_weight = 0;
+	find_als_weight(independent_als, removed, backup_soa,at);
 	// removed alignments after the others
-	for(std::set<size_t>::iterator it = removed.begin(); it!=removed.end(); ++it) {
-		sorted_original_als.at(at) = backup_soa.at(*it);
+/*	for(std::set<size_t>::iterator it = removed.begin(); it!=removed.end(); ++it) {
+		//XXX Instead we added the new oredering based on the gain value of each alignment in removed set divided by number of independent als which have overlap with that al. Alignments with the bigger weight go first
+	//	sorted_original_als.at(at) = backup_soa.at(*it);
 		remainder_weight += orig_weights.at(*it);
-		at++;
-	}
+	//	at++;
+	}*/
 	assert(at == sorted_original_als.size());
 
-	cout << " on " << backup_soa.size() << " alignments with total gain of " << total_in_weight << endl;
-	cout << " on " << backup_soa.size() << " alignments with total gain of " << max_gain << endl;
-	cout << " found an INDEPENDENT SET of " << indep_set_size << " alignments with total gain " << weight_in_independent_set <<endl;
-	cout << " remainder contains " << removed.size() << " alignments with total gain of " << remainder_weight << endl;
+//	cout << " on " << backup_soa.size() << " alignments with total gain of " << total_in_weight << endl;
+//	cout << " on " << backup_soa.size() << " alignments with total gain of " << max_gain << endl;
+//	cout << " found an INDEPENDENT SET of " << indep_set_size << " alignments with total gain " << weight_in_independent_set <<endl;
+//	cout << " remainder contains " << removed.size() << " alignments with total gain of " << remainder_weight << endl;
 
 /*
 	cout << endl << "New ordering: " << endl;
@@ -793,6 +806,111 @@ void initial_alignment_set<T,overlap_type>::compute_vcover_clarkson(overlap_type
 
 
 }
+
+template<typename T, typename overlap_type>
+void initial_alignment_set<T,overlap_type>::find_als_weight(std::set<const pw_alignment*>& independent_set, std::set<size_t>& removed_set, std::vector<const pw_alignment*>& backup, size_t & at){
+	for(std::set<const pw_alignment*>::iterator it = independent_set.begin();it != independent_set.end();it++){
+		const pw_alignment * p = *it;
+		alind.insert(p);
+	}
+	std::multimap<double, size_t> sorter; // first is the weight, second is al index
+	for(std::set<size_t>::iterator it = removed_set.begin();it!=removed_set.end();it++){
+		const pw_alignment * al = backup.at(*it);
+		std::vector<const pw_alignment *> result1;
+		std::vector<const pw_alignment *> result2;
+		alind.search_overlap(*al, 0, result1);
+		alind.search_overlap(*al, 1, result2);
+	//	assert(result1.size()!=0 || result2.size()!=0);
+		double g1 ,g2;
+		common_model.gain_function(*al,g1,g2);
+		double av_gain = (g1+g2)/2;
+		double weight = 0;
+		if(result1.size()+result2.size()>0){
+			weight = (av_gain/(result1.size()+result2.size()));
+		}else{
+			weight = (av_gain/1);
+		}
+		sorter.insert(make_pair(weight, *it));
+	}
+	for(std::multimap<double, size_t>::reverse_iterator rit = sorter.rbegin(); rit!=sorter.rend(); rit++) {
+		sorted_original_als.at(at) = backup.at(rit->second);
+		at++;
+	}
+}
+template<typename T, typename overlap_type>
+void initial_alignment_set<T,overlap_type>::finding_repeats(std::set< const pw_alignment* , compare_pointer_pw_alignment> & cc,std::vector<std::set< const pw_alignment* , compare_pointer_pw_alignment> >& overlapped, std::set< const pw_alignment* , compare_pointer_pw_alignment> & less_redundent){//XXX It can be written in a more efficient way, maybe i need to somehow integrate it with the old code
+		alignment_index alind1(data.numSequences());
+		for(std::set< const pw_alignment* , compare_pointer_pw_alignment>::iterator it = cc.begin(); it!=cc.end();it++){
+			const pw_alignment * p = *it;
+			alind1.insert(p);
+		}
+		std::set<const pw_alignment* , compare_pointer_pw_alignment> seen;
+		for(std::set< const pw_alignment* , compare_pointer_pw_alignment>::iterator it = cc.begin(); it!=cc.end();it++){	
+			std::set<const pw_alignment*, compare_pointer_pw_alignment> highly_overlapped;
+			const pw_alignment * p = *it;
+			std::set<const pw_alignment*, compare_pointer_pw_alignment>::iterator it1 = seen.find(p);
+			if(it1 == seen.end()){
+				highly_overlapped.insert(p);
+				seen.insert(p);
+				size_t left1,left2,right1,right2;
+				p->get_lr1(left1,right1);
+				p->get_lr2(left2,right2);
+				size_t length = p->alignment_length();
+				std::vector<const pw_alignment*> results;
+				alind1.search_overlap(*p, 0,results);
+			//	find_overlap_rate(left1,right1,results,)
+				for(size_t i =0; i < results.size();i++){
+					const pw_alignment * al = results.at(i);
+						size_t l1,l2,r1,r2;
+						al->get_lr1(l1,r1);
+						al->get_lr2(l2,r2);
+						if(l1<right1 && right1< r1){
+							double overlap = (right1-l1)/(double(length+al->alignment_length()));
+							if(overlap>0.95){
+								highly_overlapped.insert(al);//TODO maybe better check for 95% of this al here
+								seen.insert(al);
+							}
+						}
+						else if(left1<r1 && right1 > r1){
+							size_t overlap = (left1-r1)/(length+al->alignment_length());
+							if((overlap*100)>0.95){
+								highly_overlapped.insert(al);
+								seen.insert(al);
+							}
+
+
+						}
+						else if(l2<right1 && right1< r2){
+							size_t overlap = (right1-l2)/(length+al->alignment_length());
+							if((overlap*100)>0.95){
+								highly_overlapped.insert(al);
+								seen.insert(al);
+							}
+
+						}
+						else if(left1<r2 && right1 > r2){
+							size_t overlap = (left1-r2)/(length+al->alignment_length());
+							if((overlap*100)>0.95){
+								highly_overlapped.insert(al);
+								seen.insert(al);
+							}
+
+						}	
+				}
+				if(highly_overlapped.size() != 1){
+					overlapped.push_back(highly_overlapped);
+				}
+			}
+		}
+		for(std::set< const pw_alignment* , compare_pointer_pw_alignment>::iterator it = cc.begin(); it!=cc.end();it++){	
+			const pw_alignment * p = *it;
+			std::set<const pw_alignment*, compare_pointer_pw_alignment>::iterator it1 = seen.find(p);
+			if(it1 == seen.end()){
+				less_redundent.insert(p);
+			}
+		}
+	}
+
 template<typename overlap_type>
 void compute_cc_with_interval_tree<overlap_type>::add_the_interval(const pw_alignment* p){
 	size_t ref1 = p->getreference1();
@@ -929,7 +1047,7 @@ void compute_cc_avl<overlap_type>::get_cc(const pw_alignment & al , std::set <co
 	std::vector<size_t>reference(2);
 	reference.at(0) = al.getreference1();
 	reference.at(1) = al.getreference2();
-//#pragma omp parallel for num_threads(num_threads)
+#pragma omp parallel for num_threads(num_threads)
 	for(size_t i =0; i < 2;i++){
 	//	std::cout << "on reference "<< i << std::endl;
 	//	std::cout << reference.at(i) << " " << left.at(i)<< " "<< right.at(i)<<std::endl;
@@ -942,12 +1060,15 @@ void compute_cc_avl<overlap_type>::cc_step(size_t current , size_t left, size_t 
 //	std::cout<< "ref " << current << " l " << left << " r "<< right<<std::endl;
 	vector<const pw_alignment *> seen1;
 	std::multimap<size_t, std::pair<size_t, size_t> > touched_intervals;
+#pragma omp critical(seen)
+{
 	alind.super_search_overlap_and_remove(current, left, right, seen1, touched_intervals);
 //	std::cout << "seen1 "<<seen1.size() << " " << touched_intervals.size()<<std::endl;
 	for(size_t i=0; i<seen1.size(); ++i) {
 		seen.insert(seen1.at(i)); // TODO for now we keep seen, but it should not be necessary as all alignments are deleted from the index
 		cc.insert(seen1.at(i));
 	}
+}
 //	for(std::multimap<size_t, std::pair<size_t, size_t> >::iterator it= touched_intervals.begin(); it!=touched_intervals.end(); ++it) {
 //		size_t ref = it->first;
 //		size_t l = it->second.first;
@@ -1868,6 +1989,7 @@ void affpro_clusters<tmodel,overlap_type>::add_alignment(const pw_alignment & al
 					size_t right1;
 					size_t right2;
 					pw_alignment p =it->second.at(i);
+					p.print();
 					p.get_lr1(left1,right1);
 					p.get_lr2(left2,right2);
 					ref1 = p.getreference1();
@@ -1906,45 +2028,12 @@ void affpro_clusters<tmodel,overlap_type>::add_alignment(const pw_alignment & al
 	//	std::cout << "memberOfCluster size "<< memberOfCluster.size() << std::endl;
 	}
 	void finding_centers::center_frequency(std::map<std::string,std::vector<pw_alignment> > & alignmentsOfClusters, std::vector<std::map<size_t, std::string> > & centerOnseq){//it basically returns indices of centers on each sequence
-		setOfAlignments(alignmentsOfClusters);//set all the alignments on each sequence
+		setOfAlignments(alignmentsOfClusters);//set all the alignments on each sequence //TODO change the potential long center map (centersOfASequence) remove those which have less than allowed gap but dont go through the same direction!
 		findMemberOfClusters(alignmentsOfClusters);// returns strings that are member of a cluster in memberOfCluster
-	//	size_t index = 0;	
 		//First: fill in the "center_index" vector
 		for(std::map<std::string, std::vector<pw_alignment> >::iterator it2=alignmentsOfClusters.begin(); it2 != alignmentsOfClusters.end();it2++){ //This is 'al_of_a_ccs' map in the main function. It contains centers with both directions
 			std::string center = it2->first;
 			center_index.push_back(center);
-		//	std::vector<std::string> center_parts;
-		//	strsep(center, ":" , center_parts);
-		//	unsigned int dir = atoi(center_parts.at(0).c_str());
-		//	unsigned int ref = atoi(center_parts.at(1).c_str());
-		//	unsigned int left = atoi(center_parts.at(2).c_str());
-		//	int cent_index = 0;
-	/*		if(dir == 0){
-				//first check if the reverse does not exist and then add the index
-				stringstream cent;
-				cent<< 1 << ":" << ref << ":" << left;
-				std::map<std::string, int>::iterator it = oriented_index.find(cent.str());
-				if(it != oriented_index.end()){
-					assert(it->second < 0);
-					cent_index = -1*it->second;
-				}else{
-					cent_index = index;
-					index +=1;
-				}
-				oriented_index.insert(make_pair(it2->first,cent_index));
-			}else{//if dir = 1
-				stringstream cent;
-				cent<< 0 << ":" << ref << ":" << left;
-				std::map<std::string, int>::iterator it = oriented_index.find(cent.str());
-				if(it != oriented_index.end()){
-					assert(it->second > 0);
-					cent_index = -1*it->second;
-				}else{
-					cent_index = -1*index;
-					index +=1;
-				}
-				oriented_index.insert(make_pair(it2->first,cent_index));	
-			}*/
 		}
 		cout<< "center index size" << center_index.size()<<endl;
 		for(size_t i = 0; i< data.numSequences(); i++){
@@ -1989,13 +2078,41 @@ void affpro_clusters<tmodel,overlap_type>::add_alignment(const pw_alignment & al
 			std::map<size_t, std::vector<size_t> > AllConnectedOnes;
 			vector<size_t> vectorOfcenters;
 			std::vector<size_t> position_of_each_suffix; //First one is position, second of is center
+			bool direction = true;
+			size_t dir;
+			size_t dir1;
 			for(std::map<size_t, std::string>::iterator it = centersOnSequence.at(i).begin(); it != centersOnSequence.at(i).end();it++){
+				std::map<size_t, pw_alignment*>::iterator it1=AlignmentsFromClustering.at(i).find(it->first);
+				pw_alignment * al = it1->second;
+				size_t l1,l2,r1,r2;
+				al->get_lr1(l1,r1);
+				al->get_lr2(l2,r2);
+				if(l1 == it->first && al->getreference1()== i){
+					if(al->getbegin1()<al->getend1()){
+						dir1 = 1;
+					}else{
+						dir1 = 0;
+					}
+				}
+				if(l2 == it->first && al->getreference2() == i){
+					if(al->getbegin2()< al->getend2()){
+						dir1 = 1;
+					}else{
+						dir1 = 0;
+					}
+				}
 				if(vectorOfcenters.size()==0){
 					last_position = it->first;
 					first_position = it->first;
+					dir = dir1;
+				}
+				if(dir ==dir1){
+					direction = true;
+				}else{
+					direction = false;
 				}
 				std::cout << "position " << it->first <<std::endl;
-				if(it->first - last_position < ALLOWED_GAP){
+				if((it->first - last_position) < ALLOWED_GAP && direction == true){
 					if(vectorOfcenters.size()!=0){
 						std::cout << "smaller than ALLOWED_GAP! "<<std::endl;
 					}
@@ -2029,22 +2146,32 @@ void affpro_clusters<tmodel,overlap_type>::add_alignment(const pw_alignment & al
 							for(size_t k =j; k < vectorOfcenters.size();k++){
 								suffix.push_back(vectorOfcenters.at(k));
 							}
-							initial_suffixes.at(i).insert(make_pair(suffix,position_of_each_suffix.at(j)));//TODO what is happening to the fully reverse ones?
+							initial_suffixes.at(i).insert(make_pair(suffix,position_of_each_suffix.at(j)));
 						}
 					}
 					position_of_each_suffix.clear();
 					vectorOfcenters.clear();
 				}
-				std::map<size_t, pw_alignment*>::iterator it1=AlignmentsFromClustering.at(i).find(it->first);
-				pw_alignment * p = it1->second;
+				std::map<size_t, pw_alignment*>::iterator it2=AlignmentsFromClustering.at(i).find(it->first);
+				pw_alignment * p = it2->second;
 				size_t left1,left2,right1,right2;
 				p->get_lr1(left1,right1);
 				p->get_lr2(left2,right2);
 				if(left1 == it->first && p->getreference1()== i){
 					last_position = right1;
+					if(p->getbegin1()<p->getend1()){
+						dir = 1;
+					}else{
+						dir = 0;
+					}
 				}
 				if(left2 == it->first && p->getreference2() == i){
 					last_position = right2;
+					if(p->getbegin2()< p->getend2()){
+						dir = 1;
+					}else{
+						dir = 0;
+					}
 				}
 				std::cout << "last position "<< last_position << std::endl;
 			}
@@ -2393,7 +2520,7 @@ void affpro_clusters<tmodel,overlap_type>::add_alignment(const pw_alignment & al
 				successive_centers.at(seq_id) = centers.get_center(seq_id);
 				create_suffix(seq_id);
 			}else{
-				std::cout << "when highest is " << highest_index << std::endl;
+			//	std::cout << "when highest is " << highest_index << std::endl;
 				update_successive_centers(center_with_highest_gain,highest_index,seq_id);
 				create_suffix(seq_id);
 			}
@@ -3001,7 +3128,7 @@ void affpro_clusters<tmodel,overlap_type>::add_alignment(const pw_alignment & al
 			}
 			}
 		}
-	/*	std::cout<< "all the nodes:"<<std::endl;
+		std::cout<< "all the nodes:"<<std::endl;
 		for(size_t i = 0; i < nodes.size(); i++){
 			std::vector<size_t> node = nodes.at(i);
 			std::cout << "node at " << i << " is ";
@@ -3013,7 +3140,7 @@ void affpro_clusters<tmodel,overlap_type>::add_alignment(const pw_alignment & al
 		std::cout<<"nodes relation: "<<std::endl;
 		for(std::multimap<size_t , size_t>::iterator it = nodes_relation.begin(); it != nodes_relation.end(); it++){
 			std::cout << it->first <<" "<< it->second << std::endl;
-		}*/
+		}
 	}
 		count_branches();
 	}
@@ -3231,7 +3358,7 @@ void affpro_clusters<tmodel,overlap_type>::add_alignment(const pw_alignment & al
 	merging_centers::merging_centers(all_data & d, finding_centers & cent , suffix_tree & t):data(d), centers(cent),tree(t){}
 	merging_centers::~merging_centers(){}
 	void merging_centers::updating_centers(std::vector<size_t> & center_string, size_t & index){//replace 'center_string' with its new 'index' where ever 'center_sting' occurs on the tree and updates the number of happening.
-		//First we make a new tree ! //TODO
+		//First we make a new tree ! 
 		tree.create_tree(center_string,index);
 		std::vector<std::vector<size_t> > nodes = tree.get_nodes();
 		std::map<std::vector<size_t>, size_t > counts = tree.get_count(); // Updated number of happening for each updated string of centers(Notice that it has node number not the centers indices)
@@ -3463,7 +3590,7 @@ void affpro_clusters<tmodel,overlap_type>::add_alignment(const pw_alignment & al
 			}
 			long_centers.push_back(sequence_of_centers);
 			for(size_t i = 0; i < data.numSequences(); i++){
-				find_new_centers(it->second,sequence_of_centers,i, centersPositionOnASeq);//TODO !!!
+				find_new_centers(it->second,sequence_of_centers,i, centersPositionOnASeq);
 			}
 			sequence_of_centers.clear();
 		}
@@ -3685,6 +3812,7 @@ void affpro_clusters<tmodel,overlap_type>::add_alignment(const pw_alignment & al
 			for(size_t j = 0 ; j < data.numSequences(); j++){
 				std::cout << "num seq "<< j <<std::endl;
 				for(std::map<size_t , std::vector<std::string> >::iterator it = centersPositionOnASeq.at(j).begin(); it != centersPositionOnASeq.at(j).end(); it++){//It includes all the long centers on a sequence //TODO make a better container that one doesn't need to loop over!
+					size_t reverse = 0;
 					if(it->second == long_centers.at(i)){//If the long center is on that sequence
 						//first ref is considered on the forward strand of a sequence 
 						for(size_t k =0; k < it->second.size(); k++){
@@ -3769,6 +3897,7 @@ void affpro_clusters<tmodel,overlap_type>::add_alignment(const pw_alignment & al
 										for(size_t m = 0; m < sample.at(0).size();m++){
 											sample1.push_back(sample.at(0).at(m));
 											sample2.push_back(sample.at(1).at(m));
+											reverse++;
 										}
 									}
 									break;
@@ -3787,10 +3916,11 @@ void affpro_clusters<tmodel,overlap_type>::add_alignment(const pw_alignment & al
 										for(size_t m = 0; m < sample.at(1).size();m++){
 											sample1.push_back(sample.at(1).at(m));
 											sample2.push_back(sample.at(0).at(m));
+											reverse ++;
 										}
 									}
 									break;
-								}else if(p.getreference2() == j && cent_ref == j && cent_left == l2 && cent_left == left_of_a_sample){//Instead of using samples sequence bases should be used! Samples are including gaps! //XXX Just added cent_left == left_of_a_sample
+								}else if(p.getreference2() == j && cent_ref == j && cent_left == l2 && cent_left == left_of_a_sample){//Instead of using samples sequence bases should be used! Samples are including gaps! 
 									std::cout << "center on the ref - second sample "<<std::endl;
 									right = r2;
 								//	if(cent_dir == 0){ //seq from l2 to r2 for both refs
@@ -3853,7 +3983,7 @@ void affpro_clusters<tmodel,overlap_type>::add_alignment(const pw_alignment & al
 								for(std::map<size_t , std::string>::iterator leftOfNextCenter = centerOnSequence.at(j).begin(); leftOfNextCenter != centerOnSequence.at(j).end(); leftOfNextCenter++){
 									size_t left_1,right_1;
 									al.get_lr1(left_1,right_1);
-									if (it->second.at(i+1)== leftOfNextCenter->second && leftOfNextCenter->first >= left_1 && leftOfNextCenter->first <= right_1){//TODO a center can happen couple of times on a sequence, the right one should be chosen!
+									if (it->second.at(i+1)== leftOfNextCenter->second && leftOfNextCenter->first >= left_1 && leftOfNextCenter->first <= right_1){//XXX a center can happen couple of times on a sequence, the right one should be chosen!
 										left_of_next_center = leftOfNextCenter->first;
 										std::cout<< "left of next center is set! " << it->second.at(i+1) <<" "<< left_of_next_center <<std::endl;
 										break;
@@ -3907,9 +4037,22 @@ void affpro_clusters<tmodel,overlap_type>::add_alignment(const pw_alignment & al
 					//	for(size_t m =0; m < al_base.size();m++){
 					//		assert(al_base.at(m)==seq_base.at(m));
 					//	}
-						new_cent->second.push_back(al);
-						std::cout << "al is added! "<<std::endl;
-						al.print();
+						std::cout << "reverse is " << reverse << " " << it->second.size()<<std::endl;
+						if(reverse==it->second.size()){//TODO it is not the most thoughtful way, the better way is making it in a right direction from the scratch, it is just to see if it works this way
+							pw_alignment p;
+							al.get_reverse(p);
+							assert((p.getbegin2()== length -1) && (p.getend2()==0));
+							p.setbegin2(0);
+							p.setend2(length-1);
+							new_cent->second.push_back(p);
+							std::cout<< "p is added "<<std::endl;
+							p.print();
+
+						}else{
+							new_cent->second.push_back(al);
+							std::cout << "al is added! "<<std::endl;
+							al.print();
+						}
 					}// no break is needed at the end of this if loop becasue a long center can occur more than one time on a sequence
 				}
 			}
@@ -3965,6 +4108,8 @@ void affpro_clusters<tmodel,overlap_type>::add_alignment(const pw_alignment & al
 						size_t end = p.getend2();
 						p.setbegin2(end);
 						p.setend2(begin);
+						std::cout<< "negetive reverse exists: "<<std::endl;
+						p.print();
 					}
 				}else{
 					pw_alignment al = it3->second.at(0);
@@ -3975,6 +4120,8 @@ void affpro_clusters<tmodel,overlap_type>::add_alignment(const pw_alignment & al
 						size_t end = p.getend2();
 						p.setbegin2(end);
 						p.setend2(begin);
+						std::cout<< "negetive reverse exists: "<<std::endl;
+						p.print();
 					}
 				}
 			}

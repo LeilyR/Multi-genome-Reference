@@ -11,14 +11,18 @@
 #include "dynamic_mc.hpp"
 #include "overlap.hpp"
 #include "model.hpp"
+#include "strongly_connected_alignments.hpp"
 #include "encoder.hpp"
 #include "dynamic_encoder.hpp"
 #include "dynamic_decoder.hpp"
 #include "test.hpp"
 #include "graph.hpp"
+//suffix tree:
+#include "suffix_tree.hpp"
 //interval tree:
 #include "intervals.hpp"
 #include "alignment_index.hpp"
+#include <omp.h>
 
 #define NO_MAKEFILE
 #include "dlib/entropy_encoder/entropy_encoder_kernel_1.h"
@@ -1710,9 +1714,9 @@ int do_mc_model(int argc, char * argv[]) {
 //	en.arithmetic_encoding_centers(alignments_in_a_cluster,outs,*enc);
 //	en.arithmetic_encoding_alignment(weight,member_of_cluster,alignments_in_a_cluster,outs,*enc);
 //	en.write_to_stream(alignments_in_a_cluster,outs);
-	en.al_encode_with_long_center(centerOnSequence,long_center_weight,alignments_in_a_cluster, centersPositionOnASeq, member_of_cluster ,outs, *enc,new_centers);
+//	en.al_encode_with_long_center(centerOnSequence,long_center_weight,alignments_in_a_cluster, centersPositionOnASeq, member_of_cluster ,outs, *enc,new_centers);
 //	en.weight_flags(new_centers,alignments_in_a_cluster,outs);
-//	en.al_encoding(weight,member_of_cluster,alignments_in_a_cluster,outs,*enc);
+	en.al_encoding(weight,member_of_cluster,alignments_in_a_cluster,outs,*enc);
 //	en.al_encode_long_center_optimized_flags(centerOnSequence,long_center_weight,alignments_in_a_cluster, centersPositionOnASeq, member_of_cluster,long_centers,new_centers ,outs, *enc);
 	delete enc;
 	outs.close();
@@ -1800,14 +1804,17 @@ int do_dynamic_mc_model(int argc, char * argv[]) {
 	std::set<const pw_alignment*, compare_pointer_pw_alignment> al_with_pos_gain; 
 //	std::multimap<double, const pw_alignment*> sorter;
 //	double sumgain = 0;
-#pragma omp parallel for num_threads(num_threads)
+#pragma omp parallel for num_threads(num_threads) schedule(dynamic)
 	for(size_t i =0; i < data.numAlignments();i++){
 		const pw_alignment & al = data.getAlignment(i);
 		double g1 ,g2;
 		m.gain_function(al,g1,g2);
 		double av_gain = (g1+g2)/2 - cluster_base_cost;
 		if(av_gain > 0){
+#pragma omp critical(gain)
+{
 			al_with_pos_gain.insert(&al);
+}
 		//	sorter.insert(std::make_pair(av_gain, &al));
 		//	sumgain += av_gain;
 		}
@@ -1901,7 +1908,7 @@ int do_dynamic_mc_model(int argc, char * argv[]) {
 		std::vector< std::set<const pw_alignment* , compare_pointer_pw_alignment> > cc_cluster_in; //have shorter length than original alignemnts
 		std::cout<< "using the cc again!"<<std::endl;
 		compute_cc_type occ(cc_overlap.at(i), data.numSequences(),1);
-		occ.compute(cc_cluster_in);//Here we find fully overlapped pieces and save them in a single component, They are oredered by their gain value
+		occ.compute(cc_cluster_in);//Here we find fully overlapped pieces and save them in a single component, They are oredered by their gain value //TODO!!!!  returns several times the same al
 		second_cc_time_local = clock() - second_cc_time_local;
 	/*	for(size_t i=0; i<cc_cluster_in.size()-1; i++) {//A test function that chckes overlap between components. There shouldn't be any overlap between them.
 			std::cout << "cc cluster in  "<< i << " contains " << cc_cluster_in.at(i).size() << " alignments" << std::endl;
@@ -1920,7 +1927,7 @@ int do_dynamic_mc_model(int argc, char * argv[]) {
 			std::cout << "cc cluster in  "<< i << " contains " << cc_cluster_in.at(i).size() << " alignments" << std::endl;
 			for(std::set<const pw_alignment*, compare_pointer_pw_alignment>::iterator it = cc_cluster_in.at(i).begin(); it != cc_cluster_in.at(i).end();it++){
 				const pw_alignment * p = *it;
-				p->print();
+			//	p->print();
 //				double g1,g2;
 //				m.gain_function(*p,g1,g2);
 //				std::cout << "g1 " << g1 << " g2 " << g2 << std::endl;
@@ -2144,6 +2151,11 @@ int do_dynamic_mc_model(int argc, char * argv[]) {
 		merging_centers merg(data, centers, tree);
 		//From this point on orientation matters! It shoud be taken into account in counting the number of each center happening when we are looking for the long centers!
 		centers.center_frequency(al_of_a_ccs,centerOnSequence);//All the centers of each sequence are detected and centerOnSequence is filled in. It contains all the cneters on each sequence. 
+		std::cout<< "centers on sequence "<<std::endl;
+		for(std::map<size_t, std::string >::iterator test_it = centerOnSequence.at(0).begin(); test_it != centerOnSequence.at(0).end(); test_it++){
+				std::cout<<test_it->first<< " "<< test_it->second<< " "<<std::endl;
+		}
+
 		merg.adding_new_centers(local_long_centers,centersPositionOnASeq);//After merging a group of centers we iteratively create new suffixes and a new tree based on them, then recalculate the gains again. At the end those with gain>0 go to the long_centers and centersPositionOnASeq.//TODO seems all the long centers are not added.
 		std::cout<< "new centers are made! "<<std::endl;
 		for(size_t j  =0; j < local_long_centers.size();j++){
@@ -2159,7 +2171,7 @@ int do_dynamic_mc_model(int argc, char * argv[]) {
 		merg.create_alignment(local_long_centers,new_centers,al_of_a_ccs,centersPositionOnASeq,centerOnSequence);//Here we fill in the 'new_centers' with longer alignments in the way that center is always the second ref
 
 	} // for connected components
-	//Short centers are added to the long centers container. //TODO Think about simplifying it! XXX Note that second ref could be backward
+	//Short centers are added to the long centers container. //TODO Think about simplifying it! XXX Note that second both ref can be backwards
 	std::map<std::string, std::vector<pw_alignment> > intermediate;
 	for(std::map<std::vector<std::string>, std::vector<pw_alignment> >::iterator it = new_centers.begin(); it != new_centers.end(); it++){
 		std::vector<std::string> connected_center = it->first;
@@ -2444,8 +2456,8 @@ int do_dynamic_mc_model(int argc, char * argv[]) {
 	clock_t graph_ma_time = clock();
 
 	// write graph result in maf format
-//	write_graph_maf(graphout, alignments_in_a_cluster, data);//includes clusters with no associated member.
-	write_graph_maf_with_long_centers(graphout,new_centers,data);//TODO It can be changed in a way that includes long centers themselves as well.
+	write_graph_maf(graphout, alignments_in_a_cluster, data);//includes clusters with no associated member.
+//	write_graph_maf_with_long_centers(graphout,new_centers,data);//TODO It can be changed in a way that includes long centers themselves as well.
 
 	graph_ma_time = clock() - graph_ma_time;
 
@@ -2634,8 +2646,8 @@ int do_dynamic_mc_model(int argc, char * argv[]) {
 	use_encode en(data,m,wrap);
 	if(0!=encoding_out.compare("noencode")){
 		dlib::entropy_encoder_kernel_1 * enc = new dlib::entropy_encoder_kernel_1();
-	//	en.al_encode(weight,member_of_cluster,alignments_in_a_cluster,outs,*enc);
-		en.al_encode_with_long_center(centerOnSequence,long_center_weight,alignments_in_a_cluster, centersPositionOnASeq, member_of_cluster ,outs, *enc,new_centers);
+		en.al_encode(weight,member_of_cluster,alignments_in_a_cluster,outs,*enc);
+	//	en.al_encode_with_long_center(centerOnSequence,long_center_weight,alignments_in_a_cluster, centersPositionOnASeq, member_of_cluster ,outs, *enc,new_centers);
 		delete enc;
 		outs.close();
 	}
@@ -2800,8 +2812,8 @@ int do_read_data(int argc, char * argv[]) {
 	size_t seq_length = 0;
 	for(size_t i =0; i < data.numSequences();i++){
 		seq_length += data.getSequence(i).length();
-		if(i == 114){
-			for(size_t j = 0; j < 30; j++){
+		if(i == 4){
+			for(size_t j = 518; j < 584; j++){
 				std::cout << data.getSequence(i).at(j)<< " " ;
 			}
 			std::cout<< "" <<std::endl;
@@ -2874,7 +2886,7 @@ int do_test_new_cc(int argc, char * argv[]) {
 	std::set<const pw_alignment*, compare_pointer_pw_alignment> al_with_pos_gain; 
 #pragma omp parallel for num_threads(num_threads)
 	for(size_t i =0; i < data.numAlignments();i++){
-//	for(size_t i =0; i < 5;i++){
+//	for(size_t i =0; i < 150;i++){
 //	if(i%1000==0) std::cout << ".";
 //	for(size_t i =0; i < 16;i++){
 		const pw_alignment & al = data.getAlignment(i);
@@ -2884,6 +2896,24 @@ int do_test_new_cc(int argc, char * argv[]) {
 		if(av_gain > 0){
 			al_with_pos_gain.insert(&al);
 		//	al.print();
+		/*	for(size_t j =0; j< data.numAlignments();j++){
+				const pw_alignment & p = data.getAlignment(j);
+				if(p.getreference1()==al.getreference1() && p.getreference2()==al.getreference2()&& p.getbegin1()==al.getend1()&&p.getend1()==al.getbegin1()&&p.getbegin2()==al.getend2()&& p.getend2()==al.getbegin2()){
+					std::cout<< "warning!"<<std::endl;
+					p.print();
+					std::cout<< " " <<std::endl;
+					al.print();
+					break;
+				}
+				if(p.getreference1()==al.getreference2() && p.getreference2()==al.getreference1()&& p.getbegin1()==al.getend2()&&p.getend1()==al.getbegin2()&&p.getbegin2()==al.getend1()&& p.getend2()==al.getbegin1()){
+					std::cout<< "warning!"<<std::endl;
+					p.print();
+					std::cout<< " " <<std::endl;
+					al.print();
+					break;
+				}
+			
+			}*/
 		}
 	}
 	std::cout << std::endl;
@@ -2921,15 +2951,57 @@ int do_test_new_cc(int argc, char * argv[]) {
 	for(size_t i=0; i<ccs.size(); ++i) {
 		std::set< const pw_alignment*, compare_pointer_pw_alignment> & cc = ccs.at(i);
 		std::cout << "this cc size is "<< cc.size() << std::endl;
-		use_ias ias(data,cc, m, cluster_base_cost,num_threads);
-		ias.compute(cc_overlap.at(i));
-		std::cout<< "DONE on CC "<< i << " with " << cc_overlap.at(i).size() << " fragments "<<std::endl;
-		cc_overlap.at(i).test_partial_overlap();
+	//	for(std::set< const pw_alignment* , compare_pointer_pw_alignment>::iterator it = cc.begin();it != cc.end();it++){
+	//		const pw_alignment * p = *it;
+	//		p->print();
+	//	}
+		detect_overlap_rate ov_rate(data.numSequences(),cc);
+	//	std::vector<std::multimap<size_t , size_t> > adjucents; // each nodes and its adjucents
+		std::vector<std::set< const pw_alignment* , compare_pointer_pw_alignment> > strongly_connected;
+		ov_rate.compute(strongly_connected);
+		std::cout<< "strongly connected size is " << strongly_connected.size() <<std::endl;
+		for(size_t i =0;i< strongly_connected.size();i++){
+			std::cout << "at i " << i <<std::endl;
+			for(std::set< const pw_alignment* , compare_pointer_pw_alignment>::iterator it = strongly_connected.at(i).begin();it != strongly_connected.at(i).end();it++){
+				const pw_alignment * p = *it;
+				p->print();
+				size_t id = ov_rate.get_id(p);
+				std::cout << id << std::endl;
+			}
+		}
+
+		exit(0);
+//		assert(adjucents.size() == strongly_connected.size());
+		for(size_t j =0; j < strongly_connected.size();j++){
+			biconnected_component bicomp(ov_rate,strongly_connected.at(j));
+		}
+//		use_ias ias(data,cc, m, cluster_base_cost,num_threads);
+		std::set< const pw_alignment* , compare_pointer_pw_alignment> less_redundent;
+	//	std::cout <<"repeats size is "<< repeats.size()<<std::endl;
+	//	for(size_t j =0; j< repeats.size();j++){
+	//		std::cout<< repeats.at(j).size()<<std::endl;
+	//		for(std::set<const pw_alignment*>::iterator it = repeats.at(j).begin();it != repeats.at(j).end();it++){
+	//			const pw_alignment* al = *it;
+	//			al->print();
+	//		}
+	//		use_ias ias(data,repeats.at(j), m, cluster_base_cost,num_threads);
+	//		ias.compute(cc_overlap.at(i));
+			std::cout<< "DONE on CC "<< i << " with " << cc_overlap.at(i).size() << " fragments "<<std::endl;
+		//	std::set<pw_alignment, compare_pw_alignment> al_in_overlap = cc_overlap.at(i).get_all();
+		//	for(std::set<pw_alignment,compare_pw_alignment>::iterator it = al_in_overlap.begin(); it != al_in_overlap.end();it++){
+		//		const pw_alignment & p1 = *it;
+		//		p1.print();
+		//	}
+	//	}
+	//	ias.compute(cc_overlap.at(i));
+	//	std::cout<< "DONE on CC "<< i << " with " << cc_overlap.at(i).size() << " fragments "<<std::endl;
+	//	cc_overlap.at(i).test_partial_overlap();
+		std::cout << "no partial overlap! "<<std::endl;
 		std::vector< std::set<const pw_alignment* , compare_pointer_pw_alignment> > cc_cluster_in; 
-		cc_type occ(cc_overlap.at(i), data.numSequences(),1);
-		occ.compute(cc_cluster_in);
+	//	cc_type occ(cc_overlap.at(i), data.numSequences(),1);
+	//	occ.compute(cc_cluster_in);
 		std::cout << "cluster in size: " << cc_cluster_in.size() <<std::endl;
-		for(size_t j =0; j < cc_cluster_in.size();j++){
+	/*	for(size_t j =0; j < cc_cluster_in.size();j++){
 			for(std::set<const pw_alignment*, compare_pointer_pw_alignment>::iterator it = cc_cluster_in.at(j).begin(); it != cc_cluster_in.at(j).end();it++){
 				const pw_alignment * p = *it;
 				p->print();
@@ -2938,7 +3010,7 @@ int do_test_new_cc(int argc, char * argv[]) {
 				assert((g1+g2)/2 >= 0);
 				std::cout << "g1 " << g1 << " g2 " << g2 << std::endl;
 			}
-		}
+		}*/
 
 	}
 	std::cout << "cutting is over!"<<std::endl;

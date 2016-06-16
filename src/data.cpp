@@ -795,22 +795,25 @@ void all_data::read_fasta_maf(std::string fasta_all_sequences, std::string maf_a
 						pw_alignment al(al1, al2, start1, start2, incl_end1, incl_end2, idx1, idx2);
 						//Check if the reverse of the alignment exists
 						pw_alignment p;
+						pw_alignment p1;
 						al.get_reverse(p);
+					//	p.print();
 						std::set<pw_alignment, compare_pw_alignment>::iterator find_al = setOfAls.find(p);
 						if(find_al!=setOfAls.end()){
 							rev_skip = true;
 							skip_reverse ++;
+						//	std::cout<< "skip reverse"<<std::endl;
 						}
-					//		pw_alignment & p = alignments.at(i);
-					//		if(p.getreference1()==idx1 && p.getreference2() == idx2 && start1 == p.getend1() && incl_end1 == p.getbegin1() && start2 == p.getend2() && incl_end2 == p.getbegin2()){
-					//			rev_skip = true;
-					//			skip_reverse ++;
-					//			break;
-					//		}else if(p.getreference1()==idx2 && p.getreference2() == idx1 &&  start1 == p.getend2() && incl_end1 == p.getbegin2() && start2 == p.getend1() && incl_end2 == p.getbegin1()){
-					//			rev_skip = true;
-					//			skip_reverse ++;
-					//			break;
-					//		}
+					//	pw_alignment & p = alignments.at(i);
+					//	if(p.getreference1()==idx1 && p.getreference2() == idx2 && start1 == p.getend1() && incl_end1 == p.getbegin1() && start2 == p.getend2() && incl_end2 == p.getbegin2()){
+					//		rev_skip = true;
+					//		skip_reverse ++;
+					//		break;
+					//	}else if(p.getreference1()==idx2 && p.getreference2() == idx1 &&  start1 == p.getend2() && incl_end1 == p.getbegin2() && start2 == p.getend1() && incl_end2 == p.getbegin1()){
+					//		rev_skip = true;
+					//		skip_reverse ++;
+					//		break;
+					//	}
 					//	}
 						if(rev_skip == false){
 							bool skip = false;
@@ -838,6 +841,8 @@ void all_data::read_fasta_maf(std::string fasta_all_sequences, std::string maf_a
 
 								}else{
 									alignments.push_back(al);
+									setOfAls.insert(al);
+								//	al.print();
 								}
 							}
 						}
@@ -871,6 +876,7 @@ void all_data::read_fasta_maf(std::string fasta_all_sequences, std::string maf_a
 		std::cerr << "Error: cannot read: " << maf_all_alignments << std::endl;
 		exit(1);
 	}
+	std::cout << "set of als size is "<< setOfAls.size()<<std::endl;
 //	std::vector<pw_alignment> intermediate;//TODO add it as a condition at the beginning when you skip
 //	for(size_t i = 0; i < alignments.size();i++){
 //		pw_alignment p = alignments.at(i);
@@ -1425,7 +1431,7 @@ void overlap::test_multimaps() {
 
 		std::pair< std::multimap<size_t, const pw_alignment &>::iterator, std::multimap<size_t, const pw_alignment &>::iterator > eqre2 =
 		als_on_reference.at(remove->getreference2()).equal_range(remove->getend2());
-		for(std::multimap<size_t, const pw_alignment &>::iterator it = eqre2.first; it!=eqre2.second; ++it) {
+		for(std::multimap<size_t, const pw_alignment &>::iterator it = eqre2.first; it!=eqre2.second; ++it){
 			if ( remove->equals(it->second) ) {
 				found++;
 				break;

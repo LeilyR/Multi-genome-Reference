@@ -52,11 +52,12 @@ void alignment_index::search_overlap(const pw_alignment & al, const size_t & ref
 }
 void alignment_index::search_overlap(const size_t & reference, const size_t & left, const size_t & right, std::vector<const pw_alignment *> & result)const{
 	trees.at(reference).overlap_search(left, right, result);
-	if(result.size()>0){
-	//	std::cout << result.at(0) <<std::endl;
-		const pw_alignment* p = result.at(0);
-	//	p->print();
-	}
+	std::cout<< "result size is "<< result.size()<<std::endl;
+//	if(result.size()>0){
+//		std::cout << result.at(0) <<std::endl;
+//		const pw_alignment* p = result.at(0);
+//		p->print();
+//	}
 
 }
 

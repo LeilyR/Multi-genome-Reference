@@ -25,7 +25,7 @@ typedef  std::set<const pw_alignment*, compare_pw_alignment> alset;
 template<typename T, typename overlap_type>
 class initial_alignment_set {
 	public:
-	initial_alignment_set(const all_data & d, const T & a_model, double base_cost): data(d), common_model(a_model) {//TODO Since we don't use it for the moment, I am not so sure if this constructor works correctly. I have some doubt that it doesn't return the same alignment in sorter. It should be checked!
+	initial_alignment_set(const all_data & d, const T & a_model, double base_cost): data(d), common_model(a_model),alind(d.numSequences()){//TODO Since we don't use it for the moment, I am not so sure if this constructor works correctly. I have some doubt that it doesn't return the same alignment in sorter. It should be checked!
 		this->base_cost = base_cost;
 		std::multimap<double, const pw_alignment&> sorter;
 		double sumgain = 0;
@@ -57,12 +57,12 @@ class initial_alignment_set {
 	//	assert(pos == sorter.size());
 	//	std::cout << " " << sorter.size() << " input alignments, total gain: " << sumgain << " bit " << std::endl;
 	}
-	initial_alignment_set(const all_data & d, const std::set< const pw_alignment*, compare_pointer_pw_alignment> & als, const T & a_model, double base_cost, size_t & num_threads): data(d), common_model(a_model) {
+	initial_alignment_set(const all_data & d, const std::set< const pw_alignment*, compare_pointer_pw_alignment> & als, const T & a_model, double base_cost, size_t & num_threads): data(d), common_model(a_model),alind(d.numSequences()){
 		this->base_cost = base_cost;
 		this->num_threads = num_threads;
 		std::multimap<double, const pw_alignment*> sorter;
 		double sumgain = 0;
-		std::cout << "calculating vgain! "<<std::endl;
+	//	std::cout << "calculating vgain! "<<std::endl;
 		for(std::set<const pw_alignment* , compare_pointer_pw_alignment>::iterator it = als.begin(); it!=als.end(); it++) { 
 			const pw_alignment * cur = *it;
 			
@@ -127,6 +127,7 @@ class initial_alignment_set {
 	}*/
 
 	~initial_alignment_set() {}
+	void finding_repeats(std::set< const pw_alignment* , compare_pointer_pw_alignment> &, std::vector<std::set< const pw_alignment* , compare_pointer_pw_alignment> >&, std::set< const pw_alignment* , compare_pointer_pw_alignment> &);
 
 	void compute(overlap_type & o);
 	void compute_simple(overlap_type & o);
@@ -137,6 +138,7 @@ class initial_alignment_set {
 	(Clarkson, KL. A modification of the greedy algorithm for vertex cover. Information Processing Letters. 1983.)
 */
 	void compute_vcover_clarkson(overlap_type & o);
+	void find_als_weight(std::set<const pw_alignment*>&, std::set<size_t>&, std::vector<const pw_alignment*>&, size_t & ); //It weight the remaining alignments and order them based on their weight
 	void compute_simple_lazy_splits(overlap_type & o);
 	void lazy_split_insert_step
 		(overlap_type & ovrlp, size_t level, size_t & rec_calls, const pw_alignment & al, std::vector<pw_alignment> & inserted_alignments, vector<pw_alignment> & removed_alignments, double & local_gain);
@@ -169,6 +171,8 @@ class initial_alignment_set {
 	double max_gain;
 	double result_gain;
 	size_t used_alignments;
+	alignment_index alind;
+
 
 
 	void update_remove(size_t index, std::vector<std::set<size_t> > & edges, std::map<size_t, double> & index_to_weight, std::multimap<double, size_t> & weight_to_index);
@@ -269,7 +273,7 @@ main.cpp:rse_iterator rit = sorter.rbegin(); rit!=sorter.rend(); ++rit) {
 
 */
 template<typename overlap_type>
-class compute_cc_with_interval_tree{ //XXX this interval tree is designed by Eric Garisson
+class compute_cc_with_interval_tree{ //XXX this interval tree is designed by Erik Garisson
 	public:
 	compute_cc_with_interval_tree(const std::set<const pw_alignment*, compare_pointer_pw_alignment> & als_in, size_t num_sequences):intervals(num_sequences),trees(num_sequences){
 		for(std::set<const pw_alignment*, compare_pointer_pw_alignment>::const_iterator it = als_in.begin(); it!=als_in.end(); it++){

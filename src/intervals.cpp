@@ -196,7 +196,7 @@ void avl_interval_tree<T>::overlap_search(const size_t & left, const size_t & ri
 
 	if(root!=NULL) {
 		overlap_search_at_node(root, left, right, results);
-	//	std::cout<< "ROOT is not NULL"<<std::endl;
+		std::cout<< "ROOT is not NULL"<<std::endl;
 	}
 
 #if DO_SLOW_CHECKS
@@ -321,7 +321,7 @@ void avl_interval_tree<T>::join_intervals(std::vector<std::pair<size_t, size_t> 
 
 template <typename T>	
 void avl_interval_tree<T>::debug_print() const {
-//	std::cout << " AVL Interval tree printout: " << std::endl;
+	std::cout << " AVL Interval tree printout: " << std::endl;
 	if(root!=NULL) {
 		size_t id = 0;
 		debug_print_at_node(root, 0, id, 0);
@@ -597,7 +597,7 @@ void avl_interval_tree<T>::overlap_search_at_node(node_type * atn, const size_t 
 		overlap_search_at_node(atn->str_center, left, right, results);
 	}
 	if(right >= atn->left && left <= atn->right) {
-	//	std::cout << " FOUND l " << atn->left << " r " << atn->right << " d " << atn->value << std::endl;
+		std::cout << " FOUND l " << atn->left << " r " << atn->right << " d " << atn->value << std::endl;
 		results.push_back(atn->value);
 	}
 }
@@ -752,13 +752,13 @@ void avl_interval_tree<T>::move_subtree(node_type * from, node_type * to) { //XX
 		move_subtree(strc, to);
 	}
 	if(from->str_left!=NULL) {
-		std::cout<< "on left"<<std::endl;
+	//	std::cout<< "on left"<<std::endl;
 		prune_subtree(strl);
 		move_subtree(strl, to);
 	}
 	if(from->str_right!=NULL) {
-		std::cout << "on right"<<std::endl;
-		std::cout<<strr->parent << " l " << strr->parent->left <<std::endl;
+	//	std::cout << "on right"<<std::endl;
+	//	std::cout<<strr->parent << " l " << strr->parent->left <<std::endl;
 		prune_subtree(strr);
 		move_subtree(strr, to);
 	}
@@ -774,7 +774,7 @@ void avl_interval_tree<T>::move_subtree(node_type * from, node_type * to) { //XX
 
 template<typename T>
 void avl_interval_tree<T>::delete_subtree(node_type * n) {
-	std::cout << " delete subtree l " << n->left << " r " << n->right << " d " << n->value << std::endl;
+//	std::cout << " delete subtree l " << n->left << " r " << n->right << " d " << n->value << std::endl;
 	assert(n->parent==NULL);
 	node_type * strc = n->str_center;
 	node_type * strl = n->str_left;
@@ -870,7 +870,7 @@ void avl_interval_tree<T>::update_max_right_after_pruning_node(node_type * n){ /
 				if(n1c!=NULL) {
 					if(n1->max_right < n1c->max_right) n1->max_right = n1c->max_right;
 				}
-				std::cout << n1->max_right;
+			//	std::cout << n1->max_right;
 				n1 = n1->parent;
 			}else break;
 		}
