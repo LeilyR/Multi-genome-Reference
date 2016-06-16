@@ -2798,7 +2798,7 @@ int do_test_new_cc(int argc, char * argv[]) {
 	typedef dynamic_mc_model use_model;
 //	typedef compute_cc_with_icl cc_type;
 	typedef compute_cc_avl cc_type;
-	if(argc < 6) {
+	if(argc < 5) {
 		usage();
 		cerr << "Program: test_cc" << std::endl;
 		cerr << "Parameters:" << std::endl;
@@ -2806,6 +2806,7 @@ int do_test_new_cc(int argc, char * argv[]) {
 		cerr << "* maf file containing alignments of sequences contained in the fasta file" << std::endl;
 		cerr << "* output binary compressed file " << std::endl;
 		cerr << "* number of threads to use (optional, default 1)" << std::endl;
+		return 1;
 
 	}
 	size_t num_threads = 1;
@@ -2813,7 +2814,9 @@ int do_test_new_cc(int argc, char * argv[]) {
 	std::string maffile(argv[3]);
 	std::string encoding_out(argv[4]);
 	std::ofstream outs(encoding_out.c_str(),std::ofstream::binary);
-
+	if(argc>5) {
+		num_threads = atoi(argv[5]);
+	}
 // Read all data
 	all_data data;
 	data.read_fasta_maf(fastafile, maffile);
@@ -2835,7 +2838,10 @@ int do_test_new_cc(int argc, char * argv[]) {
 		m.gain_function(al,g1,g2);
 		double av_gain = (g1+g2)/2 ;
 		if(av_gain > 0){
+#pragma omp critical(al_insert)
+{
 			al_with_pos_gain.insert(&al);
+}
 		//	al.print();
 		}
 	}
@@ -2845,9 +2851,18 @@ int do_test_new_cc(int argc, char * argv[]) {
 	std::cout << "al with postive gains are kept " << al_with_pos_gain.size() <<std::endl;
 //	compute_cc_with_interval_tree component(al_with_pos_gain,data.numSequences());
 //	compute_cc_with_icl cccs(al_with_pos_gain, data.numSequences(),num_threads);
+	std::cout << " now we compute connected components " << std::endl;
+	clock_t cc_init_time = clock();
 	cc_type cccs(al_with_pos_gain, data.numSequences(), num_threads);
+	cc_init_time = clock() - cc_init_time;
+	std::cout << "CC Init time " << (double)cc_init_time/CLOCKS_PER_SEC << std::endl;
 	std::vector<std::set<const pw_alignment* , compare_pointer_pw_alignment> > ccs; 
+	clock_t cc_comp_time = clock();
 	cccs.compute(ccs); //fill in ccs, ordered by size(Notice that they are just connected to each other if they have overlap!)
+	cc_comp_time = clock() - cc_comp_time;
+
+	std::cout << "CC Init time " << (double)cc_init_time/CLOCKS_PER_SEC << std::endl;
+	std::cout << "CC Comp time " << (double)cc_comp_time/CLOCKS_PER_SEC << std::endl;
 //	component.compute(ccs);
 	std::cout<< "ccs are made!"<<std::endl;
 	size_t counter = 0;
@@ -2866,6 +2881,8 @@ int do_test_new_cc(int argc, char * argv[]) {
 		}
 	}
 
+	std::cout << "CC Init time " << (double)cc_init_time/CLOCKS_PER_SEC << std::endl;
+	std::cout << "CC Comp time " << (double)cc_comp_time/CLOCKS_PER_SEC << std::endl;
 	std::cout<< "returned number is "<< counter <<std::endl;
 	return 0;
 }

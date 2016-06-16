@@ -314,43 +314,56 @@ class compute_cc_with_interval_tree{
 
 class compute_cc_avl {
 	public:
-	compute_cc_avl(const std::set<const pw_alignment*, compare_pointer_pw_alignment> & als_in, size_t num_sequences, size_t num_threads):alind(num_sequences){//Is used to create partially overlapped connected components
+	compute_cc_avl(const std::set<const pw_alignment*, compare_pointer_pw_alignment> & als_in, size_t num_sequences, size_t num_threads): alind(NULL) {//Is used to create partially overlapped connected components
 		this->num_threads = num_threads;
 	//	RIGHT = 0;
+		std::cout << " CC AVL build index on " << als_in.size() << std::endl << std::flush;
+		std::multimap<size_t, const pw_alignment *> sorter;
 		for(std::set<const pw_alignment*, compare_pointer_pw_alignment>::const_iterator it = als_in.begin(); it!=als_in.end(); it++){
 			const pw_alignment * al = *it;
-			alind.insert(al);
+			size_t len = al->alignment_length();
+			sorter.insert(std::make_pair(len, al));
+		}
+		std::cout << " Sorting done " << sorter.size()<< std::endl;
+		std::vector<const pw_alignment *> sorted_als(sorter.size());
+		size_t num = 0;
+		for(std::multimap<size_t, const pw_alignment *>::iterator it = sorter.begin(); it!=sorter.end(); ++it) {
+			const pw_alignment * al = it->second;
+			sorted_als.at(num) = al;
 			alignments.insert(al);
+			num++;
 		}
-	}
-	compute_cc_avl(const overlap & ovrlp, size_t num_sequences, size_t num_threads): alind(num_sequences){
-		this->num_threads = num_threads;
-		const std::set<pw_alignment, compare_pw_alignment> & als = ovrlp.get_all();
-		for(std::set<pw_alignment, compare_pw_alignment>::const_iterator it = als.begin(); it!=als.end(); it++) {
-			const pw_alignment & al = *it;
-			alind.insert(&al);
-			alignments.insert(&al);
-		}
+		alind = new alignment_index(num_sequences, num_threads, sorted_als);
 	}
 
-	~compute_cc_avl(){}
-//	void add_on_intmap(const pw_alignment*);
-//	void remove_from_intmaps(const pw_alignment* al);//TODO
+
+	compute_cc_avl(const overlap & ovrlp, size_t num_sequences, size_t num_threads) {
+		this->num_threads = num_threads;
+		const std::set<pw_alignment, compare_pw_alignment> & als = ovrlp.get_all();
+		std::cout << " CC AVL build index on " << als.size() << std::endl << std::flush;
+
+		std::vector<const pw_alignment *> vals(als.size());
+		size_t num = 0;
+		for(std::set<pw_alignment, compare_pw_alignment>::const_iterator it = als.begin(); it!=als.end(); it++) {
+			const pw_alignment & al = *it;
+			vals.at(num) = &al;
+			alignments.insert(&al);
+			num++;
+		}
+		alind = new alignment_index(num_sequences, num_threads, vals);
+		std::cout << " CC AVL created on " << alignments.size() << std::endl;
+	}
+
+	~compute_cc_avl(){
+		delete alind;
+	}
 	void compute(std::vector<std::set< const pw_alignment* , compare_pointer_pw_alignment> > &);
 	void get_cc(const pw_alignment & , std::set <const pw_alignment*, compare_pointer_pw_alignment> & , std::set <const pw_alignment*, compare_pointer_pw_alignment> & );
 	void cc_step(size_t , size_t , size_t , std::set <const pw_alignment*, compare_pointer_pw_alignment> & , std::set <const pw_alignment* , compare_pointer_pw_alignment>  & );
-//	void cc_step_current(size_t & , size_t & , size_t & , std::set<size_t>& , std::set<size_t> & );
 	private:
 	
 	std::set<const pw_alignment*, compare_pointer_pw_alignment> alignments; 
-	alignment_index alind;
-
-//	std::map<const pw_alignment*, size_t>al_id; //alignments and their ids. //TODO
-//	std::vector<boost::icl::interval_map<size_t, std::set<size_t> >  > als_on_reference;
-//	boost::icl::interval_map<std::set<size_t>,size_t >reverse_als_on_ref; //XXX It was used only for the simple library test.
-//	boost::icl::interval_map<size_t, std::set<size_t> >als_on_ref; //XXX It was used only for the simple library test.
-//	std::map<size_t , std::pair<size_t,size_t> > id_and_bounds;
-//	std::vector< boost::icl::interval_set<size_t> >all_intervals; //All the intervals are kept here, while they will be removed gradually from the als_on_reference
+	alignment_index  * alind;
 	size_t num_threads;
 
 };
