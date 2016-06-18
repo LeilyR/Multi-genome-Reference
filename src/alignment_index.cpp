@@ -32,8 +32,20 @@ alignment_index::alignment_index(size_t num_references, size_t num_threads, std:
 		ref_als.at(r2).push_back(std::make_pair(1, al));
 	}
 
+	std::multimap<size_t, size_t> rsorter;
+	for(size_t i=0; i<num_references; i++) {
+		rsorter.insert(std::make_pair(ref_als.at(i).size(), i));
+	}
+	std::vector<size_t> rsorted(rsorter.size());
+	size_t num = 0;
+	for(std::multimap<size_t, size_t>::iterator it=rsorter.begin(); it!=rsorter.end(); ++it) {
+		rsorted.at(num_references - 1 - num) = it->second;
+		num++;
+	}
+
 #pragma omp parallel for schedule(dynamic) num_threads(num_threads)
-	for(size_t i=0; i<num_references; ++i) {
+	for(size_t k=0; k<num_references; ++k) {
+		size_t i = rsorted.at(k);
 		clock_t ins_time = clock();
 		for(size_t j=0; j<ref_als.at(i).size(); ++j) {
 			size_t r = ref_als.at(i).at(j).first;
@@ -43,11 +55,36 @@ alignment_index::alignment_index(size_t num_references, size_t num_threads, std:
 		ins_time = clock()- ins_time;
 		double t = (double)ins_time / (double)CLOCKS_PER_SEC;
 		double pt = t / trees.at(i).size();
+		double ira = (double) trees.at(i).inside_number() / (double) trees.at(i).size();
+
+/* code for bulk insert method TODO at the moment the bulk insert algorithm is slower	
+		std::vector< std::pair< std::pair<size_t, size_t> , const pw_alignment * > > bdata;
+		for(size_t j=0; j<ref_als.at(i).size(); ++j) {
+			size_t ref = ref_als.at(i).at(j).first;
+			const pw_alignment * al = ref_als.at(i).at(j).second; 
+			size_t l, r;
+			if(ref==0) {
+				al->get_lr1(l, r);
+			} else {
+				al->get_lr2(l, r);
+			}
+			bdata.push_back(std::make_pair(std::make_pair(l, r), al));
+		}
+		tree_type btree;
+		clock_t bins_time = clock();
+		btree.bulk_insert(bdata);
+		bins_time = clock() - bins_time;
+		double bt = (double)bins_time / (double)CLOCKS_PER_SEC;
+		double bpt = bt / btree.size();
+
+		double bira = (double) btree.inside_number() / (double) btree.size();
+*/
+
 #pragma omp critical(pr)
 {
-		std::cout << " ref " << i << " done " << " size " << trees.at(i).size() << " height " << trees.at(i).height() << " rebas " << trees.at(i).get_num_reba()<< " moves " << trees.at(i).get_num_moves()<< " list ratio " << trees.at(i).list_ratio() << " t " << t << " t per al " << pt << std::endl;
+		std::cout << " ref " << i << " done " << " size " << trees.at(i).size() << " height " << trees.at(i).height() << " levels " << trees.at(i).levels()<< " rebas " << trees.at(i).get_num_reba()<< " moves " << trees.at(i).get_num_moves()<< " list ratio " << trees.at(i).list_ratio()<<  " ins " << ira << " t " << t << " t per al " << pt << std::endl;
+//		std::cout << " ref " << i << " bulk " << " size " << btree.size() << " height " << btree.height() << " rebas " << btree.get_num_reba()<< " moves " << btree.get_num_moves()<< " list ratio " << btree.list_ratio() << " ins " << bira<< " t " << bt << " t per al " << bpt << std::endl;
 }
-
 
 	}
 

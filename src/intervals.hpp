@@ -71,7 +71,7 @@ class avl_interval_tree {
 	
 	void insert(const size_t & left, const size_t & right, const value_type  & v);
 
-	void bulk_insert(std::vector< std::pair < std::pair< size_t, size_t > , value_type &>  > & data );
+	void bulk_insert(std::vector< std::pair < std::pair< size_t, size_t > , value_type>  > & data );
 	// erases all intervals with that left and right, returns vector of erased intervals
 	void erase_all(const size_t & left, const size_t & right, std::vector<value_type> & erased);
 	// erases all intervals with that left and right and value, return number of erased intervals
@@ -87,6 +87,8 @@ class avl_interval_tree {
 	double list_ratio() const;
 	size_t get_num_reba() const;
 	size_t get_num_moves() const;
+	size_t inside_number() const;
+	size_t levels() const;
 	
 	void debug_print() const;
 
@@ -123,6 +125,9 @@ class avl_interval_tree {
 	void join_intervals_at_node(node_type * atn, std::map<size_t, size_t> & joined_intervals) const;
 	void overlap_fraction_search_at_node(node_type * atn, const size_t & left, const size_t & right, const double & fraction, std::vector<value_type> & results) const;
 	size_t count_center_at_node(node_type * atn) const;
+// how many nodes are contained inside of one of the parent intervals
+	size_t inside_number_at_node(node_type * atn) const;
+	size_t max_level_at_node(node_type * atn) const;
 //	void subtree_max_interval(node_type * atn, size_t & left, size_t & right) const;
 	void debug_print_at_node(node_type * atn, const size_t & level, size_t & id, const size_t & parent_id) const;
 
@@ -136,6 +141,7 @@ class avl_interval_tree {
 	void center_attach(node_type * parent, node_type * child);
 	void delete_node(node_type * n);
 	bool redo_height_and_minmax_at_node(node_type * n);
+	bool is_below_root(node_type * n);
 	
 	int get_balance(node_type * n) const;
 	void balance_up(node_type * n);
@@ -146,10 +152,13 @@ class avl_interval_tree {
 	node_type * rotate_left(node_type * n);
 	node_type * rotate_right(node_type *n);
 
+	void bulk_insert_prepare(const std::vector< std::pair < std::pair< size_t, size_t > , value_type> >  & lsorted_data, const size_t & from, const size_t & to, const size_t & level, std::vector< std::vector< std::pair< std::pair< size_t, size_t > , value_type>   > >  & level_data);
+
 	void check_tree() const;
 	size_t check_subtree(node_type * n) const;
 	void check_tree_at_node(node_type * n,  const size_t & level, size_t & id, const size_t & parent_id, size_t & subtree_size, size_t min_left, size_t max_right, size_t min_in, size_t max_in, bool use_slow_index) const;
 	void check_upwards(node_type * n, size_t & minl, size_t & maxr, size_t & intv_l, size_t & intv_r) const;
+	void check_downwards(node_type * n, const size_t & intv_l, const size_t & intv_r) const;
 	bool balance_check_at_node(node_type * n) const;
 
 };

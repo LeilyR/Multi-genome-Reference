@@ -46,7 +46,6 @@ void avl_interval_tree<T>::insert(const size_t & left, const size_t & right, con
 	std::cout << " insert l " << left << " r " << right << " d " << v << std::endl;
 #endif
 
-
 	node_type * new_node = new node_type(left, right, v);
 	num_nodes++;
 	if(root == NULL) {
@@ -57,7 +56,6 @@ void avl_interval_tree<T>::insert(const size_t & left, const size_t & right, con
 		balance_up(new_node);
 #endif
 	}
-
 
 #if DO_SLOW_CHECKS
 	slow_index.push_back(std::make_pair(std::make_pair(left, right), v));
@@ -72,22 +70,45 @@ void avl_interval_tree<T>::insert(const size_t & left, const size_t & right, con
 }
 
 
+/*
+	TODO
+	This bulk insert algorithm does remove the number of rebalancings during construction of the tree
+	However, the total amount of move_subtree recursive calls as well as the total runtime increases
+	Probably, this means that when the heuristics gets the tree structure wrong we have to do larger 
+	restructuring. At the moment we don't use the function.
+
+
+*/
 template<typename T>
-void avl_interval_tree<T>::bulk_insert(std::vector< std::pair < std::pair< size_t, size_t > , value_type & > > & data ) {
-/*	multimap< size_t, std::pair < std::pair< size_t, size_t > , value_type & v > > lsorter;
+void avl_interval_tree<T>::bulk_insert(std::vector< std::pair < std::pair< size_t, size_t > , value_type > > & data ) {
+	if(data.empty()) return;
+	std::multimap< size_t, std::pair < std::pair< size_t, size_t > , value_type> > lsorter;
 	for(size_t i=0; i<data.size(); ++i) {
 		lsorter.insert( std::make_pair( data.at(i).first.first, data.at(i) ) );
 	}
-	std::vector< std::pair < std::pair< size_t, size_t > , value_type & v > > lsorted_data(lsorter.size());
+	std::vector< std::pair < std::pair< size_t, size_t > , value_type> > lsorted_data(lsorter.size());
 	size_t num = 0;
-	for(multimap< size_t, std::pair < std::pair< size_t, size_t > , value_type & v > >::iterator it = lsorter.begin(); it!=lsorter.end(); ++it) {
+	for(typename std::multimap< size_t, std::pair < std::pair< size_t, size_t > , value_type> >::iterator it = lsorter.begin(); it!=lsorter.end(); ++it) {
 		lsorted_data.at(num) = it->second;
 		num++;
 	}
 
 
-	std::vector< std::vector< std::pair< size_t, size_t > , value_type & v >  > > level_data; // level , index -> input data element
-*/
+	std::vector< std::vector< std::pair< std::pair< size_t, size_t > , value_type>   > > level_data; // level , index -> input data element
+	bulk_insert_prepare(lsorted_data, 0, lsorted_data.size() - 1, 0, level_data);
+
+	size_t check_counter = 0;
+	for(size_t i=0; i<level_data.size(); ++i) {
+		for(size_t j=0; j<level_data.at(i).size(); ++j) {
+			size_t l = level_data.at(i).at(j).first.first;
+			size_t r = level_data.at(i).at(j).first.second;
+			value_type v = level_data.at(i).at(j).second;
+			insert(l, r, v);
+			check_counter ++;
+		}
+	}
+	
+	assert(check_counter == data.size());
 }
 
 template<typename T>
@@ -321,8 +342,6 @@ void avl_interval_tree<T>::overlap_search(const size_t & left, const size_t & ri
 #endif
 	check_tree();
 #endif
-
-
 	if(root!=NULL) {
 		overlap_search_at_node(root, left, right, results);
 	}
@@ -504,6 +523,18 @@ size_t avl_interval_tree<T>::get_num_moves() const {
 }
 
 
+template<typename T>
+size_t avl_interval_tree<T>::inside_number() const {
+	if(root==NULL) return 0;
+	return inside_number_at_node(root);
+}
+
+template<typename T>
+size_t avl_interval_tree<T>::levels() const {
+	if(root==NULL) return 0;
+	return max_level_at_node(root);
+}
+
 template <typename T>	
 void avl_interval_tree<T>::debug_print() const {
 	std::cout << " AVL Interval tree printout: " << std::endl;
@@ -590,6 +621,19 @@ it_node<T> * avl_interval_tree<T>::insert_at_node(node_type * atn, node_type * n
 #if DEBUG_PRINTS
 				std::cout << " INSERT SWITCH below l " << atn_parent->left << " r " << atn_parent->right << std::endl;
 #endif
+
+/*
+				prune_subtree(atn);
+				insert_at_node(atn_parent, newn);
+				atn_parent = move_subtree(atn, newn);
+
+/
+
+
+*/
+
+/*
+
 				if(atn_parent->str_left == atn) {
 					prune_subtree(atn);
 					left_attach(atn_parent, newn);
@@ -603,9 +647,48 @@ it_node<T> * avl_interval_tree<T>::insert_at_node(node_type * atn, node_type * n
 					right_attach(atn_parent, newn);
 					atn_parent = move_subtree(atn, atn_parent);
 				} 
+*/
+
+
+
+				if(atn_parent->str_left == atn) {
+					prune_subtree(atn);
+					left_attach(atn_parent, newn);
+				} else if(atn_parent->str_center == atn) {
+					prune_subtree(atn);
+					center_attach(atn_parent, newn);
+				} else if (atn_parent->str_right == atn) {
+					prune_subtree(atn);
+					right_attach(atn_parent, newn);
+				} 
+				
+				node_type * al = atn->str_left;
+				node_type * ar = atn->str_right;
+				node_type * ac = atn->str_center;
+				if(al!=NULL) {
+					prune_subtree(al);
+					left_attach(newn, al);
+				}
+				if(ar!=NULL) {
+					prune_subtree(ar);
+					right_attach(newn, ar);
+				}
+				if(ac!=NULL) {
+					prune_subtree(ac);
+				}
+				center_attach(newn, atn);
+				if(ac!=NULL) {
+					node_type * moveres = move_subtree(ac, newn); 
+					if(moveres != newn) {
+						atn_parent = moveres;
+					}
+				}
+				
+
+
 				return atn_parent;
 			}
-		} else {
+		} else { 
 // normal center insert without switch
 			if(atn->str_center==NULL) {
 				center_attach(atn, newn);
@@ -638,6 +721,20 @@ void avl_interval_tree<T>::redo_height_up(node_type * n) {
 
 template<typename T>
 void avl_interval_tree<T>::forest_insert(node_map_type & roots_to_parents, node_set_type & valid_parents) {
+
+
+/* we cannot insert into a subtree of the forest (not attached to current root) because
+   that subtree could be attached somewhere where the current tree does not fit
+*/
+
+	for(typename node_map_type::iterator it = roots_to_parents.begin(); it!=roots_to_parents.end(); ++it) {
+		node_type * cur_node = it->first;
+		if(!is_below_root(cur_node)) {
+			valid_parents.erase(it->second);
+		}
+	}
+
+
 	for(typename node_map_type::iterator it = roots_to_parents.begin(); it!=roots_to_parents.end(); ++it) {
 		node_type * subtree_root = it->first;
 //		std::cout << "map size "<< roots_to_parents.size() << std::endl;
@@ -650,6 +747,20 @@ void avl_interval_tree<T>::forest_insert(node_map_type & roots_to_parents, node_
 		if(ins_node == NULL) ins_node = root;
 //		std::cout<< "move"<< subtree_root << " ins_node " << ins_node << std::endl;
 
+
+
+		if(root!=NULL) {
+/*
+		size_t minl, maxr, intv_l, intv_r; 
+		check_upwards(ins_node, minl, maxr, intv_l, intv_r);
+	assert(minl <= subtree_root->min_left);
+	assert(maxr >= subtree_root->max_right);
+	assert(subtree_root->left <= intv_r);
+	assert(subtree_root->right >= intv_l);
+		check_downwards(subtree_root, intv_l, intv_r);
+*/
+
+		}
 
 		move_subtree(subtree_root, ins_node);
 	}
@@ -684,7 +795,40 @@ void avl_interval_tree<T>::delete_nodes(const node_set_type & to_Delete) {
 		node_type * nl = n->str_left;
 		node_type * nc = n->str_center;
 		node_type * nr = n->str_right;
+/*
+if(np!=NULL) {
+size_t minl, maxr, intv_l, intv_r; 
+check_upwards(np, minl, maxr, intv_l, intv_r);
+	if(nl!=NULL) {
+	assert(minl <= nl->min_left);
+	assert(maxr >= nl->max_right);
+	assert(nl->left <= intv_r);
+	assert(nl->right >= intv_l);
+		check_downwards(nl, intv_l, intv_r);
+	}
+	if(nr!=NULL) {
+	assert(minl <= nr->min_left);
+	assert(maxr >= nr->max_right);
+	assert(nr->left <= intv_r);
+	assert(nr->right >= intv_l);
+		check_downwards(nr, intv_l, intv_r);
+	}
+	if(nc!=NULL) {
+	assert(minl <= nc->min_left);
+	assert(maxr >= nc->max_right);
+	assert(nc->left <= intv_r);
+	assert(nc->right >= intv_l);
+		check_downwards(nc, intv_l, intv_r);
+	}
+
+}
+*/
+
+
 		if(nl!=NULL) {
+	
+
+
 			prune_subtree(nl);
 			forest_add(nl, np, roots_to_parents, valid_parents);
 		}
@@ -1071,6 +1215,62 @@ size_t avl_interval_tree<T>::count_center_at_node(node_type * atn) const {
 	return res;
 }
 
+
+template<typename T>
+size_t avl_interval_tree<T>::inside_number_at_node(node_type * atn) const {
+	size_t res = 0;
+	node_type * strl = atn->str_left;
+	node_type * strr = atn->str_right;
+	node_type * strc = atn->str_center;
+	if(strl!=NULL) {
+		res += inside_number_at_node(strl);
+	}
+	if(strr!=NULL) {
+		res += inside_number_at_node(strr);
+	}
+	if(strc!=NULL) {
+		res += inside_number_at_node(strc);
+	}
+	
+	node_type * parent = atn->parent;
+	size_t l = atn->left;
+	size_t r = atn->right;
+	while(parent != NULL) {
+		size_t pl = parent->left;
+		size_t pr = parent->right;
+		if( ((l > pl) && (r<=pr) ) || ( (l>=pl) && (r<pr))) {
+			res++;
+			break;
+		}
+		parent = parent->parent;
+	}
+	return res;
+}
+
+template<typename T>
+size_t avl_interval_tree<T>::max_level_at_node(node_type * atn) const {
+	size_t res = 0;
+	node_type * strl = atn->str_left;
+	node_type * strr = atn->str_right;
+	node_type * strc = atn->str_center;
+	if(strl!=NULL) {
+		size_t tl = max_level_at_node(strl);
+		if(tl>res) res = tl;
+	}
+	if(strr!=NULL) {
+		size_t tl = max_level_at_node(strr);
+		if(tl>res) res = tl;
+	}
+	if(strc!=NULL) {
+		size_t tl = max_level_at_node(strc);
+		if(tl>res) res = tl;
+	}
+	res++; // current level
+	return res;
+}
+
+
+
 /* almost the same as min_left  to max_right 
 
 
@@ -1156,18 +1356,18 @@ it_node<T> * avl_interval_tree<T>::move_subtree(node_type * from, node_type * to
 	}
 #endif
 
-#if DO_SLOW_CHECKS
 	assert(from!=NULL);
 	assert(from->parent == NULL);
+#if DO_SLOW_CHECKS
 #if DEBUG_PRINTS
-//	std::cout << "Check move subtree function: "<< from << " to " << to << std::endl;
-//	std::cout << "Check of from:" << std::endl;
+	std::cout << "Check move subtree function: "<< from << " to " << to << std::endl;
+	std::cout << "Check of from:" << std::endl;
 #endif
 //	check_subtree(from);
 
 // prepare to check that from actually fits at to
-//	size_t minl, maxr, intv_l, intv_r;
-//	check_upwards(to, minl, maxr, intv_l, intv_r);
+	size_t minl, maxr, intv_l, intv_r;
+	check_upwards(to, minl, maxr, intv_l, intv_r);
 
 #endif 
 
@@ -1184,23 +1384,32 @@ it_node<T> * avl_interval_tree<T>::move_subtree(node_type * from, node_type * to
 #if DO_SLOW_CHECKS
 
 #if DEBUG_PRINTS
-//	std::cout << "Check of to:" << std::endl;
+	std::cout << "Check of to:" << std::endl;
 #endif
 //	check_subtree(to);
 
 #if DEBUG_PRINTS
-//	std::cout << " from above TO: FROM subtree limits l " << minl << " r " << maxr << " all in intv l " << intv_l << " r " << intv_r << std::endl;
+	std::cout << " from above TO: FROM subtree limits l " << minl << " r " << maxr << " all in intv l " << intv_l << " r " << intv_r << std::endl;
+	std::cout << " real FROM subtree limits min l " << from->min_left << " max r " << from->max_right << std::endl;
 #endif
 
-//	assert(minl <= from->min_left);
-//	assert(maxr >= from->max_right);
-//	assert(from->left <= intv_r);
-//	assert(from->right >= intv_l);
+/*
+	Additional upwards/downwards checks are uneccesary. All errors caught by them will also be caught later.
+	But finding them here makes it easer to understand the debug output ( no recursive calls between printing trees and finding the error)
+
+*/
+	assert(minl <= from->min_left);
+	assert(maxr >= from->max_right);
+	assert(from->left <= intv_r);
+	assert(from->right >= intv_l);
+
+	
+	check_downwards(from, intv_l, intv_r);
 
 
 #endif
 
-
+	
 
 
 // At first we try to insert the entire subtree at from to to
@@ -1225,6 +1434,27 @@ it_node<T> * avl_interval_tree<T>::move_subtree(node_type * from, node_type * to
 		}
 	} 
 
+	if(  (from->min_left >= to->left) && (from->max_right <= to->right) ) { // all intervals in subtree overlap with to
+		node_type * toc = to->str_center;
+		if(toc == NULL) {
+			center_attach(to, from);
+			return to;
+		} else {
+/*
+
+			std::cout << " TO is l "<< to->left << " r " << to->right << "  limits l " << minl << " r " << maxr << " intv l " << intv_l << " r " << intv_r << std::endl; 
+			
+			size_t minl, maxr, intv_l, intv_r;
+			check_upwards(toc, minl, maxr, intv_l, intv_r);
+			std::cout << " TOC is l "<< toc->left << " r " << toc->right << "  limits l " << minl << " r " << maxr << " intv l " << intv_l << " r " << intv_r << std::endl; 
+			std::cout << " FROM is  l " << from->left << " r " << from->right << " minl " << from->min_left << " maxr " << from->max_right << std::endl;
+			check_downwards(from, intv_l, intv_r);
+*/
+			move_subtree(from, toc);
+			return to;
+		}
+	}
+
 
 // If we cannot insert the entire subtree, we insert from and its three subtrees separately
 	node_type * strc = from->str_center;
@@ -1234,7 +1464,12 @@ it_node<T> * avl_interval_tree<T>::move_subtree(node_type * from, node_type * to
 	node_type * newto = to; // this could change the root of the current subtree
 
 
-
+/*
+	std::cout << " WE WILL split the FROM tree: " << std::endl;
+	check_subtree(from);
+	std::cout << " CHECK TO " << std::endl;
+	check_subtree(to);
+*/
 	if(strc!=NULL) {
 		prune_subtree(strc);
 	}
@@ -1245,9 +1480,14 @@ it_node<T> * avl_interval_tree<T>::move_subtree(node_type * from, node_type * to
 		prune_subtree(strr);
 	}
 
+#if DEBUG_PRINTS		
+		std::cout << " INSERT IN MOVE l " << from->left << " r " << from->right << " v " << from->value <<" TO l "  << to->left << " r " << to->right << " v " << to->value  << std::endl;
+#endif
+	node_type * tnewto = insert_at_node(newto, from); 
+	newto = tnewto;
 
 
-	if(strc!=NULL) { // center first, to do center insert switch operations first
+	if(strc!=NULL) {
 /*			std::cout << " MOVE on center"<<std::endl;
 	std::cout << "move subtree function " << std::endl;
 	if(from==NULL) {
@@ -1261,18 +1501,24 @@ it_node<T> * avl_interval_tree<T>::move_subtree(node_type * from, node_type * to
 		std::cout << " TO l " << to->left << " r " << to->right << " v " << to->value << std::endl;
 	}
 */
+/* 
+
+	size_t minl, maxr, intv_l, intv_r;
+	check_upwards(newto, minl, maxr, intv_l, intv_r);
+	assert(minl <= strc->min_left);
+	assert(maxr >= strc->max_right);
+	assert(strc->left <= intv_r);
+	assert(strc->right >= intv_l);
+*/
+
 		node_type * tnewto =  move_subtree(strc, newto);
 		newto = tnewto;
 	}
-#if DEBUG_PRINTS		
-		std::cout << " INSERT IN MOVE l " << from->left << " r " << from->right << " v " << from->value << std::endl;
-#endif
-	node_type * tnewto = insert_at_node(newto, from); 
-	newto = tnewto;
 
 	if(strl!=NULL) {
 /*
 			std::cout<< " MOVE on left"<<std::endl;
+
 	std::cout << "move subtree function " << std::endl;
 	if(from==NULL) {
 		std::cout << " FROM is NULL" << std::endl;
@@ -1284,8 +1530,15 @@ it_node<T> * avl_interval_tree<T>::move_subtree(node_type * from, node_type * to
 	} else {
 		std::cout << " TO l " << to->left << " r " << to->right << " v " << to->value << std::endl;
 	}
-*/
 
+
+	size_t minl, maxr, intv_l, intv_r;
+	check_upwards(newto, minl, maxr, intv_l, intv_r);
+	assert(minl <= strl->min_left);
+	assert(maxr >= strl->max_right);
+	assert(strl->left <= intv_r);
+	assert(strl->right >= intv_l);
+*/
 		node_type * tnewto = move_subtree(strl, newto);
 		newto = tnewto;
 	}
@@ -1305,6 +1558,18 @@ it_node<T> * avl_interval_tree<T>::move_subtree(node_type * from, node_type * to
 		std::cout << " TO l " << to->left << " r " << to->right << " v " << to->value << std::endl;
 		std::cout << " nTO l " << newto->left << " r " << newto->right << " v " << newto->value << std::endl;
 	}
+*/ /*
+	size_t minl, maxr, intv_l, intv_r;
+	check_upwards(newto, minl, maxr, intv_l, intv_r);
+
+	std::cout <<  " to was l " << to->left << " r " << to->right << " v  " << to->value << std::endl;
+	std::cout << " in strr: newto subtree limits l " << minl << " r " << maxr << " all in intv l " << intv_l << " r " << intv_r << std::endl;
+	std::cout << " real strr subtree limits min l " << strr->min_left << " max r " << strr->max_right <<", strr is l " << strr->left << " r " << strr->right  << std::endl;
+	std::cout << " from was l " << from->left << " r " << from->right << " v " << from->value << " minr " << from_minl << " maxl " << from_maxr << std::endl;
+	assert(minl <= strr->min_left);
+	assert(maxr >= strr->max_right);
+	assert(strr->left <= intv_r);
+	assert(strr->right >= intv_l);
 */
 		node_type * tnewto = move_subtree(strr, newto);
 		newto = tnewto;
@@ -1483,6 +1748,18 @@ bool avl_interval_tree<T>::redo_height_and_minmax_at_node(node_type * n) {
 	}
 //	std::cout << " new node values " << n->value << " new h " << n->height << " str limits l " << n->min_left << " r " << n->max_right << std::endl; 
 	return changed;
+}
+
+template<typename T>
+bool avl_interval_tree<T>::is_below_root(node_type * n) {
+	node_type * node = n;
+	while(node!=NULL) {
+		node_type * np = node->parent;
+		if(np == NULL) {
+			return (root == node);
+		}
+		node = np;
+	}
 }
 
 
@@ -1892,11 +2169,67 @@ center of 3 has to move to 4
 }
 
 
+#define BULK_INS_PIVOT_SEARCH_RANGE 3
+
+template<typename T>
+void avl_interval_tree<T>::bulk_insert_prepare(const std::vector< std::pair < std::pair< size_t, size_t > , value_type> > & lsorted_data, const size_t & from, const size_t & to, const size_t & level, std::vector< std::vector< std::pair< std::pair< size_t, size_t > , value_type>   > > & level_data) {
+
+// current pivot is the shortest interval in the center region
+// select center region:
+	size_t len = to - from + 1;
+	size_t center_from = 0; // inclusive regions where we search for the pivot
+	size_t center_to = 0;
+	size_t range = BULK_INS_PIVOT_SEARCH_RANGE;
+	if(level < 6) { // to avoid quadratic complexity we do longer search only on more important levels
+		range = ( len / 6) + BULK_INS_PIVOT_SEARCH_RANGE; 
+	}
+	size_t midpoint = from + len/2;
+	if(from + range < midpoint) {
+		center_from = midpoint - range;
+	} else {
+		center_from = from;
+	}
+	if(midpoint + range < to) {
+		center_to = midpoint + range;
+	} else {
+		center_to = to;
+	}
+	assert(center_from <= center_to);
+	assert(from <= center_from);
+	assert(center_to<=to);
+
+// select current pivot
+	size_t best_len = std::numeric_limits<size_t>::max();
+	size_t best_pos = center_from;
+	for(size_t j=center_from; j<center_to; ++j) {
+		size_t cur_len = lsorted_data.at(j).first.second - lsorted_data.at(j).first.first + 1;
+		if(cur_len < best_len) {
+			best_len = cur_len;
+			best_pos = j;
+		}
+	}
+	if(level == level_data.size()) level_data.push_back(std::vector< std::pair< std::pair< size_t, size_t > , value_type> >(0) );
+	level_data.at(level).push_back(lsorted_data.at(best_pos));
+	
+// recurse left and right of pivot
+	if(best_pos > from) {
+		size_t left_to = best_pos - 1;
+		bulk_insert_prepare(lsorted_data, from, left_to, level + 1, level_data);
+	}
+	if(best_pos < to) {
+		size_t right_from = best_pos + 1;
+		bulk_insert_prepare(lsorted_data, right_from, to, level + 1, level_data);
+	}
+
+}
+
+
 /** Do all kinds of slow checks 
 
 **/
 template<typename T>
 void avl_interval_tree<T>::check_tree() const {
+assert(DO_SLOW_CHECKS);
 #if DO_SLOW_CHECKS
 	std::cerr << "+++++    Warning: We are running slow checks of AVL interval tree with " << num_nodes << " nodes" << std::endl;
 
@@ -1927,6 +2260,7 @@ void avl_interval_tree<T>::check_tree() const {
 
 template<typename T>
 size_t avl_interval_tree<T>::check_subtree(node_type * n) const {
+assert(DO_SLOW_CHECKS);
 #if DEBUG_PRINTS
 	std::cout << "######    Warning: We are running slow checks of AVL interval tree on a subtree " <<  std::endl;
 #endif
@@ -1947,6 +2281,7 @@ size_t avl_interval_tree<T>::check_subtree(node_type * n) const {
 
 template<typename T>
 void avl_interval_tree<T>::check_tree_at_node(node_type * n,  const size_t & level, size_t & id, const size_t & parent_id, size_t & subtree_size, size_t min_left, size_t max_right, size_t min_in, size_t max_in, bool use_slow_index) const {
+assert(DO_SLOW_CHECKS);
 #if DO_SLOW_CHECKS
 	assert(n!=NULL);
 	int bal = get_balance(n);
@@ -2148,6 +2483,39 @@ void avl_interval_tree<T>::check_upwards(node_type * n, size_t & minl, size_t & 
 
 }
 
+/* we verify that all intervals in this subtree overlap with intv_l to intv_r
+
+*/
+template<typename T>
+void avl_interval_tree<T>::check_downwards(node_type * n,  const size_t & intv_l, const size_t & intv_r) const {
+	assert(DO_SLOW_CHECKS);
+
+	size_t left = n->left;
+	size_t right = n->right;	
+	
+	assert(left <= intv_r);
+	assert(right >= intv_l);
+
+	
+	node_type * nl = n->str_left;
+	node_type * nr = n->str_right;
+	node_type * nc = n->str_center;
+
+	if(nl!=NULL) {
+		check_downwards(nl, intv_l, intv_r);
+	}
+	
+	if(nr!=NULL) {
+		check_downwards(nr, intv_l, intv_r);
+	}
+
+	if(nc!=NULL) {
+		check_downwards(nc, intv_l, intv_r);
+	}
+
+
+
+}
 
 template<typename T>
 bool avl_interval_tree<T>::balance_check_at_node(node_type * n) const {
