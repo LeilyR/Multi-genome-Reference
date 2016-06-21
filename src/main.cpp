@@ -11,7 +11,7 @@
 #include "dynamic_mc.hpp"
 #include "overlap.hpp"
 #include "model.hpp"
-#include "strongly_connected_alignments.hpp"
+#include "connected_component.hpp"
 #include "encoder.hpp"
 #include "dynamic_encoder.hpp"
 #include "dynamic_decoder.hpp"
@@ -1907,7 +1907,8 @@ int do_dynamic_mc_model(int argc, char * argv[]) {
 		clock_t second_cc_time_local = clock();
 		std::vector< std::set<const pw_alignment* , compare_pointer_pw_alignment> > cc_cluster_in; //have shorter length than original alignemnts
 		std::cout<< "using the cc again!"<<std::endl;
-		compute_cc_type occ(cc_overlap.at(i), data.numSequences(),1);
+		size_t num_seq = data.numSequences();
+		compute_cc_type occ(cc_overlap.at(i), num_seq ,1);
 		occ.compute(cc_cluster_in);//Here we find fully overlapped pieces and save them in a single component, They are oredered by their gain value //TODO!!!!  returns several times the same al
 		second_cc_time_local = clock() - second_cc_time_local;
 	/*	for(size_t i=0; i<cc_cluster_in.size()-1; i++) {//A test function that chckes overlap between components. There shouldn't be any overlap between them.
@@ -2854,10 +2855,10 @@ int do_test_new_cc(int argc, char * argv[]) {
 	typedef dynamic_mc_model use_model;
 //	typedef compute_cc_with_interval_tree<overlap_type> cc_type; //Eric Garisson implementation
 //	typedef compute_cc_with_icl cc_type;
-	typedef compute_cc_avl<overlap_type> cc_type;
+//	typedef compute_cc_avl<overlap_type> cc_type;
+	typedef compute_cc_avl_fraction cc_type;
 	typedef initial_alignment_set<use_model,overlap_type> use_ias;
-
-	if(argc < 6) {
+	if(argc < 5) {
 		usage();
 		cerr << "Program: test_cc" << std::endl;
 		cerr << "Parameters:" << std::endl;
@@ -2865,6 +2866,7 @@ int do_test_new_cc(int argc, char * argv[]) {
 		cerr << "* maf file containing alignments of sequences contained in the fasta file" << std::endl;
 		cerr << "* output binary compressed file " << std::endl;
 		cerr << "* number of threads to use (optional, default 1)" << std::endl;
+		return 1;
 
 	}
 	size_t num_threads = 1;
@@ -2872,7 +2874,9 @@ int do_test_new_cc(int argc, char * argv[]) {
 	std::string maffile(argv[3]);
 	std::string encoding_out(argv[4]);
 	std::ofstream outs(encoding_out.c_str(),std::ofstream::binary);
-
+	if(argc>5) {
+		num_threads = atoi(argv[5]);
+	}
 // Read all data
 	all_data data;
 	data.read_fasta_maf(fastafile, maffile);
@@ -2885,68 +2889,70 @@ int do_test_new_cc(int argc, char * argv[]) {
 // Find connected components of alignments with some overlap // Moved it here after training to be able to remove small als first and then connect them to each other.
 	std::set<const pw_alignment*, compare_pointer_pw_alignment> al_with_pos_gain; 
 #pragma omp parallel for num_threads(num_threads)
-	for(size_t i =0; i < data.numAlignments();i++){
-//	for(size_t i =0; i < 150;i++){
+//	for(size_t i =0; i < data.numAlignments();i++){
+	for(size_t i =0; i < 50;i++){
 //	if(i%1000==0) std::cout << ".";
 //	for(size_t i =0; i < 16;i++){
 		const pw_alignment & al = data.getAlignment(i);
+	//	al.print();
 		double g1 ,g2;
 		m.gain_function(al,g1,g2);
 		double av_gain = (g1+g2)/2 ;
 		if(av_gain > 0){
-			al_with_pos_gain.insert(&al);
-		//	al.print();
-		/*	for(size_t j =0; j< data.numAlignments();j++){
-				const pw_alignment & p = data.getAlignment(j);
-				if(p.getreference1()==al.getreference1() && p.getreference2()==al.getreference2()&& p.getbegin1()==al.getend1()&&p.getend1()==al.getbegin1()&&p.getbegin2()==al.getend2()&& p.getend2()==al.getbegin2()){
-					std::cout<< "warning!"<<std::endl;
-					p.print();
-					std::cout<< " " <<std::endl;
-					al.print();
-					break;
-				}
-				if(p.getreference1()==al.getreference2() && p.getreference2()==al.getreference1()&& p.getbegin1()==al.getend2()&&p.getend1()==al.getbegin2()&&p.getbegin2()==al.getend1()&& p.getend2()==al.getbegin1()){
-					std::cout<< "warning!"<<std::endl;
-					p.print();
-					std::cout<< " " <<std::endl;
-					al.print();
-					break;
-				}
-			
-			}*/
+#pragma omp critical(al_insert)
+{
+		al_with_pos_gain.insert(&al);
+}
 		}
 	}
 	std::cout << std::endl;
 	//Makes components of partially overlapped alignments
-
 	std::cout << "al with positive gains are kept " << al_with_pos_gain.size() <<std::endl;
 //	cc_type component(al_with_pos_gain,data.numSequences());
 //	compute_cc_with_icl cccs(al_with_pos_gain, data.numSequences(),num_threads);
-	cc_type cccs(al_with_pos_gain, data.numSequences(), num_threads);
+	std::cout << " now we compute connected components " << std::endl;
+	clock_t cc_init_time = clock();
+	cc_type cccs(al_with_pos_gain, data.numSequences(), num_threads);//The new one with fraction
+	cc_init_time = clock() - cc_init_time;
+	std::cout << "CC Init time " << (double)cc_init_time/CLOCKS_PER_SEC << std::endl;
 	std::vector<std::set<const pw_alignment* , compare_pointer_pw_alignment> > ccs; 
-	cccs.compute(ccs); //fill in ccs, ordered by size(Notice that they are just connected to each other if they have overlap!)
-//	component.compute(ccs);
-	std::cout<< "ccs are made!"<<std::endl;
-//	size_t counter = 0;
-//	for(size_t i=0; i<ccs.size(); ++i) {
+	clock_t cc_comp_time = clock();
+	cccs.compute(ccs); //fill in ccs, ordered by size(Notice that they are just connected to each other if they have overlap more than 95% overlap!)
+	cc_comp_time = clock() - cc_comp_time;
 
-/*	for(size_t i=0; i<ccs.size()-1; ++i) {
+	std::cout << "CC Init time " << (double)cc_init_time/CLOCKS_PER_SEC << std::endl;
+	std::cout << "CC Comp time " << (double)cc_comp_time/CLOCKS_PER_SEC << std::endl;
+//	component.compute(ccs);
+	std::cout<< "ccs are made!" << ccs.size() <<std::endl; //Initial ccs with 95% overlap
+	size_t counter = 0;
+	for(size_t i=0; i<ccs.size(); ++i) { // Only those have more than 95% overlap
+
+//	for(size_t i=0; i<ccs.size()-1; ++i) {
 		std::cout << " on initial CC " << i << " size " << ccs.at(i).size() << std::endl;
 		counter += ccs.at(i).size();
 		for(std::set< const pw_alignment* , compare_pointer_pw_alignment>::iterator it = ccs.at(i).begin();it != ccs.at(i).end();it++){
+			std::cout << *it << std::endl;
+
 			const pw_alignment * p = *it;
-			for(size_t j = i+1; j < ccs.size();j++){
-				std::set< const pw_alignment* , compare_pointer_pw_alignment> ccs_j = ccs.at(j);
-				ol.test_no_overlap_between_ccs(*p, ccs_j);//XXX this is just a test function, comment it the first run!
+			p->print();
+//			for(size_t j = i+1; j < ccs.size();j++){
+//				std::set< const pw_alignment* , compare_pointer_pw_alignment> ccs_j = ccs.at(j);
+//				ol.test_no_overlap_between_ccs(*p, ccs_j);//XXX this is just a test function, comment it the first run!
 				data.checkAlignmentRange(*p);//XXX this is just a test function, comment it after the first run!
-			}
-		}*/
-//	}
+//			}
+		}
+	}
 
-//	std::cout<< "returned number is "<< counter <<std::endl;
-
+	std::cout<< "returned number is "<< counter <<std::endl;
+	//Finding biconnected components
+	biconnected_component bicomp(cccs,ccs);
+	for(size_t i=0; i<ccs.size(); ++i) { 
+		std::cout << "ccs at " << i << std::endl;
+		bicomp.creat_biconnected_component(i);
+		std::cout << "D"<<std::endl;
+	}
 	//Cutting partial overlaps:
-	std::vector<overlap_type> cc_overlap(ccs.size(), overlap_type(data));
+/*	std::vector<overlap_type> cc_overlap(ccs.size(), overlap_type(data));
 	size_t cluster_base_cost =0;
 	for(size_t i=0; i<ccs.size(); ++i) {
 		std::set< const pw_alignment*, compare_pointer_pw_alignment> & cc = ccs.at(i);
@@ -2999,8 +3005,8 @@ int do_test_new_cc(int argc, char * argv[]) {
 		std::cout << "no partial overlap! "<<std::endl;
 		std::vector< std::set<const pw_alignment* , compare_pointer_pw_alignment> > cc_cluster_in; 
 	//	cc_type occ(cc_overlap.at(i), data.numSequences(),1);
-	//	occ.compute(cc_cluster_in);
-		std::cout << "cluster in size: " << cc_cluster_in.size() <<std::endl;
+	//	occ.compute(cc_cluster_in);*/
+	//	std::cout << "cluster in size: " << cc_cluster_in.size() <<std::endl;
 	/*	for(size_t j =0; j < cc_cluster_in.size();j++){
 			for(std::set<const pw_alignment*, compare_pointer_pw_alignment>::iterator it = cc_cluster_in.at(j).begin(); it != cc_cluster_in.at(j).end();it++){
 				const pw_alignment * p = *it;
@@ -3012,8 +3018,11 @@ int do_test_new_cc(int argc, char * argv[]) {
 			}
 		}*/
 
-	}
+//	}
 	std::cout << "cutting is over!"<<std::endl;
+	std::cout << "CC Init time " << (double)cc_init_time/CLOCKS_PER_SEC << std::endl;
+	std::cout << "CC Comp time " << (double)cc_comp_time/CLOCKS_PER_SEC << std::endl;
+//	std::cout<< "returned number is "<< counter <<std::endl;
 	return 0;
 }
 

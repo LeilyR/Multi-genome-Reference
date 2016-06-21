@@ -1062,7 +1062,7 @@ void compute_cc_avl<overlap_type>::cc_step(size_t current , size_t left, size_t 
 	std::multimap<size_t, std::pair<size_t, size_t> > touched_intervals;
 #pragma omp critical(seen)
 {
-	alind.super_search_overlap_and_remove(current, left, right, seen1, touched_intervals);
+	alind->super_search_overlap_and_remove(current, left, right, seen1, touched_intervals);
 //	std::cout << "seen1 "<<seen1.size() << " " << touched_intervals.size()<<std::endl;
 	for(size_t i=0; i<seen1.size(); ++i) {
 		seen.insert(seen1.at(i)); // TODO for now we keep seen, but it should not be necessary as all alignments are deleted from the index
