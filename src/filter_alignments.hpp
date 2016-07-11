@@ -9,7 +9,6 @@
 class filter_als{
 	public:
 	filter_als(dynamic_mc_model & m, std::set<const pw_alignment*,compare_pointer_pw_alignment> & als, size_t num_sequences, size_t num_threads): model(m), alind(NULL){
-		total_gain = 0;
 		for(std::set<const pw_alignment*, compare_pointer_pw_alignment>::iterator it = als.begin(); it != als.end(); it++){
 			alignments.push_back(*it);
 		}
@@ -20,15 +19,14 @@ class filter_als{
 	~filter_als(){}
 	void find_overlapped_references();
 	void find_touched_ref(std::vector<const pw_alignment*> & , size_t & , size_t & , size_t & , std::map<const pw_alignment*, size_t> & );
-	std::vector<size_t> get_overlap(std::map<const pw_alignment*, size_t> &  , std::map<const pw_alignment*,size_t> & );
-	void recalculate_gain_value(const pw_alignment*,size_t &, size_t &);
+	size_t get_overlap(std::map<const pw_alignment*, size_t> &  , std::map<const pw_alignment*,size_t> & );
+	void recalculate_gain_value(const pw_alignment*, size_t &);
 	void find_als_with_highest_gain();
 	std::set<const pw_alignment*, compare_pointer_pw_alignment> get_filtered_als()const;
 	private:
 	dynamic_mc_model & model;
 	size_t num_threads;
 	size_t num_sequences;
-	double total_gain;
 	std::vector<const pw_alignment*> alignments;
 	std::multimap<double,const pw_alignment*> new_gains;
 	std::set<const pw_alignment*, compare_pointer_pw_alignment> filtered_als;

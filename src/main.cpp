@@ -2939,7 +2939,7 @@ int do_test_new_cc(int argc, char * argv[]) {
 	std::cout << "filtered als size "<< filtered_als.size() << std::endl;
 //	cc_type component(al_with_pos_gain,data.numSequences());
 //	compute_cc_with_icl cccs(al_with_pos_gain, data.numSequences(),num_threads);
-	std::set< pw_alignment, compare_pw_alignment> mixed_als; //TODO
+	std::set< pw_alignment, compare_pw_alignment> mixed_als; 
 	std::cout << " now we compute connected components " << std::endl;
 	clock_t cc_init_time = clock();
 	cc_type cccs(filtered_als, data.numSequences(), num_threads);//The new one with fraction
@@ -3018,7 +3018,7 @@ int do_test_new_cc(int argc, char * argv[]) {
 
 //	}
 	size_t Counter =0;
-	std::cout << "stack in main "<< std::endl;
+	std::cout << "stack size in main is " << stacks.size()<< std::endl;
 	for(size_t i=0; i<stacks.size(); ++i) {
 	//	std::cout << "at "<< i <<std::endl;
 		std::set< const pw_alignment*, compare_pointer_pw_alignment> & stack = stacks.at(i);
@@ -3033,7 +3033,7 @@ int do_test_new_cc(int argc, char * argv[]) {
 		}
 		//	std::cout << "at "<< i << " "<< Counter <<std::endl;		
 	}
-	std::cout << "number of stacks' member is "<< Counter <<std::endl;
+	std::cout << "total number of stacks' member is "<< Counter <<std::endl;
 
 			
 	//Cutting partial overlaps in 'stacks' 

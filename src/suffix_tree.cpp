@@ -23,25 +23,21 @@
 		std::multimap<size_t,size_t>::iterator it2 = edges_relations.find(parent_index);
 		assert(it2 != edges_relations.end());
 		std::cout << last_node_index << " " << parent_index <<std::endl;
-		std::vector<size_t> test;
+		std::vector<size_t> intermediate;
 		std::pair<std::multimap<size_t, size_t>::iterator, std::multimap<size_t, size_t>::iterator> it = edges_relations.equal_range(parent_index);
 		for(std::multimap<size_t,size_t>::iterator it1 = it.first ; it1 != it.second; it1++){
-			test.push_back(it1->second);
-		//	edges_relations.insert(std::make_pair(last_node_index, it1->second)); //XXX why is it wrong?!
-		//	std::cout << last_node_index << " " << it1->second << std::endl;
+			intermediate.push_back(it1->second);
 		}
 		edges_relations.erase(parent_index);
 		it2 = edges_relations.find(parent_index);
 		assert(it2 == edges_relations.end());
 		std::cout << "child nodes were deleted"<<std::endl;
 		edges_relations.insert(std::make_pair(parent_index, last_node_index));
-		std::cout<< "test size "<< test.size()<<std::endl;
-		for(size_t i =0; i < test.size();i++){
-			edges_relations.insert(std::make_pair(last_node_index, test.at(i)));						
-			std::cout << "test at "<< i << " is " << test.at(i)<<std::endl;
+		std::cout<< "intermediate size "<< intermediate.size()<<std::endl;
+		for(size_t i =0; i < intermediate.size();i++){
+			edges_relations.insert(std::make_pair(last_node_index, intermediate.at(i)));						
+			std::cout << "test at "<< i << " is " << intermediate.at(i)<<std::endl;
 		}
-	//	std::pair<std::vector<size_t>,size_t> check(parent,last_node_index);
-	//	tree.insert(std::make_pair(check, new_suffix));
 		edges.insert(std::make_pair(last_node_index,new_suffix));
 		last_node_index ++;
 
