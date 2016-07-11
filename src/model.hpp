@@ -6,6 +6,7 @@
 #include "dynamic_mc.hpp"
 #include"overlap.hpp"
 
+
 //Interval tree:
 #include "IntervalTree.hpp"
 #include "alignment_index.hpp"
@@ -25,7 +26,7 @@ typedef  std::set<const pw_alignment*, compare_pw_alignment> alset;
 template<typename T, typename overlap_type>
 class initial_alignment_set {
 	public:
-	initial_alignment_set(const all_data & d, const T & a_model, double base_cost): data(d), common_model(a_model),alind(d.numSequences()){//TODO Since we don't use it for the moment, I am not so sure if this constructor works correctly. I have some doubt that it doesn't return the same alignment in sorter. It should be checked!
+	initial_alignment_set(const all_data & d, const T & a_model, double base_cost): data(d), common_model(a_model){//TODO Since we don't use it for the moment, I am not so sure if this constructor works correctly. I have some doubt that it doesn't return the same alignment in sorter. It should be checked!
 		this->base_cost = base_cost;
 		std::multimap<double, const pw_alignment&> sorter;
 		double sumgain = 0;
@@ -57,7 +58,7 @@ class initial_alignment_set {
 	//	assert(pos == sorter.size());
 	//	std::cout << " " << sorter.size() << " input alignments, total gain: " << sumgain << " bit " << std::endl;
 	}
-	initial_alignment_set(const all_data & d, const std::set< const pw_alignment*, compare_pointer_pw_alignment> & als, const T & a_model, double base_cost, size_t & num_threads): data(d), common_model(a_model),alind(d.numSequences()){
+	initial_alignment_set(const all_data & d, const std::set< const pw_alignment*, compare_pointer_pw_alignment> & als, const T & a_model, double base_cost, size_t & num_threads): data(d), common_model(a_model){
 		this->base_cost = base_cost;
 		this->num_threads = num_threads;
 		std::multimap<double, const pw_alignment*> sorter;
@@ -65,7 +66,6 @@ class initial_alignment_set {
 	//	std::cout << "calculating vgain! "<<std::endl;
 		for(std::set<const pw_alignment* , compare_pointer_pw_alignment>::iterator it = als.begin(); it!=als.end(); it++) { 
 			const pw_alignment * cur = *it;
-			
 			double gain1, gain2;
 			common_model.gain_function(*cur, gain1, gain2);
 			double vgain = (gain1+gain2)/2 - base_cost;
@@ -171,7 +171,6 @@ class initial_alignment_set {
 	double max_gain;
 	double result_gain;
 	size_t used_alignments;
-	alignment_index alind;
 
 
 
@@ -343,6 +342,28 @@ class compute_cc_avl {
 		}
 		alind = new alignment_index(num_sequences, num_threads, sorted_als);
 	}
+	compute_cc_avl(const std::set<pw_alignment, compare_pw_alignment> & als_in, size_t num_sequences, size_t num_threads): alind(NULL) {//Is used to create partially overlapped connected components
+		this->num_threads = num_threads;
+	//	RIGHT = 0;
+		std::cout << " CC AVL build index on " << als_in.size() << std::endl << std::flush;
+		std::multimap<size_t, const pw_alignment *> sorter;
+		for(std::set< pw_alignment, compare_pw_alignment>::const_iterator it = als_in.begin(); it!=als_in.end(); it++){
+			const pw_alignment * al = &*it;
+			size_t len = al->alignment_length();
+			sorter.insert(std::make_pair(len, al));
+		}
+		std::cout << " Sorting done " << sorter.size()<< std::endl;
+		std::vector<const pw_alignment *> sorted_als(sorter.size());
+		size_t num = 0;
+		for(std::multimap<size_t, const pw_alignment *>::iterator it = sorter.begin(); it!=sorter.end(); ++it) {
+			const pw_alignment * al = it->second;
+			sorted_als.at(num) = al;
+			alignments.insert(al);
+			num++;
+		}
+		alind = new alignment_index(num_sequences, num_threads, sorted_als);
+	}
+
 	compute_cc_avl(const overlap_type & ovrlp, size_t num_sequences, size_t num_threads){
 		this->num_threads = num_threads;
 		const std::set<pw_alignment, compare_pw_alignment> & als = ovrlp.get_all();
@@ -714,7 +735,9 @@ void run(std::map<std::string, std::vector<std::string> > & cluster_result) {
 	std::map<std::string, char> cluster_centers;
 	void add_alignment(const pw_alignment  & al);
 };
+
 #define ALLOWED_GAP 5
+
 class finding_centers{
 	public:
 	finding_centers(all_data &);
@@ -723,6 +746,7 @@ class finding_centers{
 	void findMemberOfClusters(std::map<std::string,std::vector<pw_alignment> > &);
 	void center_frequency(std::map<std::string,std::vector<pw_alignment> > &, std::vector<std::map<size_t, std::string> > & );
 	std::map<size_t, std::vector<size_t> >get_center(size_t &)const;//Returns long centers and their locations
+	const std::vector<std::vector<size_t> > & get_centers(size_t &)const;
 	size_t get_number_of_centers()const;//Returns the total number of centers
 	std::map< size_t, std::string> get_sequence_centers(size_t & )const;//It returns all the centers of a sequence, a center may happen more than once, thus it might be repeated in the vector. size_t shows the position of each center
 	std::string find_center_name(size_t &)const;
@@ -735,6 +759,7 @@ class finding_centers{
 	std::map<std::string,std::string> memberOfCluster; //first string is assocciated member and second one is its center
 	std::vector< std::map< size_t, std::string> >centersOnSequence;//all the centers that happen on each sequence and their positions 
 	std::vector< std::map< size_t , std::vector<size_t> > > centersOfASequence;//centers that happen on each sequence and have less than ALLOWED_GAP bases difference and their position. Fully reveresed are removed.
+	std::map<size_t ,std::vector<std::vector<size_t> > > long_centers_of_a_sequence; //Potential long centers. size_t -->seq_id
 	std::vector<std::multimap<std::vector<size_t>,size_t > > initial_suffixes;
 	std::vector<std::string> center_index;
 //	std::map<std::string, int>oriented_index;// centers, their indecies which can be negative if they are used in their reverse direction.
@@ -773,28 +798,6 @@ class suffix_tree{
 	std::map<std::vector<size_t>,size_t>branch_counter;//vector represents all nodes of a branch , size_t shows the number of that branch is happening
 	std::map<size_t,size_t> FirstCenterOnFirstNodes; //size_t -> is the first node on the first row nodes after the root,  size_t -> is the the index of that node
 	std::set<size_t> IndexOfFirstNodesAfterRoot; //Index of first row nodes after the root //TODO
-};
-class merging_centers{
-	public:
-		merging_centers(all_data &, finding_centers &, suffix_tree &);
-		~merging_centers();
-		void updating_centers(std::vector<size_t> & , size_t &);
-		void merg_gain_value( );
-		void adding_new_centers(std::vector<std::vector<std::string> >&, std::vector<std::map<size_t , std::vector<std::string> > >&);// Saves new centers in the 'long_centers' vector in main. It gives a unique id to each of them(Their row in the outer vector). vector<string> includes are the centers in the new one. they are saved in the form of ref:left.
-		void index_centers(std::map<std::string , std::vector<pw_alignment> > & );
-		void add_long_centers_to_map(std::vector<std::vector<std::string> > & , std::map<vector<std::string>, std::vector<pw_alignment> > &); //Initially fills in the new_centers map
-		void create_alignment(std::vector<std::vector<std::string> > &, std::map<vector<std::string>, vector<pw_alignment> >&, std::map<std::string , std::vector<pw_alignment> > &,  std::vector<std::map<size_t , std::vector<std::string> > > &,  std::vector<std::map<size_t , std::string> > & ); //Creates all the als using long centers 
-		void remove_fully_reverse_refs(vector<vector<std::string> > & ,std::map<std::vector<std::string>, std::vector<pw_alignment> > &);
-		void find_new_centers(size_t &, std::vector<std::string> & , size_t &, std::vector<std::map<size_t, std::vector<std::string> > >& );//Finds long centers on a certain sequence	
-		void find_long_center_length(std::vector<std::string> & , std::map<std::string,std::vector<pw_alignment> > & , size_t & ,size_t & ,size_t &,size_t &, std::vector<std::map<size_t , std::string> > &);
-
-	private:
-		all_data & data;
-		finding_centers & centers;
-		suffix_tree & tree;
-		std::map<std::string, int> center_index;
-		std::map<std::vector<size_t> , size_t> merged_centers;//merged centers, vector<size_t> ----> original indices of megerd centers , size_t ----> its new index
-		std::map<std::vector<size_t>, int >gains; // vector<size_t> ----> series of centers, int ----> gain of it. It includes the last combination of centers
 };
 
 

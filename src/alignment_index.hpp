@@ -43,6 +43,7 @@ class alignment_index {
 
 	void debug_print() const;	
 
+	void half_insert(const pw_alignment * al, size_t reference);
 
 
 	private:
@@ -52,7 +53,6 @@ class alignment_index {
 	size_t num_threads;
 
 
-	void half_insert(const pw_alignment * al, size_t reference);
 };
 
 #endif

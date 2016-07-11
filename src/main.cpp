@@ -19,11 +19,14 @@
 #include "graph.hpp"
 //suffix tree:
 #include "suffix_tree.hpp"
+//Merging centers:
+#include "merging_centers.hpp"
 //interval tree:
 #include "intervals.hpp"
 #include "alignment_index.hpp"
 #include <omp.h>
-
+//Filtering the alignments
+#include "filter_alignments.hpp"
 #define NO_MAKEFILE
 #include "dlib/entropy_encoder/entropy_encoder_kernel_1.h"
 #include "dlib/entropy_decoder/entropy_decoder_kernel_1.h"
@@ -1133,11 +1136,17 @@ int do_mc_model(int argc, char * argv[]) {
 
 		//Long centers are created:
 		finding_centers centers(data);
-		suffix_tree tree(data,centers);
-		merging_centers merg(data, centers, tree);
+		size_t num_seq = data.numSequences();
+	//	suffixTree tree(num_seq, centers);
+	//	std::vector<size_t> center_with_highest_gain;
+	//	size_t highest_index = 0;
+	//	tree.make_tree(center_with_highest_gain , highest_index);
+
+//		suffix_tree tree(data,centers);
+//		merging_centers merg(data, centers, tree);
 	//From this point on orientation matters! It shoud be taken into account in counting the number of each center happening when we are looking for the long centers!
 		centers.center_frequency(al_of_a_ccs,centerOnSequence);//It detects all the centers on each sequence and fill in centerOnSequence which contains all the cneters on each sequence.
-		merg.adding_new_centers(local_long_centers,centersPositionOnASeq);//After merging a group of centers we iteratively create new suffixes and a new tree based on them, then recalculate the gains again. At the end those with gain>0 go to the long_centers and centersPositionOnASeq.
+	//	merg.adding_new_centers(local_long_centers,centersPositionOnASeq);//After merging a group of centers we iteratively create new suffixes and a new tree based on them, then recalculate the gains again. At the end those with gain>0 go to the long_centers and centersPositionOnASeq.
 		// New centers (longer ones) are added to a separate data structure.
 //		std::cout << "long centers: " << std::endl;
 		for(size_t j  =0; j < local_long_centers.size();j++){
@@ -1151,7 +1160,7 @@ int do_mc_model(int argc, char * argv[]) {
 		for(std::map<std::string, std::vector<pw_alignment> >::iterator it = al_of_a_ccs.begin(); it != al_of_a_ccs.end();it++){
 			std::cout << it->first << " " << it->second.size()<<std::endl;
 		}
-		merg.create_alignment(local_long_centers,new_centers,al_of_a_ccs,centersPositionOnASeq,centerOnSequence);//Here we fill in the 'new_centers' with longer alignments in the way that center is always the second ref
+//		merg.create_alignment(local_long_centers,new_centers,al_of_a_ccs,centersPositionOnASeq,centerOnSequence);//Here we fill in the 'new_centers' with longer alignments in the way that center is always the second ref
 		std::cout << "long alignments: " <<std::endl;
 		for(size_t i =0; i < local_long_centers.size();i++){
 			std::map<std::vector<std::string>, std::vector<pw_alignment> >::iterator it = new_centers.find(local_long_centers.at(i));
@@ -2148,20 +2157,30 @@ int do_dynamic_mc_model(int argc, char * argv[]) {
 		std::cout<< "end of cluster in! "<<std::endl;
 		//XXX Long centers are created here!
 		finding_centers centers(data);
-		suffix_tree tree(data,centers);
-		merging_centers merg(data, centers, tree);
 		//From this point on orientation matters! It shoud be taken into account in counting the number of each center happening when we are looking for the long centers!
 		centers.center_frequency(al_of_a_ccs,centerOnSequence);//All the centers of each sequence are detected and centerOnSequence is filled in. It contains all the cneters on each sequence. 
 		std::cout<< "centers on sequence "<<std::endl;
 		for(std::map<size_t, std::string >::iterator test_it = centerOnSequence.at(0).begin(); test_it != centerOnSequence.at(0).end(); test_it++){
 				std::cout<<test_it->first<< " "<< test_it->second<< " "<<std::endl;
 		}
+		std::cout <<"Building suffix tree: "<<std::endl;
+		std::vector<std::vector<std::vector<size_t> > > all_current_centers(num_seq);
+		for(size_t seq_id = 0; seq_id < num_seq; seq_id++){
+			all_current_centers.at(seq_id) = centers.get_centers(seq_id);
+		}
+		suffixTree tree(num_seq, centers, all_current_centers);
+		std::vector<size_t> center_with_highest_gain;
+		size_t highest_index = 0;
+		tree.make_tree(center_with_highest_gain , highest_index);
+		//Trees are created iteratively and centers are merged:
+	//	merging_centers merg(data, centers);
 
-		merg.adding_new_centers(local_long_centers,centersPositionOnASeq);//After merging a group of centers we iteratively create new suffixes and a new tree based on them, then recalculate the gains again. At the end those with gain>0 go to the long_centers and centersPositionOnASeq.//TODO seems all the long centers are not added.
-		std::cout<< "new centers are made! "<<std::endl;
+	//	merg.adding_new_centers(local_long_centers,centersPositionOnASeq);//After merging a group of centers we iteratively create new suffixes and a new tree based on them, then recalculate the gains again. At the end those with gain>0 go to the long_centers and centersPositionOnASeq.//TODO seems all the long centers are not added.
+		std::cout<< "new centers are made! " << local_long_centers.size() <<std::endl;
 		for(size_t j  =0; j < local_long_centers.size();j++){
 			long_centers.push_back(local_long_centers.at(j));
 		}
+		std::cout << "long center size is "<< long_centers.size() << std::endl;
 		std::cout<< "long center on 0 "<<std::endl;
 		for(std::map<size_t, std::vector<std::string> >::iterator test_it = centersPositionOnASeq.at(0).begin(); test_it != centersPositionOnASeq.at(0).end(); test_it++){
 			for(size_t k =0; k < test_it->second.size();k++){
@@ -2169,10 +2188,11 @@ int do_dynamic_mc_model(int argc, char * argv[]) {
 			}
 			std::cout << " " <<std::endl;
 		}
-		merg.create_alignment(local_long_centers,new_centers,al_of_a_ccs,centersPositionOnASeq,centerOnSequence);//Here we fill in the 'new_centers' with longer alignments in the way that center is always the second ref
+	//	merg.create_alignment(local_long_centers,new_centers,al_of_a_ccs,centersPositionOnASeq,centerOnSequence);//Here we fill in the 'new_centers' with longer alignments in the way that center is always the second ref
 
 	} // for connected components
 	//Short centers are added to the long centers container. //TODO Think about simplifying it! XXX Note that second both ref can be backwards
+	std::cout << "number of long centers "<< long_centers.size() << " " <<new_centers.size() <<std::endl;
 	std::map<std::string, std::vector<pw_alignment> > intermediate;
 	for(std::map<std::vector<std::string>, std::vector<pw_alignment> >::iterator it = new_centers.begin(); it != new_centers.end(); it++){
 		std::vector<std::string> connected_center = it->first;
@@ -2888,13 +2908,13 @@ int do_test_new_cc(int argc, char * argv[]) {
 	std::cout << "model is trained! "<<std::endl;
 // Find connected components of alignments with some overlap // Moved it here after training to be able to remove small als first and then connect them to each other.
 	std::set<const pw_alignment*, compare_pointer_pw_alignment> al_with_pos_gain; 
+	std::set<const pw_alignment*, compare_pointer_pw_alignment> remainders; 
 #pragma omp parallel for num_threads(num_threads)
-//	for(size_t i =0; i < data.numAlignments();i++){
-	for(size_t i =0; i < 50;i++){
+	for(size_t i =0; i < data.numAlignments();i++){
+//	for(size_t i =0; i < 50;i++){
 //	if(i%1000==0) std::cout << ".";
 //	for(size_t i =0; i < 16;i++){
 		const pw_alignment & al = data.getAlignment(i);
-	//	al.print();
 		double g1 ,g2;
 		m.gain_function(al,g1,g2);
 		double av_gain = (g1+g2)/2 ;
@@ -2902,60 +2922,207 @@ int do_test_new_cc(int argc, char * argv[]) {
 #pragma omp critical(al_insert)
 {
 		al_with_pos_gain.insert(&al);
+	//	std::cout<< &al<<std::endl;
+	//	al.print();
+
 }
 		}
 	}
 	std::cout << std::endl;
+	size_t num_seq = data.numSequences();
+	filter_als filter(m,al_with_pos_gain, num_seq, num_threads);
+	filter.find_overlapped_references();
+	std::set<const pw_alignment*,  compare_pointer_pw_alignment> filtered_als;
+	filtered_als = filter.get_filtered_als();
 	//Makes components of partially overlapped alignments
 	std::cout << "al with positive gains are kept " << al_with_pos_gain.size() <<std::endl;
+	std::cout << "filtered als size "<< filtered_als.size() << std::endl;
 //	cc_type component(al_with_pos_gain,data.numSequences());
 //	compute_cc_with_icl cccs(al_with_pos_gain, data.numSequences(),num_threads);
+	std::set< pw_alignment, compare_pw_alignment> mixed_als; //TODO
 	std::cout << " now we compute connected components " << std::endl;
 	clock_t cc_init_time = clock();
-	cc_type cccs(al_with_pos_gain, data.numSequences(), num_threads);//The new one with fraction
+	cc_type cccs(filtered_als, data.numSequences(), num_threads);//The new one with fraction
 	cc_init_time = clock() - cc_init_time;
 	std::cout << "CC Init time " << (double)cc_init_time/CLOCKS_PER_SEC << std::endl;
-	std::vector<std::set<const pw_alignment* , compare_pointer_pw_alignment> > ccs; 
+//	std::vector<std::set<const pw_alignment* , compare_pointer_pw_alignment> > ccs; 
+	size_t cluster_base_cost =0;
+	
+	remainders = filtered_als;
 	clock_t cc_comp_time = clock();
-	cccs.compute(ccs); //fill in ccs, ordered by size(Notice that they are just connected to each other if they have overlap more than 95% overlap!)
+	double fraction = 0.95;
+//	std::set< pw_alignment, compare_pw_alignment> al_in_overlap; //TODO
+
+	while(fraction > 0.60){
+//	for(std::set<pw_alignment,compare_pw_alignment>::iterator it = al_in_overlap.begin(); it != al_in_overlap.end();it++){
+//		remainders.insert(*it); // changed the 'remainders' to reference!
+//	}
+//	for(std::set<pw_alignment,compare_pw_alignment>::iterator it = remainders.begin(); it != remainders.end();it++){
+//		const pw_alignment & al = *it;
+//		double g1 ,g2;
+//		m.gain_function(al,g1,g2);
+//		double av_gain = (g1+g2)/2 ;
+//		assert(av_gain>0);
+//	}
+//	al_in_overlap.clear();
+//	cc_type cccs(remainders, data.numSequences(), num_threads);
+	std::set<const pw_alignment* , compare_pointer_pw_alignment> ccs; 
+//	cccs.compute(ccs); //fill in ccs, ordered by size(Notice that they are only connected to each other if they have overlap more than 95% overlap!)
+	std::cout << "fraction is "<< fraction << " run on " << remainders.size()<<std::endl;
+	cccs.non_recursive_compute(ccs,remainders,fraction); //A graph of als with 95% overlap is made.
+	remainders = cccs.get_remaining_als();//XXX is faster if fill it in at the same time with running "non_recursive_compute"
+
+//	mixed_als = cccs.get_remaining_als();//TODO add mixed als to the previous function and fill it in at the same time
 	cc_comp_time = clock() - cc_comp_time;
 
 	std::cout << "CC Init time " << (double)cc_init_time/CLOCKS_PER_SEC << std::endl;
 	std::cout << "CC Comp time " << (double)cc_comp_time/CLOCKS_PER_SEC << std::endl;
 //	component.compute(ccs);
 	std::cout<< "ccs are made!" << ccs.size() <<std::endl; //Initial ccs with 95% overlap
+	std::cout << "mixed als size1 "<< mixed_als.size() << std::endl;
 	size_t counter = 0;
-	for(size_t i=0; i<ccs.size(); ++i) { // Only those have more than 95% overlap
-
+//	for(size_t i=0; i<ccs.size(); ++i) { // Only those have more than 95% overlap
 //	for(size_t i=0; i<ccs.size()-1; ++i) {
-		std::cout << " on initial CC " << i << " size " << ccs.at(i).size() << std::endl;
-		counter += ccs.at(i).size();
-		for(std::set< const pw_alignment* , compare_pointer_pw_alignment>::iterator it = ccs.at(i).begin();it != ccs.at(i).end();it++){
+//		std::cout << " on initial CC " << i << " size " << ccs.at(i).size() << std::endl;
+//		counter += ccs.at(i).size();
+	/*	for(std::set< const pw_alignment* , compare_pointer_pw_alignment>::iterator it = ccs.at(i).begin();it != ccs.at(i).end();it++){
 			std::cout << *it << std::endl;
 
 			const pw_alignment * p = *it;
-			p->print();
-//			for(size_t j = i+1; j < ccs.size();j++){
-//				std::set< const pw_alignment* , compare_pointer_pw_alignment> ccs_j = ccs.at(j);
+//			p->print();
+			for(size_t j = i+1; j < ccs.size();j++){
+				std::set< const pw_alignment* , compare_pointer_pw_alignment> ccs_j = ccs.at(j);
+				cccs.test_redundancy(p,ccs_j);
 //				ol.test_no_overlap_between_ccs(*p, ccs_j);//XXX this is just a test function, comment it the first run!
 				data.checkAlignmentRange(*p);//XXX this is just a test function, comment it after the first run!
-//			}
-		}
-	}
+			}
+		}*/
+//	}
 
-	std::cout<< "returned number is "<< counter <<std::endl;
+//	std::cout<< "returned number is "<< counter <<std::endl;
 	//Finding biconnected components
-	biconnected_component bicomp(cccs,ccs);
-	for(size_t i=0; i<ccs.size(); ++i) { 
+/*	biconnected_component bicomp(cccs,ccs);
+	for(size_t i=0; i<ccs.size(); ++i) { //
 		std::cout << "ccs at " << i << std::endl;
 		bicomp.creat_biconnected_component(i);
 		std::cout << "D"<<std::endl;
+	}*/
+	std::vector<std::set<const pw_alignment*,compare_pointer_pw_alignment > > stacks;
+	std::set< const pw_alignment* , compare_pointer_pw_alignment> & temp = ccs;
+//	for(size_t i=0; i<ccs.size(); ++i) {
+		std::cout << "ccs size "<< ccs.size() <<std::endl;
+		two_edge_cc twoEdgeCC(cccs,ccs);
+		twoEdgeCC.find_bridges(stacks,mixed_als);
+		std::cout << "mixed als size2 "<< mixed_als.size() << std::endl;
+
+
+//	}
+	size_t Counter =0;
+	std::cout << "stack in main "<< std::endl;
+	for(size_t i=0; i<stacks.size(); ++i) {
+	//	std::cout << "at "<< i <<std::endl;
+		std::set< const pw_alignment*, compare_pointer_pw_alignment> & stack = stacks.at(i);
+		for(std::set< const pw_alignment* , compare_pointer_pw_alignment>::iterator it = stack.begin();it != stack.end();it++){
+		//	std::cout << *it << std::endl;
+	//		const pw_alignment * al = *it;
+	//		double g1 ,g2;
+	//		m.gain_function(*al,g1,g2);
+	//		double av_gain = (g1+g2)/2 ;
+	//		assert(av_gain > 0);
+			Counter ++;
+		}
+		//	std::cout << "at "<< i << " "<< Counter <<std::endl;		
+	}
+	std::cout << "number of stacks' member is "<< Counter <<std::endl;
+
+			
+	//Cutting partial overlaps in 'stacks' 
+	std::vector<overlap_type> cc_overlap(stacks.size(), overlap_type(data));
+//	std::set<const pw_alignment*, compare_pointer_pw_alignment> al_pointers_in_overlap;
+	size_t COUNT = 0;
+	for(size_t i=0; i<stacks.size(); ++i) {//TODO Order them by size before cutting
+		std::set< const pw_alignment*, compare_pointer_pw_alignment> & stack = stacks.at(i);
+	//	std::cout << "temp size before "<< temp.size()<<std::endl;
+		for(std::set< const pw_alignment* , compare_pointer_pw_alignment>::iterator it = stack.begin();it != stack.end();it++){ //TODO it is not thoughtful! Fillin the remainder while fill in the stacks!
+			std::set< const pw_alignment* , compare_pointer_pw_alignment>::iterator it1 = temp.find(*it);
+			assert(it1 != temp.end());
+			temp.erase(*it1);
+		}
+	//	std::cout << "temp size after "<< temp.size()<<std::endl;
+
+	//	std::cout << "stack size at " << i << " is " << stack.size()<<std::endl;
+		use_ias ias(data,stack, m, cluster_base_cost,num_threads);
+		ias.compute(cc_overlap.at(i));
+		const std::set< pw_alignment, compare_pw_alignment> & als_in_overlap = cc_overlap.at(i).get_all();
+		COUNT += als_in_overlap.size();
+	//	std::cout<< "number of returned als after cutting is "<< als_in_overlap.size() << std::endl;
+		for(std::set<pw_alignment,compare_pw_alignment>::const_iterator it = als_in_overlap.begin(); it != als_in_overlap.end();it++){
+		//	std::cout<< &*it<<std::endl;
+		//	al_pointers_in_overlap.insert(&*it);
+			mixed_als.insert(*it);
+		//	remainders.insert(&*it);
+		//	al_in_overlap.insert(*it);
+		}
+	}
+	std::cout << "total returned numbers after cutting is " << COUNT <<std::endl;
+	for(std::set< const pw_alignment* , compare_pointer_pw_alignment>::iterator it = temp.begin(); it != temp.end();it++){
+		mixed_als.insert(**it);
+	}
+	std::cout << "mixed als size3 "<< mixed_als.size() << std::endl;
+//	remainders = cccs.get_remainders();
+	fraction -= 0.05;
+}//Add the remaining als to mixed_als(can use remainder container in main)
+	for(std::set< const pw_alignment* , compare_pointer_pw_alignment>::iterator it = remainders.begin(); it != remainders.end();it++){
+		mixed_als.insert(**it);
+	}
+//	for(std::set<pw_alignment,compare_pw_alignment>::iterator it = al_in_overlap.begin(); it != al_in_overlap.end();it++){
+//		mixed_als.insert(*it);
+//	}
+
+	std::cout<< "mixed als size is "<< mixed_als.size() << std::endl; //Now we need to run cc without fraction and cut them afterwards
+	for(std::set< pw_alignment , compare_pw_alignment>::iterator it = mixed_als.begin(); it != mixed_als.end();it++){
+		data.checkAlignmentRange(*it);
+	}
+
+	//Creating connected components with 0.0 fraction rate over all of them and cut them afterwards.
+	typedef compute_cc_avl<overlap_type> ccc_type;
+	ccc_type no_fraction_cccs(mixed_als, data.numSequences(), num_threads);
+	std::vector<std::set<const pw_alignment* , compare_pointer_pw_alignment> > no_fraction_ccs;
+	no_fraction_cccs.compute(no_fraction_ccs); 
+	std::cout << "number of components is " << no_fraction_ccs.size() <<std::endl;
+	size_t NUM = 0;
+	for(size_t i=0; i<no_fraction_ccs.size(); ++i) {
+		std::cout << " on CC " << i << " size " << no_fraction_ccs.at(i).size() << std::endl;
+	//	for(std::set< const pw_alignment* , compare_pointer_pw_alignment>::iterator it = no_fraction_ccs.at(i).begin();it != no_fraction_ccs.at(i).end();it++){
+		//	std::cout << *it << std::endl;
+			NUM+=no_fraction_ccs.at(i).size();
+//			const pw_alignment * p = *it;
+		//	for(size_t j = i+1; j < no_fraction_ccs.size();j++){
+			//	std::set< const pw_alignment* , compare_pointer_pw_alignment> ccs_j = no_fraction_ccs.at(j);
+			//	ol.test_no_overlap_between_ccs(*p, ccs_j);//XXX this is just a test function, comment it the first run!
+			//	data.checkAlignmentRange(*p);//XXX this is just a test function, comment it after the first run!
+		//	}
+	//	}
+	}
+	std::cout << "NUM " << NUM <<std::endl;
+
+	//Cutting partial overlaps:
+	std::vector<overlap_type> ccc_overlap(no_fraction_ccs.size(), overlap_type(data));
+	for(size_t i=0; i<no_fraction_ccs.size(); ++i) {
+		std::set< const pw_alignment*, compare_pointer_pw_alignment> & cc = no_fraction_ccs.at(i);
+		use_ias ias(data,cc, m, cluster_base_cost,num_threads);
+		ias.compute(ccc_overlap.at(i));
+		std::vector< std::set<const pw_alignment* , compare_pointer_pw_alignment> > cc_cluster_in; //have shorter length than original alignemnts
+		std::cout<< "using the cc again!"<<std::endl;
+	//	size_t num_seq = data.numSequences();
+		ccc_type occ(ccc_overlap.at(i), num_seq ,1);
+		occ.compute(cc_cluster_in);
 	}
 	//Cutting partial overlaps:
-/*	std::vector<overlap_type> cc_overlap(ccs.size(), overlap_type(data));
+/*	std::vector<overlap_type> cc_overlap(no_fraction_ccs.size(), overlap_type(data));
 	size_t cluster_base_cost =0;
-	for(size_t i=0; i<ccs.size(); ++i) {
-		std::set< const pw_alignment*, compare_pointer_pw_alignment> & cc = ccs.at(i);
+	for(size_t i=0; i<no_fraction_ccs.size(); ++i) {
+		std::set< const pw_alignment*, compare_pointer_pw_alignment> & cc = no_fraction_ccs.at(i);
 		std::cout << "this cc size is "<< cc.size() << std::endl;
 	//	for(std::set< const pw_alignment* , compare_pointer_pw_alignment>::iterator it = cc.begin();it != cc.end();it++){
 	//		const pw_alignment * p = *it;
@@ -3025,6 +3192,7 @@ int do_test_new_cc(int argc, char * argv[]) {
 //	std::cout<< "returned number is "<< counter <<std::endl;
 	return 0;
 }
+
 
 int do_model_simple(int argc, char * argv[]){//simple model
 /*	typedef model use_model;

@@ -80,7 +80,7 @@ alignment_index::alignment_index(size_t num_references, size_t num_threads, std:
 
 #pragma omp critical(pr)
 {
-		std::cout << " ref " << i << " done " << " size " << trees.at(i).size() << " height " << trees.at(i).height() << " levels " << trees.at(i).levels()<< " rebas " << trees.at(i).get_num_reba()<< " moves " << trees.at(i).get_num_moves()<< " list ratio " << trees.at(i).list_ratio()<<  " ins " << ira << " t " << t << " t per al " << pt << std::endl;
+	//	std::cout << " ref " << i << " done " << " size " << trees.at(i).size() << " height " << trees.at(i).height() << " levels " << trees.at(i).levels()<< " rebas " << trees.at(i).get_num_reba()<< " moves " << trees.at(i).get_num_moves()<< " list ratio " << trees.at(i).list_ratio()<<  " ins " << ira << " t " << t << " t per al " << pt << std::endl;
 //		std::cout << " ref " << i << " bulk " << " size " << btree.size() << " height " << btree.height() << " rebas " << btree.get_num_reba()<< " moves " << btree.get_num_moves()<< " list ratio " << btree.list_ratio() << " ins " << bira<< " t " << bt << " t per al " << bpt << std::endl;
 }
 
@@ -208,6 +208,9 @@ size_t alignment_index::erase(const pw_alignment * al) {
 	al->get_lr2(l, r);
 	size_t ref2 = al->getreference2();
 	size_t res2 = trees.at(ref2).erase(l, r, al);
+	if(res1 != res2){
+		al->print();
+	}
 	assert(res1 == res2);
 	return res1;
 }
@@ -245,7 +248,7 @@ void alignment_index::super_search_overlap_and_remove(const size_t & reference, 
 
 	// find result on a single tree
 	trees.at(reference).overlap_search_erase(left, right, result);
-	std::cout << " SSOR search on ref " << reference << " tree has " << trees.at(reference).size() << " intvs, found " << result.size() << std::endl << std::flush;
+//	std::cout << " SSOR search on ref " << reference << " tree has " << trees.at(reference).size() << " intvs, found " << result.size() << std::endl << std::flush;
 
 
 	
@@ -297,7 +300,7 @@ void alignment_index::super_search_overlap_and_remove(const size_t & reference, 
 			erase_here.push_back(eit->second);
 		}
 		if(!erase_here.empty()) {
-			std::cout << " on ref " << *it << " erasing " << erase_here.size() << " nodes " << std::endl << std::flush;  // TODO
+		//	std::cout << " on ref " << *it << " erasing " << erase_here.size() << " nodes " << std::endl << std::flush;  // TODO
 		}
 		trees.at(*it).erase_vector(erase_here);
 	}
@@ -324,7 +327,7 @@ void alignment_index::super_search_overlap_and_remove(const size_t & reference, 
 			touched_intervals.insert(std::make_pair( this_ref, std::make_pair( this_intervals.at(i).first, this_intervals.at(i).second) ) );
 		}
 		if(!this_intervals.empty()) {
-			std::cout << " ref " << *it << " was touched by  " << this_tree.size() << " results alignments. We simplified this to " << this_intervals.size() << " intervals " << std::endl << std::flush;
+		//	std::cout << " ref " << *it << " was touched by  " << this_tree.size() << " results alignments. We simplified this to " << this_intervals.size() << " intervals " << std::endl << std::flush;
 		}
 	}
 }

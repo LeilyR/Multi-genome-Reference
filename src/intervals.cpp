@@ -1167,17 +1167,19 @@ template<typename T>
 void avl_interval_tree<T>::overlap_fraction_search_at_node(node_type * atn, const size_t & left, const size_t & right, const double & fraction, std::vector<value_type> & results) const {
 	size_t minl = atn->min_left;
 	size_t maxr = atn->max_right;
-	std::cout << "res size "<< results.size() <<std::endl;
+//	std::cout << "res size "<< results.size() <<std::endl;
 	size_t ovl = left;
 	size_t ovr = right;
 	if(ovl < minl) ovl = minl;
 	if(ovr > maxr) ovr = maxr;
 	if(ovl > ovr) return;
-	std::cout << "ovr " << ovr << " ovl "<< ovl << " right "<< right << " left "<< left << std::endl;
+//	std::cout << "ovr " << ovr << " ovl "<< ovl << " right "<< right << " left "<< left << std::endl;
 	double maxfraction = (double)(ovr - ovl + 1) / (double)(right - left + 1);
-	std::cout << maxfraction << " " << fraction << std::endl;
+//	std::cout << maxfraction << " " << fraction << std::endl;
 	if(maxfraction < fraction) return;
-	else{std::cout << "max is bigger " <<std::endl;}
+	else{
+		//std::cout << "max is bigger " <<std::endl;
+	}
 // intersection atn and search area
 	size_t aleft = atn->left;
 	size_t aright = atn->right;
@@ -1196,7 +1198,7 @@ void avl_interval_tree<T>::overlap_fraction_search_at_node(node_type * atn, cons
 	if(aovl < aovr) {
 		double afraction = (double)(aovr - aovl + 1) / (double)(aunr - aunl + 1);
 		if(afraction >= fraction) {
-			std::cout << "afraction " << afraction <<std::endl;
+		//	std::cout << "afraction " << afraction <<std::endl;
 			results.push_back(atn->value);
 		}
 	}
@@ -1212,15 +1214,15 @@ void avl_interval_tree<T>::overlap_fraction_search_at_node(node_type * atn, cons
 	}
 	if(strr!=NULL) {
 		if(right >= strr->min_left && left <= strr->max_right) {
-			overlap_fraction_search_at_node(strl, left, right, fraction, results);
+			overlap_fraction_search_at_node(strr, left, right, fraction, results);
 		}
 	}
 	if(strc!=NULL) {
 		if(right >= strc->min_left && left <= strc->max_right) {
-			overlap_fraction_search_at_node(strl, left, right, fraction, results);
+			overlap_fraction_search_at_node(strc, left, right, fraction, results);
 		}
 	}
-	std::cout << "res size1 "<< results.size() <<std::endl;
+//	std::cout << "res size1 "<< results.size() <<std::endl;
 
 }
 
