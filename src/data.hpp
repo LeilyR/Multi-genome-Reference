@@ -64,9 +64,10 @@ class all_data {
 	public:
 		all_data();
 
-		void read_fasta_maf(std::string fasta_all_sequences, std::string maf_all_alignments);
 		void read_fasta_sam(std::string fasta_all_sequences, std::string sam_all_alignments);
 		void read_accknown_fasta_sam(std::string fasta_all_sequences, std::string sam_all_alignments);
+		void read_fasta_maf(std::string fasta_all_sequences, std::string maf_all_alignments);
+		void read_fasta(std::string fasta_reads);//It is used to read the reads for mapping.
 
 		// no copy constructor, never copy all data
 		~all_data();
@@ -92,15 +93,21 @@ class all_data {
 		void add_accession(const std::string & acc);
 		size_t numOfAcc() const;
 		const std::map< std::string, size_t>& getLongname2seqidx()const;
-		int findIdAlignment(std::string name,unsigned int start, unsigned int end);
 		void compare_seq_with_decoding(std::ifstream &);
 		void checkAlignmentRange(const pw_alignment &)const;
-	
+		std::vector<std::string> get_reads()const;
+		void make_fasta(std::ostream &, std::vector<std::string> & );
+
+		bool alignmentAlreadyExist(const pw_alignment &a)const; //XXX Added by Marion. 
+		int findIdAlignment(std::string name,int startOnRead, int endOnRead,int startOnNode,int endOnNode);//XXX Added by Marion
+		int findIdAlignment(std::string name,unsigned int start, unsigned int end);//XXX Added by Marion
+
 	private:
 		// data
 		std::vector<dnastring> sequences;
 		std::vector<std::string> sequence_names;
 		std::vector<pw_alignment> alignments;
+		std::vector<std::string> reads;
 		// fast access indices
 		std::map< std::string, std::vector< size_t> > acc_sequences; // acc name -> sequences of that acc
 		std::vector<size_t> sequence_to_accession; // sequence id -> accession id
@@ -110,6 +117,7 @@ class all_data {
 		
 
 		void insert_sequence(const std::string & acc, const std::string & seq_name, const std::string & dna);
+		void insert_read(const std::string & read);
 		static void name_split(const std::string & longname, std::string & acc, std::string & name);
 
 

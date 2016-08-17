@@ -822,7 +822,7 @@ void all_data::read_fasta_maf(std::string fasta_all_sequences, std::string maf_a
 							if(find_al!=setOfAls.end()){
 								skip = true;
 							}
-						/*	for(size_t i =0; i < alignments.size();i++){ //TODO
+						/*	for(size_t i =0; i < alignments.size();i++){
 								const pw_alignment & al = alignments.at(i);
 								if(al.getreference1() == idx1 && al.getreference2()==idx2 && al.getbegin1()==start1 && al.getbegin2()==start2 && al.getend1()== incl_end1 && al.getend2()==incl_end2){
 									skip = true;
@@ -890,7 +890,39 @@ void all_data::read_fasta_maf(std::string fasta_all_sequences, std::string maf_a
 //	alignments = intermediate;
 	std::cout << alignments.size() <<std::endl;
 }
-
+void all_data::read_fasta(std::string fasta_reads){
+	std::ifstream fastain(fasta_reads.c_str());
+	if(fastain) {
+		std::string str;
+		std::stringstream curseq;
+		size_t number  = 0;
+		std::cout<<"check point "<<std::endl;
+		while(getline(fastain, str)) {
+			if(str.at(0)=='>') {
+				if(curseq.str().size()!=0){
+					insert_read(curseq.str());
+					number++;
+					curseq.str("");
+				}else{
+					std::cerr << "Warning: A read of length zero is skipped " <<std::endl;
+				}
+			} else {
+				curseq << str;
+			}
+		}
+		// store last reas
+		if(curseq.str().size()!=0){
+			insert_read(curseq.str());
+		}else{
+			std::cerr << "Warning: A read of length zero is skipped " <<std::endl;
+		}
+		curseq.str("");
+		fastain.close();
+	} else {
+		std::cerr << "Error: cannot read: " << fasta_reads << std::endl;
+		exit(1);
+	}
+}
 all_data::~all_data() {
 
 }
@@ -984,7 +1016,9 @@ all_data::~all_data() {
 		longname << acc << ":" << seq_name;
 		longname2seqidx.insert(std::make_pair(longname.str(), seq_id));
 	}
-
+	void all_data::insert_read(const std::string & read){
+		reads.push_back(read);
+	}
 
 /**
 	Transform 
@@ -1228,6 +1262,7 @@ void all_data::compare_seq_with_decoding(std::ifstream & in){
 			std::cout<< "seq "<< i << " at " << j << " is " << sequence.at(j) << " and " << c << " is decoded " <<std::endl;
 			assert(sequence.at(j)== c);
 		}
+		std::cout<< "end of seq "<< i << std::endl;
 	}
 	std::cout << " total number of bases is "<< total_length<<std::endl;
 }
@@ -1259,6 +1294,60 @@ void all_data::checkAlignmentRange(const pw_alignment & al)const{
 		exit(1);
 	}
 }
+std::vector<std::string> all_data::get_reads()const{
+	return reads;
+
+}
+
+void all_data::make_fasta(std::ostream & graphfasta, std::vector<std::string> & center){
+	for(size_t cent =0; cent < center.size();cent++){
+		size_t rest = 0;
+		graphfasta<<">"<<cent+1<<std::endl;
+		if(center.at(cent).size() > 70){
+			for(size_t i = 0; i < center.at(cent).size()-70; i++){
+				for(size_t j = i; j < i+70;j++){
+					graphfasta<<center.at(cent).at(j);
+				}
+				i +=69;
+				rest = i+1;
+				graphfasta<<std::endl;
+			}
+			size_t length = 0;
+			for(size_t i = rest ; i < center.at(cent).size();i++){
+				graphfasta<<center.at(cent).at(i);
+				length++;
+			}
+			graphfasta<<std::endl;
+			assert(length <= 70);
+		}else{
+			graphfasta<<center.at(cent)<<std::endl;
+		}
+	}
+}
+
+bool all_data::alignmentAlreadyExist(const pw_alignment &a)const{
+                for(std::vector<pw_alignment>::const_iterator it = alignments.begin(); it != alignments.end(); ++it){
+                        if(a.getbegin1()==it->getbegin1() && a.getend1()==it->getbegin1()&& a.getbegin2() == it->getbegin2() && a.getend2() == it->getend2() && a.getreference1() == it->getreference1() && a.get_modify1() == it->get_modify1())
+                                return true;
+                }
+                return false;
+        }
+
+int all_data::findIdAlignment(std::string name,int startOnRead, int endOnRead,int startOnNode,int endOnNode){ // declare in graph or data ?
+                for(std::vector<pw_alignment>::iterator it = alignments.begin(); it != alignments.end(); ++it){
+                        size_t idReference = it->getreference1();
+                        size_t left,right;
+                        it->get_lr1(left,right);
+                        std::string nameReference = get_seq_name(idReference);
+			assert(it->getbegin2() < it->getend2());//XXX I am so suspicious about this code , just want to get sure it makes sence compare left/right with begin/end ???!!!
+                        if(startOnRead == it->getbegin2() && endOnRead == it->getend2() && name == nameReference && startOnNode == left && endOnNode == right){
+                                return std::distance(alignments.begin(), it);
+                        }
+                }
+                std::cerr << "Alignment not found in findIdAlignment "<< name << " leftOnRead " << startOnRead << " endOnRead " << endOnRead<< " startONNode "<< startOnNode << " endOnNode "<< endOnNode << std::endl;
+                exit(0);
+        }
+
 
 overlap::overlap(const all_data & d): data(d), als_on_reference(d.numSequences()){
 

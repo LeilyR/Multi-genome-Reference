@@ -364,7 +364,7 @@ class compute_cc_avl {
 		alind = new alignment_index(num_sequences, num_threads, sorted_als);
 	}
 
-	compute_cc_avl(const overlap_type & ovrlp, size_t num_sequences, size_t num_threads){
+	compute_cc_avl(const overlap_type & ovrlp, size_t num_sequences, size_t num_threads){//Is used to seperate the fully overlapped ones from the others
 		this->num_threads = num_threads;
 		const std::set<pw_alignment, compare_pw_alignment> & als = ovrlp.get_all();
 		std::cout << " CC AVL build index on " << als.size() << std::endl << std::flush;
@@ -565,7 +565,9 @@ class affpro_clusters {
 		const std::set<pw_alignment*, compare_pw_alignment> & als = ovlp.get_all();
 		for(std::set<pw_alignment*, compare_pw_alignment>::const_iterator it = als.begin(); it!=als.end(); ++it) {
 			const pw_alignment * al = *it;
+			all_als.insert(al);
 			add_alignment(*al);
+			al->print();
 		}
 
 	}
@@ -580,15 +582,18 @@ class affpro_clusters {
 		//	al->print();
 		//	dat.numAcc();
 		//	std::cout<<"data3 ad in afp: "<< & dat << std::endl;	
+			all_als.insert(al);
 			add_alignment(*al); 
-		//	std::cout<<"data4 ad in afp: "<< & dat << std::endl;	
+		//	std::cout<<"data4 ad in afp: "<< & dat << std::endl;
+			al->print();	
 
 		}
 	}
 
 
-void run(std::map<std::string, std::vector<std::string> > & cluster_result) {
+void run(std::map<std::string, std::vector<std::string> > & cluster_result, std::map<std::string, std::vector<pw_alignment> > & local_al_in_a_cluster) {
 	// convert to c-style matrix
+//	std::cout<< "simmatrix size is "<< simmatrix.size() << std::endl;
 	double * data = new double[simmatrix.size() * simmatrix.size()];
 	int * result = new int[simmatrix.size()];
 	if(simmatrix.size()>2){
@@ -680,11 +685,12 @@ void run(std::map<std::string, std::vector<std::string> > & cluster_result) {
 			}
 		}
 	}
+	std::cout << "simmatrix size "<< simmatrix.size()<<std::endl;
 	for(size_t i=0; i<simmatrix.size(); ++i) {//cluster center may happen whenever i == result[i]
-	//	std::cout << sequence_names.at(i) << " res " << i << " is " << result[i] << " ( length " << sequence_lengths.at(i) << ")"<<std::endl;
+		std::cout << sequence_names.at(i) << " res " << i << " is " << result[i] << " ( length " << sequence_lengths.at(i) << ")"<<std::endl;
 
 		if( (size_t)result[i]==i) {
-		//	std::cout << " " << simmatrix.at(i).at(i) << std::endl;
+			std::cout << " center !!" << simmatrix.at(i).at(i) << std::endl;
 			std::map<std::string, std::vector<std::string> >::iterator it=cluster_result.find(sequence_names.at(i));
 			if(it==cluster_result.end()){
 				cluster_result.insert(make_pair(sequence_names.at(i), std::vector<std::string>()));
@@ -696,18 +702,65 @@ void run(std::map<std::string, std::vector<std::string> > & cluster_result) {
 
 
 		} else {
+			/*1. find reverse seq_name if exists compare their gains. For that i might need two containers . One for saving memebers as soon as they happen(map(memebr,center))
+			and the other one for getting an al from its sequence names(map(vector(seq1,seq2),al)). 
+			 2. Maybe i can also check if the reverse of current center already exists as a member then remove that member. */
+
+
 		//	std::cout << " " << simmatrix.at(i).at(result[i]) << " : " << simmatrix.at(i).at(i) << std::endl;
 			//result[i]is associated one, add them to the map for each center
-			std::map<std::string, std::vector<std::string> >::iterator it=cluster_result.find(sequence_names.at(result[i]));
+		/*	std::map<std::string, std::vector<std::string> >::iterator it=cluster_result.find(sequence_names.at(result[i])); //XXX Added it later
 			if(it == cluster_result.end()) {
 				cluster_result.insert(make_pair(sequence_names.at(result[i]), std::vector<std::string>()));
 				it=cluster_result.find(sequence_names.at(result[i]));
+			}*/
+			std::string reverse_seq = make_reverse(sequence_names.at(i));//Reverse of the member
+			//Make the al here:
+			pw_alignment pal;
+			make_an_alignment(sequence_names.at(result[i]),sequence_names.at(i),pal);//Using result[i] as center and i as member find the corresponding al.
+			double gain = model.get_the_gain(pal,sequence_names.at(result[i]));
+			std::map<std::string,std::string>::iterator mem = members_of_clusters.find(reverse_seq);
+			if(mem != members_of_clusters.end()){
+				std::cout << "has reverse!"<<std::endl;
+				std::string cent = mem->second;
+				std::vector<std::string> temp;
+				temp.push_back(cent);
+				temp.push_back(reverse_seq);
+				std::map<std::vector<std::string>, pw_alignment>::iterator al = alignments.find(temp);
+				assert(al != alignments.end());
+				pw_alignment p = al->second;
+				double rev_gain = model.get_the_gain(p, cent);
+				if(rev_gain < gain){
+					//Remove it
+					alignments.erase(al);
+					members_of_clusters.erase(mem);
+					//add the new one
+					std::vector<std::string> temp1;
+					temp1.push_back(sequence_names.at(result[i]));
+					temp1.push_back(sequence_names.at(i));
+					alignments.insert(std::make_pair(temp1,pal));
+					members_of_clusters.insert(std::make_pair(sequence_names.at(i),sequence_names.at(result[i])));
+				}else{//Do nothing
+			
+				}
+			}else{
+			//	it->second.push_back(sequence_names.at(i)); //XXX Added it later
+				//add the new one
+				std::vector<std::string> temp1;
+				temp1.push_back(sequence_names.at(result[i]));
+				temp1.push_back(sequence_names.at(i));
+				alignments.insert(std::make_pair(temp1,pal));
+				std::cout << sequence_names.at(result[i]) << " " << sequence_names.at(i) <<std::endl;
+				members_of_clusters.insert(std::make_pair(sequence_names.at(i),sequence_names.at(result[i])));
 			}
-			it->second.push_back(sequence_names.at(i));
 
 		}
 	}
-
+	//Checks for the redundancy:
+	check_redundancy();
+	//Fills in cluster_result and  local_al_in_a_cluster
+	write_clusters(cluster_result, local_al_in_a_cluster);
+	
 	// double apgain = totalccost - apcost;
 
 //	std::cout << "Total sequence cost " << totalccost << " ap clustering cost " << apcost << " gain: " << apgain << std::endl;
@@ -720,23 +773,44 @@ void run(std::map<std::string, std::vector<std::string> > & cluster_result) {
 }
 	size_t get_sequence_length(size_t ref_idx)const; //ref_idx shows the reference that sequence belongs to. It could be either 0 or one.
 	
-
-
+	std::string make_reverse(std::string sequence_name){
+		std::vector<std::string> seq_parts;
+		strsep(sequence_name, ":" , seq_parts);
+		unsigned int dir = atoi(seq_parts.at(0).c_str());
+		unsigned int ref = atoi(seq_parts.at(1).c_str());
+		unsigned int left = atoi(seq_parts.at(2).c_str());
+		if(dir == 0){
+			dir = 1;
+		}else{
+			dir = 0;
+		}
+		std::stringstream reverse;
+		reverse<<dir<<":"<<ref<<":"<<left;
+		std::string rev_seq = reverse.str();
+		return rev_seq;
+	}
+	void make_an_alignment(std::string& , std::string & , pw_alignment &);
+	void write_clusters(std::map<std::string, std::vector<std::string> > & cluster_result, std::map<std::string, std::vector<pw_alignment> > & local_al_in_a_cluster);
+	void check_redundancy();
 // simil = neg distance, diagonale pref = neg cost
 	private:
 //	all_data & dat;
 	const tmodel & model;
 	double base_cost;
 	// TODO do we need distances for all pairs of sequence pieces?
+	std::set<const pw_alignment* , compare_pointer_pw_alignment> all_als;
 	std::map<std::string, size_t> sequence_pieces; // chr:leftpos -> seq_piece index
 	std::vector<std::string> sequence_names;
        	std::vector<size_t> sequence_lengths;	
 	std::vector<std::vector<double> > simmatrix;
 	std::map<std::string, char> cluster_centers;
 	void add_alignment(const pw_alignment  & al);
+
+	std::map<std::string, std::string> members_of_clusters; //first string represents a member and the second string represents its coresponding center
+	std::map<std::vector<std::string>,pw_alignment> alignments; //The set represents the name an al's references. (center,other)
 };
 
-#define ALLOWED_GAP 5
+#define ALLOWED_GAP 50
 
 class finding_centers{
 	public:
@@ -744,20 +818,20 @@ class finding_centers{
 	~finding_centers();
 	void setOfAlignments(std::map<std::string,std::vector<pw_alignment> > &);
 	void findMemberOfClusters(std::map<std::string,std::vector<pw_alignment> > &);
-	void center_frequency(std::map<std::string,std::vector<pw_alignment> > &, std::vector<std::map<size_t, std::string> > & );
+	void center_frequency(std::map<std::string,std::vector<pw_alignment> > &, std::vector<std::multimap<size_t, std::string> > & );
 	std::map<size_t, std::vector<size_t> >get_center(size_t &)const;//Returns long centers and their locations
 	const std::vector<std::vector<size_t> > & get_centers(size_t &)const;
 	size_t get_number_of_centers()const;//Returns the total number of centers
-	std::map< size_t, std::string> get_sequence_centers(size_t & )const;//It returns all the centers of a sequence, a center may happen more than once, thus it might be repeated in the vector. size_t shows the position of each center
+	std::multimap< size_t, std::string> get_sequence_centers(size_t & )const;//It returns all the centers of a sequence, a center may happen more than once, thus it might be repeated in the vector. size_t shows the position of each center
 	std::string find_center_name(size_t &)const;
 	std::vector<size_t> get_long_center_position(size_t & seq_id , std::vector<std::string> & long_center);
 	
 	
 	private://all these containers are local and their containts are replacing after each call of clustering:
 	all_data & data;
-	std::vector< std::map<size_t , pw_alignment*> >AlignmentsFromClustering;//It is changing in each call of clustering
+	std::vector< std::map<size_t , pw_alignment*> >AlignmentsFromClustering;//It is changing in each call of clustering. contains als on each seq at position size_t
 	std::map<std::string,std::string> memberOfCluster; //first string is assocciated member and second one is its center
-	std::vector< std::map< size_t, std::string> >centersOnSequence;//all the centers that happen on each sequence and their positions 
+	std::vector< std::multimap< size_t, std::string> >centersOnSequence;//all the centers that happen on each sequence and their positions 
 	std::vector< std::map< size_t , std::vector<size_t> > > centersOfASequence;//centers that happen on each sequence and have less than ALLOWED_GAP bases difference and their position. Fully reveresed are removed.
 	std::map<size_t ,std::vector<std::vector<size_t> > > long_centers_of_a_sequence; //Potential long centers. size_t -->seq_id
 	std::vector<std::multimap<std::vector<size_t>,size_t > > initial_suffixes;

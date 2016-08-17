@@ -35,9 +35,10 @@ class dynamic_encoder{
 	void partitioning_long_centers(std::map<std::vector<std::string>, std::vector<pw_alignment> > & , std::map<std::string ,std::vector<pw_alignment> > & , std::map<std::vector<std::string>, unsigned int> & );
 	void calculate_long_center_high(std::map<std::vector<std::string>, std::vector<pw_alignment> > &,  std::map<std::string ,std::vector<pw_alignment> > & , std::map<std::vector<std::string>, unsigned int> &);
 	void add_long_center_to_the_stream(std::ofstream &);
+	void find_short_center(const pw_alignment* , std::map<std::string, std::string > & , std::vector<std::string> & , size_t & , size_t & );
 	void encoding_long_center(std::map<std::string,std::vector<pw_alignment> > &, std::ofstream &, dlib::entropy_encoder_kernel_1 &);
 	void make_fully_reverse_center(std::vector<std::string> &, std::vector<std::string> & );
-	void al_encode_with_long_center(std::vector<std::map<size_t , std::string> >&,std::map<std::vector<std::string> , unsigned int> & ,std::map<std::string, std::vector<pw_alignment> > &, std::vector<std::map<size_t, std::vector<std::string> > > &, std::map<std::string, std::string > &, std::ofstream & ,dlib::entropy_encoder_kernel_1 &,std::map<std::vector<std::string>, std::vector<pw_alignment> >& );
+	void al_encode_with_long_center(std::vector<std::multimap<size_t , std::string> >&,std::map<std::vector<std::string> , unsigned int> & ,std::map<std::string, std::vector<pw_alignment> > &, std::vector<std::map<size_t, std::vector<std::string> > > &, std::map<std::string, std::string > &, std::ofstream & ,dlib::entropy_encoder_kernel_1 &,std::map<std::vector<std::string>, std::vector<pw_alignment> >& );
 
 
 	private:

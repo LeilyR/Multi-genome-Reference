@@ -40,12 +40,6 @@
 			size_t ref2 = p->getreference2();
 			if(ref1 == ref && l1 <= right && r1 >= left){
 				not_touched_ref.insert(std::make_pair(p,1));
-			//	if(ref2 != ref || l2 > right || r2< left){ 		
-			//		p->print();
-			//		std::cout << "ref "<< ref << " left "<< left << " right "<< right << std::endl;
-			//	}
-			//	assert(ref2 != ref || l2 > right || r2< left);//XXX why is it wrong?!
-
 			}else{
 				assert(ref2 == ref && l2 <= right && r2 >= left);
 				not_touched_ref.insert(std::make_pair(p,0));
@@ -61,6 +55,25 @@
 			alind1.half_insert(it->first, it->second);
 		}
 		std::vector<const pw_alignment *> result;
+/*#pragma omp parallel // TODO Try apply it for parallelization of maps! 
+{
+		size_t cnt =0;
+		for(auto element = ntouched2.begin(); element != ntouched2.end(); element++, cnt++){//search on that tree for the second one
+			if(cnt%num_threads != 0) continue;
+			const pw_alignment * al = element->first;
+			size_t left,right;
+			if(element->second == 0){
+				size_t ref1 = al->getreference1();
+				al->get_lr1(left,right);
+				alind1.search_overlap(ref1, left, right,result);
+			}else{
+				assert(element->second == 1);
+				size_t ref2 = al->getreference2();
+				al->get_lr2(left,right);
+				alind1.search_overlap(ref2, left, right, result);
+			}
+		}
+}*/
 		for(std::map<const pw_alignment*,size_t>::iterator it=ntouched2.begin();it!= ntouched2.end();it++){//search on that tree for the second one
 			const pw_alignment * al = it->first;
 			size_t left,right;

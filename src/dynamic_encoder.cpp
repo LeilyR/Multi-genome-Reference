@@ -936,7 +936,22 @@
 
 	}
 	template<typename T>
-	void dynamic_encoder<T>::al_encode_with_long_center(std::vector<std::map<size_t , std::string> >& centerOnSequence, std::map<std::vector<std::string> , unsigned int> & long_center_weight, std::map<std::string, std::vector<pw_alignment> > & alignmentOfCluster, std::vector<std::map<size_t, std::vector<std::string> > >& centersPositionOnASeq ,std::map<std::string, std::string > & cluster_members,std::ofstream & outs ,dlib::entropy_encoder_kernel_1 & enc, std::map<std::vector<std::string>, std::vector<pw_alignment> > & new_centers){
+	void dynamic_encoder<T>::find_short_center(const pw_alignment* p, std::map<std::string, std::string > & cluster_members, std::vector<std::string> & current_center, size_t & sequenceId, size_t & n){
+		size_t left_1,left_2, right_1, right_2;
+		p->get_lr1(left_1,right_1);
+		p->get_lr2(left_2,right_2);
+		size_t acc1 = data.accNumber(p->getreference1());
+		size_t acc2 = data.accNumber(p->getreference2());
+		std::stringstream mem;
+		mem << sequenceId << ":" << n;
+		std::cout << mem.str() << std::endl;
+		std::map<std::string, std::string>::iterator cl = cluster_members.find(mem.str());
+		assert(cl != cluster_members.end());
+		std::string center = cl->second;
+		current_center.push_back(center);
+	}
+	template<typename T>
+	void dynamic_encoder<T>::al_encode_with_long_center(std::vector<std::multimap<size_t , std::string> >& centerOnSequence, std::map<std::vector<std::string> , unsigned int> & long_center_weight, std::map<std::string, std::vector<pw_alignment> > & alignmentOfCluster, std::vector<std::map<size_t, std::vector<std::string> > >& centersPositionOnASeq ,std::map<std::string, std::string > & cluster_members,std::ofstream & outs ,dlib::entropy_encoder_kernel_1 & enc, std::map<std::vector<std::string>, std::vector<pw_alignment> > & new_centers){
 		calculate_long_center_high(new_centers,alignmentOfCluster ,long_center_weight);//Calculates low and high value of all the centers.
 		add_long_center_to_the_stream(outs);//Adds all the centers, their accessions and high values to the stream.
 		encoding_long_center(alignmentOfCluster,outs,enc);//dont replace it with the one i used for short centers because the order matters!
@@ -954,6 +969,7 @@
 				const dnastring & sequence = data.getSequence(data.getAcc(i).at(k));
 				size_t sequenceId = data.getAcc(i).at(k);
 				std::cout << "seq id "<<sequenceId << "length of seq "<< sequence.length() <<std::endl;
+				std::cout << "number of its long als "<< centersPositionOnASeq.at(sequenceId).size() << std::endl;
 				for(size_t n= 0; n < sequence.length(); n++){
 					std::multimap<size_t, pw_alignment* >::iterator it = AlignmentsFromClustering.at(sequenceId).find(n);
 					if(it != AlignmentsFromClustering.at(sequenceId).end()){
@@ -971,8 +987,11 @@
 							std::cout << "LONG CENTER "<<std::endl;
 							current_center = it1->second;
 						}else{
-							std::map<size_t , std::string>::iterator it1 = centerOnSequence.at(sequenceId).find(n);
-							current_center.push_back(it1->second);
+						//	std::multimap<size_t , std::string>::iterator it1 = centerOnSequence.at(sequenceId).find(n);
+							pw_alignment * p1 = it->second;
+							find_short_center(p1, cluster_members,current_center,sequenceId,n);
+						//	current_center.push_back(it1->second);
+							std::cout << "short center "<< current_center.at(0) << std::endl;
 						} 
 						size_t partition = 0; 
 						bool CenterIsFound = false;
@@ -982,10 +1001,12 @@
 								if(par->second.at(k) == current_center){//If it reaches the end, you should check for the reverse
 									partition = j;
 									CenterIsFound = true;
+									std::cout << "center is found "<<std::endl;
 									break;
 								}
 							}
 						}
+						bool center_is_reversed = false;
 						if(CenterIsFound == false){
 							for(size_t j = 0; j < long_center_partition.size(); j++){
 								std::map<size_t , std::vector<std::vector<std::string> > >::iterator par = long_center_partition.find(j);
@@ -995,13 +1016,16 @@
 								for(size_t k =0; k < par->second.size();k++){
 									if(par->second.at(k) == reverse_center){
 										partition = j;
-										current_center = reverse_center;
+										current_center = reverse_center; 
 										CenterIsFound = true;
+										center_is_reversed = true;
 										break;
 									}
 								}
 							}
 						}
+						if(center_is_reversed == true) std::cout << "center is fully reversed! "<< std::endl;
+						assert(CenterIsFound == true);
 						unsigned int low = 0;
 						if(partition != 0){
 							low = HighOfPartition.at(partition -1);
@@ -1048,10 +1072,13 @@
 								p.get_lr1(left_1,right_1);
 								p.get_lr1(left_2,right_2);
 								std::cout << " " << std::endl;
-								p.print();
+								if(sequenceId == 50){
+									p.print();
+								}
 								if(p.getreference1()== sequenceId && left_1 ==n){	
 									std::cout << " seq id "<< sequenceId << " l1 " << n <<std::endl;
-									//The non center reference of the alignment is always forward
+									//The non center reference of the alignment is always forward 
+									assert(p.getbegin1() < p.getend1());
 									//If center is reverse (50% it is not reverse, 50% it is reverse!!)
 									if(p.getbegin2() > p.getend2() && p.getbegin1() < p.getend1()){
 										std::cout << "reverse long center " << std::endl; 
@@ -1062,12 +1089,14 @@
 										wrappers.encode(l1,h1,total);
 									}else if(p.getbegin2() > p.getend2() && p.getbegin1() > p.getend1()){
 										//both reverse
+										std::cout << "both reverse "<<std::endl;
 										unsigned int l1 = TOTAL_FOR_ENCODING/2;
 										unsigned int h1 = 3*TOTAL_FOR_ENCODING/4;
 										enc.encode(l1,h1,total);
 										wrappers.encode(l1,h1,total);
 									}else if(p.getbegin2() < p.getend2() && p.getbegin1() > p.getend1()){
 										//center forwards
+										std::cout << "both forward"<<std::endl;
 										unsigned int l1 = TOTAL_FOR_ENCODING/4;
 										unsigned int h1 = TOTAL_FOR_ENCODING/2;
 										enc.encode(l1,h1,total);
@@ -1090,6 +1119,7 @@
 									std::cout<< "flags are set!"<<std::endl;
 									std::vector< std::vector< unsigned int> > low_high;
 									model.arith_encode_long_al(p, i, accession ,cent_ref, cent_left, low_high);
+									std::cout<<"low high size "<< low_high.size()<<std::endl;
 									assert(low_high.size() < p.alignment_length());
 									for(size_t k =0; k < low_high.size(); k++){
 										unsigned int l1 = low_high.at(k).at(0);

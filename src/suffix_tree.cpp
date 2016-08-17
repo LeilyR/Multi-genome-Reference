@@ -209,7 +209,7 @@
 				}
 			}
 		}
-		print_tree();
+//		print_tree();
 
 	}
 	void suffixTree::make_tree(std::vector<size_t> & center_with_highest_gain, size_t & highest_index){	

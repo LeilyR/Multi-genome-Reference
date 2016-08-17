@@ -1142,7 +1142,7 @@
 						s<<p;
 						s>>current_pattern;
 					}
-					std::cout<<"current pattern: "<< current_pattern<<std::endl;
+				//	std::cout<<"current pattern: "<< current_pattern<<std::endl;
 					std::map<std::string, std::vector<uint32_t> >::const_iterator it1=model.get_center_model_highs(acc).find(current_pattern);
 
 					assert(it1 !=model.get_center_model_highs(acc).end());
@@ -1173,7 +1173,7 @@
 					pattern = current_pattern;
 					target = dec.get_target(total);
 				}
-				std::cout << "length of seq" << lengthOfSeq << std::endl;
+				std::cout << "length of seq " << lengthOfSeq << " center is " << center_seq << std::endl;
 				base = 10;
 				for(size_t n = 0; n < 6 ; n ++){
 					if(low.at(n) <= target && high.at(n) > target){
@@ -1229,7 +1229,8 @@
 		std::string al_pattern;
 		unsigned int target;
 		size_t acc = 0;
-		while(acc<acc_of_long_center.size()){
+		std::cout << acc_of_long_center.size() <<std::endl;
+		while(acc<model.get_acc()){
 			std::cout<< "accession "<< acc <<std::endl;
 			std::vector<uint32_t> al_begin(2);
 			std::vector<uint32_t> seq_acc_end(2);
@@ -1239,6 +1240,7 @@
 			target = dec.get_target(total); 
 			while(target < seq_acc_end.at(0)){//end of an accession
 				std::string pattern;
+				size_t test_out = 0;
 				if(target<al_begin.at(0)){//If there is no alignment on the first position
 					std::cout<< "Sequence doesn't start with an alignment!" <<std::endl;
 					std::vector<unsigned int>high(5,0);
@@ -1263,6 +1265,7 @@
 					assert(base < 5);
 					char p = dnastring::index_to_base(base);
 					out<<p;	
+					test_out++;
 					dec.decode(low.at(base),high.at(base));	
 					wrappers.decode(low.at(base),high.at(base),total);
 					int base_int = base;
@@ -1290,7 +1293,7 @@
 							s<<p;
 							s>>current_pattern;
 						}
-						std::cout<< current_pattern<<std::endl;
+					//	std::cout<< current_pattern<<std::endl;
 						std::vector<unsigned int>high(5,0);
 						std::vector<unsigned int>low(5,0);
 						std::map<std::string, std::vector<unsigned int> >::const_iterator it1=model.get_sequence_model_highs(acc).find(current_pattern);
@@ -1312,17 +1315,19 @@
 						assert(base < 5);
 						char p1 = dnastring::index_to_base(base);
 						out<<p1;
+						test_out++;
 						counter = counter + 1;
 						dec.decode(low.at(base),high.at(base));
 						wrappers.decode(low.at(base),high.at(base),total);
 						int base_int = base;
 						wrappers.decodeContext(base_int);
-						std::cout << "base " << base << " low " << low.at(base) << " high " << high.at(base) << std::endl;
+					//	std::cout << "base " << base << " low " << low.at(base) << " high " << high.at(base) << std::endl;
 						pattern = current_pattern;
 						target = dec.get_target(total);	
 					//	std::cout << "tar1 "<<target <<std::endl;
 						if(target>= al_begin.at(0)){
 							std::cout<< "starting of an alignemnt's flag!"<<std::endl;
+							std::cout<< test_out<<std::endl;
 						}
 					}
 					std::cout<< "counter "<< counter << std::endl;
@@ -1385,15 +1390,38 @@
 								}else continue;
 							}
 						}
+						std::cout << "target before " << target <<std::endl;
+						bool reverse_center = false;
+						bool reverse_member = false;
+						bool reverse_both = false;
+						bool forward_both = false;
+						decoding_directions(in, dec, reverse_center, reverse_member, reverse_both, forward_both, target);
+						std::cout << "target after " << target <<std::endl;
+
 						for(size_t m =0; m < center.size();m++){
 							std::cout << "on center " << m <<std::endl;
 							if(center.at(m) > 0){
-								for(size_t j =0; j <decoded_long_center_in_partition.size() ;j++){
-									std::map<int, std::string>::iterator seq = decoded_long_center_in_partition.at(j).find(center.at(m));
-									if(seq != decoded_long_center_in_partition.at(j).end()){
-										std::cout << "decoded center size " << seq->second.size() << std::endl;
-										decodedCenter += seq->second;
-										break;
+								if(reverse_center == true){
+									for(size_t j =0; j <decoded_long_center_in_partition.size() ;j++){
+										std::map<int, std::string>::iterator seq = decoded_long_center_in_partition.at(j).find(center.at(center.size()-1-m));
+										if(seq != decoded_long_center_in_partition.at(j).end()){
+											std::cout << "decoded center size here is " << seq->second.size() << std::endl;
+											decodedCenter += seq->second;											
+											std::cout<< decodedCenter.size() << std::endl;
+											break;
+										}
+									}
+
+
+								}else{
+									for(size_t j =0; j <decoded_long_center_in_partition.size() ;j++){
+										std::map<int, std::string>::iterator seq = decoded_long_center_in_partition.at(j).find(center.at(m));
+										if(seq != decoded_long_center_in_partition.at(j).end()){
+											std::cout << "decoded center size " << seq->second.size() << std::endl;
+											decodedCenter += seq->second;
+											std::cout<< decodedCenter.size() << std::endl;
+											break;
+										}
 									}
 								}
 							}else{//add reverse complement
@@ -1424,12 +1452,12 @@
 						model.get_end_al_flag(cent_acc, acc ,al_end);
 						std::cout << "al end: " << al_end.at(0) << " "<<al_end.at(1) <<std::endl;			
 
-						std::cout << "target before " << target <<std::endl;
-						bool reverse_center = false;
-						bool reverse_member = false;
-						bool reverse_both = false;
-						bool forward_both = false;
-						decoding_directions(in, dec, reverse_center, reverse_member, reverse_both, forward_both, target);
+					//	std::cout << "target before " << target <<std::endl;
+					//	bool reverse_center = false;
+					//	bool reverse_member = false;
+					//	bool reverse_both = false;
+					//	bool forward_both = false;
+					//	decoding_directions(in, dec, reverse_center, reverse_member, reverse_both, forward_both, target);
 						std::cout << "target after " << target <<std::endl;
 						while(target < al_end.at(0) && pos < decodedCenter.size()){//while we are on an alignment
 							std::vector<unsigned int>al_high(NUM_MODIFICATIONS,0);
@@ -1528,6 +1556,7 @@
 									rev_member +=chr;
 								}
 								out<<rev_member;
+								test_out +=rev_member.size();
 								std::cout<< "add to the 'out' 1"<<endl;								
 								for(size_t mem =0; mem<rev_member.length();mem++){
 									std::cout<<rev_member.at(mem);
@@ -1544,6 +1573,7 @@
 									std::cout<< member.at(mem);
 								}
 								out<<member;
+								test_out += member.size();
 								std::cout << " " << std::endl;
 								for(size_t sl =MAX_SEQUENCE_MARKOV_CHAIN_LEVEL; sl>0; sl--){
 									temp += member.at(member.length()-1-sl);
@@ -1555,6 +1585,7 @@
 						else{
 							std::cout<< "add to the 'out' when center on th ref"<<endl;
 							out << decodedCenter;
+							test_out +=decodedCenter.size();
 							for(size_t sl=MAX_SEQUENCE_MARKOV_CHAIN_LEVEL; sl > 0; sl--){
 								char center_base = decodedCenter.at(decodedCenter.length()-sl-1);
 								temp +=center_base;
@@ -1570,7 +1601,9 @@
 							std::cout << "t " << target << " " <<al_end.at(0)<< " "<< al_end.at(1)<<std::endl;
 						}
 						else{
-							std::cout<<"there is something wrong!"<<std::endl;
+							std::cout<<"there is something wrong with end of al flag!"<<std::endl;
+							std::cout << "decoded seq length "<< test_out << std::endl;							
+							exit(1);
 						}
 	
 						std::cout<< "back to seq target: "<< target << std::endl;
@@ -1585,14 +1618,16 @@
 					dec.decode(seq_acc_end.at(0),seq_acc_end.at(1));
 					wrappers.decode(seq_acc_end.at(0),seq_acc_end.at(1),total);
 					std::cout << " End of a sequence! "<<std::endl;
+					std::cout << "decoded seq length "<< test_out << std::endl;
 		//		//	out << std::endl;
 				//	save << sequence_counter+ 1;
-					sequence_counter = sequence_counter + 1;
+					sequence_counter ++;
 					std::cout << "seq counter "<< sequence_counter <<std::endl;
 					out.write(reinterpret_cast<char*>(&sequence_counter),sizeof(uint32_t));
 
 				}else{
-					std::cout<<"there is something wrong here!"<<std::endl;
+					std::cout<<"there is something wrong with end of seq flag!"<<std::endl;
+					exit(1);
 				}
 				target = dec.get_target(total);		
 				std::cout << "target: "<<target <<std::endl;
@@ -1604,8 +1639,10 @@
 				std::cout << " End of an accession! "<<std::endl;
 			}else{
 				std::cout<<"there is something wrong at the end of an accession!"<<std::endl;
+				exit(1);
 			}
 			acc++;
+			std::cout << "start of acc " << acc <<std::endl;
 		}//end of looping over number of accessions 
 
 	}

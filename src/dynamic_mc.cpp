@@ -395,14 +395,14 @@ a_reader_encode::~a_reader_encode(){}
 
 void a_reader_encode::see_context(const std::string & context,size_t modification){
 //	std::cout << "context size "<< context.size()<<std::endl;
-	std::cout << "context: "; 
+//	std::cout << "context: "; 
 	for(size_t i = 0; i < context.size();i++){
-		std::cout << int(context.at(i)) << " ";
+//		std::cout << int(context.at(i)) << " ";
 		int con = int(context.at(i));
 		wrappers.context(con);
 	}
-	std::cout << " " <<std::endl;
-	std::cout << "modification "<< modification << std::endl;
+//	std::cout << " " <<std::endl;
+//	std::cout << "modification "<< modification << std::endl;
 	std::map<std::string, std::vector<uint32_t> >::const_iterator it = model_high.find(context);
 	assert(it!=model_high.end());
 	std::vector<unsigned int> low_high;
@@ -412,7 +412,7 @@ void a_reader_encode::see_context(const std::string & context,size_t modificatio
 	if(modification != 0){
 		l = high.at(modification-1);
 	}
-	std::cout<< "l_model "<< l << "h_model: "<< h <<std::endl;
+//	std::cout<< "l_model "<< l << "h_model: "<< h <<std::endl;
 	low_high.push_back(l);
 	low_high.push_back(h);
 	low_high_values.push_back(low_high);
@@ -2380,7 +2380,7 @@ void dynamic_mc_model::arith_encode_long_al(const pw_alignment & p, size_t & acc
 		acontext_encode enc21(encode21, MAX_ALIGNMENT_MARKOV_CHAIN_LEVEL);
 		enc21.read_alignment_2_1(p);
 		low_high = encode21.low_high_values;
-		std::cout << "size of low_high is "<< low_high.size()<<std::endl;
+	//	std::cout << "size of low_high is "<< low_high.size()<<std::endl;
 }
 
 void dynamic_mc_model::write_al_high_onstream(std::ofstream & al_high_out){
@@ -2395,4 +2395,8 @@ void dynamic_mc_model::write_al_high_onstream(std::ofstream & al_high_out){
 			}
 		}
 	}
+}
+
+size_t dynamic_mc_model::get_acc()const{
+	return   data.numOfAcc();
 }

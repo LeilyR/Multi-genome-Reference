@@ -189,29 +189,30 @@ void alignment_index::half_insert(const pw_alignment * al, size_t reference) {
 	assert(reference<2);
 	size_t l1, r1, l2, r2;
 	if(reference==0) {
-	al->get_lr1(l1, r1);
-	trees.at(al->getreference1()).insert(l1, r1, al);
+		al->get_lr1(l1, r1);
+		trees.at(al->getreference1()).insert(l1, r1, al);
 	} else {
-	al->get_lr2(l2, r2);
-	trees.at(al->getreference2()).insert(l2, r2, al);
+		al->get_lr2(l2, r2);
+		trees.at(al->getreference2()).insert(l2, r2, al);
 	}
 }
 
 size_t alignment_index::erase(const pw_alignment * al) {
-	size_t l, r;
-	al->get_lr1(l, r);
+	size_t l1, r1,l2,r2;
+	al->get_lr1(l1, r1);
 	size_t ref1 = al->getreference1();
-	size_t res1 = trees.at(ref1).erase(l, r, al);
+	size_t res1 = trees.at(ref1).erase(l1, r1, al);
 //	std::cout << "res1 "<< res1 << "tree is "<< std::endl;
 //	trees.at(ref1).debug_print();
 
-	al->get_lr2(l, r);
+	al->get_lr2(l2, r2);
 	size_t ref2 = al->getreference2();
-	size_t res2 = trees.at(ref2).erase(l, r, al);
-	if(res1 != res2){
+	if(ref1==ref2 && l1 == l2 && r1==r2){
 		al->print();
+	}else{
+		size_t res2 = trees.at(ref2).erase(l2, r2, al);
+		assert(res1 == res2);
 	}
-	assert(res1 == res2);
 	return res1;
 }
 

@@ -801,7 +801,7 @@ void initial_alignment_set<T,overlap_type>::compute_vcover_clarkson(overlap_type
 	
 	}
 */	
-	std::cout << "compute lazy split : "<<std::endl;
+//	std::cout << "compute lazy split : "<<std::endl;
 	compute_simple_lazy_splits(o);
 
 
@@ -810,7 +810,7 @@ void initial_alignment_set<T,overlap_type>::compute_vcover_clarkson(overlap_type
 
 template<typename T, typename overlap_type>
 void initial_alignment_set<T,overlap_type>::find_als_weight(std::set<const pw_alignment*>& independent_set, std::set<size_t>& removed_set, std::vector<const pw_alignment*>& backup, size_t & at){
-	std::cout << "find weights of als "<<std::endl;
+//	std::cout << "find weights of als "<<std::endl;
 	alignment_index alind(data.numSequences());
 	for(std::set<const pw_alignment*>::iterator it = independent_set.begin();it != independent_set.end();it++){
 		const pw_alignment * p = *it;
@@ -1855,13 +1855,14 @@ void affpro_clusters<tmodel,overlap_type>::add_alignment(const pw_alignment & al
 	size_t ref2idx = 0;
 	std::map<std::string, size_t>::iterator find1 = sequence_pieces.find(ref1name);
 	std::map<std::string, size_t>::iterator find2 = sequence_pieces.find(ref2name);
+
 	if(find1 == sequence_pieces.end()) {
 		ref1idx = sequence_pieces.size();
 		sequence_pieces.insert(std::make_pair(ref1name, ref1idx));
 		sequence_names.push_back(ref1name);
 		sequence_lengths.push_back(right1 - left1 + 1);
 	} else {
-		ref1idx = find1->second;
+		ref1idx = find1->second; // TODO
 	}
 	if(find2 == sequence_pieces.end()) {
 		ref2idx = sequence_pieces.size();
@@ -1871,7 +1872,9 @@ void affpro_clusters<tmodel,overlap_type>::add_alignment(const pw_alignment & al
 	} else {
 		ref2idx = find2->second;
 	}
+	
 //	std::cout<<"data2 ad in add_al: "<< & dat << std::endl;	
+	std::cout << "ref1 id" << ref1idx <<" ref2 id "<< ref2idx<<std::endl;
 	// enlarge similarity matrix
 	size_t max = ref1idx;
 	if(ref2idx > max) {
@@ -1912,6 +1915,137 @@ void affpro_clusters<tmodel,overlap_type>::add_alignment(const pw_alignment & al
 	template<typename tmodel,typename overlap_type>
 	size_t affpro_clusters<tmodel,overlap_type>::get_sequence_length(size_t ref_idx)const{	
 		return 	sequence_lengths.at(ref_idx);
+	}
+	template<typename tmodel,typename overlap_type>
+	void affpro_clusters<tmodel,overlap_type>::make_an_alignment(std::string & center , std::string & member , pw_alignment & p){
+	//	std::map<std::string, std::vector<pw_alignment> >::iterator it = local_al_in_a_cluster.find(center);
+	//	if(it == local_al_in_a_cluster){
+	//		local_al_in_a_cluster.insert(make_pair(center, std::vector<pw_alignment>()));
+	//		it = local_al_in_a_cluster.find(center);
+	//	}
+		std::vector<std::string> center_parts;
+		strsep(center, ":" , center_parts);
+		unsigned int dir = atoi(center_parts.at(0).c_str());
+		unsigned int ref = atoi(center_parts.at(1).c_str());
+		unsigned int left = atoi(center_parts.at(2).c_str());
+		std::vector<std::string> member_parts;
+		strsep(member, ":" , member_parts);
+		unsigned int mem_dir = atoi(member_parts.at(0).c_str());
+		unsigned int mem_ref = atoi(member_parts.at(1).c_str());
+		unsigned int mem_left = atoi(member_parts.at(2).c_str());
+		// look at all input alignments and determine which cluster it belongs to
+		for(std::set<const pw_alignment*, compare_pointer_pw_alignment>::iterator it1 = all_als.begin(); it1!=all_als.end(); ++it1){
+			const pw_alignment * al = *it1;
+			unsigned int al_dir1;
+			if(al->getbegin1() < al->getend1()){
+				al_dir1 =0;
+			}else{
+				al_dir1 = 1;
+			}
+			unsigned int al_dir2;
+			if(al->getbegin2() < al->getend2()){
+				al_dir2 =0;
+			}else{
+				al_dir2 = 1;
+			}
+			size_t ref1 = al->getreference1();
+			size_t ref2 = al->getreference2();
+			size_t left1;
+			size_t left2;
+			size_t right1;
+			size_t right2;
+			al->get_lr1(left1,right1);
+			al->get_lr2(left2,right2);
+			if(al_dir1 == dir && ref1 == ref && left1 == left && al_dir2 == mem_dir && ref2 == mem_ref && left2 == mem_left){
+				p = *al;
+			//	it->second.push_back(*al);
+				double gain = model.get_the_gain(*al, center);
+				assert(gain > 0);
+				break;
+			}
+			if(al_dir2 == dir && ref2 == ref && left2 == left && al_dir1==mem_dir&& ref1 == mem_ref && left1 == mem_left ){
+				p = *al;
+			//	it->second.push_back(*al);
+				double gain = model.get_the_gain(*al, center);
+				assert(gain > 0);
+				break;
+			}
+		}
+	}
+	template<typename tmodel,typename overlap_type>
+	void affpro_clusters<tmodel,overlap_type>::write_clusters(std::map<std::string, std::vector<std::string> > & cluster_result, std::map<std::string, std::vector<pw_alignment> > & local_al_in_a_cluster){
+	//Go through alignments and members_of_clusters
+		for(std::map<std::vector<std::string>,pw_alignment>::iterator it = alignments.begin(); it != alignments.end(); it++){
+			std::cout << "cent is " << it->first.at(0) << std::endl;
+
+			std::map<std::string, std::vector<pw_alignment> >::iterator al = local_al_in_a_cluster.find(it->first.at(0));
+			if(al == local_al_in_a_cluster.end()){
+				local_al_in_a_cluster.insert(std::make_pair(it->first.at(0), std::vector<pw_alignment>()));
+				al= local_al_in_a_cluster.find(it->first.at(0));
+			}
+			al->second.push_back(it->second);
+		}
+		for(std::map<std::string, std::string>::iterator it= members_of_clusters.begin(); it != members_of_clusters.end(); it++){
+			std::cout << "center is " << it->second << std::endl;
+			std::map<std::string, std::vector<std::string> >::iterator cl = cluster_result.find(it->second);
+			if(cl == cluster_result.end()){
+				cluster_result.insert(std::make_pair(it->second,std::vector<std::string>()));
+				cl=cluster_result.find(it->second);
+			}
+			cl->second.push_back(it->first);
+		}
+	}
+	template<typename tmodel,typename overlap_type>
+	void affpro_clusters<tmodel,overlap_type>::check_redundancy(){
+		//check if a single piece of sequence with two different direction is assigned to two different clusters as members.
+		std::vector<std::string> members;
+		std::set<std::string> centers;
+		for(std::map<std::string, std::string>::iterator it = members_of_clusters.begin() ; it!= members_of_clusters.end(); it++){
+			members.push_back(it->first);
+			centers.insert(it->second);
+		}
+		for(size_t i = 0; i < members.size()-1; i++){
+			std::string current = members.at(i);
+			for(size_t j = i+ 1; j < members.size();j++){
+				if(members.at(j)==current){
+					std::cout << "redundancy! " << current << " "<<members.at(j)<<std::endl;
+					exit(1);
+				}
+				std::string rev = make_reverse(current);
+				if(members.at(j)== rev){
+					std::cout << "redundancy! " << current << " " << rev << std::endl;
+					exit(1);
+				}
+				
+			}
+		}
+		//A dirty solution to solve the problem of having the same piece both as a member and as a center
+		for(std::set<std::string>::iterator it = centers.begin() ; it != centers.end() ;it++){
+			std::string current = *it;
+			for(size_t i =0; i < members.size();i++){
+				if(members.at(i)==current){
+					std::cout << "Warning!! A piece of sequence classified twice!" <<std::endl;
+					exit(1);
+				}
+				std::string rev = make_reverse(current);
+				if(members.at(i)==rev){//A piece of sequence happened both as a member and a center in two different direction
+					//The one that is a member is removed!
+					std::map<std::string, std::string>::iterator it1 = members_of_clusters.find(members.at(i));
+					assert(it1 != members_of_clusters.end());
+					std::vector<std::string> temp;
+					temp.push_back(it1->second);
+					temp.push_back(it1->first);
+					std::map<std::vector<std::string>, pw_alignment>::iterator al = alignments.find(temp);
+					assert(al != alignments.end());
+					alignments.erase(al);
+					members_of_clusters.erase(it1);
+				}
+			}
+			
+		}
+		
+		
+
 	}
 //Finds all the centers the happen on a sequence:
 	finding_centers::finding_centers(all_data & d):data(d),AlignmentsFromClustering(data.numSequences()),centersOnSequence(data.numSequences()), centersOfASequence(data.numSequences()),initial_suffixes(data.numSequences()){
@@ -2031,7 +2165,7 @@ void affpro_clusters<tmodel,overlap_type>::add_alignment(const pw_alignment & al
 		}
 	//	std::cout << "memberOfCluster size "<< memberOfCluster.size() << std::endl;
 	}
-	void finding_centers::center_frequency(std::map<std::string,std::vector<pw_alignment> > & alignmentsOfClusters, std::vector<std::map<size_t, std::string> > & centerOnseq){//it basically returns indices of centers on each sequence
+	void finding_centers::center_frequency(std::map<std::string,std::vector<pw_alignment> > & alignmentsOfClusters, std::vector<std::multimap<size_t, std::string> > & centerOnseq){//it basically returns indices of centers on each sequence
 		setOfAlignments(alignmentsOfClusters);//set all the alignments on each sequence //TODO change the potential long center map (centersOfASequence) remove those which have less than allowed gap but dont go through the same direction!
 		findMemberOfClusters(alignmentsOfClusters);// returns strings that are member of a cluster in memberOfCluster
 		//First: fill in the "center_index" vector
@@ -2115,7 +2249,7 @@ void affpro_clusters<tmodel,overlap_type>::add_alignment(const pw_alignment & al
 				}else{
 					direction = false;
 				}
-				std::cout << "position " << it->first <<std::endl;
+				std::cout << "position " << it->first << " allowed gap "<< ALLOWED_GAP<<std::endl;
 				if((it->first - last_position) < ALLOWED_GAP && direction == true){
 					if(vectorOfcenters.size()!=0){
 						std::cout << "smaller than ALLOWED_GAP! "<<std::endl;
@@ -2276,7 +2410,7 @@ void affpro_clusters<tmodel,overlap_type>::add_alignment(const pw_alignment & al
 			}
 		}
 	}
-	std::map< size_t, std::string> finding_centers::get_sequence_centers(size_t& id)const{
+	std::multimap< size_t, std::string> finding_centers::get_sequence_centers(size_t& id)const{
 		return centersOnSequence.at(id);
 	}
 	std::string finding_centers::find_center_name(size_t & centerIndex)const{

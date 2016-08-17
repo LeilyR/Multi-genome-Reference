@@ -29,7 +29,7 @@ LIBARGS =   apclusterunix64.so -L../dlib_build -ldlib  libStatGen-1.0.13/libStat
 # include libStatGen-1.0.13/Makefiles/Makefile.include
 
 PROGS = graph
-OBJS = pw_alignment.o data.o test.o graph.o  needleman.o dynamic_mc.o alignment_index.o connected_component.o suffix_tree.o merging_centers.o filter_alignments.o
+OBJS = pw_alignment.o data.o test.o graph.o needleman.o dynamic_mc.o alignment_index.o connected_component.o suffix_tree.o merging_centers.o filter_alignments.o read_daligner.o
 
 # .DEFAULT_GOAL := graph 
 all: $(PROGS)
@@ -39,10 +39,10 @@ all: $(PROGS)
 
 #graph: main.cpp $(OBJS) model.cpp model.hpp pw_alignment.hpp data.hpp graph.hpp needleman.hpp encoder.hpp dynamic_encoder.hpp dynamic_decoder.hpp IntervalTree.hpp
 
-graph: main.cpp $(OBJS) model.cpp model.hpp pw_alignment.hpp data.hpp graph.hpp needleman.hpp encoder.hpp dynamic_encoder.hpp dynamic_decoder.hpp suffix_tree.hpp alignment_index.hpp IntervalTree.hpp overlap.hpp connected_component.hpp merging_centers.hpp filter_alignments.hpp
+graph: main.cpp $(OBJS) model.cpp model.hpp pw_alignment.hpp data.hpp graph.hpp needleman.hpp encoder.hpp dynamic_encoder.hpp dynamic_decoder.hpp suffix_tree.hpp alignment_index.hpp IntervalTree.hpp overlap.hpp connected_component.hpp merging_centers.hpp filter_alignments.hpp read_daligner.hpp
 	$(CXX) -o graph $(CXXFLAGS) $(INCLUDEARGS) main.cpp $(OBJS) $(LIBARGS)
 	
-graph.o: graph.cpp data.hpp needleman.hpp graph.hpp 
+graph.o: graph.hpp graph.cpp
 	$(CXX) -o graph.o $(CXXFLAGS) $(INCLUDEARGS) -c graph.cpp
 
 pw_alignment.o: pw_alignment.cpp pw_alignment.hpp
@@ -79,6 +79,11 @@ merging_centers.o: merging_centers.hpp merging_centers.cpp
 
 filter_alignments.o: filter_alignments.hpp filter_alignments.cpp 
 	$(CXX) -o filter_alignments.o $(CXXFLAGS) $(INCLUDEARGS) -c filter_alignments.cpp
+
+read_daligner.o: read_daligner.hpp read_daligner.cpp
+	$(CXX) -o read_daligner.o $(CXXFLAGS) $(INCLUDEARGS) -c read_daligner.cpp
+
+
 
 #model.o: model.cpp model.hpp
 #	$(CXX) -o model.o $(CXXFLAGS) $(INCLUDEARGS) -c model.cpp

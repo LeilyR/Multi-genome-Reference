@@ -16,11 +16,12 @@ for(my $i=0; $i<=$#ARGV; ++$i) {
 	$args.=" $ARGV[$i]";
 }
 
+$ENV{'PATH'} = "$ENV{'PATH'}:$dir/../dazz_db:$dir/../daligner:$dir/..:$dir/../proovread/bin";
+
+print "$ENV{'PATH'}\n";
+
 my $cmd = "export LD_LIBRARY_PATH=$dir\n$dir/graph$args";
-
 print "$cmd\n";
-
 exec($cmd);
-
 
 

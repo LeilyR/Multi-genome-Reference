@@ -4,6 +4,9 @@
 #include "pw_alignment.hpp"
 #include "dynamic_mc.hpp"
 #include "alignment_index.hpp"
+#include <typeinfo>
+#include <iostream>
+#include <cmath>
 
 #define FRACTION 0.5
 class filter_als{
