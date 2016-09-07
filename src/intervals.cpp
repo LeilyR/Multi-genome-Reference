@@ -485,7 +485,7 @@ void avl_interval_tree<T>::join_intervals(std::vector<std::pair<size_t, size_t> 
 
 
 template<typename T>
-void avl_interval_tree<T>::overlap_fraction_search(const size_t & left, const size_t & right, const double & fraction, std::vector<value_type> & results) const {
+void avl_interval_tree<T>::overlap_fraction_search(const size_t & left, const size_t & right, const double & fraction, std::vector<value_type> & results) const{
 	if(root!=NULL) {
 		overlap_fraction_search_at_node(root, left, right, fraction, results);
 	}

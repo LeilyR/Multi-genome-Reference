@@ -170,6 +170,7 @@ class dynamic_mc_model {
 		void arith_encode_long_al(const pw_alignment & p, size_t & acc1, size_t & acc2, unsigned int & cent_ref, unsigned int & cent_left, std::vector<std::vector< unsigned int> > & low_high);
 		void write_al_high_onstream(std::ofstream & al_high_out);
 		size_t get_acc()const;
+		const std::map<std::string, std::vector<double>  > get_al_cost(size_t & acc1, size_t & acc2)const; 
 
 
 

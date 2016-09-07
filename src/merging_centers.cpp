@@ -4,7 +4,7 @@
 #define MERGING_CENTERS_CPP
 
 
-	void merging_centers::updating_centers(std::vector<size_t> & center_string, size_t & index){//replace 'center_string' with its new 'index' where ever 'center_sting' occurs on the tree and updates the number of happening. 
+	void merging_centers::updating_centers(std::vector<int> & center_string, int & index){//replace 'center_string' with its new 'index' where ever 'center_sting' occurs on the tree and updates the number of happening. 
 		//First we make a new tree ! 
 		size_t num_seq = data.numSequences();
 		suffixTree tree(num_seq, centers, all_current_centers);
@@ -13,17 +13,17 @@
 			std::cout << seq_id <<std::endl;
 			all_current_centers.at(seq_id) = tree.get_current_centers(seq_id);
 		}
-		std::map<size_t,std::vector<size_t> > edges = tree.get_edges();
+		std::map<size_t,std::vector<int> > edges = tree.get_edges();
 		std::map<std::vector<size_t> , size_t> counts = tree.get_branches();
-		std::map<std::vector<size_t>, int> intermediate;
+		std::map<std::vector<int>, int> intermediate;
 		for(std::map<std::vector<size_t> , size_t>::iterator it = counts.begin(); it != counts.end(); it++){
 			vector<size_t> br = it->first;//list of nodes of a path
 			size_t number = it->second;//number of the path happening
-			std::vector<size_t> seriesOfCenters;
+			std::vector<int> seriesOfCenters;
 		//	std::cout<< "centers on these nodes are "<<std::endl;
 			std::cout<< "series of centers: " <<std::endl;
 			for(size_t j = 0 ; j < br.size(); j++){
-				std::map<size_t, std::vector<size_t> >::iterator nodes= edges.find(br.at(j));
+				std::map<size_t, std::vector<int> >::iterator nodes= edges.find(br.at(j));
 				assert(nodes != edges.end());
 				for(size_t k =0; k < nodes->second.size();k++){
 					std::cout<< nodes->second.at(k) <<std::endl;
@@ -34,7 +34,7 @@
 				seriesOfCenters.pop_back();	
 			}
 
-			std::map<std::vector<size_t>, int>::iterator it1 = gains.find(seriesOfCenters);
+			std::map<std::vector<int>, int>::iterator it1 = gains.find(seriesOfCenters);
 			if(it1 != gains.end()){//It is kept as it is
 				intermediate.insert(make_pair(it1->first,it1->second));
 			}else{
@@ -53,14 +53,14 @@
 			}
 		}
 		gains.clear();
-		for(std::map<std::vector<size_t>,int>::iterator it = intermediate.begin(); it != intermediate.end(); it++){
+		for(std::map<std::vector<int>,int>::iterator it = intermediate.begin(); it != intermediate.end(); it++){
 			gains.insert(make_pair(it->first,it->second));
 		}
 
 	}
 
 	void merging_centers::merg_gain_value(suffixTree & tree){//calculates the gain value and builds second tree and so on iteratively
-		std::map<size_t,std::vector<size_t> > edges = tree.get_edges();
+		std::map<size_t,std::vector<int> > edges = tree.get_edges();
 		std::cout<< "size of the tree " << edges.size()<<std::endl;
 		size_t original_center_numbers = centers.get_number_of_centers();
 		std::cout << "original center number: "<< original_center_numbers << std::endl; 
@@ -69,10 +69,10 @@
 		for(std::map<std::vector<size_t> , size_t>::iterator it = counts.begin(); it != counts.end(); it++){
 			std::vector<size_t> br = it->first;//list of nodes of a path
 			size_t number = it->second;
-			std::vector<size_t> centers;
+			std::vector<int> centers;
 			int gain = 0;
 			for(size_t j = 0 ; j < br.size(); j++){
-				std::map<size_t, std::vector<size_t> >::iterator nodes= edges.find(br.at(j));
+				std::map<size_t, std::vector<int> >::iterator nodes= edges.find(br.at(j));
 				assert(nodes != edges.end());
 				for(size_t k =0; k < nodes->second.size();k++){
 					centers.push_back(nodes->second.at(k));//push back all the centers of all the nodes on the path br
@@ -94,13 +94,13 @@
 			}
 		}
 		int highest_gain=0;
-		std::vector<size_t> highest_path;
-		std::vector<size_t> seen1;
+		std::vector<int> highest_path;
+		std::vector<int> seen1;
 		find_highest_gain(highest_path, highest_gain,seen1);
 		if(highest_gain > 0){
 			merged_centers.insert(make_pair(highest_path, original_center_numbers+1));//Making the first new center with a new index which is 'original_center_numbers+1'
 		}
-		size_t center_numbers;
+		int center_numbers;
 		center_numbers = original_center_numbers + 1;//it will be used when we are going to insert the next megerd center to the merged_centers map.
 		while(highest_gain > 0){
 			std::cout << "highest gain: "<< highest_gain << std::endl; 
@@ -111,9 +111,9 @@
 			std::cout << "" << std::endl;
 			updating_centers(highest_path, center_numbers);//update all the strings, their number of happpening and gains! Notice that new trees are made in this function!
 			highest_gain=0;
-			std::map<std::vector<size_t>, size_t>::iterator hi = merged_centers.find(highest_path);
+			std::map<std::vector<int>, size_t>::iterator hi = merged_centers.find(highest_path);
 			assert(hi != merged_centers.end());
-			std::vector<size_t> seen;
+			std::vector<int> seen;
 			std::cout << "hi second "<<hi->second << std::endl;
 			seen.push_back(hi->second);//Because we dont want to use the same center again as the one with the highest gain //XXX Shall i look for all the previous ones?!!
 			find_highest_gain(highest_path, highest_gain,seen);
@@ -145,8 +145,8 @@
 //			
 //		}		
 	}
-	void merging_centers::find_highest_gain(std::vector<size_t> & highest_path, int & highest_gain, std::vector<size_t> & seen){
-		for(std::map<std::vector<size_t>, int>::iterator it = gains.begin(); it != gains.end(); it++){
+	void merging_centers::find_highest_gain(std::vector<int> & highest_path, int & highest_gain, std::vector<int> & seen){
+		for(std::map<std::vector<int>, int>::iterator it = gains.begin(); it != gains.end(); it++){
 			if(it->second > highest_gain && it->first != seen && it->first.size() != 1){
 				highest_path = it->first;
 				highest_gain = it->second;
@@ -155,8 +155,8 @@
 	}
 	void merging_centers::adding_new_centers(std::vector<std::vector<std::string> > & long_centers, std::vector<std::map<size_t, std::vector<std::string> > > & centersPositionOnASeq){//Filling in the long centers vector and centersPositionOnASeq which contain all the long centers 
 		//First the initial tree is built:
-		std::vector<size_t> h_gain;//it is only used for the first time of making tree. for the next times the center with the highest gain is used.
-		size_t index = 0; // The index of the center with the highest gain is used frome the next rounds.
+		std::vector<int> h_gain;//it is only used for the first time of making tree. for the next times the center with the highest gain is used.
+		int index = 0; // The index of the center with the highest gain is used frome the next rounds.
 		size_t num_seq = data.numSequences();
 		for(size_t seq_id = 0; seq_id < num_seq; seq_id++){
 			all_current_centers.at(seq_id) = centers.get_centers(seq_id);
@@ -167,14 +167,14 @@
 		size_t biggest_index = 0;
 		std::vector<std::string> sequence_of_centers;
 		std::cout << "merged centers size: "<< merged_centers.size()<<std::endl;
-		for(std::map<std::vector<size_t>,size_t>::iterator it = merged_centers.begin(); it != merged_centers.end(); it++){//The new indices are converted to their name
+		for(std::map<std::vector<int>,size_t>::iterator it = merged_centers.begin(); it != merged_centers.end(); it++){//The new indices are converted to their name
 			std::cout << " merged_center: " << it->second << std::endl;
 			for(size_t j =0;j< it->first.size();j++){ std::cout<< it->first.at(j)<< " ";}
 			std::cout<< " "<<std::endl;
 		//	std::vector<size_t> updated_center = it->first;
-			std::vector<size_t> list;
+			std::vector<int> list;
 			list = it->first;
-			size_t id = list.at(0);	
+			int id = list.at(0);	
 			bool ThereIsStillABigID = true;
 			while (ThereIsStillABigID == true){
 			//	std::cout << "here!" << std::endl;
@@ -183,9 +183,9 @@
 					id = list.at(j);
 					std::cout << "id " << id <<std::endl;
 					if(id > centers.get_number_of_centers()){
-						for(std::map<std::vector<size_t>,size_t>::iterator it1 = merged_centers.begin(); it1 != merged_centers.end(); it1++){
+						for(std::map<std::vector<int>,size_t>::iterator it1 = merged_centers.begin(); it1 != merged_centers.end(); it1++){
 							if(it1->second == id){
-								std::vector<size_t> temp;
+								std::vector<int> temp;
 								std::cout << "j "<< j << std::endl;
 								if(j != 0){
 									for(size_t i = 0; i < j;i++){
@@ -224,7 +224,7 @@
 				for(size_t j =0; j < list.size(); j++){
 					id = list.at(j);
 					std::cout << "j2 " << j <<std::endl;
-					std::cout << "num of centers "<< centers.get_number_of_centers() <<std::endl;
+					std::cout << "id "<< id <<" num of centers "<< centers.get_number_of_centers() <<std::endl;
 					if(id > centers.get_number_of_centers()){
 						ThereIsStillABigID = true;
 						std::cout << "Still a new center! "<<std::endl;
@@ -234,7 +234,7 @@
 			}
 			std::cout << "list size is "<< list.size() <<std::endl;
 			for(size_t j =0; j < list.size(); j++){
-				size_t id = list.at(j);
+				int id = list.at(j);
 				std::string center = centers.find_center_name(id);
 				sequence_of_centers.push_back(center);
 				std::cout << center << std::endl;
@@ -294,7 +294,8 @@
 
 	void merging_centers::create_alignment(std::vector<std::vector<std::string> > & long_centers, std::map<vector<std::string>, std::vector<pw_alignment> > & new_centers, std::map<std::string , std::vector<pw_alignment> > & alignments_in_a_cluster, std::vector<std::map<size_t , std::vector<std::string> > > & centersPositionOnASeq, std::vector<std::multimap<size_t , std::string> > & centerOnSequence){
 		std::cout << "create long als "<< std::endl;
-		index_centers(alignments_in_a_cluster);
+//		index_centers(alignments_in_a_cluster);
+		center_index = centers.get_index();
 		size_t artificial_ref = data.numSequences()+new_centers.size();
 		add_long_centers_to_map(long_centers,new_centers);
 		for(size_t i =0; i < long_centers.size();i++){//Includes local long centers
@@ -359,7 +360,9 @@
 							unsigned int cent_dir = atoi(cent_parts.at(0).c_str());
 							unsigned int cent_ref = atoi(cent_parts.at(1).c_str());
 							unsigned int cent_left = atoi(cent_parts.at(2).c_str());
-							std::map<std::string , std::vector<pw_alignment> >::iterator it3 = alignments_in_a_cluster.find(center);
+							std::stringstream cent;
+							cent<< cent_ref<<":"<<cent_left;
+							std::map<std::string , std::vector<pw_alignment> >::iterator it3 = alignments_in_a_cluster.find(cent.str());
 							size_t left_of_a_sample;
 							for(std::multimap<size_t , std::string>::iterator leftOfSample = centerOnSequence.at(j).begin(); leftOfSample !=  centerOnSequence.at(j).end(); leftOfSample++){
 								if (center == leftOfSample->second && leftOfSample->first >= it->first && leftOfSample->first >= right){
@@ -519,7 +522,7 @@
 						std::cout << "sam1 "<< sample1.size() << " sam2 " << sample2.size() << std::endl;
 						al.set_alignment_bits(sample1,sample2);
 						std::cout << "alignment is: " <<std::endl;
-					//	al.print();
+						al.print();
 					//	std::vector<char> seq_base;
 					//	std::vector<char>al_base;
 					//	std::cout << al.alignment_length()<< " " << al.getbegin1() << " " << al.getend1() << std::endl;
@@ -558,13 +561,20 @@
 							assert(reverse == 0);
 							new_cent->second.push_back(al);
 							std::cout << "al is added! "<<std::endl;
-						//	al.print();
+							al.print();
 						}
 					}// no break is needed at the end of this if loop becasue a long center can occur more than one time on a sequence
 				}
 			}
 		}
 		remove_fully_reverse_refs(long_centers, new_centers);//Edits new_centers
+		for(std::map<std::string, std::vector<pw_alignment> >::iterator it=merging_als.begin(); it!=merging_als.end();it++){
+			std::cout << "center is "<< it->first<<std::endl;
+			std::cout<<"members are "<<std::endl;
+			for(size_t i =0; i < it->second.size();i++){
+				it->second.at(i).print();
+			}
+		}
 	}
 	void merging_centers::remove_fully_reverse_refs(vector<vector<std::string> > & local_long_centers, std::map<std::vector<std::string>, std::vector<pw_alignment> > & new_centers){
 	//Translate centers to their indices and check for negetive reverse of each center. If it exists one of them is chosen and the other one is considered as the reverse of that reference.	
@@ -637,7 +647,7 @@
 //The following function finds long centers on dna sequences
 	void merging_centers::find_new_centers(size_t & center_indices, std::vector<std::string > & current_long_center, size_t & seq_id , std::vector<std::map<size_t, std::vector<std::string> > > & centersPositionOnASeq){
 	//	std::map<size_t,std::vector<size_t> > all_centers = tree.get_center_on_a_sequence(seq_id);
-		std::vector<size_t> positions = centers.get_long_center_position(seq_id , current_long_center);
+		std::vector<size_t> positions = centers.get_long_center_position(seq_id , current_long_center);//TODO !!! need to check for its substings as well!!
 	//	std::vector<std::vector<std::vector<size_t> > > all_suffix = tree.get_suffix_of_sequence(seq_id);
 	//	std::cout << "all the suffixes on "<< seq_id << std::endl;
 	//	for(size_t i =0;i <all_suffix.size();i++){
@@ -686,11 +696,13 @@
 			std::string center = centers.at(i);
 			std::vector<std::string> center_parts;
 			strsep(center, ":" , center_parts);
-		//	unsigned int center_dir = atoi(center_parts.at(0).c_str());
+			unsigned int center_dir = atoi(center_parts.at(0).c_str());
 			unsigned int center_ref = atoi(center_parts.at(1).c_str());
 			unsigned int center_left = atoi(center_parts.at(2).c_str());
-			std::map<std::string , std::vector<pw_alignment> >::iterator it = alignments_in_a_cluster.find(centers.at(i));
-			std::cout << "center is "<< centers.at(i) <<std::endl;
+			std::stringstream cent;
+			cent<<center_ref<<":"<<center_left;
+			std::map<std::string , std::vector<pw_alignment> >::iterator it = alignments_in_a_cluster.find(cent.str());//removed the dir
+			std::cout << "center is "<< cent.str() <<std::endl;
 			assert(it != alignments_in_a_cluster.end());
 		//	std::cout<< "al size "<<it->second.size() << std::endl;
 		//	bool selfAligned = true;
@@ -718,6 +730,12 @@
 					center_length += r2-l2+1;
 					current_position = r1;
 					std::cout << "cur pos " << current_position << " length "<< center_length << std::endl;
+					std::map<std::string,std::vector<pw_alignment> >::iterator find_al = merging_als.find(cent.str());
+					if(find_al==merging_als.end()){
+						merging_als.insert(std::make_pair(cent.str(),std::vector<pw_alignment>()));
+						find_al=merging_als.find(cent.str());
+					}
+					find_al->second.push_back(p);
 					if(i == centers.size()-1){
 						end_of_last_piece = r1;
 						std::cout << "end point0 "<< end_of_last_piece << " r1 "<< r1 <<std::endl;
@@ -729,6 +747,12 @@
 					center_length +=r1-l1+1;
 					current_position = r2;
 					std::cout << "cur pos " << current_position << " length "<< center_length << std::endl;
+					std::map<std::string,std::vector<pw_alignment> >::iterator find_al = merging_als.find(cent.str());
+					if(find_al==merging_als.end()){
+						merging_als.insert(std::make_pair(cent.str(),std::vector<pw_alignment>()));
+						find_al=merging_als.find(cent.str());
+					}
+					find_al->second.push_back(p);
 					if(i == centers.size()-1){
 						end_of_last_piece = r2;
 						std::cout << "end point1 "<< end_of_last_piece << " r2 "<< r2 <<std::endl;
@@ -851,7 +875,7 @@
 		}
 	}
 	//Short centers are added to the long centers container.
-	void mixing_centers::add_original_centers_to_long_centers(std::map<std::vector<std::string>, std::vector<pw_alignment> > & new_centers, std::map<std::string, std::vector<pw_alignment> > & alignments_in_a_cluster,std::vector<std::multimap<size_t, std::string > > & centerOnSequence){
+/*	void mixing_centers::add_original_centers_to_long_centers(std::map<std::vector<std::string>, std::vector<pw_alignment> > & new_centers, std::map<std::string, std::vector<pw_alignment> > & alignments_in_a_cluster,std::vector<std::multimap<size_t, std::string > > & centerOnSequence){//TODO !!
 	// XXX Note that second both ref can be backwards
 	std::map<std::string, std::vector<pw_alignment> > intermediate;
 	for(std::map<std::vector<std::string>, std::vector<pw_alignment> >::iterator it = new_centers.begin(); it != new_centers.end(); it++){
@@ -864,20 +888,23 @@
 			unsigned int center_dir = atoi(cparts.at(0).c_str());
 			unsigned int center_ref = atoi(cparts.at(1).c_str());
 			unsigned int center_left = atoi(cparts.at(2).c_str());
-			std::map<std::string, std::vector<pw_alignment> >::iterator cent = alignments_in_a_cluster.find(center);// XXX Attention! Here only one direction was saved!
-			if(cent == alignments_in_a_cluster.end()){
-				if(center_dir == 0){
-					center_dir = 1;
-				}else{
-					center_dir = 0;
-				}
-				std::stringstream temp;
-				temp << center_dir<< ":"<< center_ref<<":"<<center_left;
-				center = temp.str();
-				std::cout << "CENT "<<center <<std::endl;
-				cent = alignments_in_a_cluster.find(center);
-				assert(cent != alignments_in_a_cluster.end());
-			}
+			std::stringstream str;
+			str << center_ref<<":"<<center_left;
+			std::map<std::string, std::vector<pw_alignment> >::iterator cent = alignments_in_a_cluster.find(str.str());
+			assert(cent != alignments_in_a_cluster.end());
+		//	if(cent == alignments_in_a_cluster.end()){
+		//		if(center_dir == 0){
+		//			center_dir = 1;
+		//		}else{
+		//			center_dir = 0;
+		//		}
+		//		std::stringstream temp;
+		//		temp << center_dir<< ":"<< center_ref<<":"<<center_left;
+		//		center = temp.str();
+		//		std::cout << "CENT "<<center <<std::endl;
+		//		cent = alignments_in_a_cluster.find(center);
+		//		assert(cent != alignments_in_a_cluster.end());
+		//	}
 			std::cout << "number of als " << cent->second.size() <<std::endl;
 			for(size_t j =0;j < cent->second.size();j++){//Go through the short alignments and check to see if they are part a long one
 				pw_alignment p = cent->second.at(j); //Check if it happened on a long alignment!
@@ -1091,7 +1118,60 @@
 		}
 	}
 	swap_references(new_centers);
-}
+}*/
+	void mixing_centers::add_original_centers_to_long_centers(std::map<std::vector<std::string>, std::vector<pw_alignment> > & new_centers, std::map<std::string, std::vector<pw_alignment> > & alignments_in_a_cluster,std::map<std::string, std::vector<pw_alignment> > & merged_als){
+		std::cout<<"new centers before: "<< new_centers.size() <<std::endl;
+		for(std::map<std::vector<std::string>, std::vector<pw_alignment> >::iterator it= new_centers.begin() ; it != new_centers.end(); it++){
+			std::cout << "cent: "<< it->first <<std::endl;
+			for(size_t i = 0; i < it->second.size();i++){
+				it->second.at(i).print();
+			}
+		}
+		std::cout<< "original cluster in: "<< alignments_in_a_cluster.size() <<std::endl;
+		for(std::map<std::string, std::vector<pw_alignment> >::iterator it= alignments_in_a_cluster.begin() ; it != alignments_in_a_cluster.end() ;it++){
+			std::cout << "cent: "<< it->first <<std::endl;
+			for(size_t i = 0; i < it->second.size();i++){
+				it->second.at(i).print();
+			}
+			std::stringstream str;
+			str<<0<<":"<<it->first;//Forward direction is added to all the centers
+			std::vector<std::string> temp;
+			temp.push_back(str.str());
+			std::map<std::string,std::vector<pw_alignment> >::iterator find_al= merged_als.find(it->first);
+			if(find_al==merged_als.end()){
+				//Add it to new_centers
+				new_centers.insert(std::make_pair(temp,it->second));
+			}else{
+				//Add the rest of als but not the existing ones
+				for(size_t i =0; i < it->second.size();i++){
+					bool equal = false;
+					for(size_t j = 0; j < find_al->second.size();j++){
+						equal =it->second.at(i).equals(find_al->second.at(j));
+						if(equal == true){
+							break;
+						}
+					}
+					if(equal == false){
+						std::map<std::vector<std::string>, std::vector<pw_alignment> >::iterator new_cent=new_centers.find(temp);
+						if(new_cent==new_centers.end()){
+							new_centers.insert(std::make_pair(temp, std::vector<pw_alignment>()));
+							new_cent=new_centers.find(temp);
+						}
+						new_cent->second.push_back(it->second.at(i));
+					}
+				}
+			}
+		}
+		swap_references(new_centers);
+		std::cout<<"new centers after: "<< new_centers.size()<<std::endl;
+		for(std::map<std::vector<std::string>, std::vector<pw_alignment> >::iterator it= new_centers.begin() ; it != new_centers.end(); it++){
+			std::cout << "cent: "<< it->first <<std::endl;
+			for(size_t i = 0; i < it->second.size();i++){
+				it->second.at(i).print();
+			}
+		}
+
+	}
 	void mixing_centers::swap_references(std::map<std::vector<std::string>, std::vector<pw_alignment> > & new_centers){
 		//At the end all the alignemnts are swapped in the way that center be on the second ref. It is used for the graph maf & arith encoding
 		for(std::map<std::vector<std::string>, std::vector<pw_alignment> >::iterator it = new_centers.begin(); it!=new_centers.end();it++){
@@ -1169,6 +1249,7 @@
 	void mixing_centers::calculate_long_centers_weight(std::map<std::vector<std::string>, std::vector<pw_alignment> > & new_centers, std::map<std::vector<std::string> , unsigned int> & long_center_weight, std::map<std::vector<std::string>, size_t> & numberOfACenter){//On concatenated ones:
 		size_t max_bit = 8;	
 		size_t maximum_mem = 0;//At the end should be equal to the number of center occurs more than all the others
+		std::cout << "here new center size is "<< new_centers.size()<<std::endl;
 		for(std::map<std::vector<std::string>, std::vector<pw_alignment> >::iterator it = new_centers.begin(); it != new_centers.end();it++){
 			if(it->first.size() != 1){
 				std::vector<std::string> longCenter = it->first;
@@ -1215,40 +1296,21 @@
 				p.get_lr2(left_2,right_2);
 				ref1 = p.getreference1();
 				ref2 = p.getreference2();
-				unsigned int al_dir1;
-				unsigned int al_dir2;
-				if(p.getbegin1()< p.getend1()){
-					al_dir1 = 0;
-				}else	al_dir1 = 1;
-				if(p.getbegin2()<p.getend2()){
-					al_dir2 = 0;
-				}else	al_dir2 = 1;
 				std::stringstream sample1;
 				std::stringstream sample2;
-				sample1 << al_dir1 << ":" <<ref1 << ":" << left_1;
-				sample2 << al_dir2 << ":" <<ref2 << ":" << left_2;
-				std::stringstream mem1;
-				std::stringstream mem2;
-				mem1 <<ref1 << ":" << left_1;
-				mem2 <<ref2 << ":" << left_2;
+				sample1 <<ref1 << ":" << left_1;
+				sample2 <<ref2 << ":" << left_2;
 				if(sample1.str() != it->first){
-					member_of_cluster.insert(make_pair(mem1.str(),it->first));//smaple one after removing dir
+					member_of_cluster.insert(make_pair(sample1.str(),it->first));
 				}
 				if(sample2.str() != it->first){
-					member_of_cluster.insert(make_pair(mem2.str(), it->first));//sample2 after removing dir
+					member_of_cluster.insert(make_pair(sample2.str(), it->first));
 				}
 				std::cout << "s1 "<< sample1.str() << " s2 "<<sample2.str() << " center " << it->first << std::endl;
 				assert(sample1.str()==it->first || sample2.str() == it->first);
 			}
 			std::string center = it->first;
-			std::vector<std::string> center_parts;
-			strsep(center, ":" , center_parts);
-			unsigned int center_dir = atoi(center_parts.at(0).c_str());
-			unsigned int center_ref = atoi(center_parts.at(1).c_str());
-			unsigned int center_left = atoi(center_parts.at(2).c_str());
-			std::stringstream cent;
-			cent<< center_ref << ":" << center_left;
-			member_of_cluster.insert(make_pair(cent.str(), it->first));//center after removing dir		
+			member_of_cluster.insert(make_pair(it->first, it->first));		
 		}
 		for(std::map<std::string, std::string>::iterator it = member_of_cluster.begin();it != member_of_cluster.end();it++){
 			std::cout << it->second << std::endl;
@@ -1313,220 +1375,198 @@
 		}
 		
 	}
-	void mixing_centers::make_index(std::map<std::string, std::vector<pw_alignment> > & alignments_in_a_cluster, std::map<std::string, size_t> & center_id){
-		size_t num = 1;
-		for(std::map<std::string, std::vector<pw_alignment> >::iterator it = alignments_in_a_cluster.begin();it != alignments_in_a_cluster.end();it++){
-			if(it->second.size()>0){
-				std::cout << "num "<< num << " center " << it->first <<" number of als "<< it->second.size()<<std::endl;
-				for(size_t i =0; i < it->second.size();i++){
-					it->second.at(i).print();
-				}
-				center_id.insert(std::make_pair(it->first,num));
-				num++;
+	void mixing_centers::compute_centers_length(std::map<std::string, std::vector<pw_alignment> > & alignments_in_a_cluster, std::map<std::string , size_t> & center_length){
+		for(std::map<std::string, std::vector<pw_alignment> >::iterator it=alignments_in_a_cluster.begin() ; it!= alignments_in_a_cluster.end(); it++){
+			pw_alignment p= it->second.at(0);
+			size_t left_1; 
+			size_t left_2;
+			size_t right_1;
+			size_t right_2;
+			size_t ref1;
+			size_t ref2;
+			p.get_lr1(left_1,right_1);
+			p.get_lr2(left_2,right_2);
+			ref1 = p.getreference1();
+			ref2 = p.getreference2();
+			std::stringstream sample1;
+			std::stringstream sample2;
+			sample1 <<ref1 << ":" << left_1;
+			sample2 <<ref2 << ":" << left_2;
+			if(sample1.str() != it->first){
+				center_length.insert(std::make_pair(it->first,(right_2-left_2+1)));
+			}
+			if(sample2.str() != it->first){
+				center_length.insert(std::make_pair(it->first,(right_1-left_1+1)));
 			}
 		}
 	}
-	void mixing_centers::find_adjacencies_with_direction(std::map<std::string, std::vector<pw_alignment> > & alignments_in_a_cluster, std::vector<std::multimap<size_t, std::string > > & centerOnSequence, std::map<int, std::set<int> > &adjacencies){//TODO think of center happening itself on a seq!!!
-		std::map<std::string, size_t> center_id;
-		make_index(alignments_in_a_cluster, center_id);
+	const size_t mixing_centers::find_right_on_seq(std::string & center,std::map<std::string, std::vector<pw_alignment> > & alignments_in_a_cluster, size_t & left , size_t & ref)const{
+		std::vector<std::string> center_parts;
+		strsep(center, ":" , center_parts);
+		unsigned int center_dir = atoi(center_parts.at(0).c_str());
+		unsigned int center_ref = atoi(center_parts.at(1).c_str());
+		unsigned int center_left = atoi(center_parts.at(2).c_str());
+		std::stringstream str;
+		str<<center_ref<<":"<<center_left;
+
+		std::map<std::string, std::vector<pw_alignment> >::iterator it=alignments_in_a_cluster.find(str.str());
+		if(it!= alignments_in_a_cluster.end()){
+			for(size_t i = 0 ; i < it->second.size();i++){
+				pw_alignment p= it->second.at(i);
+				size_t left_1; 
+				size_t left_2;
+				size_t right_1;
+				size_t right_2;
+				size_t ref1;
+				size_t ref2;
+				p.get_lr1(left_1,right_1);
+				p.get_lr2(left_2,right_2);
+				ref1 = p.getreference1();
+				ref2 = p.getreference2();
+				std::stringstream sample1;
+				std::stringstream sample2;
+				sample1 <<ref1 << ":" << left_1;
+				sample2 <<ref2 << ":" << left_2;
+				if(sample1.str()==it->first && left_1 == left && ref1 == ref){
+					return right_1;
+				}
+				if(sample2.str() == it->first && left_2 == left && ref2 == ref){
+					return right_2;
+				}
+				if(sample2.str()==it->first && left_1 == left && ref1 == ref){
+					return right_1;
+				}
+				if(sample1.str() == it->first && left_2 == left && ref2 == ref){
+					return right_2;
+				}
+			}
+		}else{
+			std::map<std::string , size_t>::const_iterator it1 = non_aligned_right.find(center);
+			assert(it1 != non_aligned_right.end());
+			size_t right = it1->second;
+			return right;
+		}
+	}
+	void mixing_centers::add_nonaligned_regions(std::vector<std::multimap<size_t, std::string > > & centerOnSequence, std::map<std::string, std::vector<pw_alignment> > & alignments_in_a_cluster){
+		for(size_t i =0; i < data.numSequences(); i++){
+			std::cout << "centers on sequence " << i << " are :"<<std::endl;
+			size_t pre_pos = 0;//later on will be updated to right+1
+			for(std::multimap<size_t, std::string >::iterator it = centerOnSequence.at(i).begin(); it != centerOnSequence.at(i).end();it++){
+				std::cout<< it->second << " ";
+				size_t pos = it->first;
+				if(pre_pos != pos){
+ 					std::stringstream str;
+					str<<0<<":"<<i<<":"<<pre_pos;
+					all_pieces.at(i).insert(std::make_pair(pre_pos,str.str()));
+					non_aligned_right.insert(std::make_pair(str.str(),pos-1));
+				}
+				pre_pos = find_right_on_seq(it->second,alignments_in_a_cluster, pos , i) + 1;
+				all_pieces.at(i).insert(std::make_pair(it->first,it->second));
+
+			}
+			if(pre_pos < data.get_seq_size(i)-1){
+				std::cout <<"there is a last piece! "<<std::endl;
+				//add the last piece!
+				std::stringstream str;
+				str<<0<<":"<<i<<":"<<pre_pos;
+				all_pieces.at(i).insert(std::make_pair(pre_pos,str.str()));
+				non_aligned_right.insert(std::make_pair(str.str(),data.get_seq_size(i)-1));
+			}
+			std::cout << std::endl;
+		}
+	}
+	void mixing_centers::make_index(){
+	//	std::cout << alignments_in_a_cluster.size() << std::endl;
+		size_t num = 1;
+	/*	for(std::map<std::string, std::vector<pw_alignment> >::iterator it = alignments_in_a_cluster.begin();it != alignments_in_a_cluster.end();it++){
+			assert(it->second.size()>0);
+			std::cout << "num "<< num << " center " << it->first <<" number of als "<< it->second.size()<<std::endl;
+			center_id.insert(std::make_pair(it->first,num));
+			num++;
+		}*/
+		for(size_t i =0; i < data.numSequences();i++){
+			for(std::map<size_t , std::string>::iterator it = all_pieces.at(i).begin() ; it != all_pieces.at(i).end() ; it++){
+				std::string center = it->second;
+				std::vector<std::string> center_parts;
+				strsep(center, ":" , center_parts);
+				unsigned int center_dir = atoi(center_parts.at(0).c_str());
+				unsigned int center_ref = atoi(center_parts.at(1).c_str());
+				unsigned int center_left = atoi(center_parts.at(2).c_str());
+				std::stringstream str;
+				str<<center_ref<<":"<<center_left;
+				std::map<std::string, size_t>::iterator id = center_id.find(str.str());
+				if(id == center_id.end()){
+					center_id.insert(std::make_pair(str.str(),num));
+					num++;
+				}
+			}
+		}
+	}
+	void mixing_centers::find_adjacencies_with_direction(std::map<int, std::set<int> > &adjacencies){//TODO think of a center happening itself on a seq!!!
+		make_index();
 		for(size_t i =0; i < data.numSequences(); i++){
 			std::cout << "on seq " << i << std::endl;
 			std::string previous;
-			bool pre_coordinate;
-			size_t pre_id;
-		/*	if(centerOnSequence.at(i).size() == 1){
-				std::cout << "seq "<< i << " has only one center "<<std::endl;
-				std::multimap<size_t, std::string >::iterator it1 = centerOnSequence.at(i).begin();
-				std::map<std::string, size_t>::iterator id = center_id.find(it1->second);
-				std::cout << id->second <<std::endl;
-				std::map< int , std::set<int> >::iterator adj = adjacencies.find(id->second);
-					if(adj == adjacencies.end()){
-						adjacencies.insert(std::make_pair(id->second,std::set<int>()));
-					}
-*/
-		//	}else{
-			std::cout << "number of its cneter is "<< centerOnSequence.at(i).size()<<std::endl;
-			for(std::multimap<size_t, std::string >::iterator it1 = centerOnSequence.at(i).begin(); it1 != centerOnSequence.at(i).end();it1++){//In 'centerOnSequence' I kept different directions of centers on a seq
+			int pre_id = 0;
+		//	std::cout << "number of its cneter is "<< centerOnSequence.at(i).size()<<std::endl;//TODO go over the all pieces 
+		//	for(std::multimap<size_t, std::string >::iterator it1 = centerOnSequence.at(i).begin(); it1 != centerOnSequence.at(i).end();it1++){//In 'centerOnSequence' I kept different directions of centers on a seq
+			for(std::multimap<size_t, std::string >::iterator it1 = all_pieces.at(i).begin(); it1 != all_pieces.at(i).end();it1++){
 				size_t pos = it1->first;
 				std::string center = it1->second;
+				std::vector<std::string> center_parts;
+				strsep(center, ":" , center_parts);
+				unsigned int center_dir = atoi(center_parts.at(0).c_str());
+				unsigned int center_ref = atoi(center_parts.at(1).c_str());
+				unsigned int center_left = atoi(center_parts.at(2).c_str());
+				std::stringstream str;
+				str<<center_ref<<":"<<center_left;
 				std::cout << "pos "<< it1->first << " "<< it1->second <<std::endl;
-				if(it1 == centerOnSequence.at(i).begin()){
+				if(it1 == all_pieces.at(i).begin()){
+					std::cout << "first center on the seq"<<std::endl;
 					assert(previous.length()==0);
-					std::map<std::string, size_t>::iterator id = center_id.find(center);
-					if(id != center_id.end()){
+					std::map<std::string, size_t>::iterator id = center_id.find(str.str());
+					assert(id != center_id.end());
+					if(center_dir == 0){
 						pre_id = id->second;
-						previous = it1->second;
-						pre_coordinate = find_coordinate(alignments_in_a_cluster, pos, i, center);
-						std::map< int , std::set<int> >::iterator adj = adjacencies.find(id->second);
-							if(adj == adjacencies.end()){
-								adjacencies.insert(std::make_pair(id->second,std::set<int>()));
-							}
-					}else{	
-						std::vector<std::string> center_parts;
-						strsep(center, ":" , center_parts);
-						unsigned int center_dir = atoi(center_parts.at(0).c_str());
-						unsigned int center_ref = atoi(center_parts.at(1).c_str());
-						unsigned int center_left = atoi(center_parts.at(2).c_str());
-						if(center_dir == 0){
-							center_dir = 1;
-						}else{
-							center_dir = 0;
-						}
-						std::stringstream rev_cent;
-						rev_cent<<center_dir<<":"<<center_ref<< ":"<<center_left;
-						std::map<std::string, size_t>::iterator revid = center_id.find(rev_cent.str());
-						assert(revid != center_id.end());
-						pre_id = revid->second;
-						previous = rev_cent.str();
-						pre_coordinate = find_coordinate(alignments_in_a_cluster, pos, i, previous);
-						std::map< int , std::set<int> >::iterator adj = adjacencies.find(revid->second);
-						if(adj == adjacencies.end()){
-							adjacencies.insert(std::make_pair(revid->second,std::set<int>()));
-						}
-						std::cout << "reverse was added!"<<std::endl;
+					}else{
+						pre_id = (-1)*id->second;
 					}
+					std::cout << "pre id "<<pre_id<<std::endl;
+
+					previous = it1->second;
+					std::map< int , std::set<int> >::iterator adj = adjacencies.find(pre_id);
+				//	if(adj == adjacencies.end()){
+				//		adjacencies.insert(std::make_pair(pre_id,std::set<int>()));
+				//	}
 				}
 				else{
 					assert(previous.length() !=0);
-					assert(it1 !=  centerOnSequence.at(i).begin());
-			//		if(previous.length() != 0)
+					assert(it1 !=  all_pieces.at(i).begin());
 					std::cout << "adj pos " << it1->first<<std::endl;
-					std::map<std::string, size_t>::iterator id = center_id.find(center);
-					if(id != center_id.end()){//If center itself is in center_id
-						bool coordinate = find_coordinate(alignments_in_a_cluster, pos, i, center);
-						if(coordinate == 0 && pre_coordinate == 0){ //if both are forward
-							std::map< int , std::set<int> >::iterator adj = adjacencies.find(pre_id);
-							if(adj == adjacencies.end()){
-								adjacencies.insert(std::make_pair(pre_id,std::set<int>()));
-								adj = adjacencies.find(pre_id);
-							}
-							adj->second.insert(id->second);	
-						}else if(coordinate == 0 && pre_coordinate ==1){
-							int rev_pre_id = -1*(pre_id);
-							std::map< int , std::set<int> >::iterator adj = adjacencies.find(rev_pre_id);
-							if(adj == adjacencies.end()){
-								adjacencies.insert(std::make_pair(rev_pre_id,std::set<int>()));
-								adj = adjacencies.find(rev_pre_id);
-							}
-							adj->second.insert(id->second);	
-
-						}else if(coordinate ==1 && pre_coordinate ==0){
-							int rev_id = -1*(id->second);
-							std::map< int , std::set<int> >::iterator adj = adjacencies.find(pre_id);
-							if(adj == adjacencies.end()){
-								adjacencies.insert(std::make_pair(pre_id,std::set<int>()));
-								adj = adjacencies.find(pre_id);
-							}
-							adj->second.insert(rev_id);	
-						}else{
-							assert(coordinate == 1 && pre_coordinate == 1);
-							int rev_pre_id = -1*(pre_id);
-							int rev_id = -1*(id->second);
-							std::map< int , std::set<int> >::iterator adj = adjacencies.find(rev_pre_id);
-							if(adj == adjacencies.end()){
-								adjacencies.insert(std::make_pair(rev_pre_id,std::set<int>()));
-								adj = adjacencies.find(rev_pre_id);
-							}
-							adj->second.insert(rev_id);	
-						}
-						previous = it1->second;	
-						pre_coordinate = coordinate;	
-					}else{//Check if reverse of a center is in center_id.
-						std::cout << "need to look for the reverse!"<<std::endl;
-						std::vector<std::string> center_parts;
-						strsep(center, ":" , center_parts);
-						unsigned int center_dir = atoi(center_parts.at(0).c_str());
-						unsigned int center_ref = atoi(center_parts.at(1).c_str());
-						unsigned int center_left = atoi(center_parts.at(2).c_str());
-						if(center_dir == 0){
-							center_dir = 1;
-						}else{
-							center_dir = 0;
-						}
-						std::stringstream rev_cent;
-						rev_cent<<center_dir<<":"<<center_ref<< ":"<<center_left;
-						std::map<std::string, size_t>::iterator revid = center_id.find(rev_cent.str());
-						assert(revid != center_id.end());
-						std::string revCenter = revid->first;
-						bool coordinate = find_coordinate(alignments_in_a_cluster, pos, i, revCenter);
-						if(coordinate == 0 && pre_coordinate == 0){ //if both are forward
-							std::map< int , std::set<int> >::iterator adj = adjacencies.find(pre_id);
-							if(adj == adjacencies.end()){
-								adjacencies.insert(std::make_pair(pre_id,std::set<int>()));
-								adj = adjacencies.find(pre_id);
-							}
-							adj->second.insert(revid->second);	
-						}else if(coordinate == 0 && pre_coordinate ==1){
-							int rev_pre_id = -1*(pre_id);
-							std::map< int , std::set<int> >::iterator adj = adjacencies.find(rev_pre_id);
-							if(adj == adjacencies.end()){
-								adjacencies.insert(std::make_pair(rev_pre_id,std::set<int>()));
-								adj = adjacencies.find(rev_pre_id);
-							}
-							adj->second.insert(revid->second);	
-
-						}else if(coordinate ==1 && pre_coordinate ==0){
-							int rev_id = -1*(revid->second);
-							std::map< int , std::set<int> >::iterator adj = adjacencies.find(pre_id);
-							if(adj == adjacencies.end()){
-								adjacencies.insert(std::make_pair(pre_id,std::set<int>()));
-								adj = adjacencies.find(pre_id);
-							}
-							adj->second.insert(rev_id);	
-						}else{
-							assert(coordinate == 1 && pre_coordinate == 1);
-							int rev_pre_id = -1*(pre_id);
-							int rev_id = -1*(revid->second);
-							std::map< int , std::set<int> >::iterator adj = adjacencies.find(rev_pre_id);
-							if(adj == adjacencies.end()){
-								adjacencies.insert(std::make_pair(rev_pre_id,std::set<int>()));
-								adj = adjacencies.find(rev_pre_id);
-							}
-							adj->second.insert(rev_id);	
-						}
-						previous = revid->first;	
-						pre_coordinate = coordinate;							
-						std::cout<< "rev exsits" <<std::endl; 
-
-
-
+					std::map<std::string, size_t>::iterator id = center_id.find(str.str());
+					assert(id != center_id.end());//If center itself is in center_id
+					std::cout << "pre id "<<pre_id<<std::endl;
+					std::map< int , std::set<int> >::iterator adj = adjacencies.find(pre_id);
+					if(adj == adjacencies.end()){
+						adjacencies.insert(std::make_pair(pre_id,std::set<int>()));
+						adj = adjacencies.find(pre_id);
 					}
-				}
-				/*else{
-					assert(previous.length()==0);
-					std::map<std::string, size_t>::iterator id = center_id.find(center);
-					if(id != center_id.end()){
+					if(center_dir == 0){
 						pre_id = id->second;
-						previous = it1->second;
-						pre_coordinate = find_coordinate(alignments_in_a_cluster, pos, i, it1->second);
-					}else{	
-					//	std::vector<std::string> center_parts;
-					//	strsep(center, ":" , center_parts);
-					//	unsigned int center_dir = atoi(center_parts.at(0).c_str());
-					//	unsigned int center_ref = atoi(center_parts.at(1).c_str());
-					//	unsigned int center_left = atoi(center_parts.at(2).c_str());
-					//	if(center_dir == 0){
-					//		center_dir = 1;
-					//	}else{
-					//		center_dir = 0;
-					//	}
-					//	std::stringstream rev_cent;
-					//	rev_cent<<center_dir<<":"<<center_ref<< ":"<<center_left;
-					//	std::map<std::string, size_t>::iterator id = center_id.find(rev_cent.str());
-
-						
-
-						std::cout << "need to look for the reverse!"<<std::endl;//TODO
+					}else{
+						pre_id = (-1)*id->second;
 					}
-
-				}*/
+					adj->second.insert(pre_id);
+					previous = id->second;
+				}
 			}
-//}
+			if(pre_id != 0){
+				std::map< int , std::set<int> >::iterator adj = adjacencies.find(pre_id);
+				if(adj == adjacencies.end()){
+					adjacencies.insert(std::make_pair(pre_id,std::set<int>()));
+				}
+			}
 		}
-
-
-
-
 	}
 	bool mixing_centers::find_coordinate(std::map<std::string, std::vector<pw_alignment> > & alignments_in_a_cluster, size_t & position , size_t & ref, std::string & center){
 		std::map<std::string, std::vector<pw_alignment> >::iterator it = alignments_in_a_cluster.find(center);
@@ -1579,7 +1619,71 @@
 		}
 
 	}
-	void mixing_centers::make_dot_file(std::map<int, std::set<int> > & adjacencies , std::ostream & dotfile){
+
+	void mixing_centers::test(std::map<std::string, std::vector<pw_alignment> > & alignments_in_a_cluster){
+		for(size_t i = 0; i < data.numSequences(); i++){
+			std::cout << "on seq "<< i << " :" <<std::endl;
+			for(std::multimap<size_t , std::string>::iterator it = all_pieces.at(i).begin() ; it != all_pieces.at(i).end(); it++){
+				size_t left = it->first;
+				size_t right = find_right_on_seq(it->second, alignments_in_a_cluster, left, i);
+				std::vector<std::string> center_parts;
+				strsep(it->second, ":" , center_parts);
+				unsigned int center_dir = atoi(center_parts.at(0).c_str());
+				unsigned int center_ref = atoi(center_parts.at(1).c_str());
+				unsigned int center_left = atoi(center_parts.at(2).c_str());
+				std::stringstream str;
+				str<<center_ref<<":"<<center_left;
+				std::map<std::string , size_t>::iterator it1 = center_id.find(str.str());
+				assert(it1 != center_id.end());
+				std::cout<<" from "<< it->first << " to "<< right << " is " << it->second << " with id "<< it1->second <<std::endl;
+			}
+			std::cout<<std::endl;
+	
+		}
+
+
+	}
+	const std::map<std::string, size_t> mixing_centers::get_center_id()const{
+		return center_id;
+	}
+	
+	const size_t mixing_centers::get_right(std::string & center_name,std::map<std::string, std::vector<pw_alignment> > & alignments_in_a_cluster)const{
+		//if it is in alignments_in_a_cluster
+		std::map<std::string, std::vector<pw_alignment> >::iterator it = alignments_in_a_cluster.find(center_name);
+		if(it != alignments_in_a_cluster.end()){
+			assert(it->second.size() != 0);
+			pw_alignment p = it->second.at(0);
+			size_t left_1; 
+			size_t left_2;
+			size_t right_1;
+			size_t right_2;
+			size_t ref1;
+			size_t ref2;
+			p.get_lr1(left_1,right_1);
+			p.get_lr2(left_2,right_2);
+			ref1 = p.getreference1();
+			ref2 = p.getreference2();
+			std::stringstream sample1;
+			std::stringstream sample2;
+			sample1 <<ref1 << ":" << left_1;
+			sample2 <<ref2 << ":" << left_2;
+			if(sample1.str()==center_name){
+				return right_1;
+			}else{
+				assert(sample2.str()==center_name);
+				return right_2;
+			}
+		}else{
+			//else look for it in non_aligned right
+			std::stringstream str;
+			str<<0<<":"<<center_name;
+			std::map<std::string, size_t>::const_iterator it1 = non_aligned_right.find(str.str());
+			assert(it1 != non_aligned_right.end());
+			return it1->second;
+		}
+
+	}
+	void write_graph::write_graph_dot(std::map<int, std::set<int> > & adjacencies , std::ostream & dotfile){
 		dotfile << "/Graph referenceGraph {"<<std::endl;
 		for(std::map<int, std::set<int> >::iterator it = adjacencies.begin(); it != adjacencies.end(); it++){
 			std::set<int> nodes = it->second;
@@ -1605,7 +1709,55 @@
 		}
 		dotfile << "/};"<<std::endl;
 	}
-	 
+	void write_graph::write_graph_fasta(const std::string & graphout, std::map<std::string ,std::vector<pw_alignment> > & alignments_in_a_cluster){//All the cneters are saved from their forward strand
+		std::map<std::string, size_t> center_id = mixcenter.get_center_id();
+		std::ofstream gout(graphout.c_str());
+		std::map< size_t , std::string> centers;
+		for(std::map<std::string, size_t>::const_iterator it = center_id.begin(); it!=center_id.end(); ++it){
+			std::vector<std::string> center_parts;
+			strsep(it->first, ":" , center_parts);
+			unsigned int center_ref = atoi(center_parts.at(0).c_str());
+			unsigned int center_left = atoi(center_parts.at(1).c_str());
+			//find its right, save it form its left to its right in centers map.
+			std::string center = it->first;
+			size_t right = mixcenter.get_right(center,alignments_in_a_cluster);
+			assert(right != 0);
+			//extract the seq from left to right!
+			std::string sub;
+			dnastring seq = data.getSequence(center_ref);
+			for(size_t i = center_left ; i <=right ; i++){
+				sub+=seq.at(i);
+			}
+			centers.insert(std::make_pair(it->second, sub));
+		}
+		make_fasta(gout,centers);
+	}
+	void write_graph::make_fasta(std::ostream & graphfasta, std::map<size_t, std::string> & centers){
+	for(std::map<size_t, std::string>::iterator it = centers.begin() ; it != centers.end() ; it++){
+		size_t rest = 0;
+		graphfasta<<">"<<it->first<<std::endl;
+		if(it->second.size() > 70){
+			for(size_t i = 0; i < it->second.size()-70; i++){
+				for(size_t j = i; j < i+70;j++){
+					graphfasta<<it->second.at(j);
+				}
+				i +=69;
+				rest = i+1;
+				graphfasta<<std::endl;
+			}
+			size_t length = 0;
+			for(size_t i = rest ; i < it->second.size();i++){
+				graphfasta<<it->second.at(i);
+				length++;
+			}
+			graphfasta<<std::endl;
+			assert(length <= 70);
+		}else{
+			graphfasta<<it->second<<std::endl;
+		}
+	}
+
+	}
 
 
 
