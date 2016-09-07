@@ -113,8 +113,8 @@
 				std::string center = it -> first;
 				std::vector<std::string> center_parts;
 				strsep(center, ":" , center_parts);
-				unsigned int cent_ref = atoi(center_parts.at(1).c_str());
-				unsigned int cent_left = atoi(center_parts.at(2).c_str());
+				unsigned int cent_ref = atoi(center_parts.at(0).c_str());
+				unsigned int cent_left = atoi(center_parts.at(1).c_str());
 				size_t acc_id = data.accNumber(cent_ref);
 				outs.put((char)0);
 				outs.write(reinterpret_cast<char*>(&acc_id),sizeof(size_t));
@@ -176,8 +176,8 @@
 				std::string center = it->first;
 				std::vector<std::string> center_parts;
 				strsep(center, ":" , center_parts);
-				unsigned int center_ref = atoi(center_parts.at(1).c_str());
-				unsigned int center_left = atoi(center_parts.at(2).c_str());	
+				unsigned int center_ref = atoi(center_parts.at(0).c_str());
+				unsigned int center_left = atoi(center_parts.at(1).c_str());	
 				for(size_t j = 0; j < it->second.size();j++){
 					pw_alignment * p = & it->second.at(j);
 					size_t left1; 
@@ -219,6 +219,7 @@
 				}
 			}
 		}
+		std::cout<< "alignments are set!"<<std::endl;
 	}
 	template<typename T>
 	void dynamic_encoder<T>::add_center_flags_to_the_stream(std::vector<uint32_t> & bits , unsigned char & model_index, std::ofstream &outs){
@@ -237,8 +238,8 @@
 			std::string center = it->first;
 			std::vector<std::string> split;
 			strsep(center, ":" , split);
-			size_t cent_ref = atoi(split.at(1).c_str());
-			size_t cent_left = atoi(split.at(2).c_str());
+			size_t cent_ref = atoi(split.at(0).c_str());
+			size_t cent_left = atoi(split.at(1).c_str());
 			pw_alignment * p = & it->second.at(0);
 			size_t left1;
 			size_t right1;
@@ -289,8 +290,8 @@
 				std::vector<std::string> split;
 				strsep(center, ":" , split);
 				size_t cent_right = 0;
-				size_t cent_ref = atoi(split.at(1).c_str());
-				size_t cent_left = atoi(split.at(2).c_str());
+				size_t cent_ref = atoi(split.at(0).c_str());
+				size_t cent_left = atoi(split.at(1).c_str());
 				std::map<std::string,std::vector<pw_alignment> >::iterator it1 = alignmentOfCluster.find(center);
 				assert(it1 != alignmentOfCluster.end());
 				pw_alignment * p = & it1->second.at(0);
@@ -1059,8 +1060,8 @@
 						std::cout<< "center: "<< center << std::endl;
 						std::vector<std::string> center_parts;
 						strsep(center, ":" , center_parts);
-						cent_ref = atoi(center_parts.at(1).c_str());
-						cent_left = atoi(center_parts.at(2).c_str());
+						cent_ref = atoi(center_parts.at(0).c_str());
+						cent_left = atoi(center_parts.at(1).c_str());
 						if(current_center.size() > 1){//long al is encoded. The low/high values of the accession of the first part is used.
 							std::cout << "long center occurs in encoding! "<<std::endl;
 							std::map<std::vector<std::string>, std::vector<pw_alignment> >::iterator it2 = new_centers.find(current_center);

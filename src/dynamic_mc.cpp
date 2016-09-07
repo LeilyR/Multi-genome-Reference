@@ -300,7 +300,7 @@ void alignment_contexts<reader>::read_alignment_2_1(const pw_alignment & pw) {
 	std::string context;
 	for(size_t i=level; i>0; --i) {
 		size_t numk = i-1;
-		if(numk > NUM_KEEP_DYN-1) numk = NUM_KEEP_DYN;
+		if(numk > NUM_KEEP_DYN-1) numk = NUM_KEEP_DYN-1;
 		char keepc = dynamic_mc_model::modification_character(-1, -1, -1, numk);
 		context.append(1, keepc);
 	}
@@ -366,7 +366,7 @@ void a_reader_costs::see_context(const std::string & context, size_t modificatio
 //		std::cout << it->first.size() << std::endl;
 //	}
 	std::map<std::string, std::vector<double> >::const_iterator it = model_costs.find(context);
-//	std::cout << "context size " <<context.size() <<std::endl;
+//	std::cout << it->first << " context size " <<context.size() <<std::endl;
 	assert(it!=model_costs.end());
 	const std::vector<double> & mc = it->second;
 	cost_sum+=mc.at(modification);
@@ -2208,9 +2208,9 @@ double dynamic_mc_model::get_the_gain(const pw_alignment & p, std::string  & cen
 	gain_function(p,g1,g2);
 	std::vector<std::string> center_parts;
 	strsep(center, ":" , center_parts);
-	unsigned int dir = atoi(center_parts.at(0).c_str());
-	unsigned int ref = atoi(center_parts.at(1).c_str());
-	unsigned int left = atoi(center_parts.at(2).c_str());
+//	unsigned int dir = atoi(center_parts.at(0).c_str());
+	unsigned int ref = atoi(center_parts.at(0).c_str());
+	unsigned int left = atoi(center_parts.at(1).c_str());
 	if(p.getreference1()== ref){
 		return g1; //if center is on ref1
 	}else{
@@ -2399,4 +2399,8 @@ void dynamic_mc_model::write_al_high_onstream(std::ofstream & al_high_out){
 
 size_t dynamic_mc_model::get_acc()const{
 	return   data.numOfAcc();
+}
+
+const std::map<std::string, std::vector<double>  > dynamic_mc_model::get_al_cost(size_t & acc1, size_t & acc2)const{
+	return alignment_model_costs.at(acc1).at(acc2);
 }

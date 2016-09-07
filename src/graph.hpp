@@ -44,15 +44,16 @@ private:
 	class Vertex{
 
 	public:
-		Vertex(int idVertex);
+		Vertex(size_t idVertex);
 		Vertex(const Vertex& v);
-		const int& getIdVertex()const;
+		const size_t& getIdVertex()const;
 		friend std::ostream& operator<<(std::ostream &os, Vertex const& v);
 		void printVertex(std::ostream &os)const;
-		void setRtoF(const int& id);
-		void setRtoR(const int& id);
-		void setFtoF(const int& id);
-		void setFtoR(const int& id);
+		void printVertex()const;
+		void setRtoF(const size_t& id);
+		void setRtoR(const size_t& id);
+		void setFtoF(const size_t& id);
+		void setFtoR(const size_t& id);
 		void setPreviousRtoF(const int& v);
 		void setPreviousRtoR(const int& v);
 		void setPreviousFtoF(const int& v);
@@ -76,10 +77,10 @@ private:
 		double getCostScore(const int& id)const;
 		double getCostScore()const;
 		const double& getDistance()const;
-		const int& getStartOnRead()const;
-		const int& getEndOnRead()const;
-		const int& getStartOnNode()const;
-		const int& getEndOnNode()const;
+		const size_t& getStartOnRead()const;
+		const size_t& getEndOnRead()const;
+		const size_t& getStartOnNode()const;
+		const size_t& getEndOnNode()const;
 		const std::string& getName()const;
 		bool operator < (const Graph::Vertex& v)const
 		{
@@ -87,7 +88,7 @@ private:
 		}
 
 	private:
-		int idVertex;
+		size_t idVertex;
 		std::string name;
 		std::map<int,double> costScore; //id from the edge where it come from and the score
 		double distance;
@@ -117,7 +118,7 @@ public:
 		void getPredecessors(std::vector<OrientedVertex>& oriented,Graph g) const;
 		Graph::Vertex& getVertex();
 		const bool& getIsForward()const;
-		std::string getDna(all_data data) const;
+		std::string getDna(all_data & , size_t &) const;
 
 		bool compareOrientedVertex( Graph::OrientedVertex &v1, Graph::OrientedVertex &v2);
 
@@ -131,14 +132,15 @@ public:
 
 public:
 	// get/set functions
-	void setStartOnRead(const int&id, const int&start);
-	void setEndOnRead(const int&id, const int&end);
-	void setStartOnNode(const int&id, const int&start);
-	void setEndOnNode(const int&id, const int&end);
-	void setScore(const int& id, const double& score,const int& idOrigin);
-	const double& getScore(const int& id);
-	const Vertex& getVertex(const int& id);
-	const std::map<int,Vertex>& getVertices()const;
+	void setStartOnRead(const size_t&id, const size_t&start);
+	void setEndOnRead(const size_t&id, const size_t&end);
+	void setStartOnNode(const size_t&id, const size_t&start);
+	void setEndOnNode(const size_t&id, const size_t&end);
+	void setScore(const size_t& id, const double& score,const size_t& idOrigin);
+	const double& getScore(const size_t& id);
+	const Vertex& getVertex(const size_t& id);
+	const std::map<size_t,Vertex>& getVertices()const;
+	void set_vertex(const size_t & seq_id, const std::string & seq_name);
 
 	// read/write files
 	void read_dot_file(std::string & , std::map< std::string, size_t> &, std::string &);
@@ -150,7 +152,8 @@ public:
 
 
 	void addVertex(Vertex v);
-	void addEdge(int typeOfEdge,int id1,std::string name1, int id2, std::string name2);
+	void addEdge(int typeOfEdge, const size_t & id1, const std::string & name1, const size_t & id2, const std::string & name2);
+//	void add_edge()
 	void addEdge(OrientedVertex v1,OrientedVertex v2);
 
 
@@ -170,14 +173,14 @@ public:
 		//To find a path between 2 seeds
 	std::vector<Graph::OrientedVertex> dijkstra(OrientedVertex orientedStart,OrientedVertex orientedEnd,size_t & read_id ,std::string part,all_data data, use_model model);
 		//To find a path at the ends of the read
-	std::vector<Graph::OrientedVertex> dijkstra(OrientedVertex orientedStart,std::string partOfRead,all_data data ,use_model model, std::string option,Graph newGraph);
+	std::vector<Graph::OrientedVertex> dijkstra(OrientedVertex orientedStart,std::string partOfRead,all_data data ,use_model model, std::string option,Graph newGraph, size_t & , size_t &);
 		// To find the final path in the new graph
 	std::vector<Graph::OrientedVertex> dijkstra(OrientedVertex orientedStart,OrientedVertex orientedEnd);
 	std::vector<Graph::OrientedVertex> findPath(std::map<int,std::vector<Graph::OrientedVertex> >previous,OrientedVertex start, OrientedVertex end);
 	// There is 3 different function to take a new node and create the alignment,
 	// those functions are call by the corresponding Dijkstra
 		// If we are at the 5' end of the read and want to look at the predecessors
-	void lookPrevious(std::string partOfRead,Graph::OrientedVertex& previousNode, all_data data, size_t startOnread, use_model model, int optionNeedleman,int idOrigin);
+	void lookPrevious(std::string partOfRead,Graph::OrientedVertex& previousNode, all_data data, size_t startOnread, use_model model, int optionNeedleman,int idOrigin, size_t &);
 		// If we are at the 3' end of the read and want to look at the successors
 	void lookNext(std::string partOfRead,Graph::OrientedVertex& ov, all_data data,size_t startOnRead,use_model model,int optionNeedleman,int idOrigin);
 		// If we are in between
@@ -187,7 +190,7 @@ public:
 	void updateDistance(Graph::OrientedVertex& ov1, Graph::OrientedVertex& ov2, std::map<int,std::vector<Graph::OrientedVertex> >& previous);
 
 	//Create the strat(node -1) and end (node -2) nodes for the new graph
-	void set_first_and_last_node(size_t start, size_t end);
+	void set_first_and_last_node(size_t alsnumber, size_t start, size_t end);
 //	bool checkVertex(std::string name, int start, int end,Graph g);
 	void printFinalPath(std::vector<OrientedVertex> path);
 
@@ -205,14 +208,14 @@ public:
 	//add connection between all nodes
 	void addVirtualEdges(use_model model,dnastring read);
 
-	size_t get_distance(std::vector<pw_alignment> & , size_t & , size_t & , size_t & , size_t & , size_t & , size_t &);
+	const size_t get_distance(std::vector<pw_alignment> & , const size_t & , const size_t & , const size_t & , const size_t & , const size_t & , const size_t &)const;
 
 
 	friend std::ostream& operator<<(std::ostream &os, Graph & g);
 	friend std::ostream& operator<<(std::ostream &os, Vertex const& v);
 	friend bool operator== ( OrientedVertex ov1, OrientedVertex ov2);
 private:
-	std::map<int,Vertex> vertices;
+	std::map<size_t,Vertex> vertices;
 };
 
 /*

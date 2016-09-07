@@ -136,7 +136,7 @@
 	//	return first_pattern;
 		for(size_t i= MAX_ALIGNMENT_MARKOV_CHAIN_LEVEL; i>0; --i) {
 			size_t numk = i-1;
-			if(numk > NUM_KEEP_DYN-1) numk = NUM_KEEP_DYN;
+			if(numk > NUM_KEEP_DYN-1) numk = NUM_KEEP_DYN-1;
 			char keepc = dynamic_mc_model::modification_character(-1, -1, -1, numk);
 			first_context.append(1, keepc);
 		}

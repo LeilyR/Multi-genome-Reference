@@ -856,7 +856,17 @@ bool compare_pw_alignment::operator()(const pw_alignment &ar, const pw_alignment
 }
 
 bool sort_pw_alignment::operator() (const pw_alignment &p1, const pw_alignment &p2)const{
-			return (p1.getbegin2() < p2.getbegin2());
+	size_t l1,r1,l2,r2;
+	p1.get_lr2(l1,r1);
+	p2.get_lr2(l2,r2);
+	return (l1 <= l2);
+}
+
+bool sort_right_pw_alignment::operator() (const pw_alignment &p1, const pw_alignment &p2)const{
+	size_t l1,r1,l2,r2;
+	p1.get_lr2(l1,r1);
+	p2.get_lr2(l2,r2);
+	return (r1 <= r2);
 }
 
 void pw_alignment::set_cost(const std::vector<double> & create, const std::vector<double> & modify) const{

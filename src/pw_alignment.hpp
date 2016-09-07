@@ -106,7 +106,10 @@ class sort_pw_alignment{
 	public:
 	bool operator () (const pw_alignment &p1, const pw_alignment &p2 )const;
 };
-
+class sort_right_pw_alignment{
+	public:
+	bool operator () (const pw_alignment &p1, const pw_alignment &p2 )const;
+};
 class wrapper{
 	public:
 		wrapper();

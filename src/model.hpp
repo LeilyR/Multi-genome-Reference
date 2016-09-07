@@ -321,6 +321,28 @@ class compute_cc_with_interval_tree{ //XXX this interval tree is designed by Eri
 template<typename overlap_type>
 class compute_cc_avl {
 	public:
+	compute_cc_avl(const std::vector<pw_alignment> & als_in, size_t num_sequences, size_t num_threads):alind(NULL) {//Is used to create partially overlapped connected components
+		this->num_threads = num_threads;
+	//	RIGHT = 0;
+		std::cout << " CC AVL build index on " << als_in.size() << std::endl << std::flush;
+		std::multimap<size_t, const pw_alignment *> sorter;
+		for(size_t  i =0; i < als_in.size();i++){
+			const pw_alignment * al = &als_in.at(i);
+			size_t len = al->alignment_length();
+			sorter.insert(std::make_pair(len, al));
+		}
+		std::cout << " Sorting done " << sorter.size()<< std::endl;
+		std::vector<const pw_alignment *> sorted_als(sorter.size());
+		size_t num = 0;
+		for(std::multimap<size_t, const pw_alignment *>::iterator it = sorter.begin(); it!=sorter.end(); ++it) {
+			const pw_alignment * al = it->second;
+			sorted_als.at(num) = al;
+			alignments.insert(al);
+			num++;
+		}
+		alind = new alignment_index(num_sequences, num_threads, sorted_als);
+	}
+
 	compute_cc_avl(const std::set<const pw_alignment*, compare_pointer_pw_alignment> & als_in, size_t num_sequences, size_t num_threads): alind(NULL) {//Is used to create partially overlapped connected components
 		this->num_threads = num_threads;
 	//	RIGHT = 0;
@@ -567,7 +589,7 @@ class affpro_clusters {
 			const pw_alignment * al = *it;
 			all_als.insert(al);
 			add_alignment(*al);
-			al->print();
+		//	al->print();
 		}
 
 	}
@@ -586,6 +608,13 @@ class affpro_clusters {
 			add_alignment(*al); 
 		//	std::cout<<"data4 ad in afp: "<< & dat << std::endl;
 			al->print();	
+			double g1 ,g2;
+			model.gain_function(*al,g1,g2);
+			double av_gain = (g1+g2)/2 ;
+			assert(av_gain > 0);
+		//	assert(g1 > 0);
+		//	assert(g2 > 0);
+
 
 		}
 	}
@@ -714,11 +743,12 @@ void run(std::map<std::string, std::vector<std::string> > & cluster_result, std:
 				cluster_result.insert(make_pair(sequence_names.at(result[i]), std::vector<std::string>()));
 				it=cluster_result.find(sequence_names.at(result[i]));
 			}*/
-			std::string reverse_seq = make_reverse(sequence_names.at(i));//Reverse of the member
+		//	std::string reverse_seq = make_reverse(sequence_names.at(i));//Reverse of the member
 			//Make the al here:
 			pw_alignment pal;
+			std::cout << "center is "<< sequence_names.at(result[i])<<std::endl;
 			make_an_alignment(sequence_names.at(result[i]),sequence_names.at(i),pal);//Using result[i] as center and i as member find the corresponding al.
-			double gain = model.get_the_gain(pal,sequence_names.at(result[i]));
+		/*	double gain = model.get_the_gain(pal,sequence_names.at(result[i]));
 			std::map<std::string,std::string>::iterator mem = members_of_clusters.find(reverse_seq);
 			if(mem != members_of_clusters.end()){
 				std::cout << "has reverse!"<<std::endl;
@@ -744,20 +774,20 @@ void run(std::map<std::string, std::vector<std::string> > & cluster_result, std:
 			
 				}
 			}else{
-			//	it->second.push_back(sequence_names.at(i)); //XXX Added it later
-				//add the new one
-				std::vector<std::string> temp1;
-				temp1.push_back(sequence_names.at(result[i]));
-				temp1.push_back(sequence_names.at(i));
-				alignments.insert(std::make_pair(temp1,pal));
-				std::cout << sequence_names.at(result[i]) << " " << sequence_names.at(i) <<std::endl;
-				members_of_clusters.insert(std::make_pair(sequence_names.at(i),sequence_names.at(result[i])));
-			}
-
+			//	it->second.push_back(sequence_names.at(i)); //XXX Added it later*/
+			//add the new one
+			std::vector<std::string> temp1;
+			temp1.push_back(sequence_names.at(result[i]));
+			temp1.push_back(sequence_names.at(i));
+			alignments.insert(std::make_pair(temp1,pal));
+			std::cout << sequence_names.at(result[i]) << " " << sequence_names.at(i) <<std::endl;
+			members_of_clusters.insert(std::make_pair(sequence_names.at(i),sequence_names.at(result[i])));
+		//	}
+			
 		}
 	}
 	//Checks for the redundancy:
-	check_redundancy();
+//	check_redundancy();
 	//Fills in cluster_result and  local_al_in_a_cluster
 	write_clusters(cluster_result, local_al_in_a_cluster);
 	
@@ -810,35 +840,7 @@ void run(std::map<std::string, std::vector<std::string> > & cluster_result, std:
 	std::map<std::vector<std::string>,pw_alignment> alignments; //The set represents the name an al's references. (center,other)
 };
 
-#define ALLOWED_GAP 50
-
-class finding_centers{
-	public:
-	finding_centers(all_data &);
-	~finding_centers();
-	void setOfAlignments(std::map<std::string,std::vector<pw_alignment> > &);
-	void findMemberOfClusters(std::map<std::string,std::vector<pw_alignment> > &);
-	void center_frequency(std::map<std::string,std::vector<pw_alignment> > &, std::vector<std::multimap<size_t, std::string> > & );
-	std::map<size_t, std::vector<size_t> >get_center(size_t &)const;//Returns long centers and their locations
-	const std::vector<std::vector<size_t> > & get_centers(size_t &)const;
-	size_t get_number_of_centers()const;//Returns the total number of centers
-	std::multimap< size_t, std::string> get_sequence_centers(size_t & )const;//It returns all the centers of a sequence, a center may happen more than once, thus it might be repeated in the vector. size_t shows the position of each center
-	std::string find_center_name(size_t &)const;
-	std::vector<size_t> get_long_center_position(size_t & seq_id , std::vector<std::string> & long_center);
-	
-	
-	private://all these containers are local and their containts are replacing after each call of clustering:
-	all_data & data;
-	std::vector< std::map<size_t , pw_alignment*> >AlignmentsFromClustering;//It is changing in each call of clustering. contains als on each seq at position size_t
-	std::map<std::string,std::string> memberOfCluster; //first string is assocciated member and second one is its center
-	std::vector< std::multimap< size_t, std::string> >centersOnSequence;//all the centers that happen on each sequence and their positions 
-	std::vector< std::map< size_t , std::vector<size_t> > > centersOfASequence;//centers that happen on each sequence and have less than ALLOWED_GAP bases difference and their position. Fully reveresed are removed.
-	std::map<size_t ,std::vector<std::vector<size_t> > > long_centers_of_a_sequence; //Potential long centers. size_t -->seq_id
-	std::vector<std::multimap<std::vector<size_t>,size_t > > initial_suffixes;
-	std::vector<std::string> center_index;
-//	std::map<std::string, int>oriented_index;// centers, their indecies which can be negative if they are used in their reverse direction.
-};
-class suffix_tree{
+/*class suffix_tree{
 	public:
 	suffix_tree(all_data &, finding_centers&);
 	~suffix_tree();
@@ -872,7 +874,7 @@ class suffix_tree{
 	std::map<std::vector<size_t>,size_t>branch_counter;//vector represents all nodes of a branch , size_t shows the number of that branch is happening
 	std::map<size_t,size_t> FirstCenterOnFirstNodes; //size_t -> is the first node on the first row nodes after the root,  size_t -> is the the index of that node
 	std::set<size_t> IndexOfFirstNodesAfterRoot; //Index of first row nodes after the root //TODO
-};
+};*/
 
 
 
