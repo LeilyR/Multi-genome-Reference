@@ -185,7 +185,7 @@ void overlap_interval_tree::interval_result_on_point(size_t sequence, size_t & s
 std::vector<const pw_alignment *>& overlap_interval_tree::get_interval_result_on_point( size_t& sequence,  size_t& split_point)const{
 	std::vector<const pw_alignment *> result;
 	alind.search_overlap(sequence,split_point,result);
-	return result;
+	return result; // TODO XXX this is wrong
 }
 
 // TODO why not used
@@ -683,7 +683,7 @@ void splitpoints_interval_tree<overlap_type>::insert_split_point_nonrecursive(si
 
 
 template<typename overlap_type>
-void splitpoints_interval_tree<overlap_type>::insert_split_point(size_t sequence, size_t position, bool recursion = true) {
+void splitpoints_interval_tree<overlap_type>::insert_split_point(size_t sequence, size_t position, bool recursion) {
 	std::pair<std::set<size_t>::iterator, bool> insertes = split_points.at(sequence).insert(position);
 	if(insertes.second) {
 #if SPLITPRINT

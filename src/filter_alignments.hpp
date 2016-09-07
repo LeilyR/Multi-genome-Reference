@@ -52,7 +52,7 @@ class alignment_filter {
 	private:
 
 
-}
+};
 
 
 #endif

@@ -70,7 +70,7 @@ class splitpoints_interval_tree {
 	void find_initial_split_points_nonrecursive(size_t sequence, size_t left, size_t right);
 	void recursive_splits();//initial split points + all induced split points everywhere
 	void nonrecursive_splits(); // initial split points only 
-	void insert_split_point(size_t sequence, size_t position, bool );//recursively find the other split points
+	void insert_split_point(size_t sequence, size_t position, bool recursion = true);//recursively find the other split points
 	void insert_split_point_nonrecursive(size_t sequence, size_t position);//insert without recursion
 	void split_all(std::set<pw_alignment, compare_pw_alignment> & remove_alignments, std::vector<pw_alignment> & insert_alignments);
 	void splits(const pw_alignment & p,  std::vector<pw_alignment> & insert_alignments);
