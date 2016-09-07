@@ -40,4 +40,19 @@ class filter_als{
 
 };
 
+
+
+
+
+class alignment_filter {
+	public:
+
+
+
+	private:
+
+
+}
+
+
 #endif

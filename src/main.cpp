@@ -1899,11 +1899,18 @@ int do_dynamic_mc_model(int argc, char * argv[]) {
 		}
 	}
 	//Filtering the alignments(Optional) If one doesn't use filtering 'filtered_als' should be replaced by 'al_with_pos_gain'. In fact one can even mix it with previous step and do a single loop for both of them. Although I keep them seperately for now just to make easier to do one or both.
-	size_t num_seq = data.numSequences();
+
+
+/*	size_t num_seq = data.numSequences();
 	filter_als filter(m,al_with_pos_gain, num_seq, num_threads);
 	filter.find_overlapped_references();
 	std::set<const pw_alignment*,  compare_pointer_pw_alignment> filtered_als;
 	filtered_als = filter.get_filtered_als();
+*/
+
+	alignment_filter alfilter;
+
+
 
 	//Makes components of partially overlapped alignments
 	std::cout << "al with postive gains are kept "<< al_with_pos_gain.size() << " filtered als size "<< filtered_als.size() <<std::endl;
