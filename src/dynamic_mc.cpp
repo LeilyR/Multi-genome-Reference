@@ -418,6 +418,8 @@ void a_reader_encode::see_context(const std::string & context,size_t modificatio
 	low_high_values.push_back(low_high);
 }
 dynamic_mc_model::dynamic_mc_model(all_data & d, wrapper & wr, size_t nt): data(d),wrappers(wr), num_threads(nt) {
+	global_base_cost = -1; // TODO
+	global_substitution_cost = -1; 
 	// use (1<<i) should be faster	
 /*
 	size_t numberOfPowers = 32;
@@ -453,7 +455,7 @@ char dynamic_mc_model::modification_character(int modify_base, int num_delete, i
 	return -1;
 }
 
-std::string dynamic_mc_model::tranlsate_modification_character(char enc) {
+std::string dynamic_mc_model::translate_modification_character(char enc) {
 	int modify_base = -1;
 	int num_delete =-1;
 	int insert_base = -1;
@@ -688,6 +690,11 @@ void dynamic_mc_model::train_sequence_model() {
 	sequence_models.resize(data.numAcc());
 	acc_sequence_all_bases_total.resize(data.numAcc());
 	acc_sequence_alignment_flag.resize(data.numAcc());
+
+
+	size_t global_number_bases = 0;
+	double global_cost_bases = 0; // pure cost of base encoding without flags
+
 #pragma omp paralell for schedule(dynamic) num_threads(num_threads)
 	for(size_t acc=0; acc<data.numAcc(); ++acc) {
 //		std::map< std::string, std::vector<size_t> > context_counts;
@@ -736,6 +743,8 @@ void dynamic_mc_model::train_sequence_model() {
 
 		std::cout << " run context selector on " << ccounts.countsmap.size() << " contexts"<< std::endl;
 		double enc_cost = context_selector(ccounts.countsmap, alphabet, new_total, acc_seq_model, MAX_SEQUENCE_MARKOV_CHAIN_LEVEL );
+		global_number_bases += acc_num_bases;
+		global_cost_bases += enc_cost;
 		enc_cost += acc_sequence_ends * -log2((double)flag_widths.at(2)/(double)TOTAL_FOR_ENCODING);
 		std::cout << " select " << acc_seq_model.size() << " contexts, total sequence encoding needs " << enc_cost << "bit (" << enc_cost/(double)acc_num_bases << " bit/base)" <<  std::endl;
 
@@ -756,7 +765,9 @@ void dynamic_mc_model::train_sequence_model() {
 
 	}
 
-	
+	std::cout << " global cost of sequence encoding is " << (global_cost_bases / (double) global_number_bases) << std::endl;
+
+	global_base_cost = 	 (global_cost_bases / (double) global_number_bases) ;
 	
 		
 	compute_sequence_model();
@@ -816,7 +827,7 @@ void dynamic_mc_model::model_to_widths(const std::vector<uint32_t> bits, unsigne
 
 }
 
-double dynamic_mc_model::model_to_costs(const std::vector<uint32_t> bits, unsigned char model_index, uint32_t target_total, std::vector<double> & costs) {
+void dynamic_mc_model::model_to_costs(const std::vector<uint32_t> bits, unsigned char model_index, uint32_t target_total, std::vector<double> & costs) {
 	costs.resize(bits.size());
 	std::vector<uint32_t> widths(bits.size());
 	model_to_widths(bits, model_index, target_total, widths);
@@ -1945,6 +1956,9 @@ void dynamic_mc_model::train_alignment_model() {
 
 	std::vector<std::vector<size_t> > alignment_length_sums(numa, std::vector<size_t>(numa, 0));
 
+	size_t global_substitutions = 0;
+	double global_substitution_cost = 0;
+
 	for(size_t comp=0; comp < acc_compare_order.size(); ++comp) {
 		size_t a1 = acc_compare_order.at(comp).first; // we look at modification from a1 to a2
 		size_t a2 = acc_compare_order.at(comp).second;
@@ -2082,13 +2096,62 @@ void dynamic_mc_model::train_alignment_model() {
 */		
 		std::map<std::string, std::pair<unsigned char, std::vector<uint32_t> > > mod_model;
 
-	//	std::cout << " run context selector on " << counts.size() << " contexts " << " from " <<  alignment_length_sums.at(a1).at(a2) << " total alignment length" << std::endl;
+		std::cout << " run context selector on " << counts.size() << " contexts " << " from " <<  alignment_length_sums.at(a1).at(a2) << " total alignment length" << std::endl;
 		double enc_cost = context_selector(counts, alphabet, new_total, mod_model, MAX_ALIGNMENT_MARKOV_CHAIN_LEVEL +1);
-	//	std::cout << " select " << mod_model.size() << " contexts, cost: " << enc_cost << " ( " << (enc_cost/(double) alignment_length_sums.at(a1).at(a2))<< " bits/alignment column)" << std::endl;
+		size_t numsubst = 0;
+		double scost =  substitution_cost(mod_model, counts, new_total, numsubst);
+
+#pragma omp critical(scost)
+{
+		global_substitution_cost+=scost; 
+		global_substitutions += numsubst;
+}
+
+		std::cout << " select " << mod_model.size() << " contexts, cost: " << enc_cost << " ( " << (enc_cost/(double) alignment_length_sums.at(a1).at(a2))<< " bits/alignment column)" << std::endl;
 		alignment_models.at(a1).at(a2) = mod_model;
 	}
+
+
+	std::cout << " total subst cost " << global_substitution_cost << " substitutions " << global_substitutions << " cost per subst " << ( global_substitution_cost / (double) global_substitutions) << std::endl;
+
+	this->global_substitution_cost =  ( global_substitution_cost / (double) global_substitutions);
 	compute_alignment_model();
 
+}
+
+double dynamic_mc_model::substitution_cost(const std::map<std::string, std::pair<unsigned char, std::vector<uint32_t> > > & mod_model, std::map<std::string, std::vector<size_t> > & counts, const size_t & target_total, size_t & numsubst) const {
+	std::map<std::string, std::vector<size_t> > only_subst =  counts;
+	for(std::map<std::string, std::vector<size_t> >::iterator it=only_subst.begin(); it!=only_subst.end(); ++it) {
+		std::vector<size_t> & cv = it->second;
+		for(size_t i=0; i<cv.size(); ++i) {
+			int mb, nd, ib, nk;
+			modification((char) i, mb, nd, ib, nk);
+			if(mb==-1) cv.at(i) = 0; 	
+		}
+	}
+	double res = 0;
+	for(std::map<std::string, std::vector<size_t> >::iterator it = only_subst.begin(); it!=only_subst.end(); ++it) {
+		std::string cont = it->first;
+		std::vector<size_t> counts = it->second;
+
+		for(size_t i=0; i<cont.length(); ++i) {
+			std::string ncont = cont.substr(0, cont.length() - i); 
+			
+			std::map<std::string, std::pair<unsigned char, std::vector<uint32_t> > >::const_iterator findn = mod_model.find(ncont);
+			if(findn!=mod_model.end()) {
+				std::pair<unsigned char, std::vector<uint32_t> > nd = findn->second;
+				std::vector<double> costs(NUM_MODIFICATIONS);
+				model_to_costs(nd.second, nd.first, target_total, costs);
+				for(size_t j=0; j<counts.size(); ++j) {
+					res+=counts.at(j)*costs.at(j);
+					numsubst+=counts.at(j);
+
+				}
+				break;
+			} 
+		}
+	}
+	return res;
 }
 
 
@@ -2211,7 +2274,7 @@ double dynamic_mc_model::get_the_gain(const pw_alignment & p, std::string  & cen
 //	unsigned int dir = atoi(center_parts.at(0).c_str());
 	unsigned int ref = atoi(center_parts.at(0).c_str());
 	unsigned int left = atoi(center_parts.at(1).c_str());
-	if(p.getreference1()== ref){
+	if(p.getreference1()== ref){ // TODO this wrong (if both parts are on the same reference)
 		return g1; //if center is on ref1
 	}else{
 		return g2; //if center is on ref1
@@ -2404,3 +2467,37 @@ size_t dynamic_mc_model::get_acc()const{
 const std::map<std::string, std::vector<double>  > dynamic_mc_model::get_al_cost(size_t & acc1, size_t & acc2)const{
 	return alignment_model_costs.at(acc1).at(acc2);
 }
+
+
+
+size_t dynamic_mc_model::estimate_gap_in_long_centers()const {
+/*
+	We try to be a bit generous to ge more long centers
+	
+	If there is a gap between cluster centers, we need alignments with many expensive substitutions/modifications to another base
+	we assume this for 20 % of the gap.
+	
+	In exchange, we save one or several base costs, we assume 5 
+	TODO compute that number from data in iterative run
+
+*/
+	double av_times_a_long_center_is_used = 5; // TODO get those from data in longer iterations
+	double gap_alignment_subst_cont = 0.2;
+	double diff_cost = global_substitution_cost - global_base_cost;
+	if(diff_cost < 0.1) diff_cost = 0.1; // should never be that low
+	double all_bc = 0;
+	size_t num_bc = 0;
+	for(size_t i=0; i<alignment_base_cost.size(); i++) {
+		for(size_t j=0; j<alignment_base_cost.at(i).size(); ++j) {
+			all_bc+=alignment_base_cost.at(i).at(j);
+			num_bc++;
+		}
+	}
+	double av_bc = all_bc / (double) num_bc;
+
+	size_t res = (size_t)(av_times_a_long_center_is_used*av_bc /(diff_cost*gap_alignment_subst_cont));
+	std::cout << " Estimate gap in long centers " << res << " from " << av_bc << " av base cost " << diff_cost << " difference between encoding base/substitution" << std::endl;
+	return res;
+}
+
+

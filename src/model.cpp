@@ -3,6 +3,13 @@
 #ifndef MODEL_CPP
 #define MODEL_CPP
 #define PRINT 0
+
+/*
+	TODO we can make the slow part even faster:
+	As the repetitive part is already done, new insertions will probably not cut the repetitve part. Keep previous content fixed in the overlap class. A function to insert new pieces already cut in a way that they fit to the repetitve pieces
+
+
+*/
 template<typename T, typename overlap_type>
 void initial_alignment_set<T,overlap_type>::compute(overlap_type & o) {
 
@@ -875,7 +882,7 @@ void initial_alignment_set<T,overlap_type>::finding_repeats(std::set< const pw_a
 							}
 						}
 						else if(left1<r1 && right1 > r1){
-							size_t overlap = (left1-r1)/(length+al->alignment_length());
+							double overlap = (left1-r1)/(double)(length+al->alignment_length());
 							if((overlap*100)>0.95){
 								highly_overlapped.insert(al);
 								seen.insert(al);
@@ -884,7 +891,7 @@ void initial_alignment_set<T,overlap_type>::finding_repeats(std::set< const pw_a
 
 						}
 						else if(l2<right1 && right1< r2){
-							size_t overlap = (right1-l2)/(length+al->alignment_length());
+							double overlap = (right1-l2)/(double)(length+al->alignment_length());
 							if((overlap*100)>0.95){
 								highly_overlapped.insert(al);
 								seen.insert(al);
@@ -892,7 +899,7 @@ void initial_alignment_set<T,overlap_type>::finding_repeats(std::set< const pw_a
 
 						}
 						else if(left1<r2 && right1 > r2){
-							size_t overlap = (left1-r2)/(length+al->alignment_length());
+							double overlap = (left1-r2)/(double)(length+al->alignment_length());
 							if((overlap*100)>0.95){
 								highly_overlapped.insert(al);
 								seen.insert(al);

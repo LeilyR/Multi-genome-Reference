@@ -26,7 +26,7 @@ typedef  std::set<const pw_alignment*, compare_pw_alignment> alset;
 template<typename T, typename overlap_type>
 class initial_alignment_set {
 	public:
-	initial_alignment_set(const all_data & d, const T & a_model, double base_cost): data(d), common_model(a_model){//TODO Since we don't use it for the moment, I am not so sure if this constructor works correctly. I have some doubt that it doesn't return the same alignment in sorter. It should be checked!
+	initial_alignment_set(const all_data & d, const T & a_model, double base_cost): data(d), common_model(a_model){
 		this->base_cost = base_cost;
 		std::multimap<double, const pw_alignment&> sorter;
 		double sumgain = 0;

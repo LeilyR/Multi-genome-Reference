@@ -951,7 +951,7 @@ all_data::~all_data() {
 		}
 		return acc_sequences.at(accName);		
 	}
-	const size_t & all_data::get_seq_number_of_acc(size_t & acc)const{
+	const size_t all_data::get_seq_number_of_acc(size_t & acc)const{
 		std::string accName;
 		for(std::map<std::string,size_t>::const_iterator it = accession_name.begin();it != accession_name.end(); it++){
 			if(it->second == acc){

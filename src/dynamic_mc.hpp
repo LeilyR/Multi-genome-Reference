@@ -15,7 +15,7 @@
 #define NUM_KEEP_DYN 10 // number of keep encodings, 2^0, ..., 2^9
 #define NUM_MODIFICATIONS 25 // NUM_DELETE_DYN + NUM_KEEP_DYN + 10 ( for change to ACTGN, insert ACTGN)
 
-
+// TODO distance between members of a long center: base_cost / (modification cost per base in al - creation cost per base   )
 
 template<typename reader>
 class sequence_contexts {
@@ -122,7 +122,6 @@ typedef sequence_contexts<s_reader_counter> scontext_counter;
 typedef sequence_contexts<s_reader_costs> scontext_cost;
 
 class dynamic_mc_model {
-
 	public:
 		dynamic_mc_model(all_data &, wrapper &, size_t num_threads = 1);
 		~dynamic_mc_model();
@@ -140,7 +139,7 @@ class dynamic_mc_model {
 
 
 		static char modification_character(int modify_base, int num_delete, int insert_base, int num_keep);
-		static std::string tranlsate_modification_character(char enc);
+		static std::string translate_modification_character(char enc);
 		static size_t modification_length(char mod); 
 		static void modification(char enc, int & modify_base, int & num_delete, int & insert_base, int & num_keep);
 
@@ -171,6 +170,7 @@ class dynamic_mc_model {
 		void write_al_high_onstream(std::ofstream & al_high_out);
 		size_t get_acc()const;
 		const std::map<std::string, std::vector<double>  > get_al_cost(size_t & acc1, size_t & acc2)const; 
+		size_t estimate_gap_in_long_centers()const;
 
 
 
@@ -194,7 +194,7 @@ class dynamic_mc_model {
 
 		std::vector<std::vector<uint32_t> > alignments_all_modification_total;// End of alignment flag ---> acc1(acc2)
 
-		std::vector<std::vector< std::map< std::string, std::pair<unsigned char, std::vector<uint32_t> > > > > alignment_models; // acc_from -> acc_to -> context -> (model_type, bits) 	
+		std::vector<std::vector< std::map< std::string, std::pair<unsigned char, std::vector<uint32_t> > > > > alignment_models; // acc_from -> acc_to -> context (variable length) -> (model_type, bits) 	
 // model parameters which are computed from stored parameters:
 		std::vector<std::map< std::string, std::vector<uint32_t>  > > sequence_model_highs; // acc -> pattern (length is MAX_SEQUENCE_MARKOV_CHAIN_LEVEL  ) -> encoding high value per base 
 		std::vector<std::map< std::string, std::vector<uint32_t>  > > center_model_highs; 
@@ -210,7 +210,10 @@ class dynamic_mc_model {
 		std::vector<std::vector< double > > alignment_base_cost; // summary base cost
 
 
-
+// TODO to compute global base/subst cost we need count data and model. as we dont need these for decoding they are not stored in the compressed file. They are needed for estimating gap_in_long_centers
+		double substitution_cost(const std::map<std::string, std::pair<unsigned char, std::vector<uint32_t> > > & mod_model, std::map<std::string, std::vector<size_t> > & counts, const size_t & target_total, size_t & numsubst) const;
+		double global_base_cost;
+		double global_substitution_cost;
 
 		 
 		void train_sequence_model();
@@ -243,7 +246,7 @@ class dynamic_mc_model {
 
 		static void counts_to_distribution(const std::vector<size_t> & counts, std::vector<double> & distri);
 		static double count_cost_eval(const std::vector<size_t> & counts, const std::vector<uint32_t> & enc_widths);
-		static double model_to_costs(const std::vector<uint32_t> bits, unsigned char model_index, uint32_t target_total, std::vector<double> & costs);
+		static void model_to_costs(const std::vector<uint32_t> bits, unsigned char model_index, uint32_t target_total, std::vector<double> & costs);
 		static void width_correct(std::vector<uint32_t> & widths, uint32_t target_total);
 
 		static double context_selector(const std::map< std::string, std::vector<size_t> > & context_counts, const std::vector<unsigned char> & alphabet, uint32_t target_total, 

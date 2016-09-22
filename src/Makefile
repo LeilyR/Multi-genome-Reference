@@ -29,7 +29,7 @@ LIBARGS =   apclusterunix64.so -L../dlib_build -ldlib  libStatGen-1.0.13/libStat
 # include libStatGen-1.0.13/Makefiles/Makefile.include
 
 PROGS = graph
-OBJS = pw_alignment.o data.o test.o graph.o needleman.o dynamic_mc.o alignment_index.o connected_component.o suffix_tree.o merging_centers.o filter_alignments.o read_daligner.o needleman_wunsch.o map_read.o
+OBJS = pw_alignment.o data.o test.o graph.o needleman.o dynamic_mc.o alignment_index.o connected_component.o suffix_tree.o merging_centers.o filter_alignments.o read_daligner.o needleman_wunsch.o map_read.o 
 
 # .DEFAULT_GOAL := graph 
 all: $(PROGS)

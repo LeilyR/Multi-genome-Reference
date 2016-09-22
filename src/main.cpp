@@ -2858,10 +2858,17 @@ int do_dynamic_mc_model_with_two_edge(int argc, char * argv[]) {
 		}
 	}
 	std::cout << "al with positive gains are kept " << al_with_pos_gain.size() <<std::endl;
+
+
 //Filtering the alignments(Optional)
 	size_t num_seq = data.numSequences();
-	filter_als filter(m,al_with_pos_gain, num_seq, num_threads);
-	filter.find_overlapped_references();
+//	filter_als filter(m,al_with_pos_gain, num_seq, num_threads);
+//	filter.find_overlapped_references();
+
+
+	size_t gap_in_long_centers = m.estimate_gap_in_long_centers(); // TODO use this to compute long centers
+	alignment_filter alfilter(m, data, al_with_pos_gain, gap_in_long_centers, num_threads);
+
 //	std::set<const pw_alignment*,  compare_pointer_pw_alignment> filtered_als; //XXX OPTIONAL in case of using filtered als all al_with_pos_gain s should be replaces by filtered_als.
 //	filtered_als = filter.get_filtered_als();
 //Makes components of partially overlapped alignments

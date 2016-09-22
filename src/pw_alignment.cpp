@@ -334,6 +334,150 @@ void pw_alignment::split(bool sample, size_t position, pw_alignment & first_part
 }
 
 /*
+	requires: overlap between *this (ref alref) and other (ref alref) 
+	result: is a maximal part of *this which is contained one of the references of other
+
+*/
+void pw_alignment::single_ref_intersect(size_t alref, const pw_alignment & other, size_t otherref, pw_alignment & alresult, pw_alignment & otherresult) const {
+	size_t intersect_ref;
+	size_t all, alr, otl, otr;
+	
+	if(alref) {
+		get_lr2(all, alr);
+	} else {
+		get_lr1(all, alr);
+	}
+	if(otherref) {
+		other.get_lr2(otl, otr);
+	} else {
+		other.get_lr1(otl, otr);
+	}
+	assert( all <= otr && otl <= alr);
+	bool alforward = true;
+	bool otforward = true;
+	if(getbegin(alref) > getend(alref)) {
+		alforward = false;
+	}
+	if(other.getbegin(otherref) > other.getend(otherref)) {
+		otforward = false;
+	}
+	if( (all==otl) && (alr==otr) ) {
+		alresult = *this;
+		otherresult = other;
+		return;
+	}
+
+	pw_alignment trash1;
+	pw_alignment trash2;
+
+	if(all < otl) {
+		if(otr > alr) {
+		// alalalalalal
+		//     otototototot
+		// intersection: otl to alr	
+			if(alforward)
+				this->split(1 - (bool) alref, otl, trash1, alresult);
+			else 
+				this->split(1 - (bool) alref, otl, alresult, trash1);
+			if(otforward)
+				other.split(1 - (bool) otherref, alr + 1, otherresult, trash2);
+			else 
+				other.split(1 - (bool) otherref, alr + 1, trash2, otherresult);
+		} else if (otr < alr) {
+		// alalalalalalalalalal
+		//     otototototot
+		// intersection: otl to otr
+			pw_alignment altmp;
+			if(alforward) {
+				this->split(1 - (bool) alref,  otl, trash1, altmp);
+				altmp.split(1 - (bool) alref,  otr + 1, alresult, trash1);
+			} else {
+				this->split(1 - (bool) alref,  otl, altmp, trash1);
+				altmp.split(1 - (bool) alref,  otr + 1, trash1, alresult);
+			}	
+			otherresult = other;
+		} else {
+		// alalalalalalal
+		//       otototot
+		// intersection: otl to alr/otr
+			if(alforward)
+				this->split(1 - (bool) alref, otl, trash1, alresult);
+			else
+				this->split(1 - (bool) alref, otl, alresult, trash1);
+			otherresult = other;
+		}
+	} else if (otl < all) {
+		if( otr > alr) {
+		//       alalala
+		// ototototototototot
+		// intersection: all to alr
+			alresult = *this; 
+			pw_alignment ottmp;
+			if(otforward) {
+				other.split(1 - (bool) otherref, all, trash1, ottmp);
+				ottmp.split(1 - (bool) otherref, alr + 1, otherresult, trash1); 
+			} else {
+				other.split(1 - (bool) otherref, all, ottmp, trash1);
+				ottmp.split(1 - (bool) otherref, alr + 1, trash1, otherresult); 
+			}
+		} else if (otr < alr) {
+		//     alalalalalalalal
+		// otototototototot
+		// intersection: all to alr
+			if(alforward)
+				this->split(1 - (bool) alref, otr + 1, alresult, trash1);
+			else 
+				this->split(1 - (bool) alref, otr + 1, trash1, alresult);
+			if(otforward)
+				other.split(1 - (bool) otherref, all, trash2, otherresult);
+			else 
+				other.split(1 - (bool) otherref, all, otherresult, trash2);
+		} else {
+		//   alalalalalalalal
+		// ototototototototot
+		// intersection: all to alr/otr
+			alresult = *this;
+			if(otforward)
+				other.split(1 - (bool) otherref, all, trash2, otherresult);
+			else
+				other.split(1 - (bool) otherref, all, otherresult, trash2);
+		}
+	} else {
+		if( otr > alr) {
+		// alalalalalalal
+		// otototototototototot
+		// intersection: all/otl to alr
+			alresult = *this;
+			if(otforward)
+				other.split(1 - (bool) otherref, alr + 1, otherresult, trash2);
+			else 
+				other.split(1 - (bool) otherref, alr + 1, trash2, otherresult);
+		} else {
+		// alalalalalalalalalalal
+		// otototototototot
+		// intersection: all/otl to otr
+			if(alforward)
+				this->split(1 - (bool) alref, otr + 1, alresult, trash1);
+			else 
+				this->split(1 - (bool) alref, otr + 1, trash1, alresult);
+			otherresult = other;
+		}
+	}
+	
+	
+
+}
+
+/*
+	returns true if both references go in the same direction
+*/
+bool pw_alignment::is_same_direction() const {
+	if(begins.at(0) < ends.at(0) && begins.at(1) < ends.at(1)) return true;
+	if(begins.at(0) > ends.at(0) && begins.at(1) > ends.at(1)) return true;
+	return false;
+}
+
+/*
 
    	remove gap containing columns at the ends of an alignment
 
@@ -378,6 +522,7 @@ void pw_alignment::remove_end_gaps(pw_alignment & res) const {
 			break;
 		}
 	}
+
 
 //	std::cout << " start gaps " << start_gaps1 << " " << start_gaps2 << std::endl;
 //	std::cout << " end gaps " << end_gaps1 << " " << end_gaps2 << std::endl;

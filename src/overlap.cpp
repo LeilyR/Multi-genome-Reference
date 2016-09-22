@@ -54,7 +54,7 @@ void overlap_interval_tree::print_all_alignment() const {
 }
 
 void overlap_interval_tree::test_multimaps() {
-
+	// TODO remove this
 	for(std::set<pw_alignment, compare_pw_alignment>::const_iterator it = alignments.begin(); it!=alignments.end(); ++it ) {
 		const pw_alignment * remove = &(*it);
 		std::pair< std::multimap<size_t, const pw_alignment &>::iterator, std::multimap<size_t, const pw_alignment &>::iterator > eqrb1 =
@@ -343,7 +343,6 @@ bool overlap_interval_tree::checkAlignments(const pw_alignment & p)const{
 }
 	
 
-
 size_t overlap_interval_tree::size() const {
 
 //	for(size_t i=0; i<als_on_reference.size(); i++) {
@@ -351,6 +350,8 @@ size_t overlap_interval_tree::size() const {
 //	}
 	return alignments.size();
 }
+
+
 		
 const std::set<pw_alignment, compare_pw_alignment> & overlap_interval_tree::get_all() const {
 	return alignments;

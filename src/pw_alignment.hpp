@@ -60,6 +60,8 @@ class pw_alignment {
 	void get_lr1(size_t & left, size_t & right) const;
 	void get_lr2(size_t & left, size_t & right) const;
 	void split_on_reference(size_t sequence, size_t pos, pw_alignment & fp, pw_alignment & sp) const;
+	void single_ref_intersect(size_t alref, const pw_alignment & other, size_t otherref, pw_alignment & result, pw_alignment & otherresult) const;
+	bool is_same_direction() const;
 
 	void print() const;
 

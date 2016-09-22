@@ -6,8 +6,9 @@ alignment_index::alignment_index(size_t num_references):trees(num_references), n
 
 }
 
+
 /* alignment index can be initialized in parallel.
-   we take care that we do not modify the same reference trees in parallel using a lock object for each reference */
+   process each reference separately in parallel */
 
 alignment_index::alignment_index(size_t num_references, size_t num_threads, std::vector<const pw_alignment *> data): trees(num_references), num_threads(num_threads) {
 	std::cout << " creating index " << std::endl; 
