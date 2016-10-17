@@ -75,6 +75,8 @@ class all_data {
 
 		const dnastring & getSequence(size_t index) const;
 		const pw_alignment & getAlignment(size_t index) const;
+		const located_alignment & getLAlignment(size_t index) const;
+
 		void add_pw_alignment(const pw_alignment& p);
 		const std::vector<pw_alignment>& getAlignments()const;
 	//	const multistd::map<size_t, size_t> & getAlOnRefMap(size_t seq_idx) const;
@@ -107,7 +109,8 @@ class all_data {
 		// data
 		std::vector<dnastring> sequences;
 		std::vector<std::string> sequence_names;
-		std::vector<pw_alignment> alignments;
+		std::vector<pw_alignment> alignments; // TODO  remove this (slower, more memory and duplicate with l_alignments)
+		std::vector<located_alignment> l_alignments; 
 		std::vector<std::string> reads;
 		// fast access indices
 		std::map< std::string, std::vector< size_t> > acc_sequences; // acc name -> sequences of that acc

@@ -44,6 +44,8 @@ class alignment_contexts {
 
 	void read_alignment_1_2(const pw_alignment & p);
 	void read_alignment_2_1(const pw_alignment & p);
+	void read_alignment_1_2(const pw_alignment & p, const size_t & from, const size_t & to);
+	void read_alignment_2_1(const pw_alignment & p, const size_t & from, const size_t & to);
 
 	private:
 	reader & rd;
@@ -120,7 +122,7 @@ typedef alignment_contexts<a_reader_counter> acontext_counter;
 typedef alignment_contexts<a_reader_costs> acontext_cost;
 typedef sequence_contexts<s_reader_counter> scontext_counter;
 typedef sequence_contexts<s_reader_costs> scontext_cost;
-
+// TODO average costs for modify, insert, delete
 class dynamic_mc_model {
 	public:
 		dynamic_mc_model(all_data &, wrapper &, size_t num_threads = 1);

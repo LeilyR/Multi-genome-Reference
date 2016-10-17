@@ -1,13 +1,16 @@
+#ifndef INTERVALS_CPP
+#define INTERVALS_CPP
+
 #include "intervals.hpp"
 
 template<typename T>
-it_node<T>::it_node(): height(NULL), str_left(NULL), str_right(NULL), str_center(NULL), parent(NULL), min_left(0), max_right(0) {
+it_node<T>::it_node(): height(0), str_left(NULL), str_right(NULL), str_center(NULL), parent(NULL), min_left(0), max_right(0) {
 	assert(0);
 
 }
 
 template<typename T>
-it_node<T>::it_node(const size_t & left, const size_t & right, const value_type & v): height(NULL), left(left), right(right), value(v), str_left(NULL), str_right(NULL), str_center(NULL), parent(NULL), min_left(left), max_right(right) { }
+it_node<T>::it_node(const size_t & left, const size_t & right, const value_type & v): height(0), left(left), right(right), value(v), str_left(NULL), str_right(NULL), str_center(NULL), parent(NULL), min_left(left), max_right(right) { }
 
 template<typename T>
 it_node<T>::~it_node() {}
@@ -485,12 +488,18 @@ void avl_interval_tree<T>::join_intervals(std::vector<std::pair<size_t, size_t> 
 
 
 template<typename T>
-void avl_interval_tree<T>::overlap_fraction_search(const size_t & left, const size_t & right, const double & fraction, std::vector<value_type> & results) const{
+void avl_interval_tree<T>::overlap_fraction_search(const size_t & left, const size_t & right, const double & fraction, std::vector<value_type> & results) const {
 	if(root!=NULL) {
 		overlap_fraction_search_at_node(root, left, right, fraction, results);
 	}
 }
 
+template<typename T>
+void avl_interval_tree<T>::allpairs_overlap(const double & minfraction, std::vector< std::pair<T, T> > & result) const {
+	if(root != NULL) {
+		allpairs_overlap_subtree(root, minfraction, result);
+	}
+}
 
 template<typename T>
 size_t avl_interval_tree<T>::size() const {
@@ -1228,6 +1237,171 @@ void avl_interval_tree<T>::overlap_fraction_search_at_node(node_type * atn, cons
 
 
 template<typename T>
+void avl_interval_tree<T>::allpairs_overlap_subtree(node_type * atn, const double & minfraction, std::vector< std::pair<T, T> > & results) const {
+	assert(atn!=NULL);
+	node_type * strl = atn->str_left;
+	node_type * strr = atn->str_right;
+	node_type * strc = atn->str_center;
+
+	if(strl!=NULL) {
+		allpairs_overlap_subtree(strl, minfraction, results);
+	}
+	if(strr!=NULL) {
+		allpairs_overlap_subtree(strr, minfraction, results);
+	}
+	if(strc!=NULL) {
+
+
+		allpairs_overlap_node_tree(atn, strc, minfraction, results);
+
+		allpairs_overlap_subtree(strc, minfraction, results);
+
+
+		if(strl!=NULL) {
+			allpairs_overlap_tree_tree(strc, strl, minfraction, results);
+		}
+		if(strr!=NULL) {
+			allpairs_overlap_tree_tree(strc, strr, minfraction, results);
+		}
+	}
+
+}
+
+
+template<typename T>
+void avl_interval_tree<T>::allpairs_overlap_node_tree(node_type * n, node_type * tr, const double & minfraction, std::vector< std::pair<T, T> > & results) const {
+	assert(n!=NULL);
+	assert(tr!=NULL);
+	// upper bound of the size of intersection between n and any interval in the tr subtree
+	size_t inters_ub_l = tr->min_left;
+	if(n->left > inters_ub_l) inters_ub_l = n->left;
+	size_t inters_ub_r = tr->max_right;
+	if(n->right < inters_ub_r) inters_ub_r = n->right;
+	if(inters_ub_r >= inters_ub_l) { // for minfraction==0, we want to find any overlap
+		size_t inters_ub = inters_ub_r - inters_ub_l + 1;
+		// lower bound of the size of union between atn and any interval in the strc subtree
+		size_t union_lb = n->right - n->left + 1;
+		// no pair between atn and strc subtree has a higher overlap fraction
+		double max_fraction = (double) inters_ub / (double) union_lb;
+		if(max_fraction < minfraction) return;
+	} else {
+		return;
+	}
+
+	allpairs_overlap_node_node(n, tr, minfraction, results);
+	node_type * strl = tr->str_left;
+	node_type * strr = tr->str_right;
+	node_type * strc = tr->str_center;
+	if(strl!=NULL) {
+		allpairs_overlap_node_tree(n, strl, minfraction, results);
+	}
+	if(strr!=NULL) {
+		allpairs_overlap_node_tree(n, strr, minfraction, results);
+	}
+	if(strc!=NULL) {
+		allpairs_overlap_node_tree(n, strc, minfraction, results);
+	}	
+}
+
+/*
+	Find overlapping pairs beween tr1 and tr2, not within each of them
+
+*/
+template<typename T>
+void avl_interval_tree<T>::allpairs_overlap_tree_tree(node_type * tr1, node_type * tr2, const double & minfraction, std::vector< std::pair<T, T> > & result) const {
+	assert(tr1!=NULL);
+	assert(tr2!=NULL);
+	// upper bound of intersection between any interval in tr1 with any interval in tr2
+	size_t inters_ub_l = tr1->min_left;
+	if(tr2->min_left < inters_ub_l) inters_ub_l = tr2->min_left;
+	size_t inters_ub_r = tr1->max_right;
+	if(tr2->max_right > inters_ub_r) inters_ub_r = tr2->max_right;
+	if(inters_ub_r >= inters_ub_l) {
+		// lower bound of union is 1
+		double maxfraction = (double)(inters_ub_r - inters_ub_l + 1);
+		if(maxfraction < minfraction) return;
+	} else {
+		return;
+	}
+	allpairs_overlap_node_node(tr1, tr2, minfraction, result);
+	node_type * strl1 = tr1->str_left;
+	node_type * strr1 = tr1->str_right;
+	node_type * strc1 = tr1->str_center;
+	node_type * strl2 = tr2->str_left;
+	node_type * strr2 = tr2->str_right;
+	node_type * strc2 = tr2->str_center;
+
+	if(strl1!=NULL) {
+		allpairs_overlap_node_tree(tr2, strl1, minfraction, result);
+		if(strl2!=NULL) {
+			allpairs_overlap_tree_tree(strl1, strl2, minfraction, result);
+		}
+		if(strr2!=NULL) {
+			allpairs_overlap_tree_tree(strl1, strr2, minfraction, result);
+		}
+		if(strc2!=NULL) {
+			allpairs_overlap_tree_tree(strl1, strc2, minfraction, result);
+		}
+	}
+	if(strr1!=NULL) {
+		allpairs_overlap_node_tree(tr2, strr1, minfraction, result);
+		if(strl2!=NULL) {
+			allpairs_overlap_tree_tree(strr1, strl2, minfraction, result);
+		}
+		if(strr2!=NULL) {
+			allpairs_overlap_tree_tree(strr1, strr2, minfraction, result);
+		}
+		if(strc2!=NULL) {
+			allpairs_overlap_tree_tree(strr1, strc2, minfraction, result);
+		}
+	}
+	if(strc1!=NULL) {
+		allpairs_overlap_node_tree(tr2, strc1, minfraction, result);
+		if(strl2!=NULL) {
+			allpairs_overlap_tree_tree(strc1, strl2, minfraction, result);
+		}
+		if(strr2!=NULL) {
+			allpairs_overlap_tree_tree(strc1, strr2, minfraction, result);
+		}
+		if(strc2!=NULL) {
+			allpairs_overlap_tree_tree(strc1, strc2, minfraction, result);
+		}
+	}
+	if(strl2!=NULL) {
+		allpairs_overlap_node_tree(tr1, strl2, minfraction, result);
+	}
+	if(strr2!=NULL) {
+		allpairs_overlap_node_tree(tr1, strr2, minfraction, result);
+	}
+	if(strc2!=NULL) {
+		allpairs_overlap_node_tree(tr1, strc2, minfraction, result);
+	}
+}
+
+template<typename T>
+void avl_interval_tree<T>::allpairs_overlap_node_node(node_type * n1, node_type * n2, const double & minfraction, std::vector< std::pair<T, T> > & result) const {
+	assert(n1!=NULL);
+	assert(n2!=NULL);
+	size_t intl = n1->left;
+	if(n2->left > intl) intl = n2->left;
+	size_t intr = n1->right;
+	if(n2->right < intr) intr = n2->right;
+	size_t unl = n1->left;
+	if(n2->left < unl) unl = n2->left;
+	size_t unr = n1->right;
+	if(n2->right > unr) unr = n2->right;
+	if(intr>=intl) {
+		double fraction = (double)(intr - intl + 1)/(double)(unr - unl + 1);
+		if(fraction >= minfraction || minfraction == 0.0) {
+			result.push_back(std::make_pair(n1->value, n2->value));
+		}
+	}
+}
+
+
+
+
+template<typename T>
 size_t avl_interval_tree<T>::count_center_at_node(node_type * atn) const {
 	size_t res = 0;
 	
@@ -1792,6 +1966,8 @@ bool avl_interval_tree<T>::is_below_root(node_type * n) {
 		}
 		node = np;
 	}
+	assert(0);
+	return false;
 }
 
 
@@ -2586,4 +2762,4 @@ bool avl_interval_tree<T>::balance_check_at_node(node_type * n) const {
 }
 
 
-
+#endif

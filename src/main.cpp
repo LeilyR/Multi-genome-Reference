@@ -42,7 +42,7 @@
 #include "dlib/entropy_decoder/entropy_decoder_kernel_1.h"
 #undef NO_MAKEFILE
 
-
+#include "overlap.cpp"
 
 #define VERSION "0.0.1" 
 #define NUMVERISON 0
@@ -53,6 +53,19 @@
 
 #define TEST 0
 
+
+
+/**
+
+	General TODO
+
+Look at diversity within clusters. Can this diversity be used to differentiate between orthologous and paralogous groups,
+should they be treated differently in mapping? Some more stringent approach to place repeat instances? Discuss this with Felix again?
+
+Maybe another round of AP-clustering after all reads are aligned? Maybe include not only reads, but also all origingal sequences in that cluster
+maybe do multiple alignments?
+
+**/
 
 #if TEST
 
@@ -2842,22 +2855,42 @@ int do_dynamic_mc_model_with_two_edge(int argc, char * argv[]) {
 	double cluster_base_cost = 0; // XXX base cost is now estimated in the model and added to modify/gain costs, we can still add something here to select fewer alignments
 // Find connected components of alignments with some overlap // Moved it here after training to be able to remove small als first and then connect them to each other.
 	std::set<const pw_alignment*, compare_pointer_pw_alignment> al_with_pos_gain; 
+	std::set<const located_alignment*, compare_pointer_pw_alignment> lal_with_pos_gain; 
 	std::set<const pw_alignment*, compare_pointer_pw_alignment> remainders; 
+	double sum_of_input_gain = 0;
+	double sum_of_input_gain_loc = 0;
 #pragma omp parallel for num_threads(num_threads)
 	for(size_t i =0; i < data.numAlignments();i++){
 		const pw_alignment & al = data.getAlignment(i);
 		double g1 ,g2;
 		m.gain_function(al,g1,g2);
 		double av_gain = (g1+g2)/2 ;
+
+
+		const located_alignment & lal = data.getLAlignment(i);
+		m.gain_function(lal, g1, g2);
+		double lav_gain = (g1+g2) /2;
+
+	//	std::cout << " al " << lal.alignment_length() << " old gain " << av_gain << " new gain " << lav_gain << std::endl;
 	//	al.print();
 		if(av_gain > 0){
 #pragma omp critical(al_insert)
 {
 			al_with_pos_gain.insert(&al);
+			sum_of_input_gain += av_gain;
 }
 		}
+		if(lav_gain > 0) {
+#pragma omp critical(lal_insert)
+{
+			lal_with_pos_gain.insert(&lal);
+			sum_of_input_gain_loc += lav_gain;
+}
+		}
+
 	}
-	std::cout << "al with positive gains are kept " << al_with_pos_gain.size() <<std::endl;
+	std::cout << "al with positive gains are kept " << al_with_pos_gain.size() << " total gain " << sum_of_input_gain << std::endl;
+	std::cout << "located al with positive gains are kept " << al_with_pos_gain.size() << " total gain " << sum_of_input_gain_loc << std::endl;
 
 
 //Filtering the alignments(Optional)
@@ -2867,12 +2900,40 @@ int do_dynamic_mc_model_with_two_edge(int argc, char * argv[]) {
 
 
 	size_t gap_in_long_centers = m.estimate_gap_in_long_centers(); // TODO use this to compute long centers
-	alignment_filter alfilter(m, data, al_with_pos_gain, gap_in_long_centers, num_threads);
+//	alignment_filter alfilter(m, data, al_with_pos_gain, gap_in_long_centers, num_threads);//  TODO XXX 
+
+	clock_t new_ias_time = clock();
+
+	std::vector<std::vector<pw_alignment> > new_overlaps;
+
+
+	double gain_after_ias = 0;
+/*
+	divide_and_conquer_alignments dca(data, al_with_pos_gain, m, num_seq, num_threads);
+	dca.run(new_overlaps);
+	for(size_t i=0; i<new_overlaps.size(); ++i) {
+		for(size_t j=0; j<new_overlaps.at(i).size(); ++j) {
+			double g1, g2;
+			m.gain_function(new_overlaps.at(i).at(j), g1, g2);
+			double gain = (g1+g2)/2.0;
+			gain_after_ias += gain;
+		}
+
+	}
+*/
+	new_ias_time = clock() - new_ias_time;
+
+	std::cout << " Gain before IAS " << sum_of_input_gain << " after IAS " << gain_after_ias << std::endl;
+	std::cout << " Times new " << (double)new_ias_time/CLOCKS_PER_SEC << std::endl;
+	
+
+	clock_t old_ias_time = clock();
 
 //	std::set<const pw_alignment*,  compare_pointer_pw_alignment> filtered_als; //XXX OPTIONAL in case of using filtered als all al_with_pos_gain s should be replaces by filtered_als.
 //	filtered_als = filter.get_filtered_als();
-//Makes components of partially overlapped alignments
+////Makes components of partially overlapped alignments
 //	std::cout << "filtered als size "<< filtered_als.size() << std::endl;
+
 	std::set< pw_alignment, compare_pw_alignment> mixed_als; 
 	std::cout << " now we compute connected components " << std::endl;
 	clock_t cc_init_time = clock();
@@ -2965,6 +3026,9 @@ int do_dynamic_mc_model_with_two_edge(int argc, char * argv[]) {
 	std::vector<std::multimap<size_t, std::string> > centerOnSequence(data.numSequences());//all the centers on a seq and their position(It is used when we create long centers and adjacencies)
 	vector<vector<std::string> > long_centers;
 
+	double sum_of_gain_before_clust = 0;
+
+
 	size_t num_clusters = 0;
 	size_t num_cluster_members_al = 0;
 	size_t num_cluster_seq = 0;
@@ -3011,6 +3075,21 @@ int do_dynamic_mc_model_with_two_edge(int argc, char * argv[]) {
 
 		map<string, vector<pw_alignment> >al_of_a_ccs;//It is filled in with the original centers and is used for creating long centers & their als.(string ---> center, vector<pw_al> ---> alignments of a cluster)
 		vector<vector<std::string> > local_long_centers;
+
+
+
+		// compute sum of gains that go into clustering:
+		for(size_t j=0; j<cc_cluster_in.size(); ++j) {
+			for(std::set<const pw_alignment* , compare_pointer_pw_alignment>::iterator it = cc_cluster_in.at(j).begin(); it!=cc_cluster_in.at(j).end(); ++it) {
+				const pw_alignment * al = *it;
+				double g1,g2;
+				m.gain_function(*al, g1, g2);
+				double gain = (g1+g2)/2.0;
+				sum_of_gain_before_clust += gain;
+			}
+		}
+
+
 //AFP clustering
 		for(size_t j=0; j<cc_cluster_in.size(); ++j) {
 			clock_t ap_time_local = clock();
@@ -3035,7 +3114,7 @@ int do_dynamic_mc_model_with_two_edge(int argc, char * argv[]) {
 				if(it1 == local_al_in_a_cluster.end()){
 					local_al_in_a_cluster.insert(make_pair(center, std::vector<pw_alignment>()));
 					it1 = local_al_in_a_cluster.find(center);
-				}
+10637				}
 				std::vector<std::string> center_parts;
 				strsep(center, ":" , center_parts);
 				unsigned int dir = atoi(center_parts.at(0).c_str());
@@ -3101,6 +3180,10 @@ int do_dynamic_mc_model_with_two_edge(int argc, char * argv[]) {
 	
 			}
 		} // for cluster_in set  
+
+
+
+
 		std::cout<< "end of cluster in! " << al_of_a_ccs.size() <<std::endl;
 // Long centers are created here!
 		finding_centers centers(data);
@@ -3123,6 +3206,15 @@ int do_dynamic_mc_model_with_two_edge(int argc, char * argv[]) {
 	//XXX	merg.create_alignment(local_long_centers,new_centers,al_of_a_ccs,centersPositionOnASeq,centerOnSequence);//Here we fill in the 'new_centers' with longer alignments in the way that center is always the second ref
 	//XXX	merg.get_merged_als(merged_als);
 	}
+
+	old_ias_time = clock() - old_ias_time;
+
+	std::cout << " gain using old method " << sum_of_gain_before_clust << std::endl;
+	std::cout << " Gain before IAS " << sum_of_input_gain << " after IAS new method " << gain_after_ias << std::endl;
+	std::cout << " Times old " << (double)old_ias_time/CLOCKS_PER_SEC << " new " << (double)new_ias_time/CLOCKS_PER_SEC << std::endl;
+// TODO  XXX 
+//	exit(0);
+
 	std::cout << "end of no fraction ccs"<<std::endl;
 //Short centers are added to the long centers container.
 	mixing_centers mix(data);
@@ -4117,14 +4209,18 @@ int main(int argc, char * argv[]) {
 
 
 #endif
-#include "encoder.cpp"
+
+
 #include "model.cpp"
+#include "overlap.cpp"
+#include "encoder.cpp"
+#include "connected_component.cpp"
+#include "intervals.cpp"
 #include "dynamic_encoder.cpp"
 #include "dynamic_decoder.cpp"
-#include "intervals.cpp"
-#include "overlap.cpp"
 #include "needleman_wunsch.cpp"
-
+#include "filter_alignments.cpp"
+#include "alignment_index.cpp"
 
 
 

@@ -4,6 +4,9 @@
 #include "pw_alignment.hpp"
 
 #include "alignment_index.hpp"
+// #include "overlap.hpp"
+#include "dynamic_mc.hpp"
+#include "model.hpp"
 
 //#include "IntervalTree.hpp"
 
@@ -182,16 +185,144 @@ class two_edge_cc{
 
 
 	
+};
+
+/*
+	divide and conquer strategy:
+
+	* get a set of alignments
+	* separate into 2-edge connected components
+	* components with over 100 alignments become a divide_and_conquer_al_problem (with increased overlap_fraction to further separate them), 
+		components with between 3 and 99 alignments get processed into an overlap class
+	* aggregate child results with remaining alignments into an overlap object
 
 
+	STATES for parallelzation
+	WAIT_FOR_CC
+	* start process alignments into connected components
+	WAIT_FOR_CHILDREN
+	* connected components are done, waiting till all child processes are done
+	COMBINE_RESULTS
+	* combining results into single overlap class
+	DONE
+	
 
+*/
+class divide_and_conquer_al_problem;
 
+class divide_and_conquer_alignments {
+	public:
 
+	divide_and_conquer_alignments(const all_data & data, const std::set<const pw_alignment*, compare_pointer_pw_alignment> & als_in, const dynamic_mc_model & model, size_t num_sequences, size_t num_threads);
+
+	void run(std::vector<std::vector<pw_alignment> > & overlaps);
+
+	const all_data & data;
+
+	friend class divide_and_conquer_al_problem;
+	
+	private:
+	const dynamic_mc_model & model;
+	size_t num_threads;
+	size_t num_sequences;
+	std::vector<divide_and_conquer_al_problem*> all_problems;
+	std::vector<divide_and_conquer_al_problem*> wait_for_cc_problems;
+	std::vector<divide_and_conquer_al_problem*> wait_for_overlap_problems;
+	std::vector<divide_and_conquer_al_problem*> wait_for_combine_problems;
+	size_t waiting_threads;
+	size_t running_threads;
+
+	std::vector<const pw_alignment *> all_alignments;
+	std::vector<std::string> thread_info;
+	
+	bool select_next_task(size_t thread);
+	bool are_we_done() const;
+	void add_cc_problem(divide_and_conquer_al_problem* ap);
 
 
 
 };
 
+
+
+class divide_and_conquer_al_problem {
+	public:
+	divide_and_conquer_al_problem(divide_and_conquer_alignments & parent, const std::vector<size_t> & alvec, size_t separation_level, const size_t & num_sequences, const size_t & num_threads): parent(parent), parent_problem(NULL), alvec(alvec), separation_level(separation_level), num_sequences(num_sequences), num_threads(num_threads), results(parent.data) {
+		std::cout << " made NEW al prob " << separation_level << " " << num_threads<< std::endl;
+		state = WAIT_FOR_CC;
+	}
+	~divide_and_conquer_al_problem() {
+	}
+	typedef overlap_interval_tree overlap_type;
+	typedef dynamic_mc_model use_model;
+	typedef initial_alignments_from_groups<dynamic_mc_model,overlap_interval_tree> use_ias;
+	
+	enum state_type {WAIT_FOR_CC, WAIT_FOR_OVERLAP, WAIT_FOR_COMBINE, DONE};
+
+	void run_cc(size_t thread);
+	void run_overlap(size_t cl_al_idx, size_t thread);
+	void child_done(divide_and_conquer_al_problem * child, const std::vector<std::vector<pw_alignment> > & child_res); 
+	void get_results(std::vector<std::vector<pw_alignment> > & child_res);
+	void run_combine(size_t thread);
+	
+	void select_next_alignment_cluster(size_t & idx, bool & found_next, bool & all_done);
+	bool are_all_alignment_clusters_done();
+
+	bool is_ready_for_combine();
+
+	void set_parent_problem(divide_and_conquer_al_problem * p);
+	bool has_parent() const;
+	
+
+	private:
+	divide_and_conquer_alignments & parent;
+	divide_and_conquer_al_problem * parent_problem;
+
+// input for run_cc
+	const std::vector<size_t> alvec;
+	size_t separation_level;
+
+// input for run_overlap
+	std::vector<std::vector<size_t> > clustered_alignments;
+	std::vector<size_t> clustered_al_status; // 0=not yet running, 1=running, 2=completed
+
+
+
+// input for run_combine
+	std::vector<size_t> leftover_alignments;
+	std::vector<divide_and_conquer_al_problem *> child_problems; // if child problems are done, they move their content to clustered_al_results
+	std::vector<std::vector<pw_alignment> > clustered_al_results;
+
+// final result
+	overlap_type results;
+
+
+
+// general
+	size_t num_sequences;
+	const size_t num_threads;
+	state_type state;
+
+	typedef avl_interval_tree<size_t> tree_type;
+	// min/max sizes of connected components in order to resolve partial overlap separately
+	const size_t MIN_CC_SIZE = 3; 
+	const size_t MAX_CC_SIZE = 300; // TODO 100 
+
+
+	void two_edge_cc(const std::vector<std::pair<size_t, size_t> > & edges, size_t cc_edges, std::vector<std::set<size_t> > & cc_result);
+	void bridge_step(size_t & time, const std::map<size_t, std::set<size_t> > & edges, const size_t & node, std::vector<size_t> & parent, std::vector<bool> & visited, std::vector<size_t> & dfsnum, std::vector<size_t> & low, std::vector<std::pair<size_t, size_t> > & bridges);
+	void cc_step(const size_t & node, const std::map<size_t, std::set<size_t> > & edges, std::vector<bool> & visited, std::set<size_t> & cur_cc, std::vector<std::pair<size_t, size_t> > & tree_edges);
+	void edges_remove(const std::vector<std::pair<size_t, size_t> > & redges, std::map<size_t, std::set<size_t> > & medges);
+	void path_remove(std::map<size_t, std::set<size_t> > & edgemap, std::vector<std::set<size_t> > & cc_result);
+	void edge_insert(std::map<size_t, std::set<size_t> > & edges, size_t i, size_t j);
+	void edge_remove(std::map<size_t, std::set<size_t> > & edges, size_t i, size_t j);
+	size_t count_edges(const std::map<size_t, std::set<size_t> > & edges);
+	void separation_conditions(double & overlap_fraction, size_t & cc_edges);
+	void make_graph(double overlap_fraction, std::vector<std::pair<size_t, size_t> > & edges);
+	void make_graph_singlethreaded(double overlap_fraction, std::vector<std::pair<size_t, size_t> > & edges);
+	void make_graph(double overlap_fraction, const std::vector<pw_alignment> & als, std::vector<std::pair<size_t, size_t> > & edges);
+	void als_to_ccs(std::vector<pw_alignment> & als, std::vector<std::vector<pw_alignment> > & ccs);
+};
 
 
 

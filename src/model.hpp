@@ -23,9 +23,68 @@ extern "C" {
 
 typedef  std::set<const pw_alignment*, compare_pw_alignment> alset;
 
+
+template<typename T, typename overlap_type>
+class initial_alignments_from_groups {
+	public:
+	initial_alignments_from_groups(const all_data & data, const std::vector< std::vector<const pw_alignment *> > & alignment_groups, const T & a_model): data(data), model(a_model){
+		std::multimap< double, std::vector<const pw_alignment *> > sorter;
+		max_gain = 0;
+		for(size_t i=0; i<alignment_groups.size(); ++i) {
+			double sumgain = 0;
+			for(size_t j=0; j<alignment_groups.at(i).size(); ++j) {
+				double gain1, gain2;
+				model.gain_function(*(alignment_groups.at(i).at(j)), gain1, gain2);
+				double vgain = (gain1+gain2)/2.0;
+				sumgain+=vgain;
+			
+			}
+			sorter.insert(std::make_pair(sumgain, alignment_groups.at(i)));
+			max_gain+=sumgain;
+		}
+		for(typename std::multimap< double, std::vector<const pw_alignment *> >::reverse_iterator rit = sorter.rbegin(); rit!=sorter.rend(); ++rit) {
+			sorted_original_als.push_back(rit->second);
+		}
+
+	}
+
+	void compute(overlap_type & o, std::string ihead, std::string & info);
+
+	private:
+	const all_data & data;
+	const T & model;
+	std::vector<std::vector< const pw_alignment *> > sorted_original_als; // highest gain first 
+	double max_gain;
+	double result_gain;
+	size_t used_alignments;
+	mutable double select_groups_time;
+
+	void lazy_split_insert_step(overlap_type & ovrlp, size_t level, size_t & rec_calls, const std::vector<pw_alignment>  & als, std::vector<pw_alignment> & inserted_alignments, vector<pw_alignment> & removed_alignments, double & local_gain);
+	void lazy_split_full_insert_step(overlap_type & ovrlp, size_t level, size_t & rec_calls, const pw_alignment  & alin, std::vector<pw_alignment> & inserted_alignments, vector<pw_alignment> & removed_alignments, double & local_gain);
+	void local_undo(overlap_type & ovrlp, std::set<pw_alignment, compare_pw_alignment > & all_inserted, std::set< pw_alignment , compare_pw_alignment> & all_removed);
+	void insert_alignment_sets(std::set<pw_alignment, compare_pw_alignment> & all_ins, std::set<pw_alignment, compare_pw_alignment> & all_rem, std::vector<pw_alignment> & this_ins, std::vector<pw_alignment> & this_rem);
+	void all_push_back(std::vector<pw_alignment> & inserted_alignments, vector<pw_alignment > & removed_alignments, std::set<pw_alignment , compare_pw_alignment> & all_inserted, std::set<pw_alignment, compare_pw_alignment> & all_removed );
+	void select_from_groups(const std::vector<std::vector<pw_alignment> > & insert_als, const std::vector<std::vector<pw_alignment> > & rem_als_per_ins, std::vector<pw_alignment> & result_ins, std::vector<pw_alignment> & result_rem, double & group_gain) const;
+	bool try_rnodes_unselect(const std::vector<std::set<size_t> > & ins_to_rem, const std::vector<std::set<size_t> > & rem_to_ins, const std::vector<double> insert_gain, const std::vector<double> & remove_gain, const std::set<size_t> & rem_to_unselect, vector<bool> & ins_selected, vector<bool> & rem_selected, double & new_gain) const;
+
+	void bb_step(const std::vector<std::set<size_t> > & ins_to_rem, const std::vector<std::set<size_t> > & rem_to_ins, const std::vector<double> & insert_gain, const std::vector<double> & remove_gain, const std::vector<bool> & rem_free, const std::vector<bool> & ins_taken, const std::vector<bool> & rem_taken, const double & real_gain, double & best_gain, std::vector<bool> & best_ins, std::vector<bool> & best_rem) const;
+
+	void take_highest_possible(const std::vector<std::set<size_t> > & ins_to_rem, const std::vector<std::set<size_t> > & rem_to_ins, const std::vector<double> & insert_gain, const std::vector<double> & remove_gain, std::vector<bool> & rem_free, std::vector<bool> & ins_taken, std::vector<bool> & rem_taken, double & gain) const;
+
+	void easy_insert(const std::vector<std::set<size_t> > & ins_to_rem, const std::vector<std::set<size_t> > & rem_to_ins, const std::vector<double> & insert_gain, const std::vector<double> & remove_gain, 
+		std::vector<bool> & rem_free, std::vector<bool> & ins_taken, std::vector<bool> & rem_taken, double & extra_gain) const;
+
+	void ub_gain(const std::vector<std::set<size_t> > & ins_to_rem, const std::vector<std::set<size_t> > & rem_to_ins, const std::vector<double> & insert_gain, const std::vector<double> & remove_gain, 
+std::vector<bool> & rem_free, std::vector<bool> & ins_taken, std::vector<bool> & rem_taken, double & ub) const;
+
+};
+
+
+
 template<typename T, typename overlap_type>
 class initial_alignment_set {
 	public:
+
 	initial_alignment_set(const all_data & d, const T & a_model, double base_cost): data(d), common_model(a_model){
 		this->base_cost = base_cost;
 		std::multimap<double, const pw_alignment&> sorter;
@@ -180,7 +239,6 @@ class initial_alignment_set {
 	void search_area(size_t from, size_t to, const std::multimap<size_t, size_t> & data, std::set<size_t> & res);
 	
 };
-
 
 
 /*
@@ -840,6 +898,9 @@ void run(std::map<std::string, std::vector<std::string> > & cluster_result, std:
 	std::map<std::vector<std::string>,pw_alignment> alignments; //The set represents the name an al's references. (center,other)
 };
 
+#include "overlap.cpp"
+#include "intervals.cpp"
+
 /*class suffix_tree{
 	public:
 	suffix_tree(all_data &, finding_centers&);
@@ -875,7 +936,6 @@ void run(std::map<std::string, std::vector<std::string> > & cluster_result, std:
 	std::map<size_t,size_t> FirstCenterOnFirstNodes; //size_t -> is the first node on the first row nodes after the root,  size_t -> is the the index of that node
 	std::set<size_t> IndexOfFirstNodesAfterRoot; //Index of first row nodes after the root //TODO
 };*/
-
 
 
 

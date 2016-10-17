@@ -84,6 +84,7 @@ class avl_interval_tree {
 	void overlap_search_erase(const size_t & left, const size_t & right, std::vector<value_type> & results);
 	void join_intervals(std::vector<std::pair<size_t, size_t> > & results) const;
 	void overlap_fraction_search(const size_t & left, const size_t & right, const double & fraction, std::vector<value_type> & results) const;
+	void allpairs_overlap(const double & minfraction, std::vector< std::pair<value_type, value_type> > & result) const;
 
 	size_t size() const;
 	size_t height() const;
@@ -131,6 +132,13 @@ class avl_interval_tree {
 	void find_at_node(node_type * atn, const size_t & left, const size_t & right, const value_type & value, node_set_type & result) const;
 	void join_intervals_at_node(node_type * atn, std::map<size_t, size_t> & joined_intervals) const;
 	void overlap_fraction_search_at_node(node_type * atn, const size_t & left, const size_t & right, const double & fraction, std::vector<value_type> & results) const;
+	void allpairs_overlap_subtree(node_type * atn, const double & minfraction, std::vector< std::pair<value_type, value_type> > & result) const;
+	void allpairs_overlap_node_tree(node_type * n, node_type * tr, const double & minfraction, std::vector< std::pair<value_type, value_type> > & result) const;
+	void allpairs_overlap_tree_tree(node_type * tr1, node_type * tr2, const double & minfraction, std::vector< std::pair<value_type, value_type> > & result) const;
+	void allpairs_overlap_node_node(node_type * tr1, node_type * tr2, const double & minfraction, std::vector< std::pair<value_type, value_type> > & result) const;
+
+
+
 	size_t count_center_at_node(node_type * atn) const;
 // how many nodes are contained inside of one of the parent intervals
 	size_t inside_number_at_node(node_type * atn) const;

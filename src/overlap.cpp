@@ -1,13 +1,15 @@
 
+#ifndef OVERLAP_CPP
+#define OVERLAP_CPP
 #include "overlap.hpp"
 
-
-overlap_interval_tree::overlap_interval_tree(const all_data & d): data(d), als_on_reference(d.numSequences()),alind(d.numSequences()){
+overlap_interval_tree::overlap_interval_tree(const all_data & d): data(d), alind(d.numSequences()){
 
 	}
 
-overlap_interval_tree::overlap_interval_tree(const overlap_interval_tree & o): data(o.data),als_on_reference(o.data.numSequences()),alind(o.data.numSequences()){}
-
+overlap_interval_tree::overlap_interval_tree(const overlap_interval_tree & o): data(o.data),alind(o.data.numSequences()){
+	assert(alignments.size() == 0); // incomplete copy constructor, does not copy content of object
+}
 
 	
 overlap_interval_tree::~overlap_interval_tree(){
@@ -53,73 +55,14 @@ void overlap_interval_tree::print_all_alignment() const {
 
 }
 
-void overlap_interval_tree::test_multimaps() {
-	// TODO remove this
-	for(std::set<pw_alignment, compare_pw_alignment>::const_iterator it = alignments.begin(); it!=alignments.end(); ++it ) {
-		const pw_alignment * remove = &(*it);
-		std::pair< std::multimap<size_t, const pw_alignment &>::iterator, std::multimap<size_t, const pw_alignment &>::iterator > eqrb1 =
-		als_on_reference.at(remove->getreference1()).equal_range(remove->getbegin1());
-		size_t found =0;
-		for(std::multimap<size_t, const pw_alignment &>::iterator it = eqrb1.first; it!=eqrb1.second; ++it) {
-			if ( remove->equals(it->second) ) {
-				found++;
-				break;
-			}		
-		}
-		std::pair< std::multimap<size_t,const pw_alignment &>::iterator, std::multimap<size_t, const pw_alignment &>::iterator > eqre1 =
-		als_on_reference.at(remove->getreference1()).equal_range(remove->getend1());
-		for(std::multimap<size_t, const pw_alignment &>::iterator it = eqre1.first; it!=eqre1.second; ++it) {
-			if ( remove->equals(it->second) ) {
-				found++;
-				break;
-			}		
-		}
-
-		std::pair< std::multimap<size_t, const pw_alignment &>::iterator, std::multimap<size_t, const pw_alignment &>::iterator > eqrb2 =
-		als_on_reference.at(remove->getreference2()).equal_range(remove->getbegin2());
-		for(std::multimap<size_t, const pw_alignment &>::iterator it = eqrb2.first; it!=eqrb2.second; ++it) {
-			if ( remove->equals(it->second) ) {
-				found++;
-				break;
-			}		
-		}
-
-		std::pair< std::multimap<size_t, const pw_alignment &>::iterator, std::multimap<size_t, const pw_alignment &>::iterator > eqre2 =
-		als_on_reference.at(remove->getreference2()).equal_range(remove->getend2());
-		for(std::multimap<size_t, const pw_alignment &>::iterator it = eqre2.first; it!=eqre2.second; ++it) {
-			if ( remove->equals(it->second) ) {
-				found++;
-				break;
-			}		
-		}
-		assert(found==4);
-
-	}
-	for(size_t s=0; s<data.numSequences(); s++) {
-		for(std::multimap< size_t, const pw_alignment & >::const_iterator it = als_on_reference.at(s).begin(); it!=als_on_reference.at(s).end(); ++it) {
-			const pw_alignment & p = it->second;
-	
-			//std::cout << p << std::endl;
-			std::set<pw_alignment, compare_pw_alignment>::iterator findp = alignments.find(p);
-			if(findp==alignments.end()){
-				std::cout<<"wrong one: "<<std::endl;
-				p.print();
-			}
-			assert(findp!=alignments.end());
-		}
-
-	}
-		
-}
-
-
-
 void overlap_interval_tree::insert_without_partial_overlap(const pw_alignment & p){
 //	std::cout << "insert_without_partial_overlap"<<std::endl;
 //	alind.insert(&p);
 //	std::cout << &p << std::endl;
 //	p.print();
-	assert(alignments.find(p) == alignments.end());
+
+// TODO can we avoid double insertions?
+//	assert(alignments.find(p) == alignments.end());
 	std::pair<std::set<pw_alignment, compare_pw_alignment>::iterator, bool > npp = alignments.insert(p);
 	std::set<pw_alignment, compare_pw_alignment>::iterator it = alignments.find(p);
 	assert(it != alignments.end());
@@ -160,32 +103,22 @@ const pw_alignment * overlap_interval_tree::get_al_at_left_end(size_t ref1, size
 		}*/
 		return NULL;
 }
-
+/*
 std::multimap<size_t, const pw_alignment &> &  overlap_interval_tree::get_als_on_reference(size_t sequence)  {
 	return als_on_reference.at(sequence);
 }
 const std::multimap<size_t, const pw_alignment &> &  overlap_interval_tree::get_als_on_reference_const(size_t sequence)const{
 	return als_on_reference.at(sequence);
 }
-void overlap_interval_tree::get_interval_result_on_interval( size_t& sequence,  size_t& left,  size_t& right,std::vector<const pw_alignment *>& RESULT)const{
+*/
+
+void overlap_interval_tree::get_interval_result_on_interval(const size_t& sequence,  const size_t& left,  const size_t& right,std::vector<const pw_alignment *>& result)const{
 //	alind.debug_print();
-	std::vector<const pw_alignment *> result;
 	alind.search_overlap(sequence,left,right,result);
 //	std::cout<< "overlapped als: "<<std::endl;
-	for(size_t i =0; i < result.size();i++){
-		const pw_alignment* al = result.at(i);
-	//	al->print();
-		RESULT.push_back(al);
-	}
-//	return result;
 }
-void overlap_interval_tree::interval_result_on_point(size_t sequence, size_t & split_point, std::vector<const pw_alignment* > & result)const{
+void overlap_interval_tree::interval_result_on_point(const size_t & sequence, const size_t & split_point, std::vector<const pw_alignment* > & result)const{
 	alind.search_overlap(sequence,split_point,result);
-}
-std::vector<const pw_alignment *>& overlap_interval_tree::get_interval_result_on_point( size_t& sequence,  size_t& split_point)const{
-	std::vector<const pw_alignment *> result;
-	alind.search_overlap(sequence,split_point,result);
-	return result; // TODO XXX this is wrong
 }
 
 // TODO why not used
@@ -444,7 +377,7 @@ void overlap_interval_tree::test_partial_overlap_vec(std::vector< const pw_align
 
 }
 void overlap_interval_tree::test_partial_overlap() const {
-	test_al_on_ref();
+	//test_al_on_ref(); TODO other tests?
 	std::vector<const pw_alignment *> all;
 	for(std::set<pw_alignment, compare_pw_alignment>::const_iterator it = alignments.begin(); it!=alignments.end(); ++it) {
 		const pw_alignment * al = &(*it);
@@ -455,6 +388,7 @@ void overlap_interval_tree::test_partial_overlap() const {
 	test_partial_overlap_vec(all);
 
 }
+/*
 void overlap_interval_tree::test_al_on_ref()const{
 	for(size_t i = 0; i < data.numSequences();i++){
 		for(std::multimap< size_t, const pw_alignment &>::const_iterator it = als_on_reference.at(i).begin(); it != als_on_reference.at(i).end();it++){
@@ -462,6 +396,8 @@ void overlap_interval_tree::test_al_on_ref()const{
 		}
 	}
 }
+*/
+/*
 bool overlap_interval_tree::check_alignment_address(const pw_alignment & p, const pw_alignment * p1)const{
 	std::set<pw_alignment, compare_pw_alignment>::const_iterator it=alignments.find(p);
 	assert(it != alignments.end());
@@ -471,19 +407,35 @@ bool overlap_interval_tree::check_alignment_address(const pw_alignment & p, cons
 		return true;
 	}
 	else return false;	
-}
+}*/
+
+
+
 #define SPLITPRINT 0
 template<typename overlap_type>
-splitpoints_interval_tree<overlap_type>::splitpoints_interval_tree(const pw_alignment & p, overlap_type & o, const all_data & d):overl(o), newal(p),data(d), split_points(d.numSequences()) {
+splitpoints_interval_tree<overlap_type>::splitpoints_interval_tree(const pw_alignment & p, overlap_type & o, const all_data & d):overl(o), newal(p),data(d), split_points(d.numSequences()), multi_mode(false) {
 
 }
+
+template<typename overlap_type>
+splitpoints_interval_tree<overlap_type>::splitpoints_interval_tree(const std::vector<const pw_alignment *> & new_als, overlap_type & o, const all_data & d):overl(o), new_als(new_als), data(d), split_points(d.numSequences()), multi_mode(true) {
+//	std::cout << " multimode on " << new_als.size() << std::endl;
+
+}
+
 template<typename overlap_type>
 splitpoints_interval_tree<overlap_type>::~splitpoints_interval_tree() {}
+
+
+
 template<typename overlap_type>
-void splitpoints_interval_tree<overlap_type>::find_initial_split_points_nonrecursive(size_t sequence, size_t left, size_t right) {
+void splitpoints_interval_tree<overlap_type>::find_initial_split_points(size_t sequence, size_t left, size_t right, bool recursion) {
+
+
 	std::vector<const pw_alignment*> result;
 	overl.get_interval_result_on_interval(sequence,left,right,result);
 #if SPLITPRINT
+	std::cout << " Look for initial split points on " << sequence << " from " << left << " to " << right << std::endl;
 	std::cout << "result size is "<< result.size() << " on seq " << sequence <<std::endl;
 #endif
 //	if(result.size()>0){
@@ -494,7 +446,11 @@ void splitpoints_interval_tree<overlap_type>::find_initial_split_points_nonrecur
 //	}
 	for( size_t i =0; i < result.size();i++){
 		const pw_alignment * al = result.at(i);
-	//	al->print();
+
+//		std::cout << " overlapper al " << std::endl;
+//		al->print();
+
+
 		if(al->getreference1()== sequence){
 			
 			size_t alleft;
@@ -502,16 +458,16 @@ void splitpoints_interval_tree<overlap_type>::find_initial_split_points_nonrecur
 			al->get_lr1(alleft, alright);
 		//	std::cout << alleft << " "<<alright<<std::endl;
 			if(alleft < left && left <= alright) {
-				insert_split_point(sequence, left,false);
+				insert_split_point(sequence, left, recursion);
 			}
 			if(alleft <= right && right < alright) {
-				insert_split_point(sequence, right+1,false);
+				insert_split_point(sequence, right+1, recursion);
 			}
 			if(left < alleft && alleft < right) {
-				insert_split_point(sequence, alleft,false);
+				insert_split_point(sequence, alleft, recursion);
 			}
 			if(left < alright && alright < right) {
-				insert_split_point(sequence, alright+1,false);					
+				insert_split_point(sequence, alright+1, recursion);					
 			}
 		}
 	
@@ -522,605 +478,288 @@ void splitpoints_interval_tree<overlap_type>::find_initial_split_points_nonrecur
 		//	std::cout << alleft << " "<<alright << " left " << left <<" right " << right <<std::endl;
 
 			if(alleft < left && left <= alright) {
-				insert_split_point(sequence, left,false);			
+				insert_split_point(sequence, left, recursion);			
 			}
 			if(alleft <= right && right < alright) {
 		//		std::cout << "alleft <= right && right < alright"<<std::endl;
-				insert_split_point(sequence, right+1,false);
+				insert_split_point(sequence, right+1, recursion);
 			}
 			if(left < alleft && alleft < right) {
-				insert_split_point(sequence, alleft,false);
+				insert_split_point(sequence, alleft, recursion);
 			}
 			if(left < alright && alright < right) {
-				insert_split_point(sequence, alright+1,false);
+				insert_split_point(sequence, alright+1, recursion);
 			}
 		}
 	}
 }
-template<typename overlap_type>
-void splitpoints_interval_tree<overlap_type>::find_initial_split_points(size_t sequence, size_t left, size_t right) {
-	std::vector<const pw_alignment *> result;
-	overl.get_interval_result_on_interval(sequence,left,right,result);
-	for(size_t i =0; i < result.size();i++){
-		const pw_alignment * al = result.at(i);
-		if(al->getreference1() == sequence) {
-			size_t alleft;
-			size_t alright;
-			al->get_lr1(alleft, alright);
-			if(alleft < left && left <= alright) {
-				insert_split_point(sequence, left);
-			}
-			if(alleft <= right && right < alright) {
-				insert_split_point(sequence, right+1);
-			}
-			if(left < alleft && alleft < right) {
-				insert_split_point(sequence, alleft);
-			}
-			if(left < alright && alright < right) {
-				insert_split_point(sequence, alright+1);	
-			}
-		}
-		if(al->getreference2() == sequence) {
-			size_t alleft;
-			size_t alright;
-			al->get_lr2(alleft, alright);
-			if(alleft < left && left <= alright) {
-				insert_split_point(sequence, left);
-			}
-			if(alleft <= right && right < alright) {
-				insert_split_point(sequence, right+1);
-			}
-			if(left < alleft && alleft < right) {
-				insert_split_point(sequence, alleft);
-			}
-			if(left < alright && alright < right) {
-				insert_split_point(sequence, alright+1);
-			}
-		}
-	}
 
-}
+
 template<typename overlap_type>
 void splitpoints_interval_tree<overlap_type>::recursive_splits(){
-
-
-
-
-		size_t left1;
-		size_t right1;
-		size_t left2 ;
-		size_t right2;
-		newal.get_lr1(left1, right1);
-		newal.get_lr2(left2, right2);
-
-#if SPLITPRINT
-		std::cout << " Check ref 1 overlaps " << std::endl;
-#endif
-
-		find_initial_split_points(newal.getreference1(), left1, right1);
-
-#if SPLITPRINT
-		std::cout << " Check ref 2 overlaps " << std::endl;
-#endif
-	//	std::cout<< "recursive split"<<std::endl;
-		find_initial_split_points(newal.getreference2(), left2, right2);
-	//	std::cout << "done "<<std::endl;
-		if(newal.getreference1()==newal.getreference2()) {
-		//	std::cout<< "ref1 == ref2"<<std::endl;
-			if(right1>=left2 && left1 < left2){
-			//	std::cout<< "here1"<<std::endl;
-				insert_split_point(newal.getreference2(),left2);
-				insert_split_point(newal.getreference2(),right1+1);
-			}
-			if(right2>=left1 && left2 < left1){
-			//	std::cout<< "here2"<<std::endl;
-				insert_split_point(newal.getreference2(),left1);
-				insert_split_point(newal.getreference2(),right2+1);
-			}
-		}
-
-		insert_split_point(newal.getreference1(), left1);
-		insert_split_point(newal.getreference1(), right1+1);
-		insert_split_point(newal.getreference2(), left2);
-		insert_split_point(newal.getreference2(), right2+1);
-	//	std::cout<<"the end!"<<std::endl;
-	
+	run_initial(true);
 }
-template<typename overlap_type>
-void splitpoints_interval_tree<overlap_type>::nonrecursive_splits(){
 
 
-		size_t left1;
-		size_t right1;
-		size_t left2 ;
-		size_t right2;
-		newal.get_lr1(left1, right1);
-		newal.get_lr2(left2, right2);
 
+template<typename overlap_type> 
+void splitpoints_interval_tree<overlap_type>::initial_splits_on_al(const pw_alignment * al, bool recursion) {
+
+	size_t left1;
+	size_t right1;
+	size_t left2 ;
+	size_t right2;
+	al->get_lr1(left1, right1);
+	al->get_lr2(left2, right2);
+
+// partial overlap caused by borders of an existing alignment within al
 #if SPLITPRINT
-		std::cout << " Check ref 1 overlaps " << std::endl;
+		std::cout << " Check ref 1 overlaps " <<  std::endl;
 #endif
 
-		find_initial_split_points_nonrecursive(newal.getreference1(), left1, right1);
+		find_initial_split_points(al->getreference1(), left1, right1, recursion);
 
 #if SPLITPRINT
 		std::cout << " Check ref 2 overlaps " << std::endl;
 #endif
 	//	std::cout<< "got here!"<<std::endl;
-		find_initial_split_points_nonrecursive(newal.getreference2(), left2, right2);
+		find_initial_split_points(al->getreference2(), left2, right2, recursion);
+
+// partial overlap of al with itself
+	if(al->getreference1()==al->getreference2()) {
+		if(right1>=left2 && left1 < left2){
+			insert_split_point(al->getreference2(),left2, recursion);
+			insert_split_point(al->getreference2(),right1+1, recursion);
+		}
+		if(right2>=left1 && left2 < left1){
+			insert_split_point(al->getreference2(),left1, recursion);
+			insert_split_point(al->getreference2(),right2+1, recursion);
+		}
+	}
+
+// partial overlap caused by borders of al within an existing alignment
+//	std::cout << " Check borders " << std::endl;
 	
-		if(newal.getreference1()==newal.getreference2()) {
-			if(right1>=left2 && left1 < left2){
-				insert_split_point_nonrecursive(newal.getreference2(),left2);
-				insert_split_point_nonrecursive(newal.getreference2(),right1+1);
+	insert_split_point(al->getreference1(), left1, recursion);
+	insert_split_point(al->getreference1(), right1+1, recursion);
+	insert_split_point(al->getreference2(), left2, recursion);
+	insert_split_point(al->getreference2(), right2+1, recursion);
+
+}
+
+
+
+template<typename overlap_type>
+void splitpoints_interval_tree<overlap_type>::run_initial(bool recursion){
+	if(!multi_mode) {
+		initial_splits_on_al(&newal, recursion);	
+	} else {
+		for(size_t i=0; i<new_als.size(); ++i) {
+			initial_splits_on_al(new_als.at(i), recursion);
+		}
+	}
+
+
+/*	std::cout << " SPLITPOINTS INTITIAL , recursion " << recursion << std::endl;
+	for(size_t i=0; i<split_points.size(); ++i) {
+		if(!split_points.at(i).empty()) {
+			std::cout << " ref " << i;
+			for(std::set<size_t>::iterator it = split_points.at(i).begin(); it!=split_points.at(i).end(); ++it) {
+				std::cout << " " << *it;
 			}
-			if(right2>=left1 && left2 < left1){
-				insert_split_point_nonrecursive(newal.getreference2(),left1);
-				insert_split_point_nonrecursive(newal.getreference2(),right2+1);
+			std::cout << std::endl;
+		} 
+	}
+*/
+}
+
+
+template<typename overlap_type>
+void splitpoints_interval_tree<overlap_type>::nonrecursive_splits(){
+	run_initial(false);
+
+}
+
+/*
+	A new split point happens on reference al_ref of al, Which other split points are caused by this?
+
+*/
+template<typename overlap_type> 
+void splitpoints_interval_tree<overlap_type>::split_into_alignment_ref(const pw_alignment * al, size_t al_ref, size_t position, bool recursion) {
+
+//	std::cout << " split into at " << al_ref << " pos " << position << " on al " << std::endl;
+//	al->print();
+
+// confusing: splitting into ref1, causes us to split ref2
+	size_t l, r; // positions on the reference with the split point
+	bool alforward = true; // is al in forward direction on al_other_seq?
+	size_t al_ref_seq, al_other_seq;
+	if(al_ref) {
+		al->get_lr2(l,r);
+		if(al->getbegin1() > al->getend1()) alforward = false;
+		al_ref_seq = al->getreference2();
+		al_other_seq = al->getreference1();
+		
+	} else {
+		al->get_lr1(l,r);
+		if(al->getbegin2() > al->getend2()) alforward = false;
+		al_ref_seq = al->getreference1();
+		al_other_seq = al->getreference2();
+	}
+		
+		//	std::cout << "on ref 1"<<std::endl;
+	if(l<position && r>=position) {
+		pw_alignment fp;
+		pw_alignment sp;
+		bool alref_for_split = 1 - (bool) al_ref; // even more confusing: split splits ref 2 if the flag is false
+		al->split(alref_for_split, position, fp, sp);
+		pw_alignment fpe;
+		pw_alignment spe;
+
+
+		// do splitted parts have only gaps on one of their reference sequences
+		bool fgaps = onlyGapSample(fp);
+		bool sgaps = onlyGapSample(sp);
+					
+		// find split part alignment ends on the other reference after removing end gaps
+		size_t fpeleft= (size_t) -1;
+		size_t fperight = (size_t) -1;
+		size_t speleft = (size_t) -1;
+		size_t speright = (size_t) -1;
+		if(!fgaps) {
+			fp.remove_end_gaps(fpe);
+			if(al_ref)
+				fpe.get_lr1(fpeleft, fperight);
+			else
+				fpe.get_lr2(fpeleft, fperight);
+#if SPLITPRINT
+			std::cout << "newal fpe " << std::endl;
+			fpe.print();
+			std::cout  << std::endl;
+#endif
+		}
+		if(!sgaps) {
+			sp.remove_end_gaps(spe);
+			if(al_ref)
+				spe.get_lr1(speleft, speright);
+			else 
+				spe.get_lr2(speleft, speright);
+#if SPLITPRINT
+			std::cout << "newal spe " << std::endl;
+			spe.print();
+			std::cout << std::endl;
+#endif
+		}
+
+
+/*
+		// print all before starting recursion
+		if(alforward) {
+						
+			if(!sgaps) {
+				std::cout << "WILL split " << al_other_seq << " " << speleft << std::endl;
+			}
+			// additional split point if gaps at split point
+			if(!fgaps) {
+				std::cout << "WILL split " << al_other_seq << " " << fperight+1 << std::endl;
+			}
+		} else { // al is backwards on current reference, first part of the split will be after second part
+			if(!fgaps) {
+				std::cout << "WILL split " << al_other_seq << " " << fpeleft << std::endl;
+			}
+			if(!sgaps) {
+				std::cout << "WILL split " << al_other_seq << " " << speright+1 << std::endl;
 			}
 		}
 
-		insert_split_point_nonrecursive(newal.getreference1(), left1);
-		insert_split_point_nonrecursive(newal.getreference1(), right1+1);
-		insert_split_point_nonrecursive(newal.getreference2(), left2);
-		insert_split_point_nonrecursive(newal.getreference2(), right2+1);
-	
+*/
 
+		std::set<size_t> split_check;
+		if(alforward) {
+						
+			if(!sgaps) {
+				insert_split_point(al_other_seq, speleft, recursion);
+				split_check.insert(speleft);
+			}
+			// additional split point if gaps at split point
+			if(!fgaps) {
+				insert_split_point(al_other_seq, fperight+1, recursion);
+				split_check.insert(fperight+1);
+			}
+		} else { // al is backwards on current reference, first part of the split will be after second part
+			if(!fgaps) {
+				insert_split_point(al_other_seq, fpeleft, recursion);
+				split_check.insert(fpeleft);
+			}
+			if(!sgaps) {
+				insert_split_point(al_other_seq, speright+1, recursion);
+				split_check.insert(fpeleft);
+			}
+		}
 
-}
-
-template<typename overlap_type>
-void splitpoints_interval_tree<overlap_type>::insert_split_point_nonrecursive(size_t sequence, size_t position) {
-	std::pair<std::set<size_t>::iterator, bool> insertes = split_points.at(sequence).insert(position);
-	
-	
-	if(insertes.second) {
-#if SPLITPRINT
-		std::cout << " new split point " << sequence << " at " << position << std::endl;
-#endif	
+// TODO
+//		located_alignment lal(&(overl.data), *al);
 	}
 }
 
+
+/*
+	new splitpoint put into an alignment, does this imply more splitpoints?
+
+*/
+template<typename overlap_type>
+void splitpoints_interval_tree<overlap_type>::split_into_alignment(const pw_alignment * al, size_t sequence, size_t position, bool recursion) {
+	if(al->getreference1()==sequence) {
+		split_into_alignment_ref(al, 0, position, recursion);
+	}
+	if(al->getreference2()==sequence) {
+		split_into_alignment_ref(al, 1, position, recursion);
+	}
+}
 
 
 template<typename overlap_type>
 void splitpoints_interval_tree<overlap_type>::insert_split_point(size_t sequence, size_t position, bool recursion) {
 	std::pair<std::set<size_t>::iterator, bool> insertes = split_points.at(sequence).insert(position);
-	if(insertes.second) {
+	if(insertes.second) { // if we do not already have this split point
 #if SPLITPRINT
 		std::cout << " new split point " << sequence << " at " << position << std::endl;
 #endif	
-		size_t left1;
-		size_t right1;
-		newal.get_lr1(left1, right1);
-		size_t left2;
-		size_t right2;
-		newal.get_lr2(left2, right2);
+		if(!recursion) return;
 
+// check if split points creates new split points with the new alignments
+//		std::cout << " split into new als " << std::endl;
 
-
-
-		if(newal.getreference1()==sequence) {
-		//	std::cout << "on ref 1"<<std::endl;
-			if(left1<position && right1>=position) {
-				pw_alignment fp;
-				pw_alignment sp;
-				newal.split(true, position, fp, sp);
-
-				pw_alignment fpe;
-				pw_alignment spe;
-
-
-				// do splitted parts have only gaps one of their reference sequences
-				bool fgaps = onlyGapSample(fp);
-				bool sgaps = onlyGapSample(sp);
-					
-				// find split part alignment ends on reference after removing end gaps
-				size_t fpeleft2= (size_t) -1;
-				size_t fperight2 = (size_t) -1;
-				size_t speleft2 = (size_t) -1;
-				size_t speright2 = (size_t) -1;
-				if(!fgaps) {
-					fp.remove_end_gaps(fpe);
-					fpe.get_lr2(fpeleft2, fperight2);
-#if SPLITPRINT
-					std::cout << "newal fpe " << std::endl;
-					fpe.print();
-					std::cout  << std::endl;
-#endif
-				}
-				if(!sgaps) {
-					sp.remove_end_gaps(spe);
-					spe.get_lr2(speleft2, speright2);
-#if SPLITPRINT
-					std::cout << "newal spe " << std::endl;
-					spe.print();
-					std::cout << std::endl;
-#endif
-				}
-
-
-				if(newal.getbegin2() < newal.getend2()) {
-						
-			//			std::cout << " try ins " << newal.getreference2() << " : " << spleft2 << std::endl;
-					if(!sgaps) {
-						if(recursion){
-							insert_split_point(newal.getreference2(), speleft2);
-						}else{
-							insert_split_point_nonrecursive(newal.getreference2(), speleft2);
-						}
-					}
-					// additional split point if gaps at split point
-					if(!fgaps) {
-						if(recursion){
-							insert_split_point(newal.getreference2(), fperight2+1);
-						}else{
-							insert_split_point_nonrecursive(newal.getreference2(), fperight2+1);
-						}
-					}
-				} else {
-			//			std::cout << " try ins " << newal.getreference2() << " : " << fpleft2 << std::endl;
-					if(!fgaps) {
-						if(recursion){
-							insert_split_point(newal.getreference2(), fpeleft2);
-						}else{
-							insert_split_point_nonrecursive(newal.getreference2(), fpeleft2);
-						}
-					}
-					if(!sgaps) {
-						if(recursion){
-							insert_split_point(newal.getreference2(), speright2+1);
-						}else{
-							insert_split_point_nonrecursive(newal.getreference2(), speright2+1);
-
-						}
-					}
-
-				}
+		if(!multi_mode) {
+			split_into_alignment(&newal, sequence, position, recursion);
+		} else {
+			for(size_t i=0; i<new_als.size(); ++i) {
+				split_into_alignment(new_als.at(i), sequence, position, recursion);
 			}
 		}
-		if(newal.getreference2()==sequence) {
-			if(left2<position && right2>=position) {
-			//	std::cout<<"HERE!!"<<std::endl;
-				pw_alignment fp;
-				pw_alignment sp;
-				newal.split(false, position, fp, sp);
-				pw_alignment fpe;
-				pw_alignment spe;
-				
-				// do splitted parts have only gaps one of their reference sequences
-				bool fgaps = onlyGapSample(fp);
-				bool sgaps = onlyGapSample(sp);
-					
-				// find split part alignment ends on reference after removing end gaps
-				size_t fpeleft1 = (size_t) -1;
-				size_t fperight1 = (size_t) -1;
-				size_t speleft1 = (size_t) -1;
-				size_t speright1 = (size_t) -1;
-				if(!fgaps) {
-					fp.remove_end_gaps(fpe);
-					fpe.get_lr1(fpeleft1, fperight1);
-#if SPLITPRINT
-					std::cout << "newal fpe " << std::endl;
-					fpe.print();
-					std::cout  << std::endl;
-#endif
-				}
-				if(!sgaps) {
-					sp.remove_end_gaps(spe);
-					spe.get_lr1(speleft1, speright1);
-#if SPLITPRINT
-					std::cout << "newal spe " << std::endl;
-					spe.print();
-					std::cout << std::endl;
-#endif
-				}
-
-				
-				if(newal.getbegin1() < newal.getend1()) {	
-		//			std::cout << " try ins " << newal.getreference1() << " : " << spleft1 << std::endl;
-					if(!sgaps) {
-						if(recursion){
-							insert_split_point(newal.getreference1(), speleft1);
-						}else{
-							insert_split_point_nonrecursive(newal.getreference1(), speleft1);
-						}
-					}
-					if(!fgaps) {
-						if(recursion){
-							insert_split_point(newal.getreference1(), fperight1+1);
-						}else{
-							insert_split_point_nonrecursive(newal.getreference1(), fperight1+1);
-						}
-					}
-				} else {
-			//			std::cout << " try ins " << newal.getreference1() << " : " << fpleft1 << std::endl;
-					if(!fgaps) {
-						if(recursion){
-							insert_split_point(newal.getreference1(), fpeleft1);
-						}else{
-							insert_split_point_nonrecursive(newal.getreference1(), fpeleft1);
-						}
-					}
-					if(!sgaps) {
-						if(recursion){
-							insert_split_point(newal.getreference1(), speright1+1);
-						}else{
-							insert_split_point_nonrecursive(newal.getreference1(), speright1+1);
-						}
-					}
-				}
-			}
+// check if split point creates new split points with existing alignments in the overlap class
+		std::vector<const pw_alignment *> ol_als;
+		overl.interval_result_on_point(sequence, position, ol_als);
+		
+//		std::cout << " split into " << ol_als.size() << " overlap als " << std::endl;
+		for(size_t i=0; i<ol_als.size(); ++i) {
+			const pw_alignment * al = ol_als.at(i);
+			split_into_alignment(al, sequence, position, recursion);
 		}
-
-/*		const boost::icl::interval_map<size_t , std::set<const pw_alignment*> > & alonref = overl.get_alignments_interval(sequence);
-		boost::icl::interval_map<size_t, std::set<const pw_alignment*> >::const_iterator interval = alonref.find(position);
-	if(interval != alonref.end()){
-		std::set<const pw_alignment*> als = (*interval).second;
-		for(std::set<const pw_alignment*>::iterator it1 = als.begin(); it1 !=als.end(); it1++){
-			const pw_alignment *al = *it1;*/
-
-		const std::multimap<size_t, const pw_alignment &> & alonref = overl.get_als_on_reference_const(sequence);
-		for(std::multimap<size_t, const pw_alignment & >::const_iterator it = alonref.lower_bound(position); it!=alonref.end(); ++it) {
-			const pw_alignment & alr = it-> second;
-			const pw_alignment * al = &alr;
-				
-				
-	//			std::cout << " in ins " << sequence << " : " << position << " see: " << std::endl;
-	//			al->print();
-	//			std::cout << std::endl;
+	}	
+}
 
 
-			if(al->getreference1()!=al->getreference2()) {//TODO add the condition that ref1 == ref2 and two refs have overlap with each other
-			//	std::cout << "ref1 != ref2" <<std::endl;
-				size_t alleft;
-				size_t alright;
-				al->get_lr_on_reference(sequence, alleft, alright);
-				if(alright < position) {
-			//			std::cout << " break " << std::endl;
-					break;
-				}
-				if(alleft == position) {
-			//			std::cout << " break " << std::endl;
-					break;
-				} 
-				if(alright+1== position) {
-			//			std::cout << " break " << std::endl;
-					break;
-				}
-				if(alleft>position){
-			//			std::cout << " break " << std::endl;
-					break;
-				}
-			//		al->print(); 
-				//	std::cout<<"position"<<position<<std::endl;
-				//	std::cout<<"alleft"<<alleft<<std::endl;
-				//	std::cout<<"alright"<<alright<<std::endl;
-			//	assert(alleft < position && position <= alright);
-				pw_alignment fp;
-				pw_alignment sp;
-				pw_alignment fpe;
-				pw_alignment spe;
-				/*	for(size_t col = 0; col < al->alignment_length(); col++) {
-						char c1;
-						char c2;
-						al->alignment_col(col, c1, c2);
-						std::cout <<col <<"\t"<< c1<<"\t"<<c2<<std::endl;
-					}*/
-				//	std::cout<<"al length: "<< al->alignment_length() <<std::endl;
-				//	if(al->alignment_length()>1){
-
-				al->split_on_reference(sequence, position, fp, sp);
-				
+/*
+	TODO at the moment overlap, splitpoints and alignment_index do operation in the order of the total number of sequences
+	we can probably get faster and more memory efficient by trying to only do computations on sequences that are currently used
 
 
-				// do splitted parts have only gaps one of their reference sequences
-				bool fgaps = onlyGapSample(fp);
-				bool sgaps = onlyGapSample(sp);
-					
-				// find split part alignment ends on reference after removing end gaps
-				if(!fgaps) {
-					fp.remove_end_gaps(fpe);
-#if SPLITPRINT
-					std::cout << "al fpe " << std::endl;
-					fpe.print();
-					std::cout  << std::endl;
-#endif
-				}
-				if(!sgaps) {
-					sp.remove_end_gaps(spe);
-#if SPLITPRINT
-					std::cout << "al spe " << std::endl;
-					spe.print();
-					std::cout << std::endl;
-#endif
-				}
-
-
-
-
-					
-				if(sp.getreference1()==sequence) {
-
-
-					
-						if(al->getbegin2() < al->getend2()) {
-							if(!sgaps) {
-								insert_split_point(sp.getreference2(), spe.getbegin2());
-							} 
-							if(!sgaps) {
-								insert_split_point(sp.getreference2(), fpe.getend2()+1);
-							}
-
-
-						} else {
-							if(!fgaps) {
-								insert_split_point(sp.getreference2(), fpe.getend2());
-							}
-							if(!sgaps) {
-								insert_split_point(sp.getreference2(), spe.getbegin2()+1);
-							}
-						}
-					} else {
-
-
-
-
-						//	std::cout<<"Heya!!!"<<std::endl;
-						if(al->getbegin2() < al->getend2()) {
-							if(!sgaps) {
-								insert_split_point(sp.getreference1(), spe.getbegin1());
-							}
-							if(!fgaps) {
-								insert_split_point(sp.getreference1(), fpe.getend1()+1);
-							}
-						} else {
-							if(!fgaps) {
-								insert_split_point(sp.getreference1(), fpe.getend1());
-							}
-							if(!sgaps) {
-								insert_split_point(sp.getreference1(), spe.getbegin1()+1);
-							}
-						}
-					}
-				} else {
-					
-					size_t alleft1;
-					size_t alright1;
-					al->get_lr1(alleft1, alright1);
-					size_t alleft2;
-					size_t alright2;
-					al->get_lr2(alleft2, alright2);
-					if(position > alleft1 && position <= alright1) {
-		//				std::cout << "inone" << std::endl;
-						pw_alignment fp;
-						pw_alignment sp;
-						al->split(true, position, fp, sp);
-					pw_alignment fpe;
-					pw_alignment spe;
-					// do splitted parts have only gaps one of their reference sequences
-					bool fgaps = onlyGapSample(fp);
-					bool sgaps = onlyGapSample(sp);
-					
-					// find split part alignment ends on reference after removing end gaps
-					size_t fpeleft2 = (size_t) -1;
-					size_t fperight2 = (size_t) -1;
-					size_t speleft2 = (size_t) -1;
-					size_t speright2 = (size_t) -1;
-					if(!fgaps) {
-						fp.remove_end_gaps(fpe);
-						fpe.get_lr2(fpeleft2, fperight2);
-#if SPLITPRINT
-						std::cout << "al fpe " << std::endl;
-						fpe.print();
-						std::cout  << std::endl;
-#endif
-					}
-					if(!sgaps) {
-						sp.remove_end_gaps(spe);
-						spe.get_lr2(speleft2, speright2);
-#if SPLITPRINT
-						std::cout << "al spe " << std::endl;
-						spe.print();
-						std::cout << std::endl;
-#endif
-					}
-
-
-						
-							
-						if(al->getbegin2() < al->getend2()) {
-			//				std::cout << " spleft2 " << spleft2 << std::endl;
-							if(!sgaps) {
-								insert_split_point(sp.getreference2(), speleft2);
-							}
-							if(!fgaps) {
-								insert_split_point(sp.getreference2(), fperight2+1);
-							}
-						} else {
-			//				std::cout << " fpgetend2 " << fp.getend2() << std::endl;
-							if(!fgaps) {
-								insert_split_point(fp.getreference2(), fpe.getend2());
-							}
-							if(!sgaps) {
-								insert_split_point(fp.getreference2(), spe.getbegin2()+1);
-							}
-
-						}
-					}
-											
-					if(position > alleft2 && position <= alright2) {
-			//			std::cout << "intwo" << std::endl;
-						pw_alignment fp;
-						pw_alignment sp;
-						al->split(false, position, fp, sp);
-					pw_alignment fpe;
-					pw_alignment spe;
-					
-			// do splitted parts have only gaps one of their reference sequences
-					bool fgaps = onlyGapSample(fp);
-					bool sgaps = onlyGapSample(sp);
-					
-					// find split part alignment ends on reference after removing end gaps
-					size_t fpeleft1 = (size_t) -1;
-					size_t fperight1 = (size_t) -1;
-					size_t speleft1 = (size_t) -1;
-					size_t speright1 = (size_t) -1;
-					if(!fgaps) {
-						fp.remove_end_gaps(fpe);
-						fpe.get_lr1(fpeleft1, fperight1);
-#if SPLITPRINT
-						std::cout << "al fpe " << std::endl;
-						fpe.print();
-						std::cout  << std::endl;
-#endif
-					}
-					if(!sgaps) {
-						sp.remove_end_gaps(spe);
-						spe.get_lr1(speleft1, speright1);
-#if SPLITPRINT
-						std::cout << "al spe " << std::endl;
-						spe.print();
-						std::cout << std::endl;
-#endif
-					}
-
-
-
-
-//							data.alignment_fits_ref(&fp);
-//							data.alignment_fits_ref(&sp);
-						
-						if(al->getbegin1() < al->getend1()) {
-							if(!sgaps) {
-								insert_split_point(sp.getreference1(), speleft1);
-							}
-							if(!fgaps){
-								insert_split_point(sp.getreference1(), fperight1+1);
-							}
-						} else {
-							if(!fgaps) {
-								insert_split_point(sp.getreference1(), fpe.getend1());
-							}
-							if(!sgaps) {
-								insert_split_point(sp.getreference1(), spe.getbegin1()+1);
-							}
-						}
-					//	}
-					}
-				}
-			}
-			
-		}	
-
-	}
+*/
 
 template<typename overlap_type>
 void splitpoints_interval_tree<overlap_type>::split_all(std::set<pw_alignment, compare_pw_alignment> & remove_alignments, std::vector<pw_alignment> & insert_alignments ){
 		for(size_t i = 0; i <data.numSequences();i++){
-#if SPLITPRINT
-			std::cout << "current number of the split points on sequence " << i << " is "<< split_points.size() << std::endl;
-#endif
 			for(std::set<size_t>::iterator split = split_points.at(i).begin(); split!= split_points.at(i).end(); ++split){
 				size_t splitPoint = *split;
 			//	std::cout << "split point is "<< splitPoint << std::endl;
@@ -1149,10 +788,18 @@ void splitpoints_interval_tree<overlap_type>::split_all(std::set<pw_alignment, c
 				}		
 			}
 		}
-	//	std::cout << " in split all "<< remove_alignments.size() << " remove_alignments " << std::endl;
-		//Coordinate of the current alignment will be also added to the split points
+//		std::cout << " in split all "<< remove_alignments.size() << " remove_alignments " << new_als.size() <<  " mm " << multi_mode<< std::endl;
 		std::vector<pw_alignment>  split_pieces;
-		splits(newal, split_pieces);
+		if(!multi_mode)
+			splits(newal, split_pieces);
+		else {
+
+			for(size_t i=0; i<new_als.size(); ++i) {
+//				std::cout << " in split all, on new alignment " << i <<std::endl;
+				splits(*(new_als.at(i)), split_pieces);
+			}
+
+		}
 	//	std::cout << "remove als are: " << split_pieces.size() <<std::endl;
 		for(std::set<pw_alignment,compare_pw_alignment>::iterator removed = remove_alignments.begin(); removed != remove_alignments.end(); ++removed){
 		//	const pw_alignment & p_test = *removed;
@@ -1164,7 +811,8 @@ void splitpoints_interval_tree<overlap_type>::split_all(std::set<pw_alignment, c
 	//			split_pieces.at(i).print();
 #ifndef NDEBUG
 				if(!data.alignment_fits_ref(split_pieces.at(i))) {
-				//	std::cout<<"fails here!"<<std::endl;
+					assert(0);
+					std::cout<<"fails here!"<<std::endl;
 					exit(1);
 				}
 #endif
@@ -1193,12 +841,6 @@ void splitpoints_interval_tree<overlap_type>::split_all(std::set<pw_alignment, c
 				}
 			}
 		}
-
-		if(insert_alignments.size()==0 && remove_alignments.size()==0){//Just added to add independent als to the set of alignments when they dont split and dont add any ins or del. XXX ??
-	//		insert_alignments.push_back(newal);
-	//		std::cout << "new_al is ignored" <<std::endl;
-		}
-		
 					
 	}
 template<typename overlap_type>
@@ -1256,11 +898,11 @@ void splitpoints_interval_tree<overlap_type>::splits(const pw_alignment & pr,  s
 		p.print();
 		std::cout << std::endl;
 #endif
-
+		// insert if we did not cut p
 		if(!onlyGapSample(p)&& p.alignment_length()>1 && p.getbegin1()!=p.getend1() && p.getbegin2()!=p.getend2() ){	
 			insert_alignments.push_back(p);		
 		}
-	}
+}
 template<typename overlap_type>
 bool splitpoints_interval_tree<overlap_type>::onlyGapSample(const pw_alignment & p) const {
 		bool gapOnSample1 = true;
@@ -1285,5 +927,4 @@ bool splitpoints_interval_tree<overlap_type>::onlyGapSample(const pw_alignment &
 */
 
 
-
-
+#endif

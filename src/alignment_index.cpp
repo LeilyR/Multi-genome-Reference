@@ -336,7 +336,7 @@ void alignment_index::super_search_overlap_and_remove(const size_t & reference, 
 
 
 void alignment_index::super_search_overlap_no_remove(const size_t & reference, const size_t & left, const size_t & right, std::vector<const pw_alignment *> & result, std::multimap<size_t, std::pair<size_t, size_t> > & touched_intervals) const {
-
+	assert(0);
 
 
 }
@@ -348,4 +348,3 @@ void alignment_index::debug_print() const {
 	}
 }
 
-#include "intervals.cpp"

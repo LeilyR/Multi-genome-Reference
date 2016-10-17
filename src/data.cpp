@@ -656,7 +656,7 @@ void all_data::read_fasta_maf(std::string fasta_all_sequences, std::string maf_a
 		std::stringstream curseq;
 		std::string curname("");
 		std::string curacc("");
-		std::cout<<"check point "<<std::endl;
+//		std::cout<<"check point "<<std::endl;
 		while(getline(fastain, str)) {
 			if(str.at(0)=='>') {
 				if(0!=curname.compare("")) { // store previous sequence
@@ -842,6 +842,11 @@ void all_data::read_fasta_maf(std::string fasta_all_sequences, std::string maf_a
 								}else{
 									alignments.push_back(al);
 									setOfAls.insert(al);
+
+									located_alignment sal(this, al);
+									l_alignments.push_back(sal);
+
+
 								//	al.print();
 								}
 							}
@@ -871,6 +876,69 @@ void all_data::read_fasta_maf(std::string fasta_all_sequences, std::string maf_a
 		std::cout << skip_self << " self alignments were skipped" << std::endl;
 		std::cout << skip_alt << " alternative alignments of identical regions were skipped" << std::endl;
 		std::cout << skip_reverse << " reverse alignment duplicates were skipped" << std::endl;
+
+// slow test, do pw_alignment and located_alignment have the same content
+/*
+		for(size_t i=0; i<alignments.size(); ++i) {
+			const pw_alignment & al = alignments.at(i);
+			const located_alignment & sal = l_alignments.at(i);
+			std::cout << " ls " << al.alignment_length()<< " " << sal.alignment_length() << std::endl;
+			std::vector<std::pair<char, char> > ach;
+			std::vector<std::pair<char, char> > lch;
+			clock_t atime = clock();
+			for(size_t j=0; j<al.alignment_length(); ++j) {
+				char c1, c2;
+				al.alignment_col(j, c1, c2);
+				ach.push_back(std::make_pair(c1, c2));
+			}
+			atime = clock() - atime;
+			clock_t ltime = clock();
+			for(size_t j=0; j<sal.alignment_length(); ++j) {
+				char c1, c2;
+				sal.alignment_col(j, c1, c2);
+				lch.push_back(std::make_pair(c1, c2));
+			}
+			ltime = clock() - ltime;
+			assert(ach.size() == lch.size());
+		//	std::cout << " al l " << al.alignment_length() << " pwal time " << (double) atime/ CLOCKS_PER_SEC << " loal time " << (double)ltime/CLOCKS_PER_SEC << std::endl;
+
+			for(size_t j=0; j<ach.size(); ++j) {
+		//		std::cout << " col " << j << " " << lch.at(j).first << " " << lch.at(j).second << std::endl;
+				assert(ach.at(j).first == lch.at(j).first);
+				assert(ach.at(j).second == lch.at(j).second);
+
+
+			}
+
+// check get_column function
+			size_t l,r;
+			sal.get_lr1(l, r);
+			const dnastring & s1 = getSequence(sal.getreference1());
+			for(size_t j=l; j<= r; ++j) {
+				char c1 = s1.at(j);
+				if(sal.getbegin1() > sal.getend1()) c1 = dnastring::complement(c1);
+				size_t col;
+				sal.get_column(0, j, col);
+				char colc1, colc2;
+				sal.alignment_col(col, colc1, colc2);
+				assert(c1 == colc1);
+			}
+			sal.get_lr2(l, r);
+			const dnastring & s2 = getSequence(sal.getreference2());
+			for(size_t j=l; j<= r; ++j) {
+				char c2 = s2.at(j);
+				if(sal.getbegin2() > sal.getend2()) c2 = dnastring::complement(c2);
+				size_t col;
+				sal.get_column(1, j, col);
+				char colc1, colc2;
+				sal.alignment_col(col, colc1, colc2);
+				assert(c2 == colc2);
+			}
+
+			
+		}
+
+*/
 	
 	} else {
 		std::cerr << "Error: cannot read: " << maf_all_alignments << std::endl;
@@ -936,6 +1004,10 @@ all_data::~all_data() {
 	const pw_alignment & all_data::getAlignment(size_t index) const {
 		return alignments.at(index);
 	}
+const located_alignment & all_data::getLAlignment(size_t index) const {
+	return l_alignments.at(index);
+}
+
 	const std::vector<pw_alignment>& all_data::getAlignments()const{
 		return alignments;
 	}
@@ -2983,7 +3055,7 @@ void splitpoints::insert_split_point(size_t sequence, size_t position) {
 			const pw_alignment & p = data.getAlignment(i);
 			size_t acc1 = data.accNumber(p.getreference1());	
 			size_t acc2 = data.accNumber(p.getreference2());
-			for(size_t j = 0 ; j< p.getsample1().size()/3 ; j++){
+			for(size_t j = 0 ; j< p.alignment_length() ; j++){
 				char s1ch;
 				char s2ch;
 				p.alignment_col(j, s1ch, s2ch);
@@ -3046,7 +3118,7 @@ void splitpoints::insert_split_point(size_t sequence, size_t position) {
 		 sequence_cost.at(1).at(i)= -log2(cost_on_acc.at(i).at(data.accNumber(p.getreference2())));
 		}
 //		std::cout << " alsample size " << p.getsample1().size() << std::endl;
-		for(size_t i = 0 ; i< p.getsample1().size()/3; i++ ){
+		for(size_t i = 0 ; i< p.alignment_length(); i++ ){
 			char s1ch;
 			char s2ch;
 			p.alignment_col(i, s1ch, s2ch);

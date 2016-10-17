@@ -4,6 +4,8 @@
 #define MODEL_CPP
 #define PRINT 0
 
+
+
 /*
 	TODO we can make the slow part even faster:
 	As the repetitive part is already done, new insertions will probably not cut the repetitve part. Keep previous content fixed in the overlap class. A function to insert new pieces already cut in a way that they fit to the repetitve pieces
@@ -17,6 +19,42 @@ void initial_alignment_set<T,overlap_type>::compute(overlap_type & o) {
 //	compute_simple(o);
 	compute_vcover_clarkson(o);
 
+}
+/*
+input:
+	all_ins/all_rem contains modifications that were previously done to ovrlp
+	this_ins/rem contains new modifications that were just done to overlp
+
+output:
+	consolidated modifications in all_ins/rem
+	
+
+*/
+template<typename T, typename overlap_type>
+void initial_alignments_from_groups<T,overlap_type>::insert_alignment_sets(std::set<pw_alignment, compare_pw_alignment> & all_ins, std::set<pw_alignment, compare_pw_alignment> & all_rem, std::vector<pw_alignment> & this_ins, std::vector<pw_alignment> & this_rem) {
+	
+	for(size_t i=0; i<this_ins.size(); i++) {
+		const pw_alignment & al = this_ins.at(i);
+		std::set<pw_alignment>::iterator findr = all_rem.find(al);
+		if(findr!=all_rem.end()) {
+// al was previously removed. Now it was inserted again
+			all_rem.erase(al);
+		} else {
+			all_ins.insert(al);
+		}
+	}
+
+	for(size_t i=0; i<this_rem.size(); i++) {
+		const pw_alignment & al = this_rem.at(i);
+		std::set<pw_alignment>::iterator findr = all_ins.find(al);
+		if(findr!=all_ins.end()) {
+// al was previously inserted. Now it was removed again
+			all_ins.erase(al);
+		} else {
+			all_rem.insert(al);
+		}
+
+	}
 }
 
 
@@ -53,6 +91,28 @@ void initial_alignment_set<T,overlap_type>::insert_alignment_sets(overlap_type &
 }
 
 template<typename T, typename overlap_type>
+void initial_alignments_from_groups<T,overlap_type>::local_undo(overlap_type & ovrlp, std::set<pw_alignment, compare_pw_alignment> & all_inserted, std::set<pw_alignment , compare_pw_alignment> & all_removed) {
+	for(std::set< pw_alignment , compare_pw_alignment >::iterator it = all_inserted.begin(); it!=all_inserted.end(); it++) {
+		const pw_alignment & al = *it;
+	//	std::cout << "is gonna be removed2: "<<&al <<std::endl;
+	//	al.print();
+		ovrlp.remove_alignment(al);
+	}
+
+	for(std::set< pw_alignment, compare_pw_alignment >::iterator it = all_removed.begin(); it!= all_removed.end(); it++) {
+		const pw_alignment & ral = *it;
+		ovrlp.insert_without_partial_overlap(ral);
+
+// slow test
+//		ovrlp.test_partial_overlap();
+
+
+	}
+
+}
+
+
+template<typename T, typename overlap_type>
 void initial_alignment_set<T,overlap_type>::local_undo(overlap_type & ovrlp, std::set<pw_alignment, compare_pw_alignment> & all_inserted, std::set<pw_alignment , compare_pw_alignment> & all_removed) {
 	for(std::set< pw_alignment , compare_pw_alignment >::iterator it = all_inserted.begin(); it!=all_inserted.end(); it++) {
 		const pw_alignment & al = *it;
@@ -69,6 +129,20 @@ void initial_alignment_set<T,overlap_type>::local_undo(overlap_type & ovrlp, std
 }
 
 template<typename T, typename overlap_type>
+void initial_alignments_from_groups<T,overlap_type>::all_push_back(std::vector<pw_alignment> & inserted_alignments, vector<pw_alignment> & removed_alignments, std::set<pw_alignment , compare_pw_alignment> & all_inserted, std::set< pw_alignment, compare_pw_alignment> & all_removed ) {
+	for(std::set<pw_alignment>::iterator it = all_inserted.begin(); it!=all_inserted.end(); it++) {
+		const pw_alignment & p = *it;
+		inserted_alignments.push_back(p);
+	}
+
+	for(std::set<pw_alignment>::iterator it = all_removed.begin(); it!= all_removed.end(); it++) {
+		const pw_alignment & p = *it;
+		removed_alignments.push_back(p);
+	}
+
+}
+
+template<typename T, typename overlap_type>
 void initial_alignment_set<T,overlap_type>::all_push_back(std::vector<pw_alignment> & inserted_alignments, vector<pw_alignment> & removed_alignments, std::set<pw_alignment , compare_pw_alignment> & all_inserted, std::set< pw_alignment, compare_pw_alignment> & all_removed ) {
 	for(std::set<pw_alignment>::iterator it = all_inserted.begin(); it!=all_inserted.end(); it++) {
 		const pw_alignment & p = *it;
@@ -80,6 +154,124 @@ void initial_alignment_set<T,overlap_type>::all_push_back(std::vector<pw_alignme
 		removed_alignments.push_back(p);
 	}
 
+}
+
+
+template<typename T, typename overlap_type>
+void initial_alignments_from_groups<T,overlap_type>::lazy_split_full_insert_step(overlap_type & ovrlp, size_t level, size_t & rec_calls, const pw_alignment & alin, std::vector<pw_alignment> & inserted_alignments, vector<pw_alignment> & removed_alignments, double & local_gain) {
+
+//	std::cout << " full insert step on level " << level  << std::endl;
+
+	size_t orig_ovrlp_size = ovrlp.get_all().size();
+
+	std::set<pw_alignment, compare_pw_alignment> remove_als; 
+	std::vector<pw_alignment> insert_als;
+	splitpoints_interval_tree<overlap_type> spl2(alin, ovrlp, data);
+	spl2.recursive_splits();
+//	std::cout<< "inja!"<<std::endl;
+
+	spl2.split_all(remove_als, insert_als);
+//	std::cout<< "inja1!"<<std::endl;
+
+	size_t inserted_counter = 0;
+	if(remove_als.empty()) {
+// no remove als, we insert all pieces with positive gain
+		local_gain = 0;
+		for(size_t i=0; i<insert_als.size(); i++) {
+			double g1;
+			double g2;
+			model.gain_function(insert_als.at(i), g1, g2);
+			double avg = (g1 + g2) / 2.0;
+		//	std::cout << "avg "<< avg <<std::endl;
+			if(avg > 0) {
+				ovrlp.insert_without_partial_overlap(insert_als.at(i));
+
+//  
+//				ovrlp.test_partial_overlap();
+
+				inserted_alignments.push_back(insert_als.at(i));
+				local_gain+=avg;
+				inserted_counter++;
+			}
+		}		
+	//	std::cout << "full insert: " << level << " on al length " << alin.alignment_length() << " finally inserted pieces: " << inserted_counter << " real local gain " << local_gain << std::endl;		
+	// insert pieces for recursion:
+	} else {
+		std::set< pw_alignment , compare_pw_alignment> all_removed;
+		std::set<pw_alignment, compare_pw_alignment> all_inserted;
+		double lost_gain = 0;
+		for(std::set<pw_alignment, compare_pw_alignment>::iterator it = remove_als.begin(); it!=remove_als.end(); it++) {
+			const pw_alignment & ral = *it;
+			double gain1, gain2;
+			model.gain_function(ral, gain1, gain2);
+			double rav_gain = (gain1 + gain2)/2;
+			lost_gain += rav_gain;
+		//	std::cout << "is gonna be removed1: " << &ral<<std::endl;
+		//	ral.print();
+
+			ovrlp.remove_alignment(ral);
+			all_removed.insert(ral);
+		//			std::cout << "REM2 " << std::endl;
+		//	       		ral->print();
+		//			std::cout << std::endl;	
+		}
+
+		double max_parts_gain = 0;
+		std::multimap<double, const pw_alignment *> ordered_parts;
+		for(size_t i=0; i<insert_als.size(); i++) {
+			double gain1, gain2;
+			model.gain_function(insert_als.at(i), gain1, gain2);
+			double iav_gain = (gain1 + gain2)/2;
+			if(iav_gain > 0) {
+				ordered_parts.insert(std::make_pair(iav_gain, & insert_als.at(i)));
+				max_parts_gain+=iav_gain;
+			}
+
+		}
+	//	std::cout << "2nd split: " << level << " on al length " << alin.alignment_length() <<  " new remove " << remove_als.size() << " lost gain " << lost_gain <<
+	//	       	" new insert " << ordered_parts.size() << " gain "<<  max_parts_gain << std::endl;
+
+		if(max_parts_gain > lost_gain) {
+// we could get positive gain from recursive calls
+			double sum_of_gain = 0;
+			size_t alnum = 0;
+
+
+			for(std::multimap<double, const pw_alignment *>::reverse_iterator it = ordered_parts.rbegin(); it!=ordered_parts.rend(); ++it) {
+				double thisgain;
+				std::vector<pw_alignment> this_inserted;
+				std::vector<pw_alignment> this_removed;
+				const pw_alignment & thisal = *it->second;
+				std::vector<pw_alignment> alv;
+				alv.push_back(thisal);
+
+	//		std::cout <<"full insert function level "<< level << " start rec "<< alnum << " on al length " << thisal.alignment_length() << std::endl; 
+			// this function only changes ovrlp if this was locally good. We may need to undo the changes if they were globally bad
+			// we go back to normal non-recursive split function to avoid uneccessary splitting
+				lazy_split_insert_step(ovrlp, level + 1, rec_calls,  alv, this_inserted, this_removed, thisgain);
+				insert_alignment_sets(all_inserted, all_removed, this_inserted, this_removed);
+				sum_of_gain += thisgain;
+
+				alnum++;
+			}
+			if(sum_of_gain > lost_gain) {
+// recursive calls did result in positive gain
+// take this step
+				all_push_back(inserted_alignments, removed_alignments, all_inserted, all_removed);
+				local_gain = sum_of_gain - lost_gain;
+
+				assert(ovrlp.get_all().size() + removed_alignments.size() == orig_ovrlp_size + inserted_alignments.size());
+
+				return;
+			}
+
+		} 
+
+// we did not get positive gain, local undo
+		local_gain = 0;
+		local_undo(ovrlp, all_inserted, all_removed);
+	}
+	assert(ovrlp.get_all().size() + removed_alignments.size() == orig_ovrlp_size + inserted_alignments.size());
 }
 
 template<typename T, typename overlap_type>
@@ -183,6 +375,850 @@ void initial_alignment_set<T,overlap_type>::lazy_split_full_insert_step(overlap_
 }
 
 
+template<typename T, typename overlap_type>
+bool initial_alignments_from_groups<T,overlap_type>::try_rnodes_unselect(const std::vector<std::set<size_t> > & ins_to_rem, const std::vector<std::set<size_t> > & rem_to_ins, const std::vector<double> insert_gain, const std::vector<double> & remove_gain, const std::set<size_t> & rem_to_unselect, vector<bool> & ins_selected, vector<bool> & rem_selected, double & new_gain) const {
+	
+	std::set<size_t> ins_unsel; // if we unselect rem_to_unselect, we have to unselect ins_unsel
+	for(std::set<size_t>::const_iterator it = rem_to_unselect.begin(); it!=rem_to_unselect.end(); it++) {
+		size_t rem_uns = *it;
+		assert(rem_selected.at(rem_uns));
+		new_gain += remove_gain.at(rem_uns);
+		const std::set<size_t> & ru_neigh = rem_to_ins.at(rem_uns);
+		for(std::set<size_t>::const_iterator itt = ru_neigh.begin(); itt!=ru_neigh.end(); ++itt) {
+			if(ins_selected.at(*itt)) {
+				new_gain -= insert_gain.at(*itt);
+//				std::cout << " rem " << rem_uns << " has neigh " << *itt << std::endl;
+				ins_unsel.insert(*itt);
+			}
+		}
+	}
+	std::set<size_t> ins_unsel_n; // remove nodes neighboring ins_unsel, we may be able to also unselect them
+	for(std::set<size_t>::const_iterator it = ins_unsel.begin(); it!=ins_unsel.end(); ++it) {
+		size_t iu = *it;
+		const std::set<size_t> & iun = ins_to_rem.at(iu);
+		for(std::set<size_t>::const_iterator itt = iun.begin(); itt!=iun.end(); ++itt) {
+			size_t iuni = *itt;
+			if(rem_selected.at(iuni)) {
+				std::set<size_t>::const_iterator find_iuni = rem_to_unselect.find(iuni);
+				if(find_iuni == rem_to_unselect.end()) {
+					ins_unsel_n.insert(iuni);
+//					std::cout << " ins to unsel " << iu << " has neigh " << iuni << std::endl;
+				}
+			}
+		}
+
+	}
+
+	std::set<size_t> ins_unsel_n_unsel; // subsect of ins_unsel_n which can actually be unselected
+	for(std::set<size_t>::const_iterator it = ins_unsel_n.begin(); it!=ins_unsel_n.end(); ++it) {
+		size_t iu = *it;
+		bool canunsel = true;
+		const std::set<size_t> & iun = rem_to_ins.at(iu);
+		for(std::set<size_t>::const_iterator itt = iun.begin(); itt!=iun.end(); ++itt) {
+			size_t p = *itt;
+			if(ins_selected.at(p)) {
+				std::set<size_t>::const_iterator findp = ins_unsel.find(p);
+				if(findp == ins_unsel.end()) {
+					canunsel = false; // we have to keep remove alignment iu, because it is caused by insert_alignment p
+					break;
+				}
+
+			}
+
+		}
+		if(canunsel) {
+			ins_unsel_n_unsel.insert(iu);
+			new_gain += remove_gain.at(iu);
+		}
+	}
+ 
+	if(new_gain > 0) {
+		for(std::set<size_t>::const_iterator it = rem_to_unselect.begin(); it!=rem_to_unselect.end(); it++) {
+			rem_selected.at(*it) = false;
+		}
+		for(std::set<size_t>::const_iterator it = ins_unsel.begin(); it!=ins_unsel.end(); ++it) {
+			ins_selected.at(*it) = false;
+		}
+		for(std::set<size_t>::const_iterator it = ins_unsel_n_unsel.begin(); it!=ins_unsel_n_unsel.end(); ++it) {
+			rem_selected.at(*it) = false;
+		}
+		
+		return true;
+	} else {
+		new_gain = 0;
+		return false;
+	}
+
+}
+
+
+/*
+ Compute current upper bounds of gains 
+	a) sum of possible gain of all remaining (free & !taken) remove alignments, 
+	b) sum of gain of all insert alignments which are not yet taken
+
+*/
+template<typename T, typename overlap_type>
+void initial_alignments_from_groups<T,overlap_type>::ub_gain(const std::vector<std::set<size_t> > & ins_to_rem, const std::vector<std::set<size_t> > & rem_to_ins, const std::vector<double> & insert_gain, const std::vector<double> & remove_gain, 
+std::vector<bool> & rem_free, std::vector<bool> & ins_taken, std::vector<bool> & rem_taken, double & ub) const {
+	double uba = 0;
+
+	for(size_t i=0; i<rem_to_ins.size(); ++i) {
+	// if i is not taken alreay and free to take in that subtree
+		if(rem_free.at(i) && !rem_taken.at(i)) {
+			double rgain = remove_gain.at(i);
+			double igain_possible = 0;
+			const std::set<size_t> & ins_of_i = rem_to_ins.at(i); // taking rem i, could make it possible to take all these ins alignments
+			for(std::set<size_t>::const_iterator it = ins_of_i.begin(); it!=ins_of_i.end(); ++it) {
+				size_t j=*it;
+				if(!ins_taken.at(j)) {
+					igain_possible += insert_gain.at(j);		
+				}
+			}
+			double pgain = igain_possible - rgain;
+//			std::cout << "in ub r al " << i << " possible gain " << pgain << std::endl;
+			if(pgain > 0) {
+				uba += pgain;
+			}
+		}
+	}
+
+	double ubb = 0;
+	for(size_t i=0; i<insert_gain.size(); ++i) {
+		if(!ins_taken.at(i)) {
+			const std::set<size_t>  irem = ins_to_rem.at(i);
+			double igain = insert_gain.at(i);
+			bool cantakei = true; 
+			for(std::set<size_t>::iterator it = irem.begin(); it!=irem.end(); ++it) {
+				size_t j = *it;
+				if(!rem_taken.at(j)) {
+					if(!rem_free.at(j)) {
+						cantakei = false;
+					} 
+				}
+			}
+//			std::cout << " for ins "<< i << " possible gain is " << igain << std::endl;
+			if(cantakei) {
+				ubb+=igain;
+			}
+		}
+	}
+
+//	std::cout << " uba " << uba << " ubb " << ubb << std::endl;
+	ub = uba;
+	if(ubb < ub) ub = ubb;
+
+}
+
+
+
+
+
+
+/*
+	which insert alignments will directly pay of (insert gain higher than all removed gain caused by it)
+
+	as long as the data changes by this procedure we go on
+
+*/
+template<typename T, typename overlap_type>
+void initial_alignments_from_groups<T,overlap_type>::easy_insert(const std::vector<std::set<size_t> > & ins_to_rem, const std::vector<std::set<size_t> > & rem_to_ins, const std::vector<double> & insert_gain, const std::vector<double> & remove_gain, 
+std::vector<bool> & rem_free, std::vector<bool> & ins_taken, std::vector<bool> & rem_taken, double & extra_gain) const {
+	bool go_on = true;
+	while(go_on) {
+		go_on = false;
+
+		for(size_t i=0; i<ins_to_rem.size(); ++i) {
+			if(!ins_taken.at(i)) {
+				const std::set<size_t>  irem = ins_to_rem.at(i);
+				double igain = insert_gain.at(i);
+				for(std::set<size_t>::iterator it = irem.begin(); it!=irem.end(); ++it) {
+					size_t j = *it;
+					if(!rem_taken.at(j)) {
+						if(rem_free.at(j)) {
+							igain -= remove_gain.at(j);
+						} else {
+							igain = -numeric_limits<double>::max();
+							break;
+						}
+					}
+				}
+//				std::cout << " for ins " << i << " new direct gain is " << igain << std::endl;
+				if(igain > 0) {
+					ins_taken.at(i) = true;
+					for(std::set<size_t>::iterator it = irem.begin(); it!=irem.end(); ++it) {
+						size_t j = *it;
+						rem_taken.at(j) = true;
+						rem_free.at(j) = false;
+					}
+					go_on = true;
+//					std::cout << " TAKE AND GO ON " << std::endl;
+					extra_gain += igain;
+				}
+			}
+		}
+	}
+//	std::cout << " easy insert extra gain " << extra_gain << std::endl;
+
+}
+
+
+
+/*
+	chooses free rem alignment with best possible gain
+	then selects all other alignments that increase gain
+
+
+	in: old real_gain, out: new real_gain, possible_gain is in addition to new real_gain
+
+	we change free vector so that we will not try the same things twice
+
+
+
+1) which remove alignment has the highest possible gain (chosen)
+
+2) insert chosen into ins_taken and rem_taken, remove it from rem_free
+
+3) compute new gain
+
+*/
+template<typename T, typename overlap_type>
+void initial_alignments_from_groups<T,overlap_type>::take_highest_possible(const std::vector<std::set<size_t> > & ins_to_rem, const std::vector<std::set<size_t> > & rem_to_ins, const std::vector<double> & insert_gain, const std::vector<double> & remove_gain, 
+std::vector<bool> & rem_free, std::vector<bool> & ins_taken, std::vector<bool> & rem_taken, double & gain 
+) const {
+// search for highest possible gain
+	size_t chosen = rem_to_ins.size();
+	double best_possible = 0;
+
+// compute possible gain for each remove al, take best one
+	for(size_t i=0; i<rem_to_ins.size(); ++i) {
+		// if i is not taken alreay and free to take in that subtree
+		if(rem_free.at(i) && !rem_taken.at(i)) {
+			double rgain = remove_gain.at(i);
+			double igain_possible = 0;
+			const std::set<size_t> & ins_of_i = rem_to_ins.at(i); // taking rem i, could make it possible to take all these ins alignments
+			for(std::set<size_t>::const_iterator it = ins_of_i.begin(); it!=ins_of_i.end(); ++it) {
+				size_t j=*it;
+				if(!ins_taken.at(j)) {
+					igain_possible += insert_gain.at(j);		
+				}
+			}
+			double pgain = igain_possible - rgain;
+//			std::cout << " r al " << i << " possible gain " << pgain << std::endl;
+			if(pgain > best_possible) {
+				best_possible = pgain;
+				chosen = i;
+			}
+		}
+	}
+// choose the best
+	if(chosen < rem_to_ins.size()) {
+		// take chosen remove alignment
+		rem_free.at(chosen) = false;
+		rem_taken.at(chosen) = true;
+//		std::cout << " take " << chosen << std::endl;
+		gain -= remove_gain.at(chosen);
+	}
+
+
+}
+
+
+template<typename T, typename overlap_type>
+void initial_alignments_from_groups<T,overlap_type>::bb_step(const std::vector<std::set<size_t> > & ins_to_rem, const std::vector<std::set<size_t> > & rem_to_ins, const std::vector<double> & insert_gain, const std::vector<double> & remove_gain, const std::vector<bool> & rem_free, const std::vector<bool> & ins_taken, const std::vector<bool> & rem_taken, const double & real_gain, double & best_gain, std::vector<bool> & best_ins, std::vector<bool> & best_rem) const {
+
+
+// storage for both recursive calls
+	std::vector<bool> take_ins = ins_taken;
+	std::vector<bool> notake_ins = ins_taken;
+	std::vector<bool> take_rem = rem_taken;
+	std::vector<bool> notake_rem = rem_taken;
+	std::vector<bool> both_remfree = rem_free;
+
+
+	double take_gain = real_gain;
+	double notake_gain = real_gain;
+	double take_extra_gain = 0;
+	double notake_extra_gain = 0;
+	double take_ub;
+	double notake_ub;
+
+// select best remove alignment (highest possible gain), this modifies this_rem_free, to never make the same choice in this recursion subtree
+	take_highest_possible(ins_to_rem, rem_to_ins, insert_gain, remove_gain, both_remfree, take_ins, take_rem, take_gain);
+
+// do easy insertions in both
+	easy_insert(ins_to_rem, rem_to_ins, insert_gain, remove_gain, both_remfree, take_ins, take_rem, take_extra_gain);
+//	std::cout << " easy ins in take: " << take_extra_gain << std::endl;
+	easy_insert(ins_to_rem, rem_to_ins, insert_gain, remove_gain, both_remfree, notake_ins, notake_rem, notake_extra_gain);
+//	std::cout << " easy ins in notake: " << notake_extra_gain << std::endl;
+	take_gain += take_extra_gain;
+	notake_gain += notake_extra_gain;
+
+// compute upper bounds 
+	ub_gain(ins_to_rem, rem_to_ins, insert_gain, remove_gain, both_remfree, take_ins, take_rem, take_ub);
+	ub_gain(ins_to_rem, rem_to_ins, insert_gain, remove_gain, both_remfree, notake_ins, notake_rem, notake_ub);
+
+
+// found an optimum
+	if(take_gain > best_gain) {
+		best_gain = take_gain;
+		best_ins = take_ins;
+		best_rem = take_rem;
+	}
+	if(notake_gain > best_gain) {
+		best_gain = notake_gain;
+		best_ins = notake_ins;
+		best_rem = notake_rem;
+	}	
+
+
+
+// current upper bound more than lower bound (best previous)
+	if(take_gain + take_ub > best_gain) {
+		
+// take current remove alignment with highest possible gain
+		bb_step(ins_to_rem, rem_to_ins, insert_gain, remove_gain, both_remfree, take_ins, take_rem, take_gain, best_gain, best_ins, best_rem);
+
+	}
+
+	if(notake_gain + notake_ub > best_gain) {
+// never take current remove alignment with highest possible gain
+		bb_step(ins_to_rem, rem_to_ins, insert_gain, remove_gain, both_remfree, notake_ins, notake_rem, notake_gain, best_gain, best_ins, best_rem);
+	}
+
+}
+
+
+
+
+/*
+	TODO 
+this algorithm is not that good. I think it only gets called on small problems. If not it could be too small. 
+can we prove that the problem is NP-complete?
+Or is there an easy algorithm to solve it and I have no idea of it.
+To me it seems  like something that should be known from operations research
+
+
+*/
+
+
+
+template<typename T, typename overlap_type>
+void initial_alignments_from_groups<T,overlap_type>::select_from_groups(const std::vector<std::vector<pw_alignment> > & insert_als, const std::vector<std::vector<pw_alignment> > & rem_als_per_ins, std::vector<pw_alignment> & result_ins, std::vector<pw_alignment> & result_rem, double & total_gain) const {
+// sort all rem alignments:
+
+	clock_t st = clock();
+
+	clock_t sort_rem_time = clock();
+	std::map<pw_alignment, size_t, compare_pw_alignment> sorted_rem; // each remove alignment to a unique index in all_rem_als
+	std::vector<const pw_alignment *> all_rem_als;
+	for(size_t i=0; i<rem_als_per_ins.size(); ++i) {
+		for(size_t j=0; j<rem_als_per_ins.at(i).size(); ++j) {
+			const pw_alignment & al = rem_als_per_ins.at(i).at(j);
+			std::map<pw_alignment, size_t, compare_pw_alignment>::iterator findal = sorted_rem.find(al);
+			if(findal==sorted_rem.end()) {
+				sorted_rem.insert(std::make_pair(al, sorted_rem.size()));
+				all_rem_als.push_back(&al);
+			}
+		}
+	}
+	sort_rem_time = clock() - sort_rem_time;
+	std::cout << " TIME select from groups, sort remove alignments " << (double)sort_rem_time/CLOCKS_PER_SEC << std::endl;
+
+	clock_t sr_gain = clock();
+
+// compute all gains
+	std::vector<double> insert_gain(insert_als.size());
+	for(size_t i=0; i<insert_als.size(); ++i) {
+		double igain = 0;
+		for(size_t j=0; j<insert_als.at(i).size(); ++j) {
+			double g1, g2;
+			model.gain_function(insert_als.at(i).at(j), g1, g2);
+			double gain = (g1+g2)/2.0;
+			if(gain < 0) gain = 0;
+			igain += gain;
+		}
+		insert_gain.at(i) = igain;
+//		std::cout << " i " << i << " g " << igain << std::endl;
+	}
+	std::vector<double> rem_gain(all_rem_als.size());
+	for(size_t i=0; i<rem_gain.size(); ++i) {
+		double g1, g2;
+		model.gain_function(*(all_rem_als.at(i)), g1, g2);
+		double gain = (g1+g2)/2.0;
+		if(gain <0) gain = 0;
+		rem_gain.at(i) = gain;
+//		std::cout << " r " << i<< " g " << gain << std::endl;
+	}
+
+	sr_gain = clock() - sr_gain;
+	std::cout << " TIME select from groups compute gains " << (double)sr_gain/CLOCKS_PER_SEC << std::endl;
+
+	clock_t graph_time = clock();
+
+// bipartite dependency graph
+	std::vector<std::set<size_t> > ins_to_rem(insert_als.size());
+	std::vector<std::set<size_t> > rem_to_ins(all_rem_als.size());
+	size_t nume = 0;
+	for(size_t i=0; i<rem_als_per_ins.size(); ++i) {
+		for(size_t j=0; j<rem_als_per_ins.at(i).size(); ++j) {
+			const pw_alignment & al = rem_als_per_ins.at(i).at(j);
+			std::map<pw_alignment, size_t, compare_pw_alignment>::iterator findal = sorted_rem.find(al);
+			assert(findal!=sorted_rem.end());
+			size_t al_index = findal->second;
+			ins_to_rem.at(i).insert(al_index);
+			rem_to_ins.at(al_index).insert(i);
+			nume++;
+
+//			std::cout << " ins " << i << " rem " << al_index << std::endl;
+		}
+	}
+//	std::cout << " we have " << nume << " edges " << std::endl;
+
+	graph_time = clock() - graph_time;
+	std::cout << " TIME select groups make graph " << (double)graph_time /CLOCKS_PER_SEC << std::endl;
+// select nothing initially
+	vector<bool> ins_selected(insert_als.size(), 0);
+	vector<bool> rem_selected(all_rem_als.size(), 0);
+// backtracker is allowed to use all remove alignments
+	vector<bool> rem_free(all_rem_als.size(), 1);
+	double gain = 0;
+	double best_gain = 0;
+	std::vector<bool> best_ins(insert_als.size(), 0);
+	std::vector<bool> best_rem(all_rem_als.size(), 0);
+
+	clock_t rec_time = clock();
+	easy_insert(ins_to_rem, rem_to_ins, insert_gain, rem_gain, rem_free, ins_selected, rem_selected, gain);
+//	std::cout << " gain after initial easy insert " << gain << std::endl;
+// run backtracking algorithm to find best selection
+	bb_step(ins_to_rem, rem_to_ins, insert_gain, rem_gain, rem_free, ins_selected, rem_selected, gain, best_gain, best_ins, best_rem);
+	
+	rec_time = clock() - rec_time;
+
+	std::cout << " TIME select groups recursions " << (double) rec_time/CLOCKS_PER_SEC << std::endl;
+
+// check result
+	clock_t check_time = clock();
+	gain = 0;
+	for(size_t i=0; i<ins_selected.size(); ++i) {
+		if(best_ins.at(i)) {
+			gain+=insert_gain.at(i);
+			for(size_t j=0; j<insert_als.at(i).size(); ++j) {
+				result_ins.push_back(insert_als.at(i).at(j));
+			}
+		}
+	}
+	for(size_t i=0; i<rem_selected.size(); ++i) {
+		if(best_rem.at(i)) {
+			gain-=rem_gain.at(i);
+			result_rem.push_back(*(all_rem_als.at(i)));
+		}
+	}
+	check_time = clock() - check_time;
+	std::cout << " TIME select groups check " << (double) check_time / CLOCKS_PER_SEC << std::endl;
+
+//	std::cout << "XXX i taken " << result_ins.size() << " r taken " << result_rem.size() << " gain check " << gain << " " << best_gain << std::endl;
+
+/*
+
+	std::map<pw_alignment, size_t, compare_pw_alignment> sorted_rem; // each remove alignment to a unique index in all_rem_als
+	std::vector<const pw_alignment *> all_rem_als;
+	for(size_t i=0; i<rem_als_per_ins.size(); ++i) {
+		for(size_t j=0; j<rem_als_per_ins.at(i).size(); ++j) {
+			const pw_alignment & al = rem_als_per_ins.at(i).at(j);
+			std::map<pw_alignment, size_t, compare_pw_alignment>::iterator findal = sorted_rem.find(al);
+			if(findal==sorted_rem.end()) {
+				sorted_rem.insert(std::make_pair(al, sorted_rem.size()));
+				all_rem_als.push_back(&al);
+			}
+		}
+	}
+	
+// compute all gains
+	std::vector<double> insert_gain(insert_als.size());
+	for(size_t i=0; i<insert_als.size(); ++i) {
+		double igain = 0;
+		for(size_t j=0; j<insert_als.at(i).size(); ++j) {
+			double g1, g2;
+			model.gain_function(insert_als.at(i).at(j), g1, g2);
+			double gain = (g1+g2)/2.0;
+			igain += gain;
+		}
+		insert_gain.at(i) = igain;
+	}
+	std::vector<double> rem_gain(all_rem_als.size());
+	for(size_t i=0; i<rem_gain.size(); ++i) {
+		double g1, g2;
+		model.gain_function(*(all_rem_als.at(i)), g1, g2);
+		double gain = (g1+g2)/2.0;
+		rem_gain.at(i) = gain;
+	}
+
+// bipartite dependency graph
+	std::vector<std::set<size_t> > ins_to_rem(insert_als.size());
+	std::vector<std::set<size_t> > rem_to_ins(all_rem_als.size());
+	for(size_t i=0; i<rem_als_per_ins.size(); ++i) {
+		for(size_t j=0; j<rem_als_per_ins.at(i).size(); ++j) {
+			const pw_alignment & al = rem_als_per_ins.at(i).at(j);
+			std::map<pw_alignment, size_t, compare_pw_alignment>::iterator findal = sorted_rem.find(al);
+			assert(findal!=sorted_rem.end());
+			size_t al_index = findal->second;
+			ins_to_rem.at(i).insert(al_index);
+			rem_to_ins.at(al_index).insert(i);
+
+//			std::cout << " ins " << i << " rem " << al_index << std::endl;
+		}
+	}
+
+
+	vector<bool> ins_selected(insert_als.size(), 1);
+	vector<bool> rem_selected(all_rem_als.size(), 1);
+
+// At first, we select all insert alignments
+	total_gain =0;
+	for(size_t i=0; i<insert_als.size(); ++i) {
+		total_gain += insert_gain.at(i);
+
+//		std::cout << " i gain " << insert_gain.at(i) << std::endl;
+	}
+// This causes that we need to remove all remove alignments
+	for(size_t i=0; i<all_rem_als.size(); ++i) {
+		total_gain -= rem_gain.at(i);
+
+//		std::cout << " r gain " << rem_gain.at(i) << std::endl;
+	}
+
+//	std::cout << " in select from groups " << total_gain << " total gain from " << insert_als.size() << " ins groups and " << all_rem_als.size() << " rem alignments " << std::endl;
+// can we now increase total gain by not selecting some individual or pairs of remove alignments?
+// this is an approximation, the correct optimal solution would be to iterate over all subsets which is too slow
+
+
+	bool changed = true;
+	while(changed) { // if we managed to remove something, we will try all options again
+		changed = false;
+		// we try to remove a single remove alignment (and all insert alignments that can be combined with it to get positive gain)
+		for(size_t i=0; i<all_rem_als.size(); ++i) {
+			if(rem_selected.at(i)) {
+//				std::cout << " try unselect " << i << std::endl;
+				std::set<size_t> torem;
+				torem.insert(i);
+				double thisgain;
+				bool res = try_rnodes_unselect(ins_to_rem, rem_to_ins, insert_gain, rem_gain, torem, ins_selected, rem_selected, thisgain);
+				if(res) {
+//					std::cout << " res " << thisgain << std::endl;
+					total_gain += thisgain;
+					changed = true;
+				}
+			}
+		}
+
+
+		// we try to use a pair of remove alignments (and all insert alignments that can be combined with them to get positve gain)
+		for(size_t i=0; i<all_rem_als.size(); ++i) {
+			for(size_t j=i+1; j<all_rem_als.size(); ++j) {
+				if(rem_selected.at(i) && rem_selected.at(j)) {
+//				std::cout << " try unselect " << i<< " "<< j<< std::endl;
+					std::set<size_t> torem;
+					torem.insert(i);
+					torem.insert(j);
+					double thisgain;
+					bool res = try_rnodes_unselect(ins_to_rem, rem_to_ins, insert_gain, rem_gain, torem, ins_selected, rem_selected, thisgain);
+					if(res) {
+//						std::cout << "pair res " << thisgain << std::endl;
+						total_gain += thisgain;
+						changed = true;
+					}
+				}				
+			}
+		}
+
+		// triplet as well (no more than 3 for speed)
+		for(size_t i=0; i<all_rem_als.size(); ++i) {
+			for(size_t j=i+1; j<all_rem_als.size(); ++j) {
+				for(size_t k=j+1; k<all_rem_als.size(); ++k) {
+					if((rem_selected.at(i) && rem_selected.at(j)) && rem_selected.at(k)) {
+//						std::cout << " try unselect " << i <<" "<< j << " " << k<< std::endl;
+						std::set<size_t> torem;
+						torem.insert(i);
+						torem.insert(j);
+						torem.insert(k);
+						double thisgain;
+						bool res = try_rnodes_unselect(ins_to_rem, rem_to_ins, insert_gain, rem_gain, torem, ins_selected, rem_selected, thisgain);
+						if(res) {
+//							std::cout << "triple res " << thisgain << std::endl;
+							total_gain += thisgain;
+							changed = true;
+						}
+					}
+				}
+			}
+		}
+
+
+	}
+
+
+	double check_gain = 0;
+	for(size_t i=0; i<rem_selected.size(); ++i) {
+		if(rem_selected.at(i)) {
+			result_rem.push_back(*(all_rem_als.at(i)));
+			check_gain -= rem_gain.at(i);
+		}
+	}
+	size_t igroup_sel = 0;
+	for(size_t i=0; i<insert_als.size(); ++i) {
+		if(ins_selected.at(i)) {
+			igroup_sel++;
+			for(size_t j=0; j<insert_als.at(i).size(); ++j) {
+				result_ins.push_back(insert_als.at(i).at(j));
+			}
+			check_gain += insert_gain.at(i);
+		}
+	}
+
+//	std::cout << " select from groups result " << total_gain << " " << check_gain<< " total gain from " << igroup_sel << " ins groups and " << result_rem.size() << " rem alignments " << std::endl;
+*/
+	st = clock() - st;
+	select_groups_time += (double) st / CLOCKS_PER_SEC;
+}
+
+
+
+
+
+
+
+template<typename T, typename overlap_type>
+void initial_alignments_from_groups<T,overlap_type>::lazy_split_insert_step(overlap_type & ovrlp, size_t level, size_t & rec_calls, const std::vector<pw_alignment>  & als, std::vector<pw_alignment> & inserted_alignments, vector<pw_alignment> & removed_alignments, double & local_gain) {
+	rec_calls++; // count number of calls
+#if PRINT
+//	std::cout<< "al in lazy split recursion level " << level << " we have " << als.size() << " alignments"<< std::endl;
+	for(size_t i=0; i<als.size(); ++i) {
+		als.at(i).print();
+	}
+#endif
+	clock_t group_gain_time = clock();
+
+	size_t orig_ovrlp_size = ovrlp.get_all().size();
+// slow test
+//	ovrlp.test_partial_overlap();
+
+
+	std::vector<pw_alignment> insert_als;// insert and remove for next recursion
+	std::vector<pw_alignment> remove_als;
+
+// at first, we try to insert all at once
+	double group_gain_in = 0;
+	std::vector< const pw_alignment *> alsp(als.size());
+	for(size_t i=0; i<als.size(); ++i) {
+		double g1, g2;
+		model.gain_function(als.at(i), g1, g2);
+		group_gain_in += (g1+g2)/2.0;
+		alsp.at(i) = &(als.at(i));
+	}
+
+
+	group_gain_time = clock() - group_gain_time;
+	std::cout << " TIME group gain " << (double)group_gain_time/CLOCKS_PER_SEC<<std::endl;
+
+	clock_t split_time = clock();
+
+	splitpoints_interval_tree<overlap_type> spl1(alsp, ovrlp, data);
+	spl1.nonrecursive_splits();
+	std::set<pw_alignment, compare_pw_alignment> als_remove_als_set; 
+	spl1.split_all(als_remove_als_set, insert_als);
+	
+	split_time = clock() - split_time;
+	std::cout << " TIME split " << (double)split_time/CLOCKS_PER_SEC << std::endl;
+	
+	clock_t ins_rem_time = clock();
+
+	double als_rem_gain = 0;
+	double als_ins_gain = 0;
+	for(std::set<pw_alignment, compare_pw_alignment>::const_iterator it = als_remove_als_set.begin(); it!=als_remove_als_set.end(); ++it) {
+		remove_als.push_back(*it);
+		const pw_alignment & ral = *it;
+		double g1, g2;
+		model.gain_function(ral, g1, g2);
+		als_rem_gain += (g1+g2)/2.0;	
+	}
+	for(size_t i=0; i<insert_als.size(); ++i) {
+		const pw_alignment & ial = insert_als.at(i);
+		double g1, g2;
+		model.gain_function(ial, g1, g2);
+		als_ins_gain += (g1+g2)/2.0;
+	}
+	double group_gain = 0;
+// how much gain can we keep, when we take the entire group
+	double als_total_gain = als_ins_gain - als_rem_gain;
+
+	ins_rem_time = clock() - ins_rem_time;
+	std::cout << " TIME ins rem gains " << (double) ins_rem_time/CLOCKS_PER_SEC << std::endl;
+
+//	std::cout <<" l " << level << " groups size " << als.size()<<   " gain in " << group_gain_in << " split groups gain " << als_total_gain << std::endl;
+// if we keep less than 90%, we try to improve it using the slow select_from_groups function which takes only some of the alignments of the group
+	if(group_gain_in * 0.9 > als_total_gain) {
+		std::cout << " REDO " << std::endl;
+		
+		clock_t groups_time = clock();
+
+		// remove results from group split step
+		insert_als.clear();
+		remove_als.clear();
+
+		// inserting i from als into overlap would lead to remove remove_groups.at(i) from overlap and insert insert_groups.at(i) into overlap
+		std::vector<std::vector<pw_alignment> > insert_groups;
+		std::vector<std::vector<pw_alignment> > remove_groups;
+		for(size_t i=0; i<als.size(); ++i) {
+
+			const pw_alignment & al = als.at(i);
+	
+			splitpoints_interval_tree<overlap_type> spl(al, ovrlp, data);
+			// nonrecursive splits only eliminate direct partial overlap, we may need to go on in further steps of lazy_split_insert
+			spl.nonrecursive_splits();
+			// sets of alignments that need to be removed and inserted if we want the current alignment 
+			std::set<pw_alignment, compare_pw_alignment> al_remove_als_set; 
+			std::vector<pw_alignment> al_insert_als;
+			std::vector<pw_alignment> al_remove_als;
+			spl.split_all(al_remove_als_set, al_insert_als);
+			for(std::set<pw_alignment, compare_pw_alignment>::const_iterator it = al_remove_als_set.begin(); it!=al_remove_als_set.end(); ++it) {
+				al_remove_als.push_back(*it);
+			}
+			insert_groups.push_back(al_insert_als);
+			remove_groups.push_back(al_remove_als);
+		}
+	
+		groups_time = clock() - groups_time;
+		std::cout << " TIME make groups " << (double) groups_time / CLOCKS_PER_SEC << std::endl;
+
+		clock_t sgroups_time = clock();
+
+		// select a subset of als such that inserting it into o, yields the most gain
+		select_from_groups(insert_groups, remove_groups, insert_als, remove_als, group_gain);
+
+		sgroups_time = clock() - sgroups_time;
+		std::cout << " TIME select groups " << (double) sgroups_time / CLOCKS_PER_SEC << std::endl;
+//		std::cout << " select groups gain " << group_gain << std::endl;
+	} else {
+		group_gain = als_total_gain;
+	}
+//	std::cout << " GROUP gain " << group_gain <<  std::endl;
+
+
+//	std::cout << " ins "<< insert_als.size() << " rem " << remove_als.size() << std::endl;
+
+	local_gain = 0;
+
+// we continue if information gain is possible from the current group
+	if(group_gain > 0) {
+
+	
+#if PRINT
+		std::cout <<"initial: level " << level << " positive gain: " << group_gain << " split res rem " << remove_als.size() << " ins " << insert_als.size() << std::endl;
+#endif
+		if(remove_als.empty() ) {
+#if PRINT
+			std::cout << " no al to delete "<<std::endl;
+#endif
+
+			clock_t oparts_time = clock();
+//	Nothing to remove: Order parts by gain and insert into overlap using fully recursive alignment splits
+			std::multimap<double, const pw_alignment *> ordered_parts;
+			double max_parts_gain = 0;
+			for(size_t i=0; i<insert_als.size(); i++) {
+				const pw_alignment * al = & insert_als.at(i);
+				double g1, g2;
+				model.gain_function(insert_als.at(i), g1, g2);
+				double iav_gain = (g1 + g2)/2;
+				if(iav_gain > 0) {
+					max_parts_gain += iav_gain;
+					ordered_parts.insert(std::make_pair(iav_gain, al));
+				}
+//				std::cout << "INS  gain " <<iav_gain << std::endl;
+//				insert_als.at(i).print();
+//				std::cout << std::endl;
+			}
+			double children_gain = 0;
+			std::set<pw_alignment, compare_pw_alignment> l_inserted;
+			std::set<pw_alignment, compare_pw_alignment> l_removed;
+
+			oparts_time = clock() - oparts_time;
+			std::cout << " TIME no remove order parts " << (double) oparts_time/CLOCKS_PER_SEC << std::endl;
+
+			for(std::multimap<double, const pw_alignment *>::reverse_iterator rit = ordered_parts.rbegin(); rit!=ordered_parts.rend(); ++rit) {
+				pw_alignment nal = *(rit->second);
+				double lgain = 0;
+				std::vector<pw_alignment> local_inserted; // these alignments were actually inserted/removed by child calls
+				std::vector<pw_alignment> local_removed;
+				// full split step on single alignments with recursive split points that guarantee to eliminate all partial overlap
+				lazy_split_full_insert_step(ovrlp, level, rec_calls, nal, local_inserted, local_removed, lgain);
+				children_gain += lgain;
+				insert_alignment_sets(l_inserted, l_removed, local_inserted, local_removed);
+			}
+			all_push_back(inserted_alignments, removed_alignments, l_inserted, l_removed);
+			local_gain = children_gain;
+			assert(local_gain>=0); // remove_als was empty, therefore no loss of gain, no local_undo
+			assert(ovrlp.get_all().size() + removed_alignments.size() == orig_ovrlp_size + inserted_alignments.size());
+			return;
+		}
+
+
+// remove all
+
+		clock_t rtime = clock();
+		std::set<pw_alignment, compare_pw_alignment> all_inserted;
+		std::set<pw_alignment, compare_pw_alignment> all_removed;
+		size_t remove_count = 0;
+		double removed_gain = 0;
+		for(size_t i=0; i<remove_als.size(); ++i) {
+			const pw_alignment & pwa = remove_als.at(i);
+			all_removed.insert(pwa); 
+			double g1, g2;
+			model.gain_function(pwa, g1, g2);
+			double gain = (g1+g2)/2.0;
+			removed_gain+=gain;
+	//			std::cout <<"level " << level << "REMOVE NOW: " << std::endl;
+	//			pwa->print();
+	//			std::cout << " ovrlp size " << ovrlp.size() << std::endl;
+		//		std::cout << "is gonna be removed5: " << &pwa<<std::endl;
+		//		pwa.print();
+
+			ovrlp.remove_alignment(pwa);
+
+		
+			remove_count++;	
+		}
+
+		rtime = clock() - rtime;
+		std::cout << " TIME remove " << (double) rtime /CLOCKS_PER_SEC << std::endl;
+// 
+//	ovrlp.test_partial_overlap();
+
+// recursive insert
+		double next_group_gain = 0;
+		std::vector<pw_alignment> this_inserted;
+		std::vector<pw_alignment> this_removed;
+		lazy_split_insert_step(ovrlp, level + 1, rec_calls,  insert_als, this_inserted, this_removed, next_group_gain);
+		insert_alignment_sets(all_inserted, all_removed, this_inserted, this_removed);
+
+		if(next_group_gain > removed_gain) {
+			all_push_back(inserted_alignments, removed_alignments, all_inserted, all_removed);
+
+			local_gain = next_group_gain - removed_gain;
+
+		} else {
+//			std::cout << " gr gain was " << next_group_gain << " removed gain " << removed_gain << std::endl;
+//			std::cout << " UNDO ins " << all_inserted.size() << " rem " << all_removed.size() << std::endl;
+			local_undo(ovrlp, all_inserted, all_removed);
+			local_gain = 0;
+		}
+	}
+
+// TODO exclude double insert into overlp events to make this assertion work
+//	assert(ovrlp.get_all().size() + removed_alignments.size() == orig_ovrlp_size + inserted_alignments.size());
+
+}
+
 
 /*
 
@@ -205,7 +1241,7 @@ void initial_alignment_set<T,overlap_type>::lazy_split_insert_step(overlap_type 
 	// we continue if information gain is possible from the current alignment
 	local_gain = 0;
 #if PRINT
-	std::cout<< "al in lazy split recurssion level " << level << std::endl;
+	std::cout<< "al in lazy split recursion level " << level << std::endl;
 	al.print();
 #endif
 //	std::cout << "av_al_gain "<< av_al_gain <<std::endl;
@@ -372,6 +1408,155 @@ void initial_alignment_set<T,overlap_type>::lazy_split_insert_step(overlap_type 
 
 }
 
+/* TODO
+	maybe we can increase the amount of gain taken by 
+	integrating all the groups that were not taken into an empty overlap structure and then inserting its groups in the real o
+*/
+
+template<typename T, typename overlap_type>
+void initial_alignments_from_groups<T,overlap_type>::compute(overlap_type & o, std::string ihead,  std::string & info){
+// TODO why does compute take so long on leftover alignments?
+	size_t used = 0;
+	size_t not_used = 0;
+	double total_gain = 0;
+	size_t pcs_ins = 0;
+	size_t pcs_rem = 0;
+
+	double longtime = 0;
+	size_t longtime_at = 0;
+	double long_groupstime = 0;
+
+	size_t long_groupsize = 0;
+	size_t long_groupins = 0;
+	size_t long_grouprem = 0;
+	double long_groupgain = 0;
+
+	std::cout << " IAS COMPUTE START, we have " << sorted_original_als.size() << " groups " << std::endl;
+	for (size_t i=0; i<sorted_original_als.size(); ++i) {
+
+		clock_t ins_time = clock();
+	
+		std::vector<pw_alignment> als;
+		for(size_t j=0; j<sorted_original_als.at(i).size(); ++j) {
+			const pw_alignment & al = *(sorted_original_als.at(i).at(j));
+			als.push_back(al);
+		}
+		double gain_of_als = 0;
+
+
+		
+
+
+
+#if PRINT
+		std::cout << "on alignment group " << i << " with " << als.size() << " alignments"<< std::endl;
+		cout << " start recursive lazy insert tree on " << endl;
+#endif
+		for(size_t j=0; j<als.size(); ++j) {
+			double g1, g2;
+			model.gain_function(als.at(j), g1, g2);
+			double gain = (g1+g2)/2.0;
+			gain_of_als+=gain;	
+#if PRINT
+			(als.at(j)).print();
+			std::cout << std::endl;
+#endif
+
+		}
+#if PRINT
+		std::cout << "group gain " << gain_of_als << std::endl;
+#endif
+
+/*		std::cout << " Current overlap content " << std::endl;
+		const std::set<pw_alignment, compare_pw_alignment> oar = o.get_all();
+		for(std::set<pw_alignment, compare_pw_alignment>::const_iterator it = oar.begin(); it!=oar.end(); ++it) {
+			it->print();
+		}
+*/
+
+		clock_t ltime = clock();
+
+		std::vector<pw_alignment> ins_als;
+		std::vector<pw_alignment> rem_als;
+		size_t count_rec_calls = 0;
+		double gain_taken = 0;
+		select_groups_time = 0;
+		lazy_split_insert_step(o,0, count_rec_calls, als, ins_als, rem_als, gain_taken);//Splits alignments that have overlap with 'al'
+		
+		ltime = clock() - ltime;
+		double lts = (double)ltime / CLOCKS_PER_SEC;
+
+		if(lts > 10) {
+			longtime = lts;
+			longtime_at = i;
+			long_groupstime = select_groups_time;
+			long_groupsize = als.size();
+			long_groupins = ins_als.size();
+			long_grouprem = rem_als.size();
+			long_groupgain = gain_of_als;
+		}
+
+		stringstream str;
+		str <<ihead << ", ias compute " << i << "of "<< sorted_original_als.size() << " we had " << als.size() << " als in " << ins_als.size() << " out " << rem_als.size() <<  " gain " << gain_taken << " of " << gain_of_als << " time " << lts << " last long time " << longtime << " at " << longtime_at<< " in select gr " << long_groupstime << " size " << long_groupsize << " ins " << long_groupins << " rem " << long_grouprem << " allgain " << long_groupgain<<  " in overlap " << o.get_all().size() ;
+#pragma omp critical(scheduling)
+{
+		info = str.str();
+}
+
+
+		double rgain = 0;
+		double igain = 0;
+		double gain1, gain2;
+		for(size_t j=0; j<ins_als.size(); ++j) {
+			model.gain_function(ins_als.at(j), gain1, gain2);
+			double vgain = (gain1+gain2)/2;
+			igain+=vgain;
+		}
+		for(size_t j=0; j<rem_als.size(); ++j) {
+			model.gain_function(rem_als.at(j), gain1, gain2);
+			double vgain = (gain1+gain2)/2;
+			rgain+=vgain;
+		}
+		
+
+		double checkgain = igain - rgain;
+
+
+		if(!ins_als.empty()) {
+			used++;
+			total_gain+=gain_of_als;
+			pcs_ins+=ins_als.size();
+			pcs_rem+=rem_als.size();
+			std::cout << " alignment taken "<< std::endl;
+		} else {
+			not_used++;
+			std::cout << " alignment not taken " << std::endl;
+		}
+		
+		std::cout << " on alignments " << i << " number " << als.size() << " gain " << gain_taken <<" of " << gain_of_als << " recursive lazy split insert results:" << std::endl;
+		std::cout << " al " << i << " gain in " << igain << " gain out " << rgain << " check gain (ins - rem) " << checkgain << std::endl;
+		std::cout << " out: " << rem_als.size() << " gain " << rgain << " in: " << ins_als.size() << " gain " << igain << std::endl;
+		std::cout << " total gain until here: " << total_gain << " needed " << count_rec_calls<< " recursive lazy split insert calls " << std::endl;
+
+
+		ins_time = clock() - ins_time;
+		std::cout << " INSERT "<< i << " time " << (double)ins_time/CLOCKS_PER_SEC<< " lazy time " << (double)ltime/CLOCKS_PER_SEC << std::endl;
+//		std::cout << " CHECK PO on " << o.get_all().size() << std::endl;
+//		o.test_partial_overlap();
+		
+
+
+	}
+	result_gain = total_gain;
+	used_alignments = used;
+	std::cout << "Input size " << sorted_original_als.size() << " max gain " << max_gain << std::endl;
+	std::cout << "Used " << used << " alignments with total gain " << total_gain << " not used: " << not_used << std::endl;
+	std::cout << "pieces removed: " << pcs_rem << " pieces inserted: " << pcs_ins << std::endl;
+
+
+
+
+}
 
 
 template<typename T, typename overlap_type>
@@ -535,8 +1720,8 @@ void initial_alignment_set<T,overlap_type>::compute_simple(overlap_type & o) {
 				pcs_ins++;
 				}
 			}
-// TODO
-			o.test_partial_overlap();
+// slow check
+//			o.test_partial_overlap();
 			total_gain+=gain_of_al;
 
 		} else {
@@ -593,7 +1778,7 @@ void initial_alignment_set<T,overlap_type>::overlap_graph(std::vector<std::set<s
 		size_t left1, right1, left2, right2;
 	//	cout << " on al " << i << endl;
 
-		al->get_lr1(left1, right1);//TODO Parallel
+		al->get_lr1(left1, right1);
 		search_area(left1, right1, all_left_pos.at(r1), edges.at(i));
 		al->get_lr2(left2, right2);
 		search_area(left2, right2, all_left_pos.at(r2), edges.at(i));
@@ -626,7 +1811,7 @@ void initial_alignment_set<T,overlap_type>::remove_val(size_t index, std::map<si
 	assert(findi!=index_to_weight.end());
 	double weight = findi->second;
 	index_to_weight.erase(findi);
-	pair<std::multimap<double, size_t>::iterator, std::multimap<double, size_t>::iterator > eqr = weight_to_index.equal_range(weight);
+	std::pair<std::multimap<double, size_t>::iterator, std::multimap<double, size_t>::iterator > eqr = weight_to_index.equal_range(weight);
 	for(std::multimap<double, size_t>::iterator it = eqr.first; it!=eqr.second; ++it) {
 		size_t thisindex = it->second;
 		if(thisindex == index) {
@@ -726,7 +1911,7 @@ void initial_alignment_set<T,overlap_type>::compute_vcover_clarkson(overlap_type
 	}
 
 
-	set<size_t> removed; // nodes removed = vertex cover 
+	std::set<size_t> removed; // nodes removed = vertex cover 
 	double orig_weight_removed = 0;
 
 	while(!weight_to_index.empty()) {
@@ -840,7 +2025,7 @@ void initial_alignment_set<T,overlap_type>::find_als_weight(std::set<const pw_al
 		}else{
 			weight = (av_gain/1);
 		}
-		sorter.insert(make_pair(weight, *it));
+		sorter.insert(std::make_pair(weight, *it));
 	}
 	for(std::multimap<double, size_t>::reverse_iterator rit = sorter.rbegin(); rit!=sorter.rend(); rit++) {
 		sorted_original_als.at(at) = backup.at(rit->second);
@@ -3116,4 +4301,7 @@ void affpro_clusters<tmodel,overlap_type>::add_alignment(const pw_alignment & al
 		return suffixes.at(seq_id);
 	}
 */
+
+#include "overlap.cpp"
+
 #endif

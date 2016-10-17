@@ -328,6 +328,89 @@ void alignment_contexts<reader>::read_alignment_2_1(const pw_alignment & pw) {
 	assert(at_al_col == pw.alignment_length());
 }
 
+/*
+	This function can have small counting errors at the edges of the block
+	for computing costs it should not matter.
+	Do not use the function for encoding!
+
+*/
+template<typename reader>
+void alignment_contexts<reader>::read_alignment_1_2(const pw_alignment & pw, const size_t & from, const size_t & to) {
+//	pw.print();
+	std::string context;
+	for(size_t i=level; i>0; --i) {
+		size_t numk = i-1;
+		if(numk > NUM_KEEP_DYN-1) numk = NUM_KEEP_DYN;
+		char keepc = dynamic_mc_model::modification_character(-1, -1, -1, numk);
+		context.append(1, keepc);
+	}
+//	std::cout << "first al context is "<<int(context.at(0)) << " " << int(context.at(1)) << std::endl;
+	size_t at_al_col = from;
+	while(at_al_col <= to) {
+
+		char modc;
+		char onc;
+		size_t len;
+		next_modification_1_2(pw, at_al_col, modc, onc, len);
+		
+		// add current known base to context
+		std::string newcontext = context;
+		newcontext.append(1, onc);
+
+
+	//	std::cout << " found con at " << at_al_col << " is " ;
+	//	for(size_t i=0; i<newcontext.length(); ++i) {
+	//		std::cout << " " << (size_t)newcontext.at(i);
+	//	}
+	//	std::cout << std::endl;
+
+		rd.see_context(newcontext, (size_t)modc);
+		
+		// update mod context for next round
+		context = context.substr(1);
+		context.append(1, modc);
+			
+		at_al_col += len;
+	}
+
+}
+
+
+template<typename reader>
+void alignment_contexts<reader>::read_alignment_2_1(const pw_alignment & pw, const size_t & from, const size_t & to) {
+
+	std::string context;
+	for(size_t i=level; i>0; --i) {
+		size_t numk = i-1;
+		if(numk > NUM_KEEP_DYN-1) numk = NUM_KEEP_DYN-1;
+		char keepc = dynamic_mc_model::modification_character(-1, -1, -1, numk);
+		context.append(1, keepc);
+	}
+	size_t at_al_col = from;
+	while(at_al_col <= to) {
+
+		char modc;
+		char onc;
+		size_t len;
+		next_modification_2_1(pw, at_al_col, modc, onc, len);
+		
+		// add current known base to context
+		std::string newcontext = context;
+		newcontext.append(1, onc);
+
+		rd.see_context(newcontext, (size_t)modc);
+		
+		// update mod context for next round
+		context = context.substr(1);
+		context.append(1, modc);
+			
+		at_al_col += len;
+	}
+
+}
+
+
+
 void a_reader_counter::see_context(const std::string & context, size_t modification) {
 	
 	std::map<std::string, std::vector<size_t> >::iterator findc = countsmap.find(context);
@@ -2197,6 +2280,8 @@ void dynamic_mc_model::train(std::ofstream & outs){
 
 void dynamic_mc_model::cost_function(const pw_alignment& p , double & c1 , double & c2 , double & m1 , double & m2)const{
 
+//	std::cout << " GAIN F , cached " << p.is_cost_cached() << std::endl;
+
 	if(p.is_cost_cached()) {
 		c1 = p.get_create1();
 		c2 = p.get_create2();
@@ -2205,48 +2290,101 @@ void dynamic_mc_model::cost_function(const pw_alignment& p , double & c1 , doubl
 		return;
 	}
 
+	c1 = 0;
+	c2 = 0;
+	m1 = 0; 
+	m2 = 0;
+	vector<bool> blocks_cached;
+	p.is_block_cached(blocks_cached);
 
 
+// get models
 	size_t a1 = data.accNumber(p.getreference1());
 	size_t a2 = data.accNumber(p.getreference2());
-	vector<double> ccost(2,0);
-	vector<double> mcost(2,0);
-// compute alignment cost
 	const std::map< std::string, std::vector<double> > & model12 = alignment_model_costs.at(a1).at(a2);
 	const std::map< std::string, std::vector<double> > & model21 = alignment_model_costs.at(a2).at(a1);
-
-	a_reader_costs costs12(model12);
-	a_reader_costs costs21(model21);
-
-	acontext_cost ccost12(costs12, MAX_ALIGNMENT_MARKOV_CHAIN_LEVEL);
-	acontext_cost ccost21(costs21, MAX_ALIGNMENT_MARKOV_CHAIN_LEVEL);
-	
-	ccost12.read_alignment_1_2(p);
-	ccost21.read_alignment_2_1(p);
-
-	m1=costs12.cost_sum + alignment_base_cost.at(a1).at(a2);
-	m2=costs21.cost_sum + alignment_base_cost.at(a2).at(a1);
-
-	mcost.at(0) = m1;
-	mcost.at(1) = m2;
-
-// compute sequence cost
 	const std::map< std::string, std::vector<double> > & model1 = sequence_model_costs.at(a1);
 	const std::map< std::string, std::vector<double> > & model2 = sequence_model_costs.at(a2);
-
-//	std::cout << " acc 1 " << p.getreference1() << " costs size " << sequence_model_costs.at(a1).size() << " hv size " << sequence_model_highs.at(a1).size() << std::endl;
+// alignment readers
+	a_reader_costs costs12(model12);
+	a_reader_costs costs21(model21);
+	acontext_cost ccost12(costs12, MAX_ALIGNMENT_MARKOV_CHAIN_LEVEL);
+	acontext_cost ccost21(costs21, MAX_ALIGNMENT_MARKOV_CHAIN_LEVEL);
+// sequence readers
 	s_reader_costs costs1(model1);
 	s_reader_costs costs2(model2);
-
 	scontext_cost scost1(costs1, MAX_SEQUENCE_MARKOV_CHAIN_LEVEL);
 	scontext_cost scost2(costs2, MAX_SEQUENCE_MARKOV_CHAIN_LEVEL);
+	vector<double> ccost(2,0);
+	vector<double> mcost(2,0);
 	
-	scost1.read_sequence(data.getSequence(p.getreference1()), p.getbegin1(), p.getend1());
-	scost2.read_sequence(data.getSequence(p.getreference2()), p.getbegin2(), p.getend2());
+	if(blocks_cached.empty()) {
+// pw_alignment, doing blocks separately is not efficient as we do not know where the gaps are in advance
 
-	c1 = costs1.cost_sum;
-	c2 = costs2.cost_sum;
+		ccost12.read_alignment_1_2(p);
+		ccost21.read_alignment_2_1(p);
 
+// compute alignment cost
+		m1=costs12.cost_sum + alignment_base_cost.at(a1).at(a2);
+		m2=costs21.cost_sum + alignment_base_cost.at(a2).at(a1);
+// compute sequence cost
+		scost1.read_sequence(data.getSequence(p.getreference1()), p.getbegin1(), p.getend1());
+		scost2.read_sequence(data.getSequence(p.getreference2()), p.getbegin2(), p.getend2());
+	
+		c1 = costs1.cost_sum;
+		c2 = costs2.cost_sum;
+
+
+
+	} else {
+// located_alignment, we can find block borders on both reference efficiently
+		c1 = 0.0;
+		c2 = 0.0;
+		m1 = 0.0;
+		m2 = 0.0;
+		for(size_t bl = 0; bl < blocks_cached.size(); ++bl) {
+			if(!blocks_cached.at(bl)) {
+				alblock & blo = p.getblocks().at(bl); 
+			
+				size_t r1fr, r2fr, r1to, r2to;
+				p.alignment_position(blo.cfrom, r1fr, r2fr);
+				p.alignment_position(blo.cto, r1to, r2to);
+// read alignment block
+				ccost12.read_alignment_1_2(p, blo.cfrom, blo.cto);
+				ccost21.read_alignment_2_1(p, blo.cfrom, blo.cto);
+// read sequence block
+				scost1.read_sequence(data.getSequence(p.getreference1()), r1fr, r1to);
+				scost2.read_sequence(data.getSequence(p.getreference2()), r2fr, r2to);
+				
+				p.getblocks().at(bl).c1 = costs1.cost_sum;
+				p.getblocks().at(bl).c2 = costs2.cost_sum;
+				p.getblocks().at(bl).m1 = costs12.cost_sum;
+				p.getblocks().at(bl).m2 = costs21.cost_sum;
+// reset cost adders for next block
+				costs1.cost_sum = 0.0;
+				costs2.cost_sum = 0.0;
+				costs12.cost_sum = 0.0;
+				costs21.cost_sum = 0.0;
+				p.set_block_cached(bl);
+			}
+			c1 += p.getblocks().at(bl).c1;
+			c2 += p.getblocks().at(bl).c2;
+			m1 += p.getblocks().at(bl).m1;
+			m2 += p.getblocks().at(bl).m2;
+		}
+		m1 += alignment_base_cost.at(a1).at(a2);
+		m2 += alignment_base_cost.at(a2).at(a1);
+	}
+
+
+
+
+	
+
+//	std::cout << " acc 1 " << p.getreference1() << " costs size " << sequence_model_costs.at(a1).size() << " hv size " << sequence_model_highs.at(a1).size() << std::endl;
+	
+	mcost.at(0) = m1;
+	mcost.at(1) = m2;
 	ccost.at(0) = c1;
 	ccost.at(1) = c2;
 

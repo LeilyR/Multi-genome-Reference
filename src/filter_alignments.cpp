@@ -128,7 +128,7 @@
 
 
 		std::multimap<double, const pw_alignment *> gain_to_ra;
-		const size_t num_als = 100; // TODO this number can be decrease to run the program faster for debugging
+		const size_t num_als = 30; // TODO this number can be decrease to run the program faster for debugging
 		for(size_t i=0; i< 10*num_als; i++) {
 			int r = rand();
 			size_t ri = (size_t) ( (double)r / (double) RAND_MAX * alvec.size());
@@ -940,7 +940,7 @@ void alignment_filter::filter_als() {
 		sum_on_acc.at(a1).at(a2)+=extra_gain.at(i);
 	}
 	std::vector<bool> keep(alvec.size(), 0);
-	double we_want = 0.95 * sum;
+	double we_want = 0.9 * sum;
 	double we_have = 0;
 	for(std::multimap<double, size_t>::reverse_iterator rit = sgtoid.rbegin(); rit!=sgtoid.rend(); ++rit) {
 		double g = rit->first;
@@ -959,7 +959,7 @@ void alignment_filter::filter_als() {
 
 	for(size_t a1=0; a1<data.numAcc(); ++a1) {
 		for(size_t a2=a1; a2<data.numAcc(); ++a2) {
-			double we_want = 0.90 * sum_on_acc.at(a1).at(a2);
+			double we_want = 0.75 * sum_on_acc.at(a1).at(a2);
 			double we_have = 0;
 			for(std::multimap<double, size_t>::reverse_iterator rit = sti_on_ref.at(a1).at(a2).rbegin(); rit!=sti_on_ref.at(a1).at(a2).rend(); ++rit) {
 				double g = rit->first;
@@ -994,7 +994,7 @@ void alignment_filter::filter_als() {
 		}
 	}
 	
-	we_want = 0.75 * missing_orig_gain;
+	we_want = 0.5 * missing_orig_gain;
 	we_have = 0;
 	for(std::multimap<double, size_t>::reverse_iterator rit = missing_map.rbegin(); rit!=missing_map.rend(); ++rit) {
 		double g = rit->first;
@@ -1042,7 +1042,7 @@ void alignment_filter::filter_als() {
 	std::cout << " Longest erased alignment has length " << longest_erased << " highest gain erased is " << best_erased << std::endl;
 }
 
-#include "intervals.cpp"
+// #include "intervals.cpp"
 
 #endif
 

@@ -472,8 +472,8 @@
 						std::cout << "center " << center << std::endl;
 						std::vector<std::string> center_parts;
 						strsep(center, ":" , center_parts);
-						unsigned int cent_ref = atoi(center_parts.at(1).c_str());
-						unsigned int cent_left = atoi(center_parts.at(2).c_str());
+						unsigned int cent_ref = atoi(center_parts.at(0).c_str()); // TODO I fixed this line
+						unsigned int cent_left = atoi(center_parts.at(1).c_str());
 						unsigned int center_l;
 						unsigned int center_h;
 						for(size_t j = 0; j < partition.size(); j++){
