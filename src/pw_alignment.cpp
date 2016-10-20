@@ -1073,6 +1073,25 @@ bool pw_alignment::equals(const pw_alignment & al) const {
 			return true;
 		} 	
 	} 
+
+
+// when both refs are equal we can flip content (nonflipped case already handled in first condition)
+       if( (al.getreference1() == al.getreference2()) &&
+           (references.at(0) == references.at(1)) &&
+           (references.at(0) == al.getreference1()) ) {
+               if(
+                       al.getbegin1() == begins.at(0) &&
+                       al.getend1() == ends.at(0) &&
+                       al.getbegin2() == begins.at(1) &&
+                       al.getend2() == ends.at(0) 
+
+
+               ) return true;
+
+
+       }
+
+
 	return false;
 }
 
@@ -1246,9 +1265,11 @@ located_alignment::located_alignment(const located_alignment & p) {
 	begins = p.begins;
 	ends = p.ends;
 	references = p.references;
+	costs_cached = p.costs_cached;
+       	create_costs = p.create_costs;
+       	modify_costs = p.modify_costs;
 
 
-// TODO 
 
 }
 
@@ -1734,7 +1755,7 @@ void located_alignment::printseg() const {
 			} else {
 				g1 = s.begins[0] - n.begins[0] - n.length;
 			}
-			if(r1forward) {
+			if(r2forward) {
 				g2 = n.begins[1] - s.begins[1] - s.length;
 			} else {
 				g2 = s.begins[1] - n.begins[1] - n.length;
@@ -1745,6 +1766,91 @@ void located_alignment::printseg() const {
 	}
 
 }
+
+bool pw_alignment::onlyGapSample() const {
+               bool gapOnSample1 = true;
+               bool gapOnSample2 = true;
+               for(size_t i = 0; i< alignment_length();i++){
+                       char p1char = 'X';
+                       char p2char = 'X';
+                       alignment_col(i, p1char, p2char);       
+                       if(p1char !='-' ) gapOnSample1 = false;
+                       if(p2char !='-' ) gapOnSample2 = false;                 
+                       if(! gapOnSample1 && !gapOnSample2) {
+                               return false;
+                       }               
+               }
+               return gapOnSample1 || gapOnSample2;
+}
+
+/* old code compatibility function, this is slow
+-       for fast splitting/simulations use located_alignment
+-*/
+void pw_alignment::simulate_split(const size_t & al_ref, const size_t & position, size_t & sp1, size_t & sp2) const {
+       pw_alignment fp;
+       pw_alignment sp;
+       bool alref_for_split = 1 - (bool) al_ref; // even more confusing: split splits ref 2 if the flag is false
+       split(alref_for_split, position, fp, sp);
+       pw_alignment fpe;
+       pw_alignment spe;
+
+
+       size_t l, r; // positions on the reference with the split point
+       bool alforward = true; // is al in forward direction on al_other_seq?
+       size_t al_ref_seq, al_other_seq;
+       if(al_ref) {
+               get_lr2(l,r);
+               if(getbegin1() > getend1()) alforward = false;
+               al_ref_seq = getreference2();
+               al_other_seq = getreference1();
+               
+       } else {
+               get_lr1(l,r);
+               if(getbegin2() > getend2()) alforward = false;
+               al_ref_seq = getreference1();
+               al_other_seq = getreference2();
+       }
+
+       // do splitted parts have only gaps on one of their reference sequences
+       bool fgaps = fp.onlyGapSample();
+       bool sgaps = sp.onlyGapSample();
+                                       
+       // find split part alignment ends on the other reference after removing end gaps
+       size_t fpeleft= (size_t) -1;
+       size_t fperight = (size_t) -1;
+       size_t speleft = (size_t) -1;
+       size_t speright = (size_t) -1;
+       if(!fgaps) {
+               fp.remove_end_gaps(fpe);
+               if(al_ref)
+                       fpe.get_lr1(fpeleft, fperight);
+               else
+                       fpe.get_lr2(fpeleft, fperight);
+#if SPLITPRINT
+                       std::cout << "newal fpe " << std::endl;
+                       fpe.print();
+                       std::cout  << std::endl;
+#endif
+               }
+               if(!sgaps) {
+                       sp.remove_end_gaps(spe);
+                       if(al_ref)
+                               spe.get_lr1(speleft, speright);
+                       else 
+                               spe.get_lr2(speleft, speright);
+#if SPLITPRINT
+                       std::cout << "newal spe " << std::endl;
+                       spe.print();
+                       std::cout << std::endl;
+#endif
+               }
+
+       
+
+
+
+}
+
 
 /*
 	ref:0/1
@@ -1759,7 +1865,7 @@ void located_alignment::printseg() const {
 	
 
 */
-void located_alignment::simulate_split(const size_t & ref, const size_t & pos, size_t & sp1, size_t & sp2) {
+void located_alignment::simulate_split(const size_t & ref, const size_t & pos, size_t & sp1, size_t & sp2) const {
 // splitpoint at pos means we split left of pos on the sequence
 	assert(ref < 2);
 	size_t l, r;
@@ -1780,6 +1886,10 @@ void located_alignment::simulate_split(const size_t & ref, const size_t & pos, s
 	alignment_col(split_col, c1, c2, r1pos, r2pos);
 	size_t segid = last_segment;
 	const segment & seg = segments.at(segid);
+
+//     std::cout << " simulate split at " << split_col << " r1 " << r1pos << " r2 " << r2pos << " content " << c1 << " " << c2 << std::endl;
+//     printseg();
+
 	
 	bool rforward = true;
 	bool oforward = true;
@@ -1794,7 +1904,8 @@ void located_alignment::simulate_split(const size_t & ref, const size_t & pos, s
 		seg_r = seg.begins[ref];
 		seg_l = seg_r - seg.length + 1;
 	}
-	
+//  	std::cout << " split point on ref " << pos << " close to segment l " << seg_l << " r " << seg_r << std::endl;	
+
 	if(seg_l < pos && pos <= seg_r) { // we would cut within seg
 		// cut before this pos within the segment (relative to segment alignment)
 		size_t cut_col;
@@ -1803,13 +1914,15 @@ void located_alignment::simulate_split(const size_t & ref, const size_t & pos, s
 		} else {
 			cut_col = seg.begins[ref] - pos + 1;
 		}
+//		std::cout << " cut in that segment before column  " << cut_col<< std::endl;
 		assert(cut_col > 0 && cut_col < seg.length);
 		// transfer cut point to other ref
 		if(oforward) {
 			sp1 = seg.begins[1-ref] + cut_col;
 			sp2 = std::numeric_limits<size_t>::max();
 		} else {
-			sp1 = seg.begins[1-ref] + seg.length - cut_col;
+			sp1 = seg.begins[1-ref] - cut_col + 1;
+//			sp1 = seg.begins[1-ref] + seg.length - cut_col;
 			sp2 = std::numeric_limits<size_t>::max();
 		}
 		return;
@@ -1838,17 +1951,24 @@ void located_alignment::simulate_split(const size_t & ref, const size_t & pos, s
 			segf = segments.at(segid - 1);
 		}
 	}
-
+// 	std::cout << " cut between " << segf.begins[2] << " and " << segs.begins[2] << std::endl;
 	if(oforward) {
 		sp1 = segf.begins[1-ref] + segf.length; // just after segf
 		sp2 = segs.begins[1-ref]; // before begin of segs
 	} else {
-		sp1 = segf.begins[1-ref] - segf.length + 1;
-		sp2 = segs.begins[1-ref] + 1;
+		sp1 = segf.begins[1-ref] - segf.length + 1; // just left of f
+                sp2 = segs.begins[1-ref] + 1; // just right of s
+
 	}
 
 
 	
 
 
+}
+
+void located_alignment::split(bool sample, size_t pos, located_alignment & first_part, located_alignment & second_part) const {
+       size_t ref = 1 - (size_t) sample;
+       assert(ref < 2);
+	assert(0);
 }

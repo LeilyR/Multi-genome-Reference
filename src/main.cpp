@@ -54,9 +54,48 @@
 #define TEST 0
 
 
+/*
+       Results 5 E. coli
+       fasta              25040631
+       bzip2               7098052      2.27bit/base
+       without clustering  6105297      1.95bit/base
+       with clustering     3003135      0.96bit/base
+
+
+       Results 3 E. coli (NCecoli)
+       
+       fasta              14157283 
+       bzip2               4009253      2.27bit/base
+        COGI                7262950      4.1bit/base
+       MFCompress          2308457      1.3bit/base
+       without clustering  3444767      1.95bit/base
+       with clustering     1584851      0.90bit/base
+
+       Results 1 E. coli (ecoli1)
+       fasta               5227145
+       bzip2               1483358      2.27bit/base
+        COGI                1451948      2.22bit/base  
+       MFCompress          1214388      1.86bit/base
+       without clustering  1263420      1.93bit/base
+       with clustering     1209441      1.85bit/base
+
+       Results test data  (ecoli.small.fa)
+       fasta              1063768 
+       bzip2               291114       2.19 bit/base
+       COGI                291845       2.19 bit/base
+       MFCompress          209490       1.58 bit/base
+       without clustering  257170       1.93 bit/base
+       with clustering     207739       1.56 bit/base
+
+
+
+       
+
+
+*/
 
 /**
-
+fb966f7ba4da683e1066b411be179ee039d45615
 	General TODO
 
 Look at diversity within clusters. Can this diversity be used to differentiate between orthologous and paralogous groups,
@@ -2859,6 +2898,7 @@ int do_dynamic_mc_model_with_two_edge(int argc, char * argv[]) {
 	std::set<const pw_alignment*, compare_pointer_pw_alignment> remainders; 
 	double sum_of_input_gain = 0;
 	double sum_of_input_gain_loc = 0;
+	std::cout << " Computing gain values for 1000 alignments per dot: " << std::flush;
 #pragma omp parallel for num_threads(num_threads)
 	for(size_t i =0; i < data.numAlignments();i++){
 		const pw_alignment & al = data.getAlignment(i);
@@ -2885,10 +2925,16 @@ int do_dynamic_mc_model_with_two_edge(int argc, char * argv[]) {
 {
 			lal_with_pos_gain.insert(&lal);
 			sum_of_input_gain_loc += lav_gain;
+
+                       if(i%1000==0) std::cout << "." << std::flush;
+                       if(i%60000==0 && i>0) std::cout << (double)i/(double)data.numAlignments() << std::endl << std::flush;
+			
 }
 		}
 
 	}
+	std::cout << std::endl;
+
 	std::cout << "al with positive gains are kept " << al_with_pos_gain.size() << " total gain " << sum_of_input_gain << std::endl;
 	std::cout << "located al with positive gains are kept " << al_with_pos_gain.size() << " total gain " << sum_of_input_gain_loc << std::endl;
 

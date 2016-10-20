@@ -115,7 +115,8 @@ class pw_alignment {
 
 	virtual void get_reverse(pw_alignment &);
 	virtual void get_reverse_complement_sample(std::vector<std::vector<bool> > &);
-
+	virtual void simulate_split(const size_t & ref, const size_t & pos, size_t & sp1, size_t & sp2) const ;
+	virtual bool onlyGapSample() const;
 	protected:
 	std::vector<size_t> begins;
 	std::vector<size_t> ends;
@@ -202,8 +203,8 @@ public:
 	virtual void set_block_cached(const size_t & bl) const;
 
 	virtual void get_column(const size_t & ref, const size_t & refpos, size_t & alcol) const;
-	virtual void simulate_split(const size_t & ref, const size_t & pos, size_t & sp1, size_t & sp2);
-
+	virtual void simulate_split(const size_t & ref, const size_t & pos, size_t & sp1, size_t & sp2) const ;
+	virtual void split(bool sample, size_t position, located_alignment & first_part, located_alignment & second_part) const;
 	virtual void printseg() const;
 private:
 	// short piece without gaps

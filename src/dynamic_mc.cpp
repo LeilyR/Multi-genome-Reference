@@ -27,7 +27,7 @@ void sequence_contexts<reader>::read_sequence(const std::string & sequence) {
 
 template<typename reader>
 void sequence_contexts<reader>::read_sequence(const dnastring & sequence, const size_t & from, const size_t & to) {
-	assert(from != to); // should only be called for sequences longer than 1 so that we know which strand we are on
+	// assert(from != to); // should only be called for sequences longer than 1 so that we know which strand we are on
 	if(from < to) {
 		size_t len = to - from + 1;
 		std::string seq(len, ';');

@@ -710,6 +710,8 @@ void all_data::read_fasta_maf(std::string fasta_all_sequences, std::string maf_a
 	size_t skip_reverse = 0;
 	std::set<pw_alignment, compare_pw_alignment> setOfAls;
 	if(mafin) {
+		std::cout << " loading 1000 alignments per dot: ";
+		
 		std::string str;
 		while(getline(mafin, str)) {
 			if(str.at(0)!='#') { // skip headers
@@ -845,7 +847,7 @@ void all_data::read_fasta_maf(std::string fasta_all_sequences, std::string maf_a
 
 									located_alignment sal(this, al);
 									l_alignments.push_back(sal);
-
+									if(alignments.size() % 1000 ==0) std::cout << "." << std::flush;
 
 								//	al.print();
 								}
@@ -867,7 +869,7 @@ void all_data::read_fasta_maf(std::string fasta_all_sequences, std::string maf_a
 			}
 		}
 		mafin.close();
-
+		std::cout << std::endl;
 		if(dnastring::found_iupac_ambiguity) {
 			std::cerr << "Warning: IUPAC DNA ambiguity characters were replaced by N" << std::endl;
 		}

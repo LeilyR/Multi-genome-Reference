@@ -589,6 +589,28 @@ void splitpoints_interval_tree<overlap_type>::split_into_alignment_ref(const pw_
 
 //	std::cout << " split into at " << al_ref << " pos " << position << " on al " << std::endl;
 //	al->print();
+/*     size_t al_other_seq;
+       size_t l, r; // positions on the reference with the split point
+       if(al_ref) {
+               al->get_lr2(l,r);
+               al_other_seq = al->getreference1();
+               
+       } else {
+               al->get_lr1(l,r);
+               al_other_seq = al->getreference2();
+       }
+
+       if(l<position && r>=position) {
+               size_t sp1, sp2;
+               al->simulate_split(al_ref, position, sp1, sp2);
+               if(sp1<std::numeric_limits<size_t>::max()) {
+                       insert_split_point(al_other_seq, sp1, recursion);
+               }
+               if(sp2<std::numeric_limits<size_t>::max()) {
+                       insert_split_point(al_other_seq, sp2, recursion);
+               }
+       }
+*/
 
 // confusing: splitting into ref1, causes us to split ref2
 	size_t l, r; // positions on the reference with the split point
@@ -676,24 +698,68 @@ void splitpoints_interval_tree<overlap_type>::split_into_alignment_ref(const pw_
 
 		std::set<size_t> split_check;
 		if(alforward) {
+                       if(!sgaps) {
+               //              insert_split_point(al_other_seq, speleft, recursion);
+                               split_check.insert(speleft);
+                       }
+                       // additional split point if gaps at split point
+                       if(!fgaps) {
+               //              insert_split_point(al_other_seq, fperight+1, recursion);
+                               split_check.insert(fperight+1);
+                       }
+               } else { // al is backwards on current reference, first part of the split will be after second part
+                       if(!fgaps) {
+               //              insert_split_point(al_other_seq, fpeleft, recursion);
+                               split_check.insert(fpeleft);
+                       }
+                       if(!sgaps) {
+               //              insert_split_point(al_other_seq, speright+1, recursion);
+                               split_check.insert(speright+1);
+                       }
+               }
+
+               located_alignment lal(&(overl.data), *al);
+               size_t sp1, sp2;
+               lal.simulate_split(al_ref, position, sp1, sp2);
+               std::set<size_t> lalsplits;
+               if(sp1 < std::numeric_limits<size_t>::max()) lalsplits.insert(sp1);
+               if(sp2 < std::numeric_limits<size_t>::max()) lalsplits.insert(sp2);
+
+               assert(lalsplits.size() == split_check.size());
+               if(lalsplits.size() >= 1) {
+                       size_t s1 = *(split_check.begin());
+                       size_t l1 = *(lalsplits.begin());
+                       assert(s1==l1);
+               }
+               if(lalsplits.size() == 2) {
+                       std::set<size_t>::iterator sit = split_check.begin();
+                       std::set<size_t>::iterator lit = lalsplits.begin();
+                       sit++;
+                       lit++;
+                       size_t s1 = *sit;
+                       size_t l1 = *lit;
+                       assert(s1==l1);
+               }
+
+
+
+
+
+		if(alforward) {
 						
 			if(!sgaps) {
 				insert_split_point(al_other_seq, speleft, recursion);
-				split_check.insert(speleft);
 			}
 			// additional split point if gaps at split point
 			if(!fgaps) {
 				insert_split_point(al_other_seq, fperight+1, recursion);
-				split_check.insert(fperight+1);
 			}
 		} else { // al is backwards on current reference, first part of the split will be after second part
 			if(!fgaps) {
 				insert_split_point(al_other_seq, fpeleft, recursion);
-				split_check.insert(fpeleft);
 			}
 			if(!sgaps) {
 				insert_split_point(al_other_seq, speright+1, recursion);
-				split_check.insert(fpeleft);
 			}
 		}
 
