@@ -140,6 +140,11 @@
 			char keepc = dynamic_mc_model::modification_character(-1, -1, -1, numk);
 			first_context.append(1, keepc);
 		}
+		std::cout<< "first context size is "<< first_context.size()<<std::endl;
+		for(size_t i =0; i < first_context.size(); i++){
+			std::cout<< int(first_context.at(i))<< " ";
+		}
+		std::cout<<std::endl;
 	//	std::cout << "first al context is "<<int(first_context.at(0)) << " " << int(first_context.at(1)) << std::endl;
 		return first_context;
 	}
@@ -240,9 +245,9 @@
 				//	std::cout<<"cur pattern: "<< current_pattern<<std::endl;
 				//	std::cout << "base " << base << std::endl;
 					std::map<std::string, std::vector<uint32_t> >::const_iterator it1=model.get_center_model_highs(acc).find(current_pattern);
-					if(it1 == model.get_center_model_highs(acc).end()){
-						std::cout<<"current pattern: "<< current_pattern<<std::endl; 		
-					}
+				//	if(it1 == model.get_center_model_highs(acc).end()){
+				//		std::cout<<"current pattern: "<< current_pattern<<std::endl; 		
+				//	}
 					assert(it1 != model.get_center_model_highs(acc).end());
 					for(size_t j=0; j<5; j++){
 						high.at(j) = it1->second.at(j);
@@ -352,6 +357,10 @@
 			size_t length = model.modification_length(modificationPattern);
 			std::cout << "center length "<< center.size() << " pattern length: "<< length <<" pattern index : "<< modificationPattern << std::endl;
 			for(size_t i = 0 ; i < length;i++){
+				if(position + i >= center.length()){
+					std::cout << "mem size is "<< member.size() << std::endl;
+					std::cout << member << std::endl;
+				}
 				assert(position+ i <center.length());
 				member += center.at(position+i);
 			//	std::cout<< "member is "<<member<<std::endl;
@@ -359,10 +368,10 @@
 			return member;
 		}
 		if(modificationPattern>=5 + NUM_KEEP_DYN + NUM_DELETE_DYN){
-			char base = dnastring::index_to_base(modificationPattern-20);
+			char base = dnastring::index_to_base(modificationPattern-(5 + NUM_KEEP_DYN + NUM_DELETE_DYN));
 			member += base;
-			std::cout<< "insertion"<<std::endl;
-		//	std::cout<< "member is "<<member<<std::endl;
+			std::cout<< "insertion "<< base<<std::endl;
+		//	std::cout<< "member is "<<member <<std::endl;
 
 			return member;
 
@@ -402,6 +411,7 @@
 			while(target < seq_acc_end.at(0)){//end of an accession
 				std::string decodedCenter;
 				std::string pattern;
+				size_t test_length = 0;
 		//		low.at(5)= al_begin.at(0);//al_begin flag
 		//		high.at(5)= al_begin.at(1);
 		//		low.at(6)= high.at(5);//seq and acc end flag
@@ -434,6 +444,7 @@
 						test +=p;
 						std::cout << sequence_counter<< " "<< test << std::endl;
 						out<<p;	
+						test_length++;
 					//	save << p;
 					}
 					dec.decode(low.at(base),high.at(base));	
@@ -455,7 +466,7 @@
 						char p = dnastring::index_to_base(base);
 						std::stringstream s;
 						std::string current_pattern;
-						if(MAX_SEQUENCE_MARKOV_CHAIN_LEVEL > 1){// TODO: Make a function which returns the current pattern!
+						if(MAX_SEQUENCE_MARKOV_CHAIN_LEVEL > 1){// TODO Improvement: Write it in a separate function which returns the current pattern.
 						//	std::cout << "pattern " << pattern << std::endl;
 							for(size_t M=1; M< MAX_SEQUENCE_MARKOV_CHAIN_LEVEL; M++){
 								s<<pattern.at(M);
@@ -468,7 +479,7 @@
 							s<<p;
 							s>>current_pattern;
 						}
-						std::cout<< "current pattern: " << current_pattern<<std::endl;
+					//	std::cout<< "current pattern: " << current_pattern<<std::endl;
 						std::vector<unsigned int>high(5,0);
 						std::vector<unsigned int>low(5,0);
 						std::map<std::string, std::vector<unsigned int> >::const_iterator it1=model.get_sequence_model_highs(acc).find(current_pattern);
@@ -491,14 +502,15 @@
 							char p1 = dnastring::index_to_base(base);
 							out<<p1;
 						//	save << p1;
+							test_length++;
 						}
 						dec.decode(low.at(base),high.at(base));
 						wrappers.decode(low.at(base),high.at(base),total);
 						int base_int = base;
 						wrappers.decodeContext(base_int);
-						std::cout<<"base: "<<base << " low " << low.at(base) << " high " << high.at(base) <<std::endl;
+					//	std::cout<<"base: "<<base << " low " << low.at(base) << " high " << high.at(base) <<std::endl;
 						pattern = current_pattern;
-						std::cout << "pattern "<< pattern <<std::endl;
+					//	std::cout << "pattern "<< pattern <<std::endl;
 						target = dec.get_target(total);	
 					//	std::cout << "target2: "<<target<<std::endl;
 						length_between_two_centers ++;
@@ -689,6 +701,7 @@
 						std::string temp;
 						std::cout<< "length of the member: "<<member.length()<<std::endl;
 						if(member.length()> 0){
+							test_length += member.length();
 							if(reverse_member == true || reverse_both == true){
 								std::string rev_member;
 								for(size_t rev = 0; rev< member.size(); rev++){
@@ -702,12 +715,25 @@
 									std::cout<<rev_member.at(mem);
 								}
 								std::cout << " " << std::endl;
-								for(size_t sl =MAX_SEQUENCE_MARKOV_CHAIN_LEVEL; sl>0; sl--){
-									temp += rev_member.at(rev_member.length()-1-sl);
+								if(rev_member.length()>MAX_SEQUENCE_MARKOV_CHAIN_LEVEL){
+									for(size_t sl =MAX_SEQUENCE_MARKOV_CHAIN_LEVEL; sl>0; sl--){
+										temp += rev_member.at(rev_member.length()-1-sl);
+									}
+									pattern = temp; 
+									std::cout << temp << std::endl;
+									base = dnastring::base_to_index(rev_member.at(rev_member.length()-1));
+								}else{
+									std::stringstream combine_pieces;
+									char p = dnastring::index_to_base(base);
+									combine_pieces << pattern << p <<rev_member;
+									std::string  str = combine_pieces.str();
+									for(size_t sl=MAX_SEQUENCE_MARKOV_CHAIN_LEVEL; sl > 0; sl--){
+										char center_base = str.at(str.length()-sl-1);
+										temp +=center_base;
+									}
+									pattern = temp; 
+									base = dnastring::base_to_index(str.at(str.length()-1));
 								}
-								pattern = temp; 
-								std::cout << temp << std::endl;
-								base = dnastring::base_to_index(rev_member.at(rev_member.length()-1));
 							}else{
 								std::cout<< "add to the 'out' 2"<<endl;
 								for(size_t mem =0; mem<member.length();mem++){
@@ -716,22 +742,51 @@
 								out<<member;
 							//	save << member;
 								std::cout << " " << std::endl;
-								for(size_t sl =MAX_SEQUENCE_MARKOV_CHAIN_LEVEL; sl>0; sl--){
-									temp += member.at(member.length()-1-sl);
+								if(member.length()>MAX_SEQUENCE_MARKOV_CHAIN_LEVEL){
+									for(size_t sl =MAX_SEQUENCE_MARKOV_CHAIN_LEVEL; sl>0; sl--){
+										temp += member.at(member.length()-1-sl);
+									}
+									pattern = temp; 
+									base = dnastring::base_to_index(member.at(member.length()-1));
+								}else{
+									std::stringstream combine_pieces;
+									char p = dnastring::index_to_base(base);
+									combine_pieces << pattern << p <<member;
+									std::string  str = combine_pieces.str();
+									for(size_t sl=MAX_SEQUENCE_MARKOV_CHAIN_LEVEL; sl > 0; sl--){
+										char center_base = str.at(str.length()-sl-1);
+										temp +=center_base;
+									}
+									pattern = temp; 
+									base = dnastring::base_to_index(str.at(str.length()-1));
 								}
-								pattern = temp; 
-								base = dnastring::base_to_index(member.at(member.length()-1));
 							}
 						}else{
 							std::cout<< "add to the 'out' 3"<<endl;
 							out << decodedCenter;
 						//	save << decodedCenter;
-							for(size_t sl=MAX_SEQUENCE_MARKOV_CHAIN_LEVEL; sl > 0; sl--){
-								char center_base = decodedCenter.at(decodedCenter.length()-sl-1);
-								temp +=center_base;
+							test_length += decodedCenter.length();
+							if(decodedCenter.length()> MAX_SEQUENCE_MARKOV_CHAIN_LEVEL){
+								for(size_t sl=MAX_SEQUENCE_MARKOV_CHAIN_LEVEL; sl > 0; sl--){
+									char center_base = decodedCenter.at(decodedCenter.length()-sl-1);
+									temp +=center_base;
+								}
+								pattern = temp; 
+								base = dnastring::base_to_index(decodedCenter.at(decodedCenter.length()-1));
+							}else{
+//									pattern + base + decodedCenter --> it is surely longer than level, then pick the level last bases of it
+									char p = dnastring::index_to_base(base);
+									std::stringstream combine_pieces;
+									combine_pieces << pattern << p <<decodedCenter;
+									std::string  str = combine_pieces.str();
+									for(size_t sl=MAX_SEQUENCE_MARKOV_CHAIN_LEVEL; sl > 0; sl--){
+									char center_base = str.at(str.length()-sl-1);
+									temp +=center_base;
+								}
+								pattern = temp; 
+								base = dnastring::base_to_index(str.at(str.length()-1));
+
 							}
-							pattern = temp; 
-							base = dnastring::base_to_index(decodedCenter.at(decodedCenter.length()-1));
 						}
 
 					//	target = dec.get_target(total);	
@@ -746,7 +801,7 @@
 				if(seq_acc_end.at(0) <= target && target < seq_acc_end.at(1)){
 					dec.decode(seq_acc_end.at(0),seq_acc_end.at(1));
 					wrappers.decode(seq_acc_end.at(0),seq_acc_end.at(1),total);
-					std::cout << " End of a sequence! "<<std::endl;
+					std::cout << " End of a sequence! " << test_length<<std::endl;
 		//		//	out << std::endl;
 				//	save << sequence_counter+ 1;
 					sequence_counter = sequence_counter + 1;
@@ -808,6 +863,7 @@
 				std::cout << "acc "<< acc <<std::endl;
 				it->second.push_back(index);
 				center.push_back(index);
+				assert(index > 0);
 				std::vector<bool> binary_high_value(0);
 				size_t bound = bit/8;
 				for(size_t j = 0 ; j < bound ; j++){ 
@@ -838,13 +894,16 @@
 			}
 			while(c != 7 && long_center_is_reached == true){
 				//Add index
-				char h1;
-				h1 = in.get();
-			//	size_t *temp = reinterpret_cast<size_t*> (h1);
-			//	size_t center_length = *temp;
-				std::cout << "size 0f the center "<< int(h1)<<std::endl;
+			//	char h1;
+			//	h1 = in.get();//XXX
+				char h1[sizeof(size_t)];
+				in.read(h1,sizeof(size_t));
+	
+				size_t *temp = reinterpret_cast<size_t*> (h1);
+				size_t center_length = *temp;
+				std::cout << "size 0f the center "<< center_length <<std::endl;
 				vector<int>center;
-				for(size_t i =0; i < h1 ; i++){
+				for(size_t i =0; i < center_length ; i++){
 					char c1[sizeof(int)];
 					in.read(c1,sizeof(int));
 					int *temp = reinterpret_cast<int*> (c1);	
@@ -1223,7 +1282,6 @@
 		size_t sequence_counter = 0;
 		out.write(reinterpret_cast<char*>(&sequence_counter),sizeof(uint32_t));
 		unsigned int total = TOTAL_FOR_ENCODING;
-//		unsigned int total = model.get_powerOfTwo().at(bit)+20;
 		std::string first_al_pattern = first_alignment_pattern();
 		std::string first_pattern = first_sequence_pattern();
 		std::string al_pattern;
@@ -1275,6 +1333,7 @@
 				}
 				else {
 					std::cout<<"Sequence starts with an alignment!"<<std::endl;
+					assert(target>=al_begin.at(0) && target < al_begin.at(1));
 				}
 				size_t counter = 0;
 				while(target< seq_acc_end.at(0)){//end of each seq
@@ -1315,6 +1374,7 @@
 						assert(base < 5);
 						char p1 = dnastring::index_to_base(base);
 						out<<p1;
+						std::cout << p1 ;
 						test_out++;
 						counter = counter + 1;
 						dec.decode(low.at(base),high.at(base));
@@ -1334,6 +1394,7 @@
 					counter = 0;
 					std::cout << "target "<<target <<std::endl;
 					if(al_begin.at(0)<=target && target < seq_acc_end.at(0)){//Beginning of an al but not end of the seq
+						assert(al_begin.at(0)<=target && target < al_begin.at(1));
 						if( al_begin.at(0)<=target && target < al_begin.at(1)){
 							dec.decode( al_begin.at(0), al_begin.at(1));
 							wrappers.decode( al_begin.at(0), al_begin.at(1),total);
@@ -1382,7 +1443,7 @@
 						target = dec.get_target(total);
 						for(std::map<size_t, std::vector<int> >::iterator it_acc = acc_of_long_center.begin(); it_acc != acc_of_long_center.end(); it_acc++){
 							for(size_t g= 0; g< it_acc->second.size();g++){
-								if(it_acc->second.at(g)== center.at(0)){
+								if(it_acc->second.at(g)== std::abs(center.at(0))){
 									std::cout << "center at 0 "<< center.at(0)<<std::endl;
 									cent_acc = it_acc->first;
 									std::cout<< "acc of cent: "<<cent_acc<<std::endl;
@@ -1439,14 +1500,14 @@
 								}
 							}
 						}
-						std::cout<< decodedCenter.size()<< " " <<std::endl;
+					//	std::cout<< decodedCenter.size()<< " " <<std::endl;
 						std::cout << decodedCenter << std::endl;
 						al_pattern = first_al_pattern;//decoding an alignment starts here!
 						size_t pos = 0;
 						size_t modify = 0;
 						std::string member;
-						std::vector<unsigned int>al_high(NUM_KEEP+NUM_DELETE+10,0);
-						std::vector<unsigned int>al_low(NUM_KEEP+NUM_DELETE+10,0);
+						std::vector<unsigned int>al_high(NUM_KEEP_DYN+NUM_DELETE_DYN+10,0);
+						std::vector<unsigned int>al_low(NUM_KEEP_DYN+NUM_DELETE_DYN+10,0);
 						size_t last_base = dnastring::base_to_index(decodedCenter.at(decodedCenter.size()-1));
 						std::vector<uint32_t> al_end(2);
 						model.get_end_al_flag(cent_acc, acc ,al_end);
@@ -1467,6 +1528,7 @@
 								last_base = dnastring::base_to_index(dnastring::complement(decodedCenter.at(decodedCenter.length()-1-pos)));
 							}
 							if(reverse_both == true){
+								std::cout << "reverse both "<<std::endl;
 								last_base = dnastring::base_to_index(dnastring::complement(decodedCenter.at(decodedCenter.length()-1-pos)));
 							}
 							if(forward_both == true){//both references are forward
@@ -1475,6 +1537,8 @@
 							}
 							if(reverse_member == true){
 								last_base = dnastring::base_to_index(decodedCenter.at(pos));
+							//	last_base = dnastring::base_to_index(dnastring::complement(decodedCenter.at(decodedCenter.length()-1-pos)));
+
 								std::cout << "member is reversed! " << std::endl;
 							}
 
@@ -1498,14 +1562,16 @@
 									al_low.at(k) = 0;
 								}				
 							}
+							assert(mod->second.size()== NUM_KEEP_DYN + NUM_DELETE_DYN+10);
 							assert(al_high.at(mod->second.size()-1)= al_end.at(0));
-							size_t modification = NUM_KEEP+NUM_DELETE+20;
-							for(size_t n = 0; n < NUM_KEEP+NUM_DELETE+10; n++){
+							size_t modification = NUM_KEEP_DYN+NUM_DELETE_DYN+20;
+							for(size_t n = 0; n < NUM_KEEP_DYN+NUM_DELETE_DYN+10; n++){
 								if(al_low.at(n)<=target && al_high.at(n)> target){
 									modification = n;
 									break;
 								}
 							}
+							assert(modification <= NUM_KEEP_DYN+NUM_DELETE_DYN+10);
 							std::cout << "modification "<<modification << " low "<< al_low.at(modification)<< " high " <<al_high.at(modification)<<std::endl;
 							dec.decode(al_low.at(modification),al_high.at(modification));
 							wrappers.decode(al_low.at(modification),al_high.at(modification),total);
@@ -1537,6 +1603,7 @@
 								member += associatedMember(rev_decodedCenter,modification,pos);							
 							}else{
 								std::cout << "associatedMember "<<std::endl;
+								std::cout<< test_out<< std::endl;
 								member += associatedMember(decodedCenter,modification,pos);
 							//	std::cout<< "member "<< member << " modification "<<modification<<std::endl;
 							}
@@ -1562,8 +1629,21 @@
 									std::cout<<rev_member.at(mem);
 								}
 								std::cout << " " << std::endl;
-								for(size_t sl =MAX_SEQUENCE_MARKOV_CHAIN_LEVEL; sl>0; sl--){
-									temp += rev_member.at(rev_member.length()-1-sl);
+								if(rev_member.length() > MAX_SEQUENCE_MARKOV_CHAIN_LEVEL){
+									for(size_t sl =MAX_SEQUENCE_MARKOV_CHAIN_LEVEL; sl>0; sl--){
+										temp += rev_member.at(rev_member.length()-1-sl);
+									}
+								}else{
+									char p = dnastring::index_to_base(base);
+									std::stringstream str;
+									str<<pattern<<p<<rev_member;
+									assert(str.str().length() >MAX_SEQUENCE_MARKOV_CHAIN_LEVEL);
+									std::string concatenated_piece = str.str();
+									std::cout<<"a very short rev-member "<< concatenated_piece << std::endl;
+									for(size_t sl=MAX_SEQUENCE_MARKOV_CHAIN_LEVEL; sl > 0; sl--){
+										char center_base = concatenated_piece.at(concatenated_piece.length()-sl-1);
+										temp +=center_base;
+									}
 								}
 								pattern = temp; 
 								base = dnastring::base_to_index(rev_member.at(rev_member.length()-1));
@@ -1575,20 +1655,50 @@
 								out<<member;
 								test_out += member.size();
 								std::cout << " " << std::endl;
-								for(size_t sl =MAX_SEQUENCE_MARKOV_CHAIN_LEVEL; sl>0; sl--){
-									temp += member.at(member.length()-1-sl);
+								if(member.size()> MAX_SEQUENCE_MARKOV_CHAIN_LEVEL){
+									for(size_t sl =MAX_SEQUENCE_MARKOV_CHAIN_LEVEL; sl>0; sl--){
+										temp += member.at(member.length()-1-sl);
+									}
+								}else{
+									char p = dnastring::index_to_base(base);
+									std::stringstream str;
+									str<<pattern<<p<<member;
+									assert(str.str().length() > MAX_SEQUENCE_MARKOV_CHAIN_LEVEL);
+									std::string concatenated_piece = str.str();
+									std::cout<<"a very short member "<< concatenated_piece << std::endl;
+									for(size_t sl=MAX_SEQUENCE_MARKOV_CHAIN_LEVEL; sl > 0; sl--){
+										char center_base = concatenated_piece.at(concatenated_piece.length()-sl-1);
+										temp +=center_base;
+									}
 								}
 								pattern = temp; 
 								base = dnastring::base_to_index(member.at(member.length()-1));
 							}
 						}
 						else{
-							std::cout<< "add to the 'out' when center on th ref"<<endl;
-							out << decodedCenter;
+							std::cout<< "add to the 'out' when center is on the ref"<<endl;
+							std::cout << decodedCenter <<std::endl;
+							out<<decodedCenter;
 							test_out +=decodedCenter.size();
-							for(size_t sl=MAX_SEQUENCE_MARKOV_CHAIN_LEVEL; sl > 0; sl--){
-								char center_base = decodedCenter.at(decodedCenter.length()-sl-1);
-								temp +=center_base;
+						//	if(test_out == 2239572 && acc == 1){
+						//		exit(0);
+						//	}
+							if(decodedCenter.length()>MAX_SEQUENCE_MARKOV_CHAIN_LEVEL){
+								for(size_t sl=MAX_SEQUENCE_MARKOV_CHAIN_LEVEL; sl > 0; sl--){
+									char center_base = decodedCenter.at(decodedCenter.length()-sl-1);
+									temp +=center_base;
+								}
+							}else{
+								char p = dnastring::index_to_base(base);
+								std::stringstream str;
+								str<<pattern<<p<<decodedCenter;
+								assert(str.str().length() > MAX_SEQUENCE_MARKOV_CHAIN_LEVEL);
+								std::string concatenated_piece = str.str();
+								std::cout<<"a very short center "<< concatenated_piece << std::endl;
+								for(size_t sl=MAX_SEQUENCE_MARKOV_CHAIN_LEVEL; sl > 0; sl--){
+									char center_base = concatenated_piece.at(concatenated_piece.length()-sl-1);
+									temp +=center_base;
+								}
 							}
 							pattern = temp; 
 							base = dnastring::base_to_index(decodedCenter.at(decodedCenter.length()-1));
@@ -1599,6 +1709,7 @@
 							wrappers.decode(al_end.at(0), al_end.at(1),total);
 							std::cout << " End of an al! "<<std::endl;
 							std::cout << "t " << target << " " <<al_end.at(0)<< " "<< al_end.at(1)<<std::endl;
+							std::cout << "on  position " << test_out <<std::endl;
 						}
 						else{
 							std::cout<<"there is something wrong with end of al flag!"<<std::endl;

@@ -10,6 +10,7 @@
 #include <vector>
 #include <cassert>
 
+
 template<typename T>
 class dynamic_decoder{
 	public:

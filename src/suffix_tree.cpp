@@ -2,8 +2,8 @@
 
 
 //Finds all the centers the happen on a sequence:
-	finding_centers::finding_centers(all_data & d):data(d),AlignmentsFromClustering(data.numSequences()),centersOnSequence(data.numSequences()), centersOfASequence(data.numSequences()),initial_suffixes(data.numSequences()){
-	
+	finding_centers::finding_centers(const all_data & d):data(d),AlignmentsFromClustering(data.numSequences()), centersOfASequence(data.numSequences()),initial_suffixes(data.numSequences()){
+		INDEX = 1;
 	}
 	finding_centers::~finding_centers(){}
 	void finding_centers::setOfAlignments(std::map<std::string,std::vector<pw_alignment> > & alignmentsOfClusters){//set alignments of each reference
@@ -11,25 +11,25 @@
 		for (std::map<std::string,std::vector<pw_alignment> >::iterator it = alignmentsOfClusters.begin(); it != alignmentsOfClusters.end();it++){
 			assert(it->second.size() != 0);
 			for(size_t j = 0; j < it->second.size();j++){
-				pw_alignment * p = & it->second.at(j);
+				pw_alignment p = it->second.at(j);
 				size_t left1; 
 				size_t left2;
 				size_t right1;
 				size_t right2;
-				p->get_lr1(left1,right1);
-				p->get_lr2(left2,right2);
-				AlignmentsFromClustering.at(p->getreference1()).insert(std::make_pair(left1,p));
-				AlignmentsFromClustering.at(p->getreference2()).insert(std::make_pair(left2,p));
+				p.get_lr1(left1,right1);
+				p.get_lr2(left2,right2);
+				AlignmentsFromClustering.at(p.getreference1()).insert(std::make_pair(left1,p));
+				AlignmentsFromClustering.at(p.getreference2()).insert(std::make_pair(left2,p));
 			}
 		}
-		for(size_t i = 0 ; i < data.numSequences();i++){
+	/*	for(size_t i = 0 ; i < data.numSequences();i++){
 			std::cout << "on sequence " << i << ":" << std::endl;
-			for(std::map<size_t, pw_alignment*>::iterator it1 = AlignmentsFromClustering.at(i).begin(); it1 != AlignmentsFromClustering.at(i).end(); it1++){
-				pw_alignment * p = it1->second;
-				p->print();
+			for(std::map<size_t, pw_alignment>::iterator it1 = AlignmentsFromClustering.at(i).begin(); it1 != AlignmentsFromClustering.at(i).end(); it1++){
+				pw_alignment p = it1->second;
+				p.print();
 				std::cout << "position is  "<< it1->first << std::endl;
 			}
-		}
+		}*/
 	}
 	void finding_centers::findMemberOfClusters(std::map<std::string,vector<pw_alignment> > & alignmentsOfClusters){//fills in a map with centers and their members and removes the direction from members
 		for(std::map<std::string, std::vector<pw_alignment> >::iterator it = alignmentsOfClusters.begin(); it != alignmentsOfClusters.end(); it++){
@@ -43,7 +43,7 @@
 				size_t right1;
 				size_t right2;
 				pw_alignment p =it->second.at(i);
-				p.print();
+			//	p.print();
 				p.get_lr1(left1,right1);
 				p.get_lr2(left2,right2);
 				ref1 = p.getreference1();
@@ -61,6 +61,7 @@
 					assert(mem == memberOfCluster.end());
 					memberOfCluster.insert(make_pair(member2.str(),it->first));
 				}else{
+					assert(sample2.str()==it->first);
 					std::map<std::string,std::string>::iterator mem = memberOfCluster.find(member1.str());
 					assert(mem == memberOfCluster.end());
 
@@ -74,13 +75,14 @@
 		}
 		std::cout << "memberOfCluster size "<< memberOfCluster.size() << std::endl;
 	}
-	void finding_centers::center_frequency(std::map<std::string,std::vector<pw_alignment> > & alignmentsOfClusters, std::vector<std::multimap<size_t, std::string> > & centerOnseq){//it basically returns indices of centers on each sequence
+	void finding_centers::center_frequency(std::map<std::string,std::vector<pw_alignment> > & alignmentsOfClusters, std::vector<std::map<size_t, std::string> > & centerOnseq){//it basically returns indices of centers on each sequence
 		setOfAlignments(alignmentsOfClusters);//set all the alignments on each sequence
+	//	std::cout<<"end of al set"<<std::endl;
 		findMemberOfClusters(alignmentsOfClusters);// returns strings that are member of a cluster in memberOfCluster
 		//First: fill in the "center_index" vector
-		size_t index_counter = 1;
-		std::map<int,bool> if_center;
-		for(std::map<std::string, std::vector<pw_alignment> >::iterator it2=alignmentsOfClusters.begin(); it2 != alignmentsOfClusters.end();it2++){ //Create index for both directions of each center by adding direction to their name.
+	//	size_t index_counter = 1;
+	//	std::map<int,bool> if_center;
+	/*	for(std::map<std::string, std::vector<pw_alignment> >::iterator it2=alignmentsOfClusters.begin(); it2 != alignmentsOfClusters.end();it2++){ //Create index for both directions of each center by adding direction to their name.
 			std::stringstream str1;
 			std::stringstream str2;
 			std::string center = it2->first;
@@ -93,29 +95,53 @@
 			center_index.insert(std::make_pair((-1*index_counter),str2.str()));
 			if_center.insert(std::make_pair(-1*index_counter,false));
 			index_counter++;	
-		}
-		std::cout<< "center index size before " << center_index.size()<<std::endl;
+		}*/
+	//	std::cout<< "center index size before " << center_index.size()<<std::endl;
 		for(size_t i = 0; i< data.numSequences(); i++){
 			std::cout << "sequence: " << i << std::endl;
 			//Second: Find all the centers on a sequence
-			find_seq_centers(if_center,i,centerOnseq);
-			//Third: Find potential candidates for being a long center. 
-			//We are going to find those centers that have less than ALLOWED_GAP base pairs  distances. Their indices are saved in a vector.
-			find_long_centers(i);
+			find_seq_centers(i,centerOnseq);
+		//	std::cout<< "center size at " << i <<" is "<< centerOnseq.at(i).size()<< std::endl;
+		}
+	/*	for(std::map<int, bool>::iterator it = if_center.begin(); it != if_center.end(); it++){
+			if(it->second == false){
+				std::map<int,std::string>::iterator index = center_index.find(it->first);
+				assert(index != center_index.end());
+				std::string center = index->second;
+				std::map<std::string,int>::iterator id=center_id.find(center);
+				assert(id!=center_id.end());
+				center_index.erase(index);
+				center_id.erase(id);
+			}
+		}*/
+		std::cout<< "center index size after " << center_index.size() << " " <<center_id.size()<<std::endl;
+		//Just an assertion:
+		std::map<int, std::string>::reverse_iterator id = center_index.rbegin();
+		std::cout << id->first <<  " "<< alignmentsOfClusters.size() <<std::endl;
+		assert(id->first <= alignmentsOfClusters.size());
+	}
+	void finding_centers::create_long_centers_candidates(std::vector<std::map<size_t, std::string> > & centerOnseq, size_t & gap_in_long_centers){
+		//Find potential candidates for being a long center. 
+		//We are going to find those centers that have less than ALLOWED_GAP base pairs  distances. Their indices are saved in a vector.
+		for(size_t i = 0; i< data.numSequences(); i++){
+			std::cout << "long centers on seq "<< i << std::endl;
+			find_long_centers(i, centerOnseq.at(i), gap_in_long_centers);
 			std::cout << "check for fully reversed ones" <<std::endl;
 			//At this stage i need to check for fully reversed centers and merge two clusters in to one.
 			std::map<size_t , std::vector<int> > intermediate;
 			for(std::map<size_t,std::vector<int> >::iterator it = centersOfASequence.at(i).begin() ; it != centersOfASequence.at(i).end();it++){
 				std::map<size_t,std::vector<int> >::iterator rev_pos = intermediate.find(it->first);
-				if(rev_pos == intermediate.end()){
+				assert(rev_pos == intermediate.end());
 					std::map<int,std::string>::iterator centid = center_index.find(it->second.at(0));
+					std::cout<< it->second.at(0)<<std::endl;
+					assert(centid != center_index.end());
 					std::string center = centid->second;
 					std::vector<std::string> center_parts;
 					strsep(center, ":" , center_parts);
 					unsigned int dir = atoi(center_parts.at(0).c_str());
 					unsigned int ref = atoi(center_parts.at(1).c_str());
 					unsigned int left = atoi(center_parts.at(2).c_str());
-					for(std::map<size_t , std::vector<int> >::iterator it1 = centersOfASequence.at(i).begin() ; it1 != centersOfASequence.at(i).end();it1++){
+					for(std::map<size_t , std::vector<int> >::iterator it1 = it ; it1 != centersOfASequence.at(i).end();it1++){//We can start from it instead of begin
 						centid = center_index.find(it1->second.at(it1->second.size()-1));
 						std::string cent = centid->second;
 						std::vector<std::string> cent_parts;
@@ -157,16 +183,16 @@
 							break;
 						}
 					}
-				}
 
 			}
 			//Remove the intermediate from centersOfASequence
+			std::cout <<"intermediate size "<< intermediate.size()<<std::endl;
 			for(std::map< size_t , std::vector<int> >::iterator it = intermediate.begin();it != intermediate.end();it++){
 				centersOfASequence.at(i).erase(it);
 				std::map<size_t , std::vector<std::vector< int> > >::iterator it1 =long_centers_of_a_sequence.find(i);
-				for(size_t i = 0; i < it1->second.size();i++){
-					if(it1->second.at(i)==it->second){
-						it1->second.erase(it1->second.begin()+(i-1));
+				for(size_t j = 0; j < it1->second.size();j++){
+					if(it1->second.at(j)==it->second){
+						it1->second.erase(it1->second.begin()+j);
 						break;
 					}
 				}
@@ -180,96 +206,125 @@
 				std::cout << ""<<std::endl;
 			}
 		}
-		for(std::map<int, bool>::iterator it = if_center.begin(); it != if_center.end(); it++){
-			if(it->second == false){
-				std::map<int,std::string>::iterator index = center_index.find(it->first);
-				assert(index != center_index.end());
-				std::string center = index->second;
-				std::map<std::string,int>::iterator id=center_id.find(center);
-				assert(id!=center_id.end());
-				center_index.erase(index);
-				center_id.erase(id);
-			}
-		}
-		std::cout<< "center index size after " << center_index.size() << " " <<center_id.size()<<std::endl;
-
 	}
-	void finding_centers::find_seq_centers(std::map<int, bool> & if_center, size_t & seq_id , std::vector<std::multimap<size_t, std::string> > & centerOnseq){
+	void finding_centers::find_seq_centers( size_t & seq_id , std::vector<std::map<size_t, std::string> > & centerOnseq){
 		const dnastring & sequence = data.getSequence(seq_id);
 		for(size_t n= 0; n < sequence.length(); n++){
-			std::map<size_t, pw_alignment*>::iterator it=AlignmentsFromClustering.at(seq_id).find(n);
+			std::map<size_t, pw_alignment>::iterator it=AlignmentsFromClustering.at(seq_id).find(n);
 			if(it != AlignmentsFromClustering.at(seq_id).end()){
-				pw_alignment * p = it->second;
+			//	std::cout << "at "<< n;
+				pw_alignment p = it->second;
 				size_t l1,r1,l2,r2;
-				p->get_lr1(l1,r1);
-				p->get_lr2(l2,r2);
+				p.get_lr1(l1,r1);
+				p.get_lr2(l2,r2);
 				std::stringstream member;
 				member<< seq_id << ":" << n;
-				std::cout << "mem" << member.str() <<std::endl;
+			//	std::cout << "mem" << member.str() <<std::endl;
 				std::map<std::string,std::string>::iterator it1 = memberOfCluster.find(member.str());
 				assert(it1 != memberOfCluster.end());
 				std::string center = it1->second;				
 				std::vector<std::string> center_parts;
 				strsep(center, ":" , center_parts);
+				bool dir;
 				unsigned int cent_ref = atoi(center_parts.at(0).c_str());
 				unsigned int cent_left = atoi(center_parts.at(1).c_str());
-				if(p->getreference1()==cent_ref && l1==cent_left){
-					if(p->getbegin1()<p->getend1()){
+				if(p.getreference1()==cent_ref && l1==cent_left){
+					if(p.getbegin1()<p.getend1()){
+				//	if((p->getbegin1()<p->getend1()&&p->getbegin2()<p->getend2())||(p->getbegin1()>p->getend1()&&p->getbegin2()>p->getend2())){ //Dont check it here, it is checked in encoding if it occurs reverse or forward
 						std::stringstream str;
 						str<<0<<":"<<center;
-						center = str.str();	
+						center = str.str();
+						dir = false;	
 					}else{
 						std::stringstream str;
 						str<<1<<":"<<center;
-						center = str.str();	
+						center = str.str();
+						dir = true;	
 					}
 				}else{
-					assert(p->getreference2()==cent_ref && l2==cent_left);
-					if(p->getbegin2()<p->getend2()){
+					assert(p.getreference2()==cent_ref && l2==cent_left);
+					if(p.getbegin2()<p.getend2()){
+				//	if((p->getbegin1()<p->getend1()&&p->getbegin2()<p->getend2())||(p->getbegin1()>p->getend1()&&p->getbegin2()>p->getend2())){
 						std::stringstream str;
 						str<<0<<":"<<center;
-						center = str.str();	
+						center = str.str();
+						dir = false;	
 					}else{
 						std::stringstream str;
 						str<<1<<":"<<center;
-						center = str.str();	
+						center = str.str();
+						dir = true;	
 					}
 				}
-				std::cout<< "center: "<< center<<std::endl;//Direction was added to center
-				centersOnSequence.at(seq_id).insert(std::make_pair(n,center));
+			//	std::cout<< "center: "<< center << std::endl;//Direction was added to center
+			//	centersOnSequence.at(seq_id).insert(std::make_pair(n,center));
+			//	std::cout << " is " << center <<std::endl;
 				centerOnseq.at(seq_id).insert(std::make_pair(n,center));//This is the global one. It is initialized in main function
-				std::map<std::string,int>::iterator id=center_id.find(center);
-				assert(id != center_id.end());
-				std::map<int,bool>::iterator it = if_center.find(id->second);
-				assert(it!= if_center.end());
-				it->second = true;
+				std::map<std::string,int>::iterator id=center_id.find(center);//Check also for the reverese and remove the if_center instead 
+				if(id == center_id.end()){
+					if(dir == false){
+						std::stringstream str;
+						str<<1<<":"<<cent_ref<<":"<<cent_left;
+						std::map<std::string,int>::iterator revid=center_id.find(str.str());
+						if(revid == center_id.end()){
+							center_id.insert(std::make_pair(center,INDEX));
+							center_index.insert(std::make_pair(INDEX,center));
+							INDEX++;
+						}else{
+							center_id.insert(std::make_pair(center,-1*revid->second));
+							center_index.insert(std::make_pair(-1*revid->second,center));
+						}
+					}else{
+						assert(dir==true);
+						std::stringstream str;
+						str<<0<<":"<<cent_ref<<":"<<cent_left;
+						std::map<std::string,int>::iterator revid=center_id.find(str.str());
+						if(revid == center_id.end()){
+							center_id.insert(std::make_pair(center,-1*INDEX));
+							center_index.insert(std::make_pair(-1*INDEX,center));
+							INDEX++;
+						}else{
+							assert(revid->second>0);
+							center_id.insert(std::make_pair(center,-1*revid->second));
+							center_index.insert(std::make_pair(-1*revid->second,center));
+						}
+					}
+				}
+			//	std::cout << id->second <<std::endl;
+			//	std::map<int,bool>::iterator it = if_center.find(id->second);
+			//	assert(it!= if_center.end());
+			//	it->second = true;
 			}
 		}
 	}
-	void finding_centers::find_long_centers(size_t & seq_id){
+	void finding_centers::find_long_centers(size_t & seq_id,  std::map<size_t, std::string> & centerOnseq, size_t & gap_in_long_centers){
 		size_t last_position;
 		size_t first_position;
-		std::map<size_t, std::vector<int> > AllConnectedOnes;
+		std::map<size_t, std::vector<int> > AllConnectedOnes; //First one is position, second is vector of centers
 		vector<int> vectorOfcenters;
-		std::vector<size_t> position_of_each_suffix; //First one is position, second of is center
+		std::vector<size_t> position_of_each_suffix; 
 		bool direction = true;
 		size_t dir;
 		size_t dir1;
-		for(std::map<size_t, std::string>::iterator it = centersOnSequence.at(seq_id).begin(); it != centersOnSequence.at(seq_id).end();it++){
-			std::map<size_t, pw_alignment*>::iterator it1=AlignmentsFromClustering.at(seq_id).find(it->first);
-			pw_alignment * al = it1->second;
+		for(std::map<size_t, std::string>::iterator it = centerOnseq.begin(); it != centerOnseq.end();it++){
+			std::cout<< "at position "<< it->first << " center name is "<< it->second<<std::endl;
+			std::map<size_t, pw_alignment>::iterator it1=AlignmentsFromClustering.at(seq_id).find(it->first);
+			assert(it1 != AlignmentsFromClustering.at(seq_id).end());
+			pw_alignment al = it1->second;
 			size_t l1,l2,r1,r2;
-			al->get_lr1(l1,r1);
-			al->get_lr2(l2,r2);
-			if(l1 == it->first && al->getreference1()== seq_id){
-				if(al->getbegin1()<al->getend1()){
+			al.get_lr1(l1,r1);
+			al.get_lr2(l2,r2);
+			assert(l1==it->first || l2 == it->first);
+			if(l1 == it->first && al.getreference1()== seq_id){
+				if(al.getbegin1()<al.getend1()){
 					dir1 = 1;
 				}else{
 					dir1 = 0;
 				}
 			}
-			if(l2 == it->first && al->getreference2() == seq_id){
-				if(al->getbegin2()< al->getend2()){
+			else{
+				assert(l2 == it->first && al.getreference2() == seq_id);
+				if(al.getbegin2()< al.getend2()){
 					dir1 = 1;
 				}else{
 					dir1 = 0;
@@ -285,14 +340,14 @@
 			}else{
 				direction = false;
 			}
-			std::cout << "position " << it->first << " allowed gap "<< ALLOWED_GAP<<std::endl;
-			if((it->first - last_position) < ALLOWED_GAP && direction == true){
+			std::cout << "position " << it->first << " allowed gap "<< gap_in_long_centers<<std::endl;
+			if((it->first - last_position) < gap_in_long_centers && direction == true){
 				if(vectorOfcenters.size()!=0){
-					std::cout << "smaller than ALLOWED_GAP! "<<std::endl;
+					std::cout << "smaller than ALLOWED_GAP! "<< it->second <<std::endl;
 				}
 				std::map<std::string,int>::iterator id=center_id.find(it->second);
 				assert(id != center_id.end());
-				size_t index = id->second;
+				int index = id->second;//TODO what if id is negative?
 				vectorOfcenters.push_back(index);
 				position_of_each_suffix.push_back(it->first);
 				std::cout << "index "<< index << std::endl;		
@@ -316,17 +371,17 @@
 				position_of_each_suffix.clear();
 				vectorOfcenters.clear();
 			}
-			if(l1 == it->first && al->getreference1()== seq_id){
+			if(l1 == it->first && al.getreference1()== seq_id){
 				last_position = r1;
-				if(al->getbegin1()<al->getend1()){
+				if(al.getbegin1()<al.getend1()){
 					dir = 1;
 				}else{
 					dir = 0;
 				}
 			}
-			if(l2 == it->first && al->getreference2() == seq_id){
+			if(l2 == it->first && al.getreference2() == seq_id){
 				last_position = r2;
-				if(al->getbegin2()< al->getend2()){
+				if(al.getbegin2()< al.getend2()){
 					dir = 1;
 				}else{
 					dir = 0;
@@ -358,16 +413,10 @@
 			}
 		}
 		long_centers_of_a_sequence.insert(std::make_pair(seq_id, temp));
-		if(seq_id == 28){
-			std::cout << "initial suffix"<<std::endl;
-			for(std::multimap<std::vector<int>,size_t >::iterator it = initial_suffixes.at(seq_id).begin(); it != initial_suffixes.at(seq_id).end(); it++){
-				std::cout<< it->first << std::endl;
-			}
-		}
 	}
-	std::multimap< size_t, std::string> finding_centers::get_sequence_centers(size_t& id)const{
-		return centersOnSequence.at(id);
-	}
+//	std::multimap< size_t, std::string> finding_centers::get_sequence_centers(size_t& id)const{
+//		return centersOnSequence.at(id);
+//	}
 	std::string finding_centers::find_center_name(int & centerIndex)const{
 		std::map<int,std::string>::const_iterator it= center_index.find(centerIndex);
 		assert(it != center_index.end());
@@ -423,16 +472,283 @@
 			return it->second;
 		}else return empty;
 	}
-	size_t finding_centers::get_number_of_centers()const{
-		return center_index.size();
+	const size_t finding_centers::get_number_of_centers(){
+		std::map<int, std::string>::reverse_iterator it = center_index.rbegin();
+		std::map<int, std::string>::const_iterator it1 = center_index.begin();
+		if(std::abs(it->first) > std::abs(it1->first)){
+			return std::abs(it->first);
+		}else{
+			return std::abs(it1->first);
+		}
 	}
 	const std::map<std::string, int> finding_centers::get_index()const{
 		return center_id;
 	}
 
 
+void finding_centers::add_nonaligned_regions(std::vector<std::map<size_t, std::string > > & centerOnSequence, std::map<std::string, std::vector<pw_alignment> > & alignments_in_a_cluster, std::vector<std::map<size_t , std::string> > & all_pieces, std::map<std::string, size_t> & non_aligned_right){//If they gather together and make a group an index should be refered to them!! I better add them to al_in_a_cluster too
+		std::map<std::string, std::string> non_aligned_context;//string--> content of seq , string --> name of center (pos:ref)
+		std::set<std::string> erased;
+		assert(center_index.size()==center_id.size());
+		for(size_t i =0; i < data.numSequences(); i++){
+			std::cout << "centers on sequence " << i << " are :"<<std::endl;
+			size_t pre_pos = 0;//later on will be updated to right+1
+			for(std::multimap<size_t, std::string >::iterator it = centerOnSequence.at(i).begin(); it != centerOnSequence.at(i).end();it++){
+				std::cout<< it->second << " ";
+				size_t pos = it->first;
+				std::cout<< "prepos "<< pre_pos << " pos "<<pos <<std::endl;
+				assert(pre_pos <=pos);
+				if(pre_pos != pos){//There is a non aligned region in between
+ 					std::stringstream str;
+					str<<0<<":"<<i<<":"<<pre_pos;
+					//Get the context from pre_pos to pos-1
+					size_t to = pos-1;
+					unsigned int ref = i;
+					std::string this_part = data.extract_seq_part(ref,pre_pos,to);
+					std::string reverse_comp_this_string = data.extract_reverse_seq_part(ref,pre_pos,to);
+					std::map<std::string, std::string>::iterator context=non_aligned_context.find(this_part);//the reverse complement can also be checked.
+					std::map<std::string, std::string>::iterator rev_context=non_aligned_context.find(reverse_comp_this_string);
+					if(context==non_aligned_context.end()&& rev_context==non_aligned_context.end()){ //If no other non aligned region has this context or its reverse.
+						std::cout<<"if context doesn't exist"<< str.str()<<std::endl;
+						non_aligned_context.insert(std::make_pair(this_part, str.str()));
+						all_pieces.at(i).insert(std::make_pair(pre_pos,str.str()));
+						non_aligned_right.insert(std::make_pair(str.str(),pos-1));
+					}else if(context!=non_aligned_context.end()){ //If another non aligned region with the exact same context exist.
+						if(rev_context != non_aligned_context.end()){
+							std::cout << this_part << std::endl;
+							std::cout << reverse_comp_this_string << std::endl;
+						}
+						if(this_part != reverse_comp_this_string){//To avoid the Palindromic regions
+							assert(rev_context==non_aligned_context.end());
+						}
+						assert(rev_context == non_aligned_context.end() || this_part == reverse_comp_this_string);
+						std::cout<< "if context exists "<< context->second<< std::endl;
+						std::vector<std::string> center_parts;
+						strsep(context->second, ":" , center_parts);
+						unsigned int center_dir = atoi(center_parts.at(0).c_str());
+						unsigned int center_ref = atoi(center_parts.at(1).c_str());
+						unsigned int center_left = atoi(center_parts.at(2).c_str());
+						assert(center_dir == 0);
+						std::stringstream str1;
+						str1<<1<<":"<<center_ref<<":"<<center_left;
 
+						all_pieces.at(i).insert(std::make_pair(pre_pos,context->second));
+						centerOnSequence.at(i).insert(std::make_pair(pre_pos, context->second));
+					//	non_aligned_right.insert(std::make_pair(context->second,pos-1));
+						std::map<std::string, size_t>::iterator nonaligned = non_aligned_right.find(context->second);
+						if(nonaligned == non_aligned_right.end()){
+							std::cout << "already removed "<<context->second << " "<< context->first <<std::endl;
+						}
+						if(nonaligned != non_aligned_right.end()){
+							non_aligned_right.erase(nonaligned); //It is getting removed from the non_aligned_right container 'cus it is not a non aligned region anymore
+							erased.insert(context->second);
+						}else{
+							std::set<std::string>::iterator test = erased.find(context->second);
+							assert(test != erased.end());
+						}
+						std::map<std::string, int>::iterator id = center_id.find(context->second);//Should check if its reverse exists!
+						std::map<std::string , int>::iterator rev_id = center_id.find(str1.str());
+						if(id == center_id.end() && rev_id == center_id.end()){
+						//	std::cout<< "center index size is "<< center_index.size() << std::endl;
+							std::map<int, std::string>::reverse_iterator lastind = center_index.rbegin();
+							size_t this_index = lastind->first + 1;
+							std::cout<< "this index "<< this_index <<std::endl;
+							center_index.insert(std::make_pair(this_index, context->second));
+							center_id.insert(std::make_pair(context->second, this_index));
+						}else if(id == center_id.end()){
+							assert(rev_id != center_id.end());
+							assert(rev_id->second < 0);
+							center_index.insert(std::make_pair(-1*rev_id->second,context->second));
+							center_id.insert(std::make_pair(context->second, -1*rev_id->second));
+						}else if(rev_id == center_id.end()){
+							assert(id != center_id.end());
+							assert(id->second > 0);
+						}
+						std::cout << "when true " << context->second <<std::endl;
+						add_to_alignments(centerOnSequence, alignments_in_a_cluster, i, pre_pos, this_part, context->second,true); //this_part --> sequence content of both member and so called center , context->second --> center name
+					}else{//If its context doesn't exist itself but its reverse context does exist.
+						assert(context==non_aligned_context.end() && rev_context!=non_aligned_context.end());
+						std::vector<std::string> center_parts;
+						strsep(rev_context->second, ":" , center_parts);
+						unsigned int center_dir = atoi(center_parts.at(0).c_str());
+						unsigned int center_ref = atoi(center_parts.at(1).c_str());
+						unsigned int center_left = atoi(center_parts.at(2).c_str());
+						assert(center_dir == 0);
+						std::stringstream str1;
+						str1<<1<<":"<<center_ref<<":"<<center_left;
+						all_pieces.at(i).insert(std::make_pair(pre_pos,str1.str()));
+						centerOnSequence.at(i).insert(std::make_pair(pre_pos, str1.str()));
+					//	non_aligned_right.insert(std::make_pair(str.str(),pos-1));
+						std::map<std::string, size_t>::iterator nonaligned = non_aligned_right.find(rev_context->second);
+						if(nonaligned == non_aligned_right.end()){
+							std::cout<<"if its reverse exists " << rev_context->second <<std::endl;
+							std::cout << rev_context->first << " "<< this_part <<std::endl;
+						}
+						if(nonaligned != non_aligned_right.end()){
+							non_aligned_right.erase(nonaligned);
+							erased.insert(rev_context->second);
+						}else{
+							std::set<std::string>::iterator test = erased.find(rev_context->second);
+							assert(test != erased.end());
+						}
+						std::map<std::string, int>::iterator id = center_id.find(rev_context->second);
+						std::map<std::string, int>::iterator rev_id = center_id.find(str1.str());
+						if(id == center_id.end() && rev_id == center_id.end()){
+							std::cout << "here! "<<std::endl;
+							std::map<int, std::string>::reverse_iterator lastind = center_index.rbegin();
+							std::map<int,std::string>::iterator firstind = center_index.begin();
+							size_t this_index = std::abs(lastind->first) + 1;
+							if(std::abs(lastind->first) < std::abs(firstind->first)){
+								this_index = std::abs(firstind->first)+1;
+							}
+							center_index.insert(std::make_pair(-1*this_index, str1.str()));
+							center_id.insert(std::make_pair(str1.str(), -1*this_index));
+							/////////JUST ADDED
+							center_index.insert(std::make_pair(this_index, rev_context->second));
+							center_id.insert(std::make_pair(rev_context->second,this_index));
 
+						}else if(id == center_id.end()){ //XXX Is it even happening?? Seems it shouldn't happen 'cus it happend atleast once before.
+							std::cout << "HERE! "<<std::endl;
+							assert(rev_id != center_id.end());
+							assert(rev_id->second < 0);
+
+						}else if(rev_id == center_id.end()){
+							assert(id != center_id.end());
+							assert(id->second > 0);
+							std::cout << "here1"<<std::endl;
+							center_index.insert(std::make_pair(-1*id->second, str1.str()));
+							center_id.insert(std::make_pair(str1.str(), -1*id->second));
+
+						}else{
+							assert(rev_id != center_id.end());
+							assert(rev_id->second < 0);
+							assert(id != center_id.end());
+							assert(id->second > 0);
+						}
+						std::string rev_center = str1.str();
+						add_to_alignments(centerOnSequence, alignments_in_a_cluster, i, pre_pos, reverse_comp_this_string, rev_center,false);
+					}
+				}
+				pre_pos = find_right_on_seq(it->second,alignments_in_a_cluster, pos , i) + 1;
+				all_pieces.at(i).insert(std::make_pair(it->first,it->second));//Add the aligned region to the all_pieces;
+
+			}
+			if(pre_pos < data.get_seq_size(i)-1){
+			//	std::cout <<"there is a last piece! "<<std::endl;
+				//add the last piece!
+				std::stringstream str;
+				str<<0<<":"<<i<<":"<<pre_pos;
+				all_pieces.at(i).insert(std::make_pair(pre_pos,str.str()));
+				non_aligned_right.insert(std::make_pair(str.str(),data.get_seq_size(i)-1));
+			}
+			std::cout << std::endl;
+		}
+		std::cout<<"center index size after adding non aligned regions "<< center_index.size()<<std::endl;
+		//Making potential long centers:
+
+	}
+	void finding_centers::add_to_alignments(std::vector<std::map<size_t, std::string > > & centerOnSequence, std::map<std::string, std::vector<pw_alignment> > & alignments_in_a_cluster, size_t & ref, size_t & position, std::string & sequence, std::string & center_name , bool direction){//it adds newly made alignments between identical non aligned regions to alignmnets_in_a_cluster and AlignmentFromClustering
+		std::cout << "add the al "<<std::endl;
+		std::vector<std::string> center_parts;
+		strsep(center_name, ":" , center_parts);
+		unsigned int center_dir = atoi(center_parts.at(0).c_str());
+		unsigned int center_ref = atoi(center_parts.at(1).c_str());
+		unsigned int center_left = atoi(center_parts.at(2).c_str());
+		if(direction == false){
+			assert(center_dir == 1);
+		}else{
+			assert(center_dir ==0);
+		}
+		size_t begin1 = center_left;
+		size_t end1 = center_left+ sequence.length()-1;
+		std::string sample1 = sequence;
+		std::string sample2 = sequence;
+		size_t begin2 = position;
+		size_t end2 = position+sequence.length()-1;
+		if(direction==false){
+			begin2 = end2;
+			end2 = position;
+		//	sample1 = data.extract_reverse_seq_part(center_ref, begin1, end1);
+		}
+		pw_alignment p(sample1, sample2, begin1, begin2, end1, end2 , center_ref , ref);
+		std::map<size_t , pw_alignment >::iterator al = AlignmentsFromClustering.at(ref).find(position);
+		assert(al==AlignmentsFromClustering.at(ref).end());
+		AlignmentsFromClustering.at(ref).insert(std::make_pair(position, p));
+		std::stringstream str;
+		str<<center_ref<<":"<<center_left;	
+		std::map<std::string, std::vector<pw_alignment> >::iterator it = alignments_in_a_cluster.find(str.str());
+		std::cout << str.str()<<std::endl;
+		if(it == alignments_in_a_cluster.end()){
+			alignments_in_a_cluster.insert(std::make_pair(str.str(), std::vector<pw_alignment>()));
+			it = alignments_in_a_cluster.find(str.str());
+			std::map<size_t , pw_alignment >::iterator cent = AlignmentsFromClustering.at(center_ref).find(center_left);
+			assert(cent==AlignmentsFromClustering.at(center_ref).end());
+			AlignmentsFromClustering.at(center_ref).insert(std::make_pair(center_left, p));
+			std::stringstream str1;
+			str1<<0<<":"<<center_ref<<":"<<center_left;
+			std::cout << "center left in add al "<< center_left << " ref " << center_ref << std::endl;
+			centerOnSequence.at(center_ref).insert(std::make_pair(center_left, str1.str()));
+		}
+		it->second.push_back(p);
+		p.print();
+		std::cout << p.get_al_ref1() << std::endl;
+		std::cout << p.get_al_ref2() << std::endl;
+
+	}
+	const size_t finding_centers::find_right_on_seq(std::string & center,std::map<std::string, std::vector<pw_alignment> > & alignments_in_a_cluster, size_t & left , size_t & ref)const{
+		std::vector<std::string> center_parts;
+		strsep(center, ":" , center_parts);
+		unsigned int center_dir = atoi(center_parts.at(0).c_str());
+		unsigned int center_ref = atoi(center_parts.at(1).c_str());
+		unsigned int center_left = atoi(center_parts.at(2).c_str());
+		std::stringstream str;
+		str<<center_ref<<":"<<center_left;
+
+		std::map<std::string, std::vector<pw_alignment> >::iterator it=alignments_in_a_cluster.find(str.str());
+		assert(it!= alignments_in_a_cluster.end());
+		for(size_t i = 0 ; i < it->second.size();i++){
+			pw_alignment p= it->second.at(i);
+			size_t left_1; 
+			size_t left_2;
+			size_t right_1;
+			size_t right_2;
+			size_t ref1;
+			size_t ref2;
+			p.get_lr1(left_1,right_1);
+			p.get_lr2(left_2,right_2);
+			ref1 = p.getreference1();
+			ref2 = p.getreference2();
+			std::stringstream sample1;
+			std::stringstream sample2;
+			sample1 <<ref1 << ":" << left_1;
+			sample2 <<ref2 << ":" << left_2;
+			if(sample1.str()==it->first && left_1 == left && ref1 == ref){
+				std::cout << "1: "<<std::endl;
+				p.print();
+				return right_1;
+			}
+			if(sample2.str() == it->first && left_2 == left && ref2 == ref){
+				std::cout << "2: "<<std::endl;
+				p.print();
+
+				return right_2;
+			}
+			if(sample2.str()==it->first && left_1 == left && ref1 == ref){
+				std::cout << "3: "<<std::endl;
+				p.print();
+
+				return right_1;
+			}
+			if(sample1.str() == it->first && left_2 == left && ref2 == ref){
+				std::cout << "4: "<<std::endl;
+				p.print();
+
+				return right_2;
+			}
+		}
+		std::cout<< "shouldnt happen! "<<std::endl;
+		return 0;
+	}
 	suffixTree::suffixTree(size_t & num_seq, finding_centers & cent, std::vector<std::vector<std::vector<int> > > & words):centers(cent){
 		this->num_seq = num_seq;
 		this->words =words;
@@ -641,7 +957,7 @@
 				}
 			}
 		}
-//		print_tree();
+		print_tree();
 
 	}
 	void suffixTree::make_tree(std::vector<int> & center_with_highest_gain, int & highest_index){	

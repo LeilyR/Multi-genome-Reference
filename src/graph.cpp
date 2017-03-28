@@ -1365,7 +1365,7 @@ void Graph::parseData(all_data & data, use_model & model,Graph& newGraph,std::ve
 
 void Graph::prepare_read(Graph& newgraph, std::vector<pw_alignment> & als, const dnastring & current_read, use_model & m , all_data & data, std::ostream & output){
 	//Remove part of read if gaps are too important, will find more than one path per read.
-	std::sort(als.begin(),als.end(),sort_pw_alignment());
+	std::sort(als.begin(),als.end(),sort_pw_alignment_by_left());
 	std::cout << "als size " << als.size()<<std::endl;
 	size_t maxDistance = 400;//XXX Why 400????!!!!
 	//size_t posLastGap = 0 ;

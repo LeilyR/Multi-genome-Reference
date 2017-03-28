@@ -616,7 +616,7 @@ template<typename T>
 							}
 							counter ++;
 							enc.encode(l,h,t);
-							wrappers.encode(l,h,t);
+						//	wrappers.encode(l,h,t);
 						//	std::cout << "l: " << l << " h: "<< h << " base: " << base << std::endl;
 						}
 						std::cout<<"cent length1: "<< cent_right - cent_left << std::endl;
@@ -680,7 +680,7 @@ template<typename T>
 							}
 							counter ++;
 							enc.encode(l,h,t);
-							wrappers.encode(l,h,t);
+						//	wrappers.encode(l,h,t);
 					//		std::cout << "l: " << l << " h: "<< h << " base: " << base << std::endl;
 						}
 						std::cout<<"cent length3: "<< cent_right - cent_left << std::endl;
@@ -705,13 +705,13 @@ template<typename T>
 				unsigned int l1	= model.get_powerOfTwo().at(bit);
 				unsigned int h1 = model.get_powerOfTwo().at(bit)+5;					
 				enc.encode(l1,h1,t); 
-				wrappers.encode(l1,h1,t);
+			//	wrappers.encode(l1,h1,t);
 				std::cout << "end of a center "<<std::endl;
 			}
 			unsigned int l1	= model.get_powerOfTwo().at(bit)+5;
 			unsigned int h1 = model.get_powerOfTwo().at(bit)+10;					
 			enc.encode(l1,h1,t); 
-			wrappers.encode(l1,h1,t);
+		//	wrappers.encode(l1,h1,t);
 			std::cout<< "partition: " << i <<std::endl;
 			std::cout << "counter "<<counter<<std::endl;
 		}
@@ -868,7 +868,7 @@ template<typename T>
 			unsigned int l1 =  model.get_powerOfTwo().at(bit);
 			unsigned int h1 = model.get_powerOfTwo().at(bit) + (model.get_powerOfTwo().at(bit)/4);
 			enc.encode(l1,h1,total);
-			wrappers.encode(l1,h1,total);
+		//	wrappers.encode(l1,h1,total);
 		}
 		if((cent_ref == p.getreference1()&& cent_left == p.getbegin1()&& left_2==p.getend2())||(cent_ref == p.getreference2()&& cent_left ==p.getbegin2()&&left_1 == p.getend1())){
 			std::cout<<"other ref is reverse!"<<std::endl;
@@ -876,7 +876,7 @@ template<typename T>
 			unsigned int l1 =  model.get_powerOfTwo().at(bit) + (model.get_powerOfTwo().at(bit)/2);
 			unsigned int h1 = model.get_powerOfTwo().at(bit) + (3*model.get_powerOfTwo().at(bit)/4);
 			enc.encode(l1,h1,total);
-			wrappers.encode(l1,h1,total);
+		//	wrappers.encode(l1,h1,total);
 		}
 		if((cent_ref == p.getreference1()&& cent_left == p.getend1()&& left_2==p.getend2())||(cent_ref == p.getreference2() && cent_left ==p.getend2()&&left_1 == p.getend1())){
 			std::cout<<"reverse_both!"<<std::endl;
@@ -884,7 +884,7 @@ template<typename T>
 			unsigned int l1 =  model.get_powerOfTwo().at(bit) + (3*model.get_powerOfTwo().at(bit)/4);
 			unsigned int h1 = 2*model.get_powerOfTwo().at(bit);
 			enc.encode(l1,h1,total);
-			wrappers.encode(l1,h1,total);
+		//	wrappers.encode(l1,h1,total);
 		}
 		std::cout<< "end of reverse function"<<std::endl;
 	}
@@ -906,7 +906,7 @@ template<typename T>
 			unsigned int l1 = model.get_powerOfTwo().at(bit)+high_of_flags.at(0);
 			unsigned int h1 = model.get_powerOfTwo().at(bit) +high_of_flags.at(1);
 			enc.encode(l1,h1,total);
-			wrappers.encode(l1,h1,total);
+		//	wrappers.encode(l1,h1,total);
 		}
 		if((cent_ref == p.getreference1()&& cent_left == p.getbegin1()&& left_2==p.getend2())||(cent_ref == p.getreference2()&& cent_left ==p.getbegin2()&&left_1 == p.getend1())){
 			std::cout<<"other ref is reverse!"<<std::endl;
@@ -914,7 +914,7 @@ template<typename T>
 			unsigned int l1 = model.get_powerOfTwo().at(bit)+high_of_flags.at(1);
 			unsigned int h1 = model.get_powerOfTwo().at(bit) +high_of_flags.at(2);
 			enc.encode(l1,h1,total);
-			wrappers.encode(l1,h1,total);
+		//	wrappers.encode(l1,h1,total);
 		}
 		if((cent_ref == p.getreference1()&& cent_left == p.getend1()&& left_2==p.getend2())||(cent_ref == p.getreference2() && cent_left ==p.getend2()&&left_1 == p.getend1())){
 			std::cout<<"reverse_both!"<<std::endl;
@@ -922,7 +922,7 @@ template<typename T>
 			unsigned int l1 = model.get_powerOfTwo().at(bit)+high_of_flags.at(2);
 			unsigned int h1 = model.get_powerOfTwo().at(bit) +high_of_flags.at(3);
 			enc.encode(l1,h1,total);
-			wrappers.encode(l1,h1,total);
+		//	wrappers.encode(l1,h1,total);
 		}
 		std::cout<< "end of reverse function with optimized flags"<<std::endl;
 	}
@@ -983,7 +983,7 @@ template<typename T>
 						unsigned int l1 = model.get_powerOfTwo().at(bit);
 						unsigned int h1 = model.get_powerOfTwo().at(bit)+(model.get_powerOfTwo().at(bit)/4);
 						enc.encode(l1,h1,total);
-						wrappers.encode(l1,h1,total);
+				//		wrappers.encode(l1,h1,total);
 						std::stringstream mem;
 						mem << sequenceId << ":" << n;
 						std::cout << mem.str() << std::endl;
@@ -1007,7 +1007,7 @@ template<typename T>
 								}
 								unsigned int par_high = partitionHigh.at(j);
 								enc.encode(par_low,par_high,total);
-								wrappers.encode(par_low,par_high,total);
+							//	wrappers.encode(par_low,par_high,total);
 //								std::cout << "par low: "<< par_low << " par high: "<< par_high << std::endl;									
 								center_l = it1 ->second.at(0);
 								center_h = it1->second.at(1);
@@ -1017,7 +1017,7 @@ template<typename T>
 						}
 //						std::cout<< "center low "<< center_l << " center high " << center_h<<"center left : "<< cent_left <<std::endl;
 						enc.encode(center_l, center_h, total);
-						wrappers.encode(center_l,center_h,total);
+					//	wrappers.encode(center_l,center_h,total);
 						if(cent_ref == sequenceId && cent_left == n){
 //							std::cout<< " center is on the ref "<< std::endl;	
 							if(cent_left == p->getend1()||cent_left ==p->getend2()){
@@ -1036,7 +1036,7 @@ template<typename T>
 								unsigned int l1 =  model.get_powerOfTwo().at(bit) + 0;
 								unsigned int h1 = model.get_powerOfTwo().at(bit) + (model.get_powerOfTwo().at(bit)/4);
 								enc.encode(l1,h1,total);
-								wrappers.encode(l1,h1,total);
+							//	wrappers.encode(l1,h1,total);
 
 							}
 							if((cent_ref == p->getreference1()&& cent_left == p->getbegin1()&& left_2==p->getend2())||(cent_ref == p->getreference2()&& cent_left ==p->getbegin2()&&left_1 == p->getend1())){
@@ -1046,7 +1046,7 @@ template<typename T>
 								unsigned int l1 =  model.get_powerOfTwo().at(bit) + (model.get_powerOfTwo().at(bit)/2);
 								unsigned int h1 = model.get_powerOfTwo().at(bit) + (3*model.get_powerOfTwo().at(bit)/4);
 								enc.encode(l1,h1,total);
-								wrappers.encode(l1,h1,total);
+							//	wrappers.encode(l1,h1,total);
 							}
 							if((cent_ref == p->getreference1()&& cent_left == p->getend1()&& left_2==p->getend2())||(cent_ref == p->getreference2() && cent_left ==p->getend2()&&left_1 == p->getend1())){
 								p->print();
@@ -1055,7 +1055,7 @@ template<typename T>
 								unsigned int l1 =  model.get_powerOfTwo().at(bit) + (3*model.get_powerOfTwo().at(bit)/4);
 								unsigned int h1 = 2*model.get_powerOfTwo().at(bit);
 								enc.encode(l1,h1,total);
-								wrappers.encode(l1,h1,total);
+							//	wrappers.encode(l1,h1,total);
 							}
 
 							model.get_encoded_member(*p,cent_ref,cent_left,functor,outs);
@@ -1064,7 +1064,7 @@ template<typename T>
 						l1 = model.get_powerOfTwo().at(bit)+(model.get_powerOfTwo().at(bit)/4);
 						h1 = model.get_powerOfTwo().at(bit) +(model.get_powerOfTwo().at(bit)/2);
 						enc.encode(l1,h1,total);
-						wrappers.encode(l1,h1,total);
+					//	wrappers.encode(l1,h1,total);
 						std::cout<< "end of an al in enc. "<<std::endl;
 						if(p->getreference1()== sequenceId && n == left_1){
 							n = right_1;
@@ -1085,21 +1085,21 @@ template<typename T>
 							h = model.get_powerOfTwo().at(bit);
 						}
 						enc.encode(l,h,total);
-						wrappers.encode(l,h,total);
+					//	wrappers.encode(l,h,total);
 						int base_int = base;
-						wrappers.context(base_int);
+					//	wrappers.context(base_int);
 					}
 				}//end of each seq
 				unsigned int l1	= model.get_powerOfTwo().at(bit)+(model.get_powerOfTwo().at(bit)/2);
 				unsigned int h1 = model.get_powerOfTwo().at(bit) +(3*model.get_powerOfTwo().at(bit)/4);
 				enc.encode(l1,h1,total);
-				wrappers.encode(l1,h1,total);
+			//	wrappers.encode(l1,h1,total);
 				std::cout<<"end of a seq in enc. "<<std::endl;
 			}//end of all sequences of an accsseion
 			unsigned int l1 = model.get_powerOfTwo().at(bit)+(3*model.get_powerOfTwo().at(bit)/4);
 			unsigned int h1 = 2*model.get_powerOfTwo().at(bit);
 			enc.encode(l1,h1,total);
-			wrappers.encode(l1,h1,total);
+		//	wrappers.encode(l1,h1,total);
 			std::cout<<"end of an acc"<<std::endl;
 		}
 		std::cout<< "encoding is finished!"<<std::endl;
@@ -1128,7 +1128,7 @@ template<typename T>
 						unsigned int l1	= model.get_powerOfTwo().at(bit);
 						unsigned int h1 = model.get_powerOfTwo().at(bit) + (model.get_powerOfTwo().at(bit)/4);
 						enc.encode(l1,h1,total);
-						wrappers.encode(l1,h1,total);
+					//	wrappers.encode(l1,h1,total);
 						std::cout<< "al position: "<< n << std::endl;
 					//	pw_alignment p1 = *it->second;
 						std::vector<std::string> current_center;
@@ -1175,7 +1175,7 @@ template<typename T>
 						}
 						unsigned high = HighOfPartition.at(partition);
 						enc.encode(low,high,total);//long center partition number is encoded!
-						wrappers.encode(low,high,total);
+					//	wrappers.encode(low,high,total);
 						std::cout << "partition "<< partition << " " << low<< " " << high<<std::endl;
 						std::vector< std::pair<std::vector<std::string> , vector<unsigned int> > > cent_high = long_center_high.at(partition);
 						for(size_t j = 0; j < cent_high.size();j++){
@@ -1187,7 +1187,7 @@ template<typename T>
 						}	
 						std::cout << "l "<< low << "h "<< high << std::endl;
 						enc.encode(low,high,total);// center itself is encoded!
-						wrappers.encode(low,high,total);
+					//	wrappers.encode(low,high,total);
 						unsigned int cent_ref;
 						unsigned int cent_left;
 					//	size_t gap = 0;
@@ -1248,7 +1248,7 @@ template<typename T>
 						l1 = model.get_powerOfTwo().at(bit)+(model.get_powerOfTwo().at(bit)/4);
 						h1 = model.get_powerOfTwo().at(bit) +(model.get_powerOfTwo().at(bit)/2);
 						enc.encode(l1,h1,total);
-						wrappers.encode(l1,h1,total);
+					//	wrappers.encode(l1,h1,total);
 					}else{ //If there is no alignment in that position
 						unsigned int l = 0;
 						size_t base = dnastring::base_to_index(sequence.at(n));
@@ -1260,22 +1260,22 @@ template<typename T>
 							h = model.get_powerOfTwo().at(bit);
 						}
 						enc.encode(l,h,total);
-						wrappers.encode(l,h,total);
+					//	wrappers.encode(l,h,total);
 						int base_int = base;
-						wrappers.context(base_int);
+					//	wrappers.context(base_int);
 					}
 				}//End of a sequence
 				unsigned int l1	= model.get_powerOfTwo().at(bit)+(model.get_powerOfTwo().at(bit)/2);
 				unsigned int h1 = model.get_powerOfTwo().at(bit) +(3*model.get_powerOfTwo().at(bit)/4);
 				enc.encode(l1,h1,total);
-				wrappers.encode(l1,h1,total);
+			//	wrappers.encode(l1,h1,total);
 				std::cout<<"end of a seq in enc. "<<std::endl;
 
 			}//end of all sequences of an accsseion
 			 unsigned int l1 = model.get_powerOfTwo().at(bit)+(3*model.get_powerOfTwo().at(bit)/4);
 			 unsigned int h1 = 2*model.get_powerOfTwo().at(bit);
 			enc.encode(l1,h1,total);
-			wrappers.encode(l1,h1,total);
+		//	wrappers.encode(l1,h1,total);
 			std::cout<<"end of an acc"<<std::endl;
 		}
 

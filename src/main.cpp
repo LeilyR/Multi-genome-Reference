@@ -35,6 +35,7 @@
 #include "needleman_wunsch.hpp"
 #include "read_daligner.hpp"
 #include "graph.hpp" //alignment graph that is used for mapping read against the reference
+#include "dijkstra.hpp"
 #include "map_read.hpp"
 
 #define NO_MAKEFILE
@@ -779,7 +780,7 @@ std::string get_reverse(const std::string & seq){
 }
 int do_mc_model(int argc, char * argv[]) {
 	typedef mc_model use_model;
-	typedef overlap_interval_tree overlap_type;
+	typedef overlap_interval_tree<pw_alignment> overlap_type;
 //	typedef dynamic_mc_model use_model;
 //	typedef clustering<use_model> use_clustering;
 //	typedef overlap overlap_type;
@@ -1272,7 +1273,7 @@ int do_mc_model(int argc, char * argv[]) {
 //		suffix_tree tree(data,centers);
 //		merging_centers merg(data, centers, tree);
 	//From this point on orientation matters! It shoud be taken into account in counting the number of each center happening when we are looking for the long centers!
-		centers.center_frequency(al_of_a_ccs,centerOnSequence);//It detects all the centers on each sequence and fill in centerOnSequence which contains all the cneters on each sequence.
+	//	centers.center_frequency(al_of_a_ccs,centerOnSequence);//It detects all the centers on each sequence and fill in centerOnSequence which contains all the cneters on each sequence.
 	//	merg.adding_new_centers(local_long_centers,centersPositionOnASeq);//After merging a group of centers we iteratively create new suffixes and a new tree based on them, then recalculate the gains again. At the end those with gain>0 go to the long_centers and centersPositionOnASeq.
 		// New centers (longer ones) are added to a separate data structure.
 //		std::cout << "long centers: " << std::endl;
@@ -1886,7 +1887,7 @@ int do_mc_model(int argc, char * argv[]) {
 }
 int do_dynamic_mc_model(int argc, char * argv[]) {
 //	typedef overlap overlap_type;
-	typedef overlap_interval_tree overlap_type;
+	typedef overlap_interval_tree<pw_alignment> overlap_type;
 
 	typedef compute_cc_avl<overlap_type> compute_cc_type;
 //	typedef compute_cc compute_cc_type;
@@ -1957,13 +1958,13 @@ int do_dynamic_mc_model(int argc, char * argv[]) {
 	size_t num_seq = data.numSequences();
 	filter_als filter(m,al_with_pos_gain, num_seq, num_threads);
 	filter.find_overlapped_references();
-	std::set<const pw_alignment*,  compare_pointer_pw_alignment> filtered_als;
-	filtered_als = filter.get_filtered_als();
+//	std::set<const pw_alignment*,  compare_pointer_pw_alignment> filtered_als;
+//	filtered_als = filter.get_filtered_als();
 
 
 
 	//Makes components of partially overlapped alignments
-	std::cout << "al with postive gains are kept "<< al_with_pos_gain.size() << " filtered als size "<< filtered_als.size() <<std::endl;
+//	std::cout << "al with postive gains are kept "<< al_with_pos_gain.size() << " filtered als size "<< filtered_als.size() <<std::endl;
 	clock_t initial_cc_time = clock();
 //	compute_cc cccs(al_with_pos_gain, data.numSequences(),num_threads);
 //	compute_cc_with_interval_tree cccs(al_with_pos_gain, data.numSequences());
@@ -2302,7 +2303,7 @@ int do_dynamic_mc_model(int argc, char * argv[]) {
 		//XXX Long centers are created here!
 		finding_centers centers(data);
 		//From this point on orientation matters! It shoud be taken into account in counting the number of each center happening when we are looking for the long centers!
-		centers.center_frequency(al_of_a_ccs,centerOnSequence);//All the centers of each sequence are detected and centerOnSequence is filled in. It contains all the cneters on each sequence. 
+	//	centers.center_frequency(al_of_a_ccs,centerOnSequence);//All the centers of each sequence are detected and centerOnSequence is filled in. It contains all the cneters on each sequence. 
 	//	std::cout<< "centers on sequence 35 "<<std::endl;
 	//	for(std::multimap<size_t, std::string >::iterator test_it = centerOnSequence.at(35).begin(); test_it != centerOnSequence.at(35).end(); test_it++){
 	//			std::cout<<test_it->first<< " "<< test_it->second<< " "<<std::endl;
@@ -2319,7 +2320,7 @@ int do_dynamic_mc_model(int argc, char * argv[]) {
 		//Trees are created iteratively and centers are merged:
 		merging_centers merg(data, centers);
 
-		merg.adding_new_centers(local_long_centers,centersPositionOnASeq);//After merging a group of centers we iteratively create new suffixes and a new tree based on them, then recalculate the gains again. At the end those with gain>0 go to the long_centers and centersPositionOnASeq.
+	//	merg.adding_new_centers(local_long_centers,centersPositionOnASeq);//After merging a group of centers we iteratively create new suffixes and a new tree based on them, then recalculate the gains again. At the end those with gain>0 go to the long_centers and centersPositionOnASeq.
 		std::cout<< "new centers are made! " << local_long_centers.size() <<std::endl;
 		for(size_t j  =0; j < local_long_centers.size();j++){
 			long_centers.push_back(local_long_centers.at(j));
@@ -2332,7 +2333,7 @@ int do_dynamic_mc_model(int argc, char * argv[]) {
 			}
 			std::cout << " " <<std::endl;
 		}
-		merg.create_alignment(local_long_centers,new_centers,al_of_a_ccs,centersPositionOnASeq,centerOnSequence);//Here we fill in the 'new_centers' with longer alignments in the way that center is always the second ref
+	//	merg.create_alignment(local_long_centers,new_centers,al_of_a_ccs,centersPositionOnASeq,centerOnSequence);//Here we fill in the 'new_centers' with longer alignments in the way that center is always the second ref
 
 	} // for connected components
 	//Short centers are added to the long centers container. //TODO Think about simplifying it! XXX Note that second both ref can be backwards
@@ -2813,7 +2814,7 @@ int do_dynamic_mc_model(int argc, char * argv[]) {
 	if(0!=encoding_out.compare("noencode")){
 		dlib::entropy_encoder_kernel_1 * enc = new dlib::entropy_encoder_kernel_1();
 	//	en.al_encode(weight,member_of_cluster,alignments_in_a_cluster,outs,*enc);
-		en.al_encode_with_long_center(centerOnSequence,long_center_weight,alignments_in_a_cluster, centersPositionOnASeq, member_of_cluster ,outs, *enc,new_centers);
+	//	en.al_encode_with_long_center(centerOnSequence,long_center_weight,alignments_in_a_cluster, centersPositionOnASeq, member_of_cluster ,outs, *enc,new_centers);
 		delete enc;
 		outs.close();
 	}
@@ -2844,14 +2845,16 @@ int do_dynamic_mc_model(int argc, char * argv[]) {
 
 }
 
+
+
 // current function
 int do_dynamic_mc_model_with_two_edge(int argc, char * argv[]) {
 	std::srand(time(0));
-	typedef overlap_interval_tree overlap_type;
+	typedef overlap_interval_tree<pw_alignment> overlap_type;
 	typedef dynamic_mc_model use_model;
 	typedef compute_cc_avl_fraction cc_type;
 	typedef initial_alignment_set<use_model,overlap_type> use_ias;
-	if(argc < 8) {
+	if(argc < 9) {
 		usage();
 		cerr << "Program: new_dy_model" << std::endl;
 		cerr << "Parameters:" << std::endl;
@@ -2861,6 +2864,7 @@ int do_dynamic_mc_model_with_two_edge(int argc, char * argv[]) {
 		cerr << "* output binary compressed file (use 'noencode' to skip encoding step)" << std::endl;
 		cerr << "* output fasta file for the graph" <<std::endl; //They are neede for mapping reads against the graph
 		cerr << "* output dot file represents adjacencies "<<std::endl;
+		cerr << "* short or long centers (1: if short centers, 0: if long centers)" <<std::endl;
 		cerr << "* number of threads to use (optional, default 1)" << std::endl;
 		return 1;
 	}
@@ -2873,9 +2877,11 @@ int do_dynamic_mc_model_with_two_edge(int argc, char * argv[]) {
 	std::string graphfasta(argv[6]);
 	std::string dotfile(argv[7]);
 	std::ofstream dotout(dotfile.c_str());
+	size_t center_type = atoi(argv[8]);
+
 	size_t num_threads = 1;
-	if(argc == 9) {
-		num_threads = atoi(argv[8]);
+	if(argc == 10) {
+		num_threads = atoi(argv[9]);
 	}
 // Read all data
 	all_data data;
@@ -2907,9 +2913,9 @@ int do_dynamic_mc_model_with_two_edge(int argc, char * argv[]) {
 		double av_gain = (g1+g2)/2 ;
 
 
-		const located_alignment & lal = data.getLAlignment(i);
-		m.gain_function(lal, g1, g2);
-		double lav_gain = (g1+g2) /2;
+	//	const located_alignment & lal = data.getLAlignment(i);
+	//	m.gain_function(lal, g1, g2);
+	//	double lav_gain = (g1+g2) /2;
 
 	//	std::cout << " al " << lal.alignment_length() << " old gain " << av_gain << " new gain " << lav_gain << std::endl;
 	//	al.print();
@@ -2920,7 +2926,7 @@ int do_dynamic_mc_model_with_two_edge(int argc, char * argv[]) {
 			sum_of_input_gain += av_gain;
 }
 		}
-		if(lav_gain > 0) {
+/*		if(lav_gain > 0) {
 #pragma omp critical(lal_insert)
 {
 			lal_with_pos_gain.insert(&lal);
@@ -2930,7 +2936,7 @@ int do_dynamic_mc_model_with_two_edge(int argc, char * argv[]) {
                        if(i%60000==0 && i>0) std::cout << (double)i/(double)data.numAlignments() << std::endl << std::flush;
 			
 }
-		}
+		}*/
 
 	}
 	std::cout << std::endl;
@@ -2941,12 +2947,11 @@ int do_dynamic_mc_model_with_two_edge(int argc, char * argv[]) {
 
 //Filtering the alignments(Optional)
 	size_t num_seq = data.numSequences();
-//	filter_als filter(m,al_with_pos_gain, num_seq, num_threads);
-//	filter.find_overlapped_references();
+	filter_als filter(m,al_with_pos_gain, num_seq, num_threads);
+	filter.find_overlapped_references();
 
 
-	size_t gap_in_long_centers = m.estimate_gap_in_long_centers(); // TODO use this to compute long centers
-//	alignment_filter alfilter(m, data, al_with_pos_gain, gap_in_long_centers, num_threads);//  TODO XXX 
+	size_t gap_in_long_centers = m.estimate_gap_in_long_centers(); 
 
 	clock_t new_ias_time = clock();
 
@@ -2954,19 +2959,6 @@ int do_dynamic_mc_model_with_two_edge(int argc, char * argv[]) {
 
 
 	double gain_after_ias = 0;
-/*
-	divide_and_conquer_alignments dca(data, al_with_pos_gain, m, num_seq, num_threads);
-	dca.run(new_overlaps);
-	for(size_t i=0; i<new_overlaps.size(); ++i) {
-		for(size_t j=0; j<new_overlaps.at(i).size(); ++j) {
-			double g1, g2;
-			m.gain_function(new_overlaps.at(i).at(j), g1, g2);
-			double gain = (g1+g2)/2.0;
-			gain_after_ias += gain;
-		}
-
-	}
-*/
 	new_ias_time = clock() - new_ias_time;
 
 	std::cout << " Gain before IAS " << sum_of_input_gain << " after IAS " << gain_after_ias << std::endl;
@@ -2975,21 +2967,24 @@ int do_dynamic_mc_model_with_two_edge(int argc, char * argv[]) {
 
 	clock_t old_ias_time = clock();
 
-//	std::set<const pw_alignment*,  compare_pointer_pw_alignment> filtered_als; //XXX OPTIONAL in case of using filtered als all al_with_pos_gain s should be replaces by filtered_als.
-//	filtered_als = filter.get_filtered_als();
+	std::set<const pw_alignment*,  compare_pointer_pw_alignment> filtered_als; //XXX OPTIONAL in case of using filtered als all al_with_pos_gain s should be replaces by filtered_als. //TODO change it to copy instead of pointer!
+	filtered_als = filter.get_filtered_als(); 
+	std::cout << "filtered als size "<< filtered_als.size() << std::endl;
 ////Makes components of partially overlapped alignments
-//	std::cout << "filtered als size "<< filtered_als.size() << std::endl;
 
 	std::set< pw_alignment, compare_pw_alignment> mixed_als; 
 	std::cout << " now we compute connected components " << std::endl;
 	clock_t cc_init_time = clock();
-	cc_type cccs(al_with_pos_gain, data.numSequences(), num_threads);//The CC one with the fraction
+//	cc_type cccs(al_with_pos_gain, data.numSequences(), num_threads);//The CC one with the fraction
+	cc_type cccs(filtered_als, data.numSequences(), num_threads); //Creates alignment index, and interval tree
 	cc_init_time = clock() - cc_init_time;
 	std::cout << "CC Init time " << (double)cc_init_time/CLOCKS_PER_SEC << std::endl;
-	remainders = al_with_pos_gain;
+//	remainders = al_with_pos_gain;
+	remainders = filtered_als;
+
 	clock_t cc_comp_time = clock();
-	double fraction = 0.95;
-	while(fraction > 0.60){
+	double fraction = 0.99;
+	while(fraction > 0.50){
 		std::set<const pw_alignment* , compare_pointer_pw_alignment> ccs; 
 		std::cout << "fraction is "<< fraction << " run on " << remainders.size()<<std::endl;
 		cccs.non_recursive_compute(ccs,remainders,fraction); //A graph of als with 95% overlap is made.
@@ -3001,16 +2996,20 @@ int do_dynamic_mc_model_with_two_edge(int argc, char * argv[]) {
 		std::cout<< "ccs are made!" << ccs.size() <<std::endl; //Initial ccs with 95% overlap
 		std::cout << "mixed als size1 "<< mixed_als.size() << std::endl;
 		std::vector<std::set<const pw_alignment*,compare_pointer_pw_alignment > > stacks;
-		std::set< const pw_alignment* , compare_pointer_pw_alignment> & temp = ccs;
+		std::set< const pw_alignment* , compare_pointer_pw_alignment> & temp = ccs; //Connected components
 		std::cout << "ccs size "<< ccs.size() <<std::endl;
 		two_edge_cc twoEdgeCC(cccs,ccs);
-		twoEdgeCC.find_bridges(stacks,mixed_als);
+//		twoEdgeCC.find_bridges(stacks,mixed_als); //recurssive
+		twoEdgeCC.make_two_edge_graph(stacks,mixed_als); //nonrecurssive
 		std::cout << "mixed als size2 "<< mixed_als.size() << std::endl;
 		size_t Counter =0;
 		std::cout << "stack size in main is " << stacks.size()<< std::endl;
 		for(size_t i=0; i<stacks.size(); ++i) {
+			std::cout << "stack "<< i << " contains "<<std::endl;
 			std::set< const pw_alignment*, compare_pointer_pw_alignment> & stack = stacks.at(i);
 			for(std::set< const pw_alignment* , compare_pointer_pw_alignment>::iterator it = stack.begin();it != stack.end();it++){
+				const pw_alignment * p = *it;
+				p->print();
 				Counter ++;
 			}
 		}
@@ -3021,31 +3020,38 @@ int do_dynamic_mc_model_with_two_edge(int argc, char * argv[]) {
 		for(size_t i=0; i<stacks.size(); ++i) {//TODO Order them by size before cutting, It can happen in parallel!
 			std::set< const pw_alignment*, compare_pointer_pw_alignment> & stack = stacks.at(i);
 			std::cout << "als number "<< stack.size() <<std::endl;
-			for(std::set< const pw_alignment* , compare_pointer_pw_alignment>::iterator it = stack.begin();it != stack.end();it++){ //TODO it is not thoughtful! Fill in the remainder while fill in the stacks!
-				std::set< const pw_alignment* , compare_pointer_pw_alignment>::iterator it1 = temp.find(*it);
+		/*	for(std::set< const pw_alignment* , compare_pointer_pw_alignment>::iterator it = stack.begin();it != stack.end();it++){ //TODO it is not thoughtful! Fill in the remainder while fill in the stacks!
+				std::set< const pw_alignment* , compare_pointer_pw_alignment>::iterator it1 = temp.find(*it);//XXX Don't need it for the nonrecursive one.
 				assert(it1 != temp.end());
 				temp.erase(*it1);
-			}
+			}*/
 
 			use_ias ias(data,stack, m, cluster_base_cost,num_threads);
 			ias.compute(cc_overlap.at(i));
-			const std::set< pw_alignment, compare_pw_alignment> & als_in_overlap = cc_overlap.at(i).get_all();
+			const std::set<pw_alignment, compare_alignment<pw_alignment> > & als_in_overlap = cc_overlap.at(i).get_all();
 			COUNT += als_in_overlap.size();
-			for(std::set<pw_alignment,compare_pw_alignment>::const_iterator it = als_in_overlap.begin(); it != als_in_overlap.end();it++){
-				mixed_als.insert(*it);
+			for(std::set<pw_alignment, compare_alignment<pw_alignment> >::const_iterator it = als_in_overlap.begin(); it != als_in_overlap.end();it++){
+			//	if(fraction > 0.6){//Just added it as a test to check the speed of running! For that i need to change the remainder from pointer to copy! TODO think about that! It may make it faster! . For that i need to change the pointer to copy
+			//		std::cout << "add to remainer: " << &*it << std::endl;
+			//		pw_alignment pw = *it;
+			//		pw.print();
+			//		remainders.insert(&*it);
+			//	}else{
+					mixed_als.insert(*it);
+			//	}
 			}
 		}
 		std::cout << "total returned numbers after cutting is " << COUNT <<std::endl;
-		for(std::set< const pw_alignment* , compare_pointer_pw_alignment>::iterator it = temp.begin(); it != temp.end();it++){
+	/*	for(std::set< const pw_alignment* , compare_pointer_pw_alignment>::iterator it = temp.begin(); it != temp.end();it++){ //XXX Don't need it for the nonrecursive one
 			mixed_als.insert(**it);
-		}
+		}*/
 		std::cout << "mixed als size3 "<< mixed_als.size() << std::endl;
 		fraction -= 0.05;
 	}
-	for(std::set< const pw_alignment* , compare_pointer_pw_alignment>::iterator it = remainders.begin(); it != remainders.end();it++){
+	for(std::set<const pw_alignment* , compare_pointer_pw_alignment>::iterator it = remainders.begin(); it != remainders.end();it++){
 		mixed_als.insert(**it);
 	}
-	std::cout<< "mixed als size is "<< mixed_als.size() << std::endl; //Now we need to run cc without fraction and cut them afterwards
+	std::cout<< "mixed als size is "<< mixed_als.size() << std::endl; //Now we need to run cc without fraction and cut them afterwards //XXX Just a test can be removed
 	for(std::set< pw_alignment , compare_pw_alignment>::iterator it = mixed_als.begin(); it != mixed_als.end();it++){
 		data.checkAlignmentRange(*it);
 	}
@@ -3065,12 +3071,16 @@ int do_dynamic_mc_model_with_two_edge(int argc, char * argv[]) {
 //Cutting partial overlaps: (Fully)
 	std::vector<overlap_type> ccc_overlap(no_fraction_ccs.size(), overlap_type(data));
 
-	std::map<std::string, std::vector<std::string> > global_results;
 	std::map<std::string, std::vector<pw_alignment> > alignments_in_a_cluster;//string ---> center of a cluster, vector ---> alignments with that center
-	std::map<vector<std::string>, std::vector<pw_alignment> > new_centers;//Equivalent to alignments_in_a_cluster for long centers.
-	std::vector<std::map<size_t, std::vector<std::string> > >centersPositionOnASeq(data.numSequences());//all the long centers of each sequence and their position
-	std::vector<std::multimap<size_t, std::string> > centerOnSequence(data.numSequences());//all the centers on a seq and their position(It is used when we create long centers and adjacencies)
+	std::map<std::string, std::vector<std::string> > global_results;
+	std::map<int, std::set<int> > adjacencies_with_dir;
 	vector<vector<std::string> > long_centers;
+	std::vector<std::map<size_t, std::vector<std::string> > >centersPositionOnASeq;//all the long centers of each sequence and their position and the remained short centers
+	std::vector<std::map<size_t, std::string> > centerOnSequence;//(position, center) contains all the centers on a seq and their position(It is used when we use long centers)
+	std::map<std::string, size_t> non_aligned_right;//non aligned region and its right //TODO check if those which are repeated are not here anymore!
+	std::vector<std::map<size_t , std::string> >all_pieces;//contains short centers and non aligned regions between them.
+	std::map<vector<std::string>, std::vector<pw_alignment> > new_centers;//Contains all long and short centers.
+	std::map<std::string, std::vector<pw_alignment> > merged_als;
 
 	double sum_of_gain_before_clust = 0;
 
@@ -3081,26 +3091,17 @@ int do_dynamic_mc_model_with_two_edge(int argc, char * argv[]) {
 	size_t num_cluster_inputs_al = 0;
 	clock_t ap_time = 0;
 	typedef affpro_clusters<use_model,overlap_type> use_affpro;
-	std::map<std::string, std::vector<pw_alignment> > merged_als;
 	for(size_t i=0; i<no_fraction_ccs.size(); ++i) {
 		std::set< const pw_alignment*, compare_pointer_pw_alignment> & cc = no_fraction_ccs.at(i);
 		use_ias ias(data,cc, m, cluster_base_cost,num_threads);
 		ias.compute(ccc_overlap.at(i));
-		const std::set<pw_alignment, compare_pw_alignment> check_gain = ccc_overlap.at(i).get_all();
-		for(std::set<pw_alignment, compare_pw_alignment>::const_iterator it = check_gain.begin(); it != check_gain.end(); it++){
+		const std::set<pw_alignment, compare_alignment<pw_alignment> > check_gain = ccc_overlap.at(i).get_all();
+		for(std::set<pw_alignment, compare_alignment<pw_alignment> >::const_iterator it = check_gain.begin(); it != check_gain.end(); it++){//XXX Just a test
 			const pw_alignment pal = *it;
 			double g1 ,g2;
 			m.gain_function(pal,g1,g2);
 			double av_gain = (g1+g2)/2 ;
 			assert(av_gain > 0);
-			if(g1 < 0){
-				std::cout << "g1 is less than zero! "<<std::endl;
-				pal.print();
-			}
-			if(g2 < 0){
-				std::cout << "g2 is less than zero! "<<std::endl;
-				pal.print();
-			}
 		}
 		std::vector< std::set<const pw_alignment* , compare_pointer_pw_alignment> > cc_cluster_in; //have shorter length than original alignemnts
 		std::cout<< "using the cc again!"<<std::endl;
@@ -3111,15 +3112,46 @@ int do_dynamic_mc_model_with_two_edge(int argc, char * argv[]) {
 			for(std::set< const pw_alignment* , compare_pointer_pw_alignment>::iterator it = cc_cluster_in.at(i).begin();it != cc_cluster_in.at(i).end();it++){
 				const pw_alignment * p = *it;
 			//	p->print();
+				for(std::set< const pw_alignment* , compare_pointer_pw_alignment>::iterator it1 = it ;it1 != cc_cluster_in.at(i).end();it1++){
+					const pw_alignment *al = *it1;
+					al->print();
+					if(al->getreference1() == p->getreference1()){
+						size_t l1,r1,L1,R1;
+						p->get_lr1(l1,r1);
+						al->get_lr1(L1,R1);
+						assert((l1 == L1 && r1 == R1) ||( r1 < R1) || (R1 <r1));
+					}
+					if(al->getreference1() == p->getreference2()){
+						size_t l2,r2,L1,R1;
+						p->get_lr2(l2,r2);
+						al->get_lr1(L1,R1);
+						assert((l2 == L1 && r2 == R1) ||( r2 < R1) || (R1 <r2));
+					}
+					if(al->getreference2() == p->getreference1()){
+						size_t l1,r1,L2,R2;
+						p->get_lr1(l1,r1);
+						al->get_lr2(L2,R2);
+						assert((l1 == L2 && r1 == R2) ||( r1 < R2) || (R2 <r1));
+					}
+					if(al->getreference2() == p->getreference2()){
+						size_t l2,r2,L2,R2;
+						p->get_lr2(l2,r2);
+						al->get_lr2(L2,R2);
+						assert((l2 == L2 && r2 == R2) ||( r2 < R2) || (R2 <r2));
+					}
+
+
+				}
+				data.checkAlignmentRange(*p);//XXX this is just a test function, comment it after the first run!
 				for(size_t j = i+1; j < cc_cluster_in.size();j++){
 					std::set< const pw_alignment* , compare_pointer_pw_alignment> ccs_j = cc_cluster_in.at(j);
 					ol.test_no_overlap_between_ccs(*p, ccs_j);//XXX this is just a test function, comment it the first run!
-					data.checkAlignmentRange(*p);//XXX this is just a test function, comment it after the first run!
+					cccs.test_redundancy(p,ccs_j);
+
 				}
 			}
 		}*/
 
-		map<string, vector<pw_alignment> >al_of_a_ccs;//It is filled in with the original centers and is used for creating long centers & their als.(string ---> center, vector<pw_al> ---> alignments of a cluster)
 		vector<vector<std::string> > local_long_centers;
 
 
@@ -3151,72 +3183,12 @@ int do_dynamic_mc_model_with_two_edge(int argc, char * argv[]) {
 			ap_time += ap_time_local;
 
 			size_t counter =0;
-			//Find alignments of each cluster:
-		/*	for(std::map<std::string,std::vector<string> >::iterator it=cluster_result.begin();it !=cluster_result.end();it++){
-				counter++;
-				std::string center = it->first;
-				std::cout << "center is "<<center << std::endl;
-				std::map<std::string, std::vector<pw_alignment> >::iterator it1 = local_al_in_a_cluster.find(center);
-				if(it1 == local_al_in_a_cluster.end()){
-					local_al_in_a_cluster.insert(make_pair(center, std::vector<pw_alignment>()));
-					it1 = local_al_in_a_cluster.find(center);
-10637				}
-				std::vector<std::string> center_parts;
-				strsep(center, ":" , center_parts);
-				unsigned int dir = atoi(center_parts.at(0).c_str());
-				unsigned int ref = atoi(center_parts.at(1).c_str());
-				unsigned int left = atoi(center_parts.at(2).c_str());
-				for(size_t i =0; i < it->second.size();i++){
-					std::vector<std::string> member_parts;
-					strsep(it->second.at(i), ":" , member_parts);
-					unsigned int mem_dir = atoi(member_parts.at(0).c_str());
-					unsigned int mem_ref = atoi(member_parts.at(1).c_str());
-					unsigned int mem_left = atoi(member_parts.at(2).c_str());
-					// look at all input alignments and determine which cluster it belongs to
-					for(std::set<const pw_alignment*, compare_pointer_pw_alignment>::iterator it2 = cc_cluster_in.at(j).begin(); it2!=cc_cluster_in.at(j).end(); ++it2){
-						const pw_alignment * al = *it2;
-						unsigned int al_dir1;
-						if(al->getbegin1() < al->getend1()){
-							al_dir1 =0;
-						}else{
-							al_dir1 = 1;
-						}
-						unsigned int al_dir2;
-						if(al->getbegin2() < al->getend2()){
-							al_dir2 =0;
-						}else{
-							al_dir2 = 1;
-						}
-						size_t ref1 = al->getreference1();
-						size_t ref2 = al->getreference2();
-						size_t left1;
-						size_t left2;
-						size_t right1;
-						size_t right2;
-						al->get_lr1(left1,right1);
-						al->get_lr2(left2,right2);
-						if(al_dir1 == dir && ref1 == ref && left1 == left && al_dir2 == mem_dir && ref2 == mem_ref && left2 == mem_left){
-							it1->second.push_back(*al);
-							double gain = m.get_the_gain(*al, center);
-							assert(gain > 0);
-							break;
-						}
-						if(al_dir2 == dir && ref2 == ref && left2 == left && al_dir1==mem_dir&& ref1 == mem_ref && left1 == mem_left ){
-							it1->second.push_back(*al);
-							double gain = m.get_the_gain(*al, center);
-							assert(gain > 0);
-							break;
-						}
-					} // for cc_cluster_in_at set
-				}
-			}*/
 			num_clusters += cluster_result.size();
 			num_cluster_inputs_al += cc_cluster_in.at(j).size();
 						
 			for(std::map<std::string, std::vector<pw_alignment> >::iterator it = local_al_in_a_cluster.begin(); it!=local_al_in_a_cluster.end(); ++it) {
 				assert(it->second.size() != 0);
 				if(it->second.size() != 0){
-					al_of_a_ccs.insert(*it);//Here we keep two directions separately because we need them later in creating long alignments
 					alignments_in_a_cluster.insert(*it);// Globally saves all the als.
 					std::map<std::string,std::vector<string> >::iterator result_it = cluster_result.find(it->first);//local map
 					num_cluster_members_al += 1 + it->second.size();
@@ -3227,123 +3199,138 @@ int do_dynamic_mc_model_with_two_edge(int argc, char * argv[]) {
 			}
 		} // for cluster_in set  
 
+		std::cout<< "end of cluster in! "  <<std::endl;
+	}
 
-
-
-		std::cout<< "end of cluster in! " << al_of_a_ccs.size() <<std::endl;
-// Long centers are created here!
-		finding_centers centers(data);
-		//From this point on orientation matters! It shoud be taken into account in counting the number of each center happening when we are looking for the long centers!
-		centers.center_frequency(al_of_a_ccs,centerOnSequence);//All the centers of each sequence are detected and centerOnSequence is filled in. It contains all the cneters on each sequence. 
-		std::cout << "centers are detected!"<<std::endl;
+		std::cout << "end of no fraction ccs" << alignments_in_a_cluster.size() <<std::endl;
+	std::cout << "before addin non aligned regions "<< alignments_in_a_cluster.size() << std::endl;
+// Long centers are created here! 
+	finding_centers centers(data);
+	//From this point on orientation matters! It shoud be taken into account in counting the number of each center happening when we are looking for the long centers!
+	centersPositionOnASeq.resize(data.numSequences());//all the long centers of each sequence and their position
+	centerOnSequence.resize(data.numSequences());//all the original centers on a seq and their position(It is used when we use long centers)
+	all_pieces.resize(data.numSequences());
+	centers.center_frequency(alignments_in_a_cluster,centerOnSequence);//All the centers of each sequence are detected and centerOnSequence is filled in. It contains all the cneters on each sequence. 
+	std::cout << "centers on all the sequences were found!"<<std::endl;
+//Finding non aligned regions and group them together if they have the same content
+	centers.add_nonaligned_regions(centerOnSequence, alignments_in_a_cluster, all_pieces,non_aligned_right);//Also add non aligned regions that are goups together to the centerOnSeq and treat them as center form here on!
+	//	for(size_t i =0; i < data.numSequences(); i++){
+	//		std::cout << "centers on sequence " << i << " are :"<<std::endl;
+	//	//	size_t pos;
+	//		for(std::multimap<size_t, std::string >::iterator it = centerOnSequence.at(i).begin(); it != centerOnSequence.at(i).end();it++){
+	//			std::cout << "pos "<< it->first << " cent "<< it->second << std::endl;
+	//		}
+	//	}
+	//	std::cout << "all the non aligned regions are: "<<std::endl;
+	//	for(std::map<std::string, size_t>::iterator it = non_aligned_right.begin() ; it != non_aligned_right.end() ; it++){
+	//		std::cout << it->first << " "<< it->second << std::endl;
+	//	}
+	std::cout << "after addin non aligned regions "<< alignments_in_a_cluster.size() << std::endl;
+	for(std::map<std::string, std::vector<pw_alignment> >::iterator it = alignments_in_a_cluster.begin() ; it != alignments_in_a_cluster.end() ; it++){
+		std::cout << it->first <<std::endl;
+	}
+	centers.create_long_centers_candidates(centerOnSequence, gap_in_long_centers);//Make potential long centers
 //Trees are created iteratively and centers are merged:
-		merging_centers merg(data, centers);
-
-	//	std::cout << "centers on seq 35 "<<std::endl;
-	//	for(std::map<size_t, std::string>::iterator test= centerOnSequence.at(35).begin(); test != centerOnSequence.at(35).end(); test++){
-	//		std::cout<< test->first << " "<< test->second << std::endl;
-	//	}
-	//XXX	merg.adding_new_centers(local_long_centers,centersPositionOnASeq);//After merging a group of centers we iteratively create new suffixes and a new tree based on them, then recalculate the gains again. At the end those with gain>0 go to the long_centers and centersPositionOnASeq.
-		std::cout<< "new centers are made! " << local_long_centers.size() <<std::endl;
-		for(size_t j  =0; j < local_long_centers.size();j++){
-			long_centers.push_back(local_long_centers.at(j));
-		}
-		std::cout << "long center size is "<< long_centers.size() << std::endl;
-	//XXX	merg.create_alignment(local_long_centers,new_centers,al_of_a_ccs,centersPositionOnASeq,centerOnSequence);//Here we fill in the 'new_centers' with longer alignments in the way that center is always the second ref
-	//XXX	merg.get_merged_als(merged_als);
+	merging_centers merg(data, centers);
+	//grouped-non aligned regions are added too!
+	merg.adding_new_centers(long_centers,centersPositionOnASeq,centerOnSequence);//After merging a group of centers we iteratively create new suffixes and a new tree based on them, then recalculate the gains again. At the end those with gain>0 go to the long_centers and centersPositionOnASeq.
+	std::cout<< "new centers are made! " << long_centers.size() <<std::endl;
+	for(size_t j  =0; j < long_centers.size();j++){
+		std::cout<< "center "<< j <<std::endl;
+		std::cout<< long_centers.at(j)<<std::endl;
 	}
-
-	old_ias_time = clock() - old_ias_time;
-
-	std::cout << " gain using old method " << sum_of_gain_before_clust << std::endl;
-	std::cout << " Gain before IAS " << sum_of_input_gain << " after IAS new method " << gain_after_ias << std::endl;
-	std::cout << " Times old " << (double)old_ias_time/CLOCKS_PER_SEC << " new " << (double)new_ias_time/CLOCKS_PER_SEC << std::endl;
-// TODO  XXX 
-//	exit(0);
-
-	std::cout << "end of no fraction ccs"<<std::endl;
-//Short centers are added to the long centers container.
+	std::cout << "long center size is "<< long_centers.size() << std::endl;
+	merg.create_alignment(long_centers,new_centers,alignments_in_a_cluster,centersPositionOnASeq,centerOnSequence,gap_in_long_centers);//Here we fill in the 'new_centers' with longer alignments in the way that center is always the second ref
+	merg.get_merged_als(merged_als);//They will be used later on to see which alignments were not merged together when we are going to add short centers to the long centers.
+	
+//Mixing long and short centers, find the adjacencies and add non aligned regins as a cluser with no memeber
 	mixing_centers mix(data);
-	mix.add_original_centers_to_long_centers(new_centers, alignments_in_a_cluster, merged_als);
+	mix.add_original_centers_to_long_centers(new_centers, alignments_in_a_cluster, merged_als, centersPositionOnASeq, centerOnSequence);//I fill in a local container with the final situation of centers including both short and long ones. 
 	std::cout<<"original als were added! "<<std::endl;
-	mix.add_nonaligned_regions(centerOnSequence,alignments_in_a_cluster);
-	std::cout << "find_adjacencies_with_direction "<<std::endl;
-	mix.find_adjacencies_with_direction(adjacencies_with_dir);
-//	mix.test(alignments_in_a_cluster);
-	std::cout<< "adjacencies: "<<std::endl;
-	for(std::map<int, std::set<int> >::iterator it = adjacencies_with_dir.begin(); it != adjacencies_with_dir.end(); it++){
-		std::set<int> nodes = it->second;
-		std::cout<< it->first << " to: ";
-		for(std::set<int>::iterator it1 = nodes.begin(); it1 != nodes.end() ; it1++){
-			int node = *it1;
-			std::cout << node << " ";
-		}
-		std::cout << " "<<std::endl;
+	if(center_type){
+		mix.find_adjacencies_with_direction(adjacencies_with_dir, all_pieces); //It is only on short cneters and non aligned regions
+		std::cout<< "all the pieces on seqs: "<<std::endl;
+		mix.test(adjacencies_with_dir, alignments_in_a_cluster,all_pieces,non_aligned_right);
+	}else{//Long center:
+		mix.remove_inclusive_long_centers(alignments_in_a_cluster, centersPositionOnASeq, new_centers,non_aligned_right,gap_in_long_centers); //Removes inclusive long centers from each sequence and checks if the non aligned regions already exist. There shouldn't be any new such a region.The non_aligned_right members that dont exist anymore are removed 
+		std::cout << "find_adjacencies_with_direction for long centers "<<std::endl;
+		mix.find_adjacencies_with_direction_long_centers(alignments_in_a_cluster, adjacencies_with_dir,new_centers,non_aligned_right);
 	}
-//Save the graph
-	clock_t graph_ma_time = clock();
-	// write graph result in dot, fasta and maf format
-	write_graph wrgraph(data,mix);
-	wrgraph.write_graph_dot(adjacencies_with_dir, dotout);
-	wrgraph.write_graph_fasta(graphfasta,alignments_in_a_cluster);//Includes non-aligned regions
-	write_graph_maf(graphout, alignments_in_a_cluster, data);//Includes non-aligned regions.
-//	write_graph_maf_with_long_centers(graphout,new_centers,data);//TODO It can be changed in a way that includes long centers themselves as well.
 
-	graph_ma_time = clock() - graph_ma_time;
-
-
-	clock_t arithmetic_encoding_time = clock();
-	//Remove centers with no associated member.
-//	std::set<std::string> intermediate_center;
-	for(std::map<std::string, std::vector<pw_alignment> >::iterator it = alignments_in_a_cluster.begin(); it!=alignments_in_a_cluster.end();it++){
-		assert(it->second.size() != 0);
-	//	if(it->second.size()==0){
-	//		intermediate_center.insert(it->first);
-	//	}
-	}
-//	for(std::set<std::string>::iterator it = intermediate_center.begin();it !=intermediate_center.end();it++){
-//		std::string cent = *it;
-//		std::map<std::string, std::vector<pw_alignment> >::iterator it1 = alignments_in_a_cluster.find(cent);
-//		alignments_in_a_cluster.erase(it1);				
-//	}
 //Defining weights of global clustering results! 
 	std::map<std::string, unsigned int> weight;
-	std::map<std::vector<std::string>, size_t> numberOfACenter;
-	mix.calculate_centers_weight(alignments_in_a_cluster, global_results, weight,numberOfACenter);//Only short centers
 	std::map<std::vector<std::string> , unsigned int> long_center_weight;
-	mix.calculate_long_centers_weight(new_centers,long_center_weight,numberOfACenter);//On mixture of long and short centers //I need to keep all the short centers weight even if they are not in new_centers. 'cus theyare the ones which are encoded.
-
-	std::map<std::string,std::string>member_of_cluster;//first string is a associated one and the second one is its center.The direction from assocciated memebrs are removed before arith.encoding and are not used in arith.encoding
+	if(center_type){
+		mix.calculate_centers_weight(alignments_in_a_cluster, weight);//Only short centers
+	}else{
+		mix.calculate_long_centers_weight(new_centers,long_center_weight);//On mixture of long and short centers //I need to keep all the short centers weight even if they are not in new_centers. 'cus theyare the ones which are encoded.
+	}
+	std::map<std::string,std::string> member_of_cluster;//first string is a associated one and the second one is its center.The direction from assocciated memebrs are removed before arith.encoding and are not used in arith.encoding
 	mix.find_members_of_clusters(member_of_cluster,alignments_in_a_cluster);//Only on short centers
-
-
 //Data compression:
-	typedef dynamic_encoder<use_model> use_encode;
-	use_encode en(data,m,wrap);
-	if(0!=encoding_out.compare("noencode")){
-		dlib::entropy_encoder_kernel_1 * enc = new dlib::entropy_encoder_kernel_1();
-		en.al_encode(weight,member_of_cluster,alignments_in_a_cluster,outs,*enc);//TODO fixed up to here.
-	//	en.al_encode_with_long_center(centerOnSequence,long_center_weight,alignments_in_a_cluster, centersPositionOnASeq, member_of_cluster ,outs, *enc,new_centers);
-		delete enc;
+
+	if(0!=encoding_out.compare("noencode")) {
+	//	std::ofstream mout(encoding_out.c_str());
+		if(center_type){
+		//	run_encoding(m, data, alignments_in_a_cluster, weight, member_of_cluster, mout,gap_in_long_centers);
+			wrapper wrap;
+
+			clock_t arithmetic_encoding_time = clock();
+			//Remove centers with no associated member.
+			for(std::map<std::string, std::vector<pw_alignment> >::iterator it = alignments_in_a_cluster.begin(); it!=alignments_in_a_cluster.end();it++){
+				assert(it->second.size() != 0);
+			}
+
+			//Data compression:
+			typedef dynamic_encoder<use_model> use_encode;
+			use_encode en(data,m,wrap);
+			dlib::entropy_encoder_kernel_1 * enc = new dlib::entropy_encoder_kernel_1();
+			en.al_encode(weight,member_of_cluster,alignments_in_a_cluster,outs,*enc);
+			delete enc;
+
+		}else{
+		//	run_long_center_encoding(m,data,alignments_in_a_cluster, long_center_weight, member_of_cluster, mout,gap_in_long_centers);
+			wrapper wrap;
+
+			typedef dynamic_encoder<use_model> use_encode;
+			use_encode en(data,m,wrap);
+			dlib::entropy_encoder_kernel_1 * enc = new dlib::entropy_encoder_kernel_1();
+			en.al_encode_with_long_center(centerOnSequence,long_center_weight,alignments_in_a_cluster, centersPositionOnASeq, member_of_cluster ,outs, *enc,new_centers);
+			delete enc;
+		}
 		outs.close();
 	}
+//Writing the output
 
-	arithmetic_encoding_time = clock() - arithmetic_encoding_time;
+	write_graph wrgraph(data,mix);
 
-	std::cout<< "size of memeber_of_cluster is : "<< member_of_cluster.size()<<std::endl;
-	std::cout << "Initial alignments sets summary:" << std::endl;
-	std::cout << "Clustering summary: " << std::endl;
-	std::cout << "Input: " << num_cluster_inputs_al << " pw alignments on " << num_cluster_seq <<" sequence pieces " <<std::endl;
-	std::cout << "Output: " << num_clusters << " clusters containing " << num_cluster_members_al << " alignments " << std::endl;
-	std::cout << "Time overview: " << std::endl;
-	std::cout << "Read data " << (double)read_data_time/CLOCKS_PER_SEC << std::endl;
-	std::cout << "Train models " << (double)train_models_time/CLOCKS_PER_SEC << std::endl;
-	std::cout << "Affinity propagation clustering " << (double)ap_time/CLOCKS_PER_SEC << std::endl;
-	std::cout << "Write MSA-maf graph " << (double)graph_ma_time/CLOCKS_PER_SEC << std::endl;
-	std::cout << "Write compressed file " << (double)arithmetic_encoding_time/CLOCKS_PER_SEC << std::endl; 
+	if(0!=graphout.compare("nomaf")){
+		std::ofstream gout(graphout.c_str());
+		gout << "##maf version=1 cluster=number of cluster" << std::endl;
+		gout << "# graph version " << VERSION << std::endl;
+		if(center_type){
+			std::map<std::string, size_t> center_id = mix.get_center_id();
+			wrgraph.write_graph_maf(gout, alignments_in_a_cluster, center_id);//Includes short cneters and the non-aligned regions that clustered together.
+		}else{
+			std::map<std::vector<std::string>, size_t> long_center_id = mix.get_long_center_id();
+			wrgraph.write_graph_maf_with_long_centers(gout,new_centers,long_center_id); //Only centers with members are saved
+		}
+	}
+	if(0!=graphfasta.compare("nofasta")){
+		if(center_type){
+			wrgraph.write_graph_fasta(graphfasta,alignments_in_a_cluster, non_aligned_right);//Includes short centers, non-aligned regions that clustered together and the rest of non aligned regions.
+		}else{
+			wrgraph.write_graph_fasta_with_long_centers(graphfasta, new_centers,alignments_in_a_cluster,non_aligned_right);//XXX check it!
+		}
+	}
 
-	std::cout << "CC Init time " << (double)cc_init_time/CLOCKS_PER_SEC << std::endl;
-	std::cout << "CC Comp time " << (double)cc_comp_time/CLOCKS_PER_SEC << std::endl;
+	if(0!=dotfile.compare("nodot")) {
+		std::ofstream dotout(dotfile.c_str());
+		wrgraph.write_graph_dot(adjacencies_with_dir, dotout);//Same function can be used for both short and long centers.
+		dotout.close();
+
+	}
+	std::cout<< "THE END"<<std::endl;
 	return 0;
 }
 int do_decoding(int argc, char * argv[]){
@@ -3437,7 +3424,7 @@ int do_compare_sequences(int argc, char* argv[]){
 	std::cout<< "Comparing is done!"<<std::endl;
 	return 0;
 }
-int do_compare_high(int argc, char* argv[]){//XXX with the dynamic model, encoding needs to be run again after decoding :(
+int do_compare_high(int argc, char* argv[]){
 	test_encoder t;
 	if(argc < 4){
 		usage();
@@ -3480,12 +3467,6 @@ int do_read_data(int argc, char * argv[]) {
 	size_t seq_length = 0;
 	for(size_t i =0; i < data.numSequences();i++){
 		seq_length += data.getSequence(i).length();
-		if(i == 4){
-			for(size_t j = 518; j < 584; j++){
-				std::cout << data.getSequence(i).at(j)<< " " ;
-			}
-			std::cout<< "" <<std::endl;
-		}
 	}
 	std::cout << "total base number is " << seq_length <<std::endl;
 	return 0;
@@ -3518,7 +3499,7 @@ int do_simple_test_on_new_cc(int argc, char* argv[]){
 
 }
 int do_test_new_cc(int argc, char * argv[]) {
-	typedef overlap_interval_tree overlap_type;
+	typedef overlap_interval_tree<pw_alignment> overlap_type;
 	typedef dynamic_mc_model use_model;
 //	typedef compute_cc_with_interval_tree<overlap_type> cc_type; //Eric Garisson implementation
 //	typedef compute_cc_with_icl cc_type;
@@ -3581,7 +3562,7 @@ int do_test_new_cc(int argc, char * argv[]) {
 	filter_als filter(m,al_with_pos_gain, num_seq, num_threads);
 	filter.find_overlapped_references();//XXX slow!
 	std::set<const pw_alignment*,  compare_pointer_pw_alignment> filtered_als;
-	filtered_als = filter.get_filtered_als();
+//	filtered_als = filter.get_filtered_als();
 	//Makes components of partially overlapped alignments
 	std::cout << "filtered als size "<< filtered_als.size() << std::endl;
 //	cc_type component(al_with_pos_gain,data.numSequences());
@@ -3616,8 +3597,8 @@ int do_test_new_cc(int argc, char * argv[]) {
 	std::set<const pw_alignment* , compare_pointer_pw_alignment> ccs; 
 //	cccs.compute(ccs); //fill in ccs, ordered by size(Notice that they are only connected to each other if they have overlap more than 95% overlap!)
 	std::cout << "fraction is "<< fraction << " run on " << remainders.size()<<std::endl;
-	cccs.non_recursive_compute(ccs,remainders,fraction); //A graph of als with 95% overlap is made.
-	remainders = cccs.get_remaining_als();//XXX is faster if fill it in at the same time with running "non_recursive_compute"
+//XXX	cccs.non_recursive_compute(ccs,remainders,fraction); //A graph of als with 95% overlap is made.
+//XXX	remainders = cccs.get_remaining_als();//XXX is faster if fill it in at the same time with running "non_recursive_compute"
 
 //	mixed_als = cccs.get_remaining_als();//TODO add mixed als to the previous function and fill it in at the same time
 	cc_comp_time = clock() - cc_comp_time;
@@ -3701,10 +3682,10 @@ int do_test_new_cc(int argc, char * argv[]) {
 	//	std::cout << "stack size at " << i << " is " << stack.size()<<std::endl;
 		use_ias ias(data,stack, m, cluster_base_cost,num_threads);
 		ias.compute(cc_overlap.at(i));
-		const std::set< pw_alignment, compare_pw_alignment> & als_in_overlap = cc_overlap.at(i).get_all();
+		const std::set<pw_alignment, compare_alignment<pw_alignment> > & als_in_overlap = cc_overlap.at(i).get_all();
 		COUNT += als_in_overlap.size();
 	//	std::cout<< "number of returned als after cutting is "<< als_in_overlap.size() << std::endl;
-		for(std::set<pw_alignment,compare_pw_alignment>::const_iterator it = als_in_overlap.begin(); it != als_in_overlap.end();it++){
+		for(std::set<pw_alignment, compare_alignment<pw_alignment> >::const_iterator it = als_in_overlap.begin(); it != als_in_overlap.end();it++){
 		//	std::cout<< &*it<<std::endl;
 		//	al_pointers_in_overlap.insert(&*it);
 			mixed_als.insert(*it);
@@ -3983,44 +3964,66 @@ int do_read_map(int argc, char * argv[]){
 	/*Gets read fasta, graph fasta, alignment maf file and read+graph fasta as an input
 	  For each read makes alignment graph and detect the best path on the graph.
 	  Note that all the fasta files are output of fasta_prepare*/
+
 	typedef dynamic_mc_model use_model;
-	typedef overlap_interval_tree overlap_type;
-	if(argc < 8){
+//	typedef overlap_interval_tree<located_alignment> overlap_type;
+	if(argc < 7){
 		usage();//TODO need to change it!!
 		cerr << "Program: map_read" << std::endl;
 		cerr << "Parameters:" << std::endl;
-		cerr << "* Reads fasta file" << std::endl; //after running fasta_prepare //Note that reads names should be unique
 		cerr << "* Ref(graph) fasta file" << std::endl; //after running fasta_prepare
 		cerr << "* Ref(graph) dot file" << std::endl;
-		cerr << "* Read+Ref fasta file" << std::endl; //after running fasta_prepare //Attention! it has to be made from original ref and read file before fasta_prepare
-		cerr << "* alignment maf file "<<std::endl; //I used LAST
-		cerr << "* output a fasta file " << std::endl; 
+		cerr << "* Read+Ref fasta file" << std::endl; //after running fasta_prepare on the original ref and read file(before fasta_prepare)
+		cerr << "* alignment maf file "<<std::endl; //I used LAST (make alignemnt between Ref.fasta and Read.fasta)
+		cerr << "* output maf file " << std::endl; 
 		cerr << "* num_threads(optional, defult is 1)" <<std::endl;
 		return 1;
 	}
 	size_t num_threads = 1;
 	if(argc ==9){
-		num_threads = atoi(argv[8]);
+		num_threads = atoi(argv[7]);
 	}
-	std::string readfasta(argv[2]);
-	std::string reffasta(argv[3]);
-	std::string refdotfile(argv[4]);
-	std::string allfasta(argv[5]);
-	std::string alignmentmaf(argv[6]);
-	std::string outputfasta(argv[7]);
-	std::ofstream output(outputfasta.c_str());
-	all_data data = all_data();
-	data.read_fasta_maf(allfasta,alignmentmaf);
-	wrapper wrapp;
-	use_model m(data,wrapp,num_threads);
-	std::ofstream out("noencode", std::ofstream::binary);
+	std::string reffasta(argv[2]);
+	std::string refdotfile(argv[3]);
+	std::string allfasta(argv[4]);
+	std::string alignmentmaf(argv[5]);
+	std::string outputmaf(argv[6]);
+	std::ofstream output(outputmaf.c_str());
+	output << "##maf version=1 " << std::endl;
+	output << "# Result of mapping over a graph " << std::endl;
+	output << "#" << std::endl;
+
+//	all_data data = all_data();
+	all_data data;
+
+	data.read_fasta_maf_forward_read_only(allfasta,alignmentmaf);//All the alignments are read in a way the 'read' reference (second ref) of it is forward.
+	wrapper wrap;
+	use_model m(data,wrap, num_threads); //TODO take the wrapper out from the model!
+	std::ofstream out("noencode", std::ofstream::binary);//TODO also take the 'out' out from the the train and write a new function to write data on the file
+
 	m.train(out);
-	std::cout << data.numSequences()<<std::endl;
+
+//	use_model m(data,num_threads);
+//	m.train();
+	std::cout << "numseq: "<<data.numSequences()<<std::endl;
 	std::set<const pw_alignment*, compare_pointer_pw_alignment> al_with_pos_gain; 
 	std::string ref_accession;
-#pragma omp parallel for num_threads(num_threads)
+	const pw_alignment & al = data.getAlignment(0);
+	assert(al.getbegin2() < al.getend2());
+	size_t ref_acc = data.accNumber(al.getreference1());
+	std::cout << "ref accession is " << ref_acc <<std::endl;
+	ref_accession = data.get_acc(ref_acc);
+for(size_t i =0; i < data.numAlignments();i++){
+	const pw_alignment & al = data.getAlignment(i);
+	if(al.getreference2() == 734){
+		al.print();
+	}
+}
+/*#pragma omp parallel for num_threads(num_threads)
 	for(size_t i =0; i < data.numAlignments();i++){
+
 		const pw_alignment & al = data.getAlignment(i);
+		assert(al.getbegin2() < al.getend2());
 		if(i == 0){
 			size_t acc = data.accNumber(al.getreference1());
 			std::cout << "ref accession is " << acc <<std::endl;
@@ -4035,31 +4038,40 @@ int do_read_map(int argc, char * argv[]){
 			al_with_pos_gain.insert(&al);
 }
 		}
-	}
+	}*/
+
 //	needleman<use_model> needle(data, m);
 	std::map< std::string, size_t> longname2seqidx;
 	longname2seqidx = data.getLongname2seqidx();
 	std::cout<<longname2seqidx.size()<<std::endl;
 	std::cout<< "read dot file "<<std::endl;
-	Graph graph;
+	Graph graph;//TODO For now i have Marion's graph but i dont need it and it can be removed, just need to write a separate read_dot_file function
 	ref_graph rgraph(graph,data);
-	rgraph.read_dot_file(refdotfile,ref_accession);//Fill in the vetix and edge container with the reference graph nodes and adjacencies
-	graph.print();
-	std::cout << "read read.fasta "<<std::endl;
-	data.read_fasta(readfasta);//Read all the reads.
-	std::vector<std::string> reads;
-	reads = data.get_reads();
-	std::cout << "reads size is "<< reads.size() << std::endl;
-	std::vector<std::vector<pw_alignment> > all_als(reads.size());
+	rgraph.read_dot_file(refdotfile,ref_accession);//Fill in the vertix and edge container with the reference graph nodes and adjacencies
+//	graph.print();
+//	std::cout << "read read.fasta "<<std::endl;
+//	data.read_fasta(readfasta);//Read all the read sequences. //TODO this is also unnecessary!
+//	std::vector<std::string> reads;
+//	reads = data.get_reads();
+	size_t acc;
+	size_t num = 0;
+//	std::cout << "reads size is "<< reads.size() << std::endl;
+	std::vector<std::vector<pw_alignment> > all_als;
 	for(size_t i =0; i< data.numAlignments();i++){//Read all the als and fill in all_als vector with als of each read
 		const pw_alignment & p = data.getAlignment(i);
-		size_t ref2 = p.getreference2();
-		size_t acc = data.accNumber(p.getreference1());
+		size_t ref2 = p.getreference2(); 
+		if(i==0){
+			size_t acc2 = data.accNumber(ref2);
+			all_als.resize(data.getAcc(acc2).size());
+			std::cout<< "all_als size is "<<all_als.size()<<std::endl;
+		}
+		acc = data.accNumber(p.getreference1());
 		if(acc == 1){
 			all_als.at(ref2).push_back(p);	
 		}else{
 			assert(acc == 0);
 			size_t num = data.get_seq_number_of_acc(acc);
+			std::cout<< "num "<< num<< "ref2 "<< ref2 <<std::endl;
 			all_als.at(ref2-num).push_back(p);
 		}
 	}
@@ -4069,66 +4081,31 @@ int do_read_map(int argc, char * argv[]){
 		std::cout<<als.size()<<std::endl;
 	}
 //Goes through all the reads and for each of them find the best path using Dijkestra graph, the best path should be save in the output
+//	size_t i = 0;
+	std::map<int, std::set<int> > adjacencies = rgraph.get_adjacencies();
+	deep_first df(data, adjacencies);
 	for(size_t i =0; i < all_als.size();i++){
-		std::cout <<"read i  "<< i <<std::endl;
-		std::vector<pw_alignment> als = all_als.at(i);
-		if(als.size()>100){//If the read aligned on more than 100 places on the ref , we reduce the number of als by choosing the best ones only
-			std::multimap<double, pw_alignment> sorting_als;
-			std::vector<pw_alignment> chosen_als;
-			for(size_t j =0; j < als.size();j++){
-				const pw_alignment & p = als.at(j);
-				sorting_als.insert(std::make_pair(p.get_modify1()/data.get_seq_size(i), p));
-			}
-			size_t limit = 70;
-			size_t count =0;
-			for(std::multimap<double, pw_alignment>::reverse_iterator it = sorting_als.rbegin(); it!= sorting_als.rend();it++){
-				while(count < limit){
-					chosen_als.push_back(it->second);
-					count++;
-				}
-			}
-			als = chosen_als;
-		}
-		//TODO from here on! 
-		std::map<int, std::set<int> > adjacencies = rgraph.get_adjacencies();
-		deep_first df(data, adjacencies);
+//	for(size_t i =0; i < 50;i++){
+		std::cout <<"read i  "<< i  <<std::endl;
+		const std::vector<pw_alignment> alignments = all_als.at(i);
 		dnastring current_read = data.getSequence(i);
-		std::cout << "als size "<< als.size() <<std::endl;
-	/*	for(size_t j =0; j < als.size(); j++){
-			pw_alignment p = als.at(j);
-			size_t ref1 = p.getreference1();
-			std::string seqname = data.get_seq_name(ref1);
-			int name = std::stoi(seqname);
-			if(p.getbegin1()>p.getend1()){
-				name = -1*name;
-			}
-			std::cout << "name is " << name <<std::endl;
-			df.deep_first_search(name, ref_accession);
-			std::vector<std::vector<int> > paths = df.get_paths();
-			std::cout<< "path size is "<< paths.size()<<std::endl;
-			for(size_t i =0; i < paths.size(); i++){
-				for(size_t j =0; j < paths.at(i).size();j++){
-					std::cout << paths.at(i).at(j)<< " ";
-				}
-				std::cout<< " "<<std::endl;
-			}
-
-		}*/
-		std::cout << "here!!!!!"<<std::endl;
-		typedef compute_cc_avl<overlap_type> ccc_type;
-		ccc_type no_fraction_cccs(als, data.numSequences(), num_threads);
-		std::vector<std::set<const pw_alignment* , compare_pointer_pw_alignment> > no_fraction_ccs;
-		no_fraction_cccs.compute(no_fraction_ccs); 
-		std::cout << "number of components is " << no_fraction_ccs.size() <<std::endl;
-
-		als_components ccs(data, df, no_fraction_ccs);//check the distance between the last right and the first left of the next component
-		ccs.merg_components();
-		ccs.find_als_on_paths();
-
-		exit(1);
-		Graph newgraph;
-		model m1(data);//XXX temp, because Marion used simple model, later one i need to change everything in her code make it work with the dynamic model(just for getting her code works)
-		graph.prepare_read(newgraph,als, current_read,m1,data,output);
+		size_t readacc = data.accNumber(i);
+		std::cout << "als size "<< alignments.size() <<std::endl;
+		if(alignments.size() != 0){
+			std::cout << "here!!!!!"<<std::endl;
+		//	typedef compute_cc_avl ccc_type; 
+			compute_overlapped_reads_avl connected_comps(alignments, data.numSequences(), num_threads);
+			std::vector<std::set<const pw_alignment* , compare_pointer_pw_alignment> > no_fraction_ccs;
+			connected_comps.compute_on_second_ref(no_fraction_ccs); //We are interested in overlaps only on second reference of an al
+			std::cout << "number of components is " << no_fraction_ccs.size() <<std::endl;
+			std::cout<<no_fraction_ccs.at(0).size()<<std::endl;
+			als_components ccs(data, df, m,rgraph, no_fraction_ccs);//check the distance between the last right and the first left of the next component
+			ccs.merg_components();
+			std::cout<< "components are merged! "<<std::endl;
+			std::cout<< "sequences are 2: "<<data.get_seq_name(2)<<" 3: "<<data.get_seq_name(3)<<" 8: "<<data.get_seq_name(8)<< " 17: "<< data.get_seq_name(17) << " 18: " <<data.get_seq_name(18)<<std::endl;
+			std::cout << data.get_seq_name(193)<< " " << data.get_seq_name(303) <<std::endl;
+			ccs.find_als_on_paths(output,acc,readacc);//It also calls dijkstra algorithm inside
+		}
 	}
 	std::cout << "done! "<<std::endl;
 
@@ -4136,6 +4113,367 @@ int do_read_map(int argc, char * argv[]){
 
 
 	return 0;
+}
+int check_mapping_result(int argc , char * argv[]){//Use it to test the mapping result over the reads i made out of one certain accession among the existing one on the graph
+	if(argc<6){
+		cerr<<"Program: test_mapping" <<std::endl;
+		cerr << "Parameters:" << std::endl;
+		cerr<<"maf file from reference graph"<<std::endl;//graph.maf
+		cerr<<"maf file from mapping"<<std::endl;
+		cerr<<"accession of interest"<<std::endl; //Name of the sequence that I made reads out of it
+		cerr<<"maf file alignment between the reference and reads"<<std::endl;
+		cerr<< "* text file contains center's info"<<std::endl;
+		return 1;
+	}
+	std::string graphmaffile(argv[2]);
+	std::string mapmaffile(argv[3]);
+	std::string sequence(argv[4]);
+	std::string alignments(argv[5]);
+	std::string centerids(argv[6]);
+
+	std::ifstream als(alignments.c_str());
+	std::ifstream graphmaf(graphmaffile.c_str());
+	std::ifstream mappingoutput(mapmaffile.c_str());
+	std::ifstream centeridtxt(centerids.c_str());
+	map_check mc;
+	mc.read_txt_file(centeridtxt);
+	mc.read_graph_maf(graphmaf);//XXX This is a bit too specific since I use it for the maffile i produce and know that each accession includes only one full length genome rather than couple of contiges. 
+	exit(1);
+	mc.read_alignments(als);
+	mc.check_output(mappingoutput,sequence);
+//	mc.print_nodes();
+//	mc.print_graph();
+
+	return 0;
+}
+int check_sim_mapping_result(int argc, char * argv[]){
+	if(argc<5){
+		cerr<< "Program: test_sim_mapping "<<std::endl;
+		cerr<< "Parameters: "<<std::endl;
+		cerr<< " maffile from simulation program "<<std::endl;
+		cerr<< " maffile from mapping reads against the graph "<<std::endl;
+		cerr<< "maffile contains referecne graph "<< std::endl;
+		cerr<< "textfile contains center's info"<<std::endl;
+		return 1;
+	}
+	std::string simmaf(argv[2]);
+	std::ifstream maffile(simmaf.c_str());
+	std::string mapmaf(argv[3]);
+	std::ifstream map_maffile(mapmaf.c_str());
+	std::string graph_maf(argv[4]);
+	std::ifstream graphmaf(graph_maf.c_str());
+	std::string centersinfo(argv[5]);
+	std::ifstream centers(centersinfo.c_str());
+/*	std::ifstream in("fastatest");//Only center of the cluster 24, read from fasta file containing both nodes and reads
+	char c;
+	std::string fasta;
+	in.get(c);
+	fasta +=c;
+	while(!in.eof()){
+		in.get(c);
+		fasta +=c;
+	}
+	std::cout<< fasta.length()<<std::endl;
+	map_check mc;
+	mc.read_graph_maf(graphmaf);
+
+	std::ifstream in1("maftest");//includes the member of cluster 24 that contains the sequence of interest from graph.maf
+	char c1;
+	std::string maf;
+	in1.get(c1);
+	maf +=c1;
+	while(!in1.eof()){
+		in1.get(c1);
+		maf +=c1;
+	}
+	std::cout<< maf.length()<<std::endl;
+	std::cout <<"node 24 from 35659 to 36799 "<<std::endl;
+	for(size_t i = 35659; i<= 36799;i++){
+		std::cout << maf.at(i);
+	}
+	std::cout << " "<<std::endl;
+
+	std::ifstream in2("testnc");//Full nc sequence
+	char c2;
+
+	std::string seq;
+	in2.get(c2);
+	seq +=c2;
+	while(!in2.eof()){
+		in2.get(c2);
+		seq +=c2;
+	}
+	std::cout<< seq.length()<<std::endl;
+	std::cout << "seq at 2332525 and 2332526 "<< seq.at(2332525) << seq.at(2332526) <<std::endl;
+	std::cout<< "at 4189250 "<< seq.at(4189250) << seq.at(4189251) <<std::endl;
+	std::cout<< "at 4153591 "<< seq.at(4153591) << seq.at(4153592) <<std::endl;
+	std::cout<< "at 4153591+35659 "<< seq.at(4153591+35659) << seq.at(4153592+35660) <<std::endl;
+	std::cout<< "at 4153591+35658 "<< seq.at(4153591+35658) << seq.at(4153592+35659) <<std::endl;
+	std::cout << "node at 35658 " << maf.at(35658)<< maf.at(35659)<<std::endl;
+	for(size_t i =0; i < maf.length() ; i++){
+		if(maf.at(i) != seq.at(i+4153591)){
+			std::cout << "warning at "<< i <<std::endl;
+			std::cout << maf.at(i) << " "<< seq.at(i+4153591)<<std::endl;//TODO it has to be fixed in creating graph!!
+		}
+	//	assert(maf.at(i) == seq.at(i+4153591));
+	}
+	std::ifstream in12("cluster12");
+	std::string center12;
+	in12.get(c);
+	center12 +=c;
+	while(!in12.eof()){
+		in12.get(c);
+		center12 +=c;
+	}
+	std::cout << "center12 " << center12.at(13672)<<center12.at(13673)<<center12.at(13674) <<std::endl;*/
+//	exit(0);
+	std::map<std::string , std::pair<size_t , size_t> > onreads;
+	map_check mc;
+//	mc.read_graph_maf(graphmaf);
+	mc.read_txt_file(centers);
+	test_sim_reads_mapping test_map(mc);
+	test_map.read_sim_maffile(maffile, onreads);//read tha maf file from simpb 
+//compare onreads with the original seq from testnc:
+	for(std::map<std::string , std::pair<size_t,size_t> >::iterator it = onreads.begin() ; it != onreads.end() ; it++){//onreads contains informations from sim.maf
+		std::string this_part = it->first;
+		size_t from = it->second.first;
+		size_t to = it->second.second;
+	//	std::cout << "f " << from << " t "<< to <<std::endl;
+/*		if(from < to){
+			for(size_t j = from ; j <=to ; j++){
+				assert(seq.at(j)==this_part.at(j-from));
+			}
+		}else{//compare it with reverse complement of the seq
+			std::string reverse;
+			for(size_t i = from ; i > to ; i--){
+				reverse+=dnastring::complement(seq.at(i));
+			}
+			reverse+=dnastring::complement(seq.at(to));
+
+			for(size_t j = to ; j <=from ; j++){
+				assert(reverse.at(j)==this_part.at(j));
+			}
+
+		}*/
+	}
+	std::cout << "position and content were checked" << onreads.size() <<std::endl;
+	test_map.check_output(map_maffile);
+
+}
+int check_reads(int argc, char* argv[]){
+	if(argc < 4){
+		usage();
+		cerr << "Program: check_read" << std::endl;
+		cerr << "* fasta file from fasta_prepare" << std::endl;
+		cerr << "* maf file containing alignments of sequences contained in the fasta file" << std::endl;
+		cerr << "read fasta"<<std::endl;
+		return 1;
+	}
+	std::string fastafile(argv[2]);
+	std::string maffile(argv[3]);
+	std::string readfasta(argv[4]);
+	all_data data;
+	data.read_fasta_maf(fastafile, maffile);
+	data.read_fasta(readfasta);
+	ofstream choose_read;
+	choose_read.open ("thisRead.txt");
+	std::string first_read = data.get_read(0);
+	std::cout<<"read lenght "<< first_read.length()<<std::endl;
+	std::string this_read = data. get_read(6);
+	size_t sequence_counter = 6;
+	choose_read.write(reinterpret_cast<char*>(&sequence_counter),sizeof(uint32_t));
+	for(size_t c = 0; c< this_read.length(); c++){
+		choose_read<< this_read.at(c);
+	}
+	choose_read.close();
+	std::ifstream thisread("thisRead.txt");
+	size_t thisref = 0;
+	size_t from = 180180;
+	size_t to = 210209;
+
+	data.compare_seq_with_read(thisread, thisref ,from, to);
+}
+int check_graph_out_put(int argc , char* argv[]){
+	if(argc < 6){
+		usage();
+		cerr << "Program: check_graph" << std::endl;
+		cerr << "* fasta file from fasta_prepare" << std::endl;
+		cerr << "* maf file containing alignments of sequences contained in the fasta file" << std::endl;
+		cerr << "* fasta file contains graphs nodes "<<std::endl;
+		cerr << "* text file contain nodes info. " << std::endl;
+		cerr << "* maf file contains graph output. "<< std::endl;
+		return 1;
+	}
+	std::string fastafile(argv[2]);
+	std::string maffile(argv[3]);
+	std::string nodesfasta(argv[4]);
+	std::string textfile(argv[5]);
+	std::string graphmaffile(argv[6]);
+	all_data data;
+	data.read_fasta_maf(fastafile, maffile);
+	std::ifstream txtfile(textfile.c_str());
+	std::map<size_t, std::vector<std::pair<unsigned int , size_t> > > nodes;
+	std::map<std::pair<unsigned int, size_t> , size_t > rights;
+	std::string str;
+	getline(txtfile, str);
+	while(!txtfile.eof()){
+		std::vector<std::string> parts;
+		strsep(str, ":", parts);
+		for(size_t i = 1 ; i < parts.size()-1;i++){
+			unsigned int seqid = 6;
+			if(parts.at(i)=="gi|556503834|ref|NC_000913.3|"){
+				seqid = 0;
+			}
+			if(parts.at(i)=="gi|15829254|ref|NC_002695.1|"){
+				seqid = 1;
+			}
+			if(parts.at(i)=="gi|170079663|ref|NC_010473.1|"){
+				seqid = 2;
+			}
+			if(parts.at(i)=="gi|254160123|ref|NC_012967.1|"){
+				seqid = 3;
+			}
+			if(parts.at(i) =="gi|26111730|gb|AE014075.1|"){
+				seqid = 4 ;
+			}
+			assert(seqid < 5);
+			std::string position = parts.at(i+1);
+			std::vector<std::string> possep;
+			strsep(position,"r",possep);
+			assert(possep.size()==2);
+			size_t left = size_t(std::stoi(possep.at(0)));
+			size_t right = size_t(std::stoi(possep.at(1)));
+			std::map<size_t, std::vector<std::pair<unsigned int , size_t> > >::iterator it = nodes.find(size_t(std::stoi(parts.at(0))));
+			if(it ==nodes.end()){
+				nodes.insert(std::make_pair(size_t(std::stoi(parts.at(0))), std::vector<std::pair<unsigned int , size_t> >()));
+				 it = nodes.find(size_t(std::stoi(parts.at(0))));
+			}
+			it->second.push_back(std::make_pair(seqid,left));
+			rights.insert(std::make_pair(std::make_pair(seqid,left),right));
+			i++;
+		}
+		getline(txtfile, str);
+	}
+	std::map<size_t , std::string> longcenters;
+	std::ifstream node(nodesfasta.c_str());
+	getline(node,str);
+	while(!node.eof()){//Read each node check if the content is equal to what is on the actual sequence
+		assert(str.at(0)=='>');
+		std::cout << str<<std::endl;
+		std::string temp;
+		temp = str.substr(1, str.length()-1);
+		std::stringstream sstream(temp);
+		size_t id;
+		sstream >> id;
+		std::cout << "node "<< id <<std::endl;
+		std::string content;//from graph
+		getline(node,str);
+		while(str.at(0) != '>' && !node.eof()){
+			std::cout << str.length() << " "<< content.length() << std::endl;
+			content.append(str);
+			if(id == 99 && str.length() ==37){
+				std::cout << "HERE!!"<<std::endl;
+				break;
+			}
+			getline(node,str);
+		}
+		longcenters.insert(std::make_pair(id, content));
+		std::string sequence;
+		std::map<size_t, std::vector<std::pair<unsigned int , size_t> > >::iterator it = nodes.find(id);
+		assert(it != nodes.end());
+		for(size_t j =0; j < it->second.size() ; j++){
+			size_t left = it->second.at(j).second;
+			unsigned int refid = it->second.at(j).first;
+			std::map<std::pair<unsigned int, size_t> , size_t >::iterator it1 = rights.find(it->second.at(j));
+			assert(it1 != rights.end());
+			size_t right = it1->second;
+			std::string this_seq;
+			if(left< right || (left==right)){
+				this_seq = data.extract_seq_part(refid, left, right);
+			}else{
+				assert(right< left);
+				this_seq = data. extract_reverse_seq_part(refid,right,left);
+			}
+			sequence.append(this_seq);
+
+		}
+		for(size_t i = 0; i < sequence.size() ;i++){
+		//	std::cout << "at "<< i << " on seq " << sequence.at(i) << " on the node "<< content.at(i) <<std::endl;
+			assert(sequence.at(i)==content.at(i));
+		}
+		if(id == 99 && str.length() ==37){
+			break;
+		}
+
+	
+	}
+	std::cout<<"compare full length sequences: "<<std::endl;
+	std::ifstream nc("testnc");
+	char c;
+	std::string nc_str;
+	nc.get(c);
+	while(!nc.eof()){
+		nc_str += c;
+		nc.get(c);
+	}
+	unsigned int refId = 0;
+	size_t start = 0;
+	size_t end = data.getSequence(0).length()-1;
+	std::string nc_seq = data.extract_seq_part(refId,start,end);
+	assert(nc_seq.length() == nc_str.length());
+	for(size_t i =0 ; i < nc_str.size();i++){
+		assert(nc_str.at(i)== nc_seq.at(i));
+	}
+	std::cout<< "comparison is done!"<<std::endl;
+	std::ifstream graphmaf(graphmaffile.c_str());
+	getline(graphmaf, str);
+	while(str.at(0)=='#'){
+		getline(graphmaf,str);
+	}
+	assert(str.at(0)=='a');
+	while(!graphmaf.eof()){//Only read the first line of each al and check the content!
+		std::string str1;
+		if(str.at(0)=='a'){
+			std::vector<std::string> name_split;
+			strsep(str," ",name_split);
+			assert(name_split.size()==2);
+			std::string temp = name_split.at(1).substr(8,name_split.at(1).length()-1);
+			std::stringstream sstr;
+			sstr<< temp;
+			size_t clusterid;
+			sstr >> clusterid;
+			getline(graphmaf,str1);
+			std::vector<std::string> split;
+			strsep(str1," ",split);
+			assert(split.size()==7);
+			std::string centerseq = split.at(6);
+			std::string nogap;
+			for(size_t i = 0; i < centerseq.size();i++){
+				if(centerseq.at(i)!='-'){
+					nogap +=centerseq.at(i);
+				}
+			}
+			if(split.at(4)=="-"){
+				//GET the reverse_compl
+				std::string reverse;
+				for(size_t i = nogap.size(); i > 0; i --){
+					reverse += dnastring::complement(nogap.at(i-1));
+				}
+				nogap = reverse;
+			}
+			std::map<size_t , std::string>::iterator it = longcenters.find(clusterid);
+			assert(it != longcenters.end());
+			std::cout << "id "<< clusterid << " " << nogap.length() << " "<< it->second.length() << std::endl;
+			assert(nogap.length() == it->second.length());
+			for(size_t i =0; i < nogap.length();i++){
+				if(nogap.at(i)!=it->second.at(i)){
+					std::cout<<"at "<< i << " : " << nogap.at(i) << " " << it->second.at(i) << std::endl;
+				}
+				assert(nogap.at(i)==it->second.at(i));
+			}
+		}
+		getline(graphmaf,str);
+	}
 }
 int needleman_wunsch(int argc, char * argv[]){
 	if(argc < 4){
@@ -4256,9 +4594,8 @@ int main(int argc, char * argv[]) {
 
 #endif
 
-
-#include "model.cpp"
 #include "overlap.cpp"
+#include "model.cpp"
 #include "encoder.cpp"
 #include "connected_component.cpp"
 #include "intervals.cpp"
@@ -4267,6 +4604,9 @@ int main(int argc, char * argv[]) {
 #include "needleman_wunsch.cpp"
 #include "filter_alignments.cpp"
 #include "alignment_index.cpp"
+#include "dynamic_mc.cpp"
+#include "pw_alignment.cpp"
+
 
 
 

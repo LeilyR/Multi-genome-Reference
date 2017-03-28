@@ -19,41 +19,43 @@
 #include <boost/iostreams/stream.hpp>
 
 
+template<typename alignment>
 class overlap_interval_tree{
 public:
+	typedef alignment alignment_type;
 	overlap_interval_tree(const all_data&);
 	overlap_interval_tree(const overlap_interval_tree & o);
 	~overlap_interval_tree();
-	void insert_without_partial_overlap(const pw_alignment & p);
+	void insert_without_partial_overlap(const alignment_type & p);
 	// This function removes an alignment with adress identity to remove from overlap, then deletes remove
-	void remove_alignment(const pw_alignment & remove);
+	void remove_alignment(const alignment_type & remove);
 
 	void test_all() const;
 	void test_all_part()const;// Change it later to check all those pieces with gap in one sample. Put them all in a std::set and check if the only missed parts of coverage are those parts.
 	void test_overlap()const;
-	void test_no_overlap_between_ccs(const pw_alignment &, std::set<const pw_alignment*, compare_pointer_pw_alignment> &)const;
+	void test_no_overlap_between_ccs(const alignment_type &, std::set<const alignment_type*, compare_pointer_alignment<alignment_type>> &)const;
 	void print_all_alignment() const;
-	const pw_alignment * get_al_at_left_end(size_t ref1, size_t ref2, size_t left1, size_t left2) const;
-//	std::multimap<size_t, const pw_alignment &>& get_als_on_reference(size_t sequence) ;
-//	const std::multimap<size_t, const pw_alignment & >& get_als_on_reference_const(size_t sequence) const ;
-	void get_interval_result_on_interval(const size_t& sequence, const size_t& left, const size_t& right, std::vector<const pw_alignment *>&)const;
-	void interval_result_on_point(const size_t & sequence, const size_t & split_point, std::vector<const pw_alignment* > & result)const;
+	const alignment_type * get_al_at_left_end(size_t ref1, size_t ref2, size_t left1, size_t left2) const;
+//	std::multimap<size_t, const alignment_type &>& get_als_on_reference(size_t sequence) ;
+//	const std::multimap<size_t, const alignment_type & >& get_als_on_reference_const(size_t sequence) const ;
+	void get_interval_result_on_interval(const size_t& sequence, const size_t& left, const size_t& right, std::vector<const alignment_type *>&)const;
+	void interval_result_on_point(const size_t & sequence, const size_t & split_point, std::vector<const alignment_type* > & result)const;
 
-	bool checkAlignments(const pw_alignment & p)const;
+	bool checkAlignments(const alignment_type & p)const;
 
-	const std::set<pw_alignment, compare_pw_alignment> & get_all() const;
+	const std::set<alignment_type, compare_alignment<alignment_type> > & get_all() const;
 	void test_partial_overlap() const;
 //	void test_al_on_ref()const;
-//	bool check_alignment_address(const pw_alignment & , const pw_alignment * )const;
-	static void test_partial_overlap_set(std::set< const pw_alignment *, compare_pw_alignment> & als);
-	static void test_partial_overlap_vec(std::vector< const pw_alignment *> & als);
+//	bool check_alignment_address(const alignment_type & , const alignment_type * )const;
+	static void test_partial_overlap_set(std::set< const alignment_type *, compare_alignment<alignment_type> > & als);
+	static void test_partial_overlap_vec(std::vector< const alignment_type *> & als);
 	static bool check_po(size_t l1, size_t r1, size_t l2, size_t r2);
 
 	size_t size() const;
 	const all_data & data; // TODO private again?
 private:
-	std::set<pw_alignment, compare_pw_alignment> alignments;
-//	std::vector< std::multimap< size_t, const pw_alignment &> > als_on_reference; // sequence index -> left and right pos on that sequence -> alignment reference
+	std::set<alignment_type, compare_alignment<alignment_type> > alignments;
+//	std::vector< std::multimap< size_t, const alignment_type &> > als_on_reference; // sequence index -> left and right pos on that sequence -> alignment reference
 	alignment_index alind;
 
 };

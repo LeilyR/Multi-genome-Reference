@@ -107,23 +107,29 @@
 		//	std::cout << rit->first << std::endl;
 			if(counter < median){
 				filtered_als.insert(rit->second);
+				filtered_alignments.insert(*rit->second);
+
 				counter++;
 			}else break;
 		}
 	//	std::cout << "filtered size "<< filtered_als.size() << " median " <<median<<std::endl;
 		assert(filtered_als.size()==median);
+		assert(filtered_alignments.size()==median);
+
 
 	}
 	std::set<const pw_alignment*, compare_pointer_pw_alignment> filter_als::get_filtered_als()const{
 		return filtered_als;
 	}
-
+//	std::set<pw_alignment, compare_pw_alignment> filter_als::get_filtered_als()const{
+//		return filtered_alignments;
+//	}
 
 
 	void alignment_filter::estimate_optimist_gain_per_gain() {
 
 		typedef dynamic_mc_model use_model;
-		typedef overlap_interval_tree overlap_type;
+		typedef overlap_interval_tree<pw_alignment> overlap_type;
 		typedef initial_alignment_set<use_model,overlap_type> use_ias;
 
 
@@ -190,11 +196,11 @@
 			size_t left, right;
 			i_al->get_lr1(left, right);
 			std::set<size_t> lpoints_in_ial;
-			const std::set<pw_alignment, compare_pw_alignment> pieces = ovrlp.get_all();
+			const std::set<pw_alignment, compare_alignment<pw_alignment> > pieces = ovrlp.get_all();
 
 			size_t al1l, al1r;
 			i_al->get_lr1(al1l, al1r);
-			for(std::set<pw_alignment, compare_pw_alignment>::const_iterator it = pieces.begin(); it!=pieces.end(); ++it) {
+			for(std::set<pw_alignment, compare_alignment<pw_alignment> >::const_iterator it = pieces.begin(); it!=pieces.end(); ++it) {
 				const pw_alignment & pal = *it;
 				if(pal.getreference1()==iref) {
 					size_t l, r;

@@ -15,7 +15,7 @@
 template<typename T>
 class dynamic_encoder{
 	public:
-	dynamic_encoder(all_data& , T &, wrapper &);
+	dynamic_encoder(const all_data& , T &, wrapper &);
 	~dynamic_encoder();
 
 //Original centers which are obtained from clustering:
@@ -29,6 +29,7 @@ class dynamic_encoder{
 	void add_center_flags_to_the_stream(std::vector<uint32_t> & bits , unsigned char & model_index, std::ofstream &);
 	void arithmetic_encoding_centers(std::map<std::string, std::vector<pw_alignment> > & , std::ofstream & ,dlib::entropy_encoder_kernel_1 & );
 	void encoding_directions(unsigned int & cent_ref, unsigned int & cent_left, const pw_alignment & p, std::ofstream &, dlib::entropy_encoder_kernel_1 & );
+	void get_direction_for_alignments_of_length_one(unsigned int & cent_ref, unsigned int & cent_left, const pw_alignment & p, std::ofstream & outs, dlib::entropy_encoder_kernel_1 & enc);
 	void al_encode(std::map<std::string, unsigned int> &, std::map<std::string, std::string > &, std::map<std::string, std::vector<pw_alignment> > &, std::ofstream &, dlib::entropy_encoder_kernel_1 & );
 
 //Long centers which are obtained from collapsing the original one:
@@ -38,13 +39,15 @@ class dynamic_encoder{
 	void find_short_center(const pw_alignment* , std::map<std::string, std::string > & , std::vector<std::string> & , size_t & , size_t & );
 	void encoding_long_center(std::map<std::string,std::vector<pw_alignment> > &, std::ofstream &, dlib::entropy_encoder_kernel_1 &);
 	void make_fully_reverse_center(std::vector<std::string> &, std::vector<std::string> & );
-	void al_encode_with_long_center(std::vector<std::multimap<size_t , std::string> >&,std::map<std::vector<std::string> , unsigned int> & ,std::map<std::string, std::vector<pw_alignment> > &, std::vector<std::map<size_t, std::vector<std::string> > > &, std::map<std::string, std::string > &, std::ofstream & ,dlib::entropy_encoder_kernel_1 &,std::map<std::vector<std::string>, std::vector<pw_alignment> >& );
+	void al_encode_with_long_center(std::vector<std::map<size_t , std::string> >&,std::map<std::vector<std::string> , unsigned int> & ,std::map<std::string, std::vector<pw_alignment> > &, std::vector<std::map<size_t, std::vector<std::string> > > &, std::map<std::string, std::string > &, std::ofstream & ,dlib::entropy_encoder_kernel_1 &,std::map<std::vector<std::string>, std::vector<pw_alignment> >& );
 
 
 	private:
-	all_data & data;
+	const all_data & data;
 	T & model;
 	wrapper& wrappers;
+	std::ofstream enc_context;
+	std::ofstream enc_boundries;
 
 	std::map<size_t , std::vector<std::string> > partition; // size_t ---> partition number, vector---> centers of a partition
 	std::vector<unsigned int>partitionHigh; //high value of each partition.

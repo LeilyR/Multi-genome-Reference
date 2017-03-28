@@ -11,9 +11,9 @@
 #define MAX_ALIGNMENT_MARKOV_CHAIN_LEVEL 2 // context is two modification instructions + current base on known strand
 #define TOTAL_FOR_ENCODING 16384 //2^14 
 #define ENCODING_MIN_WIDTH 3 // min difference between low and high value for arithmetic encoding
-#define NUM_DELETE_DYN 5 // number of delete encodings, 2^0, ... , 2^4
-#define NUM_KEEP_DYN 10 // number of keep encodings, 2^0, ..., 2^9
-#define NUM_MODIFICATIONS 25 // NUM_DELETE_DYN + NUM_KEEP_DYN + 10 ( for change to ACTGN, insert ACTGN)
+#define NUM_DELETE_DYN 6 // number of delete encodings, 2^0, ... , 2^4, 2^5
+#define NUM_KEEP_DYN 12 // number of keep encodings, 2^0, ..., 2^9, 2^10,2^11
+#define NUM_MODIFICATIONS 28 // NUM_DELETE_DYN + NUM_KEEP_DYN + 10 ( for change to ACTGN, insert ACTGN)
 
 // TODO distance between members of a long center: base_cost / (modification cost per base in al - creation cost per base   )
 
@@ -44,6 +44,9 @@ class alignment_contexts {
 
 	void read_alignment_1_2(const pw_alignment & p);
 	void read_alignment_2_1(const pw_alignment & p);
+	void read_alignment_1_2(const pw_alignment & p, wrapper & wrap, std::ofstream &);
+	void read_alignment_2_1(const pw_alignment & p, wrapper & wrap, std::ofstream &);
+
 	void read_alignment_1_2(const pw_alignment & p, const size_t & from, const size_t & to);
 	void read_alignment_2_1(const pw_alignment & p, const size_t & from, const size_t & to);
 
@@ -106,14 +109,12 @@ public:
 
 class a_reader_encode{
 public:
-	a_reader_encode(const std::map<std::string, std::vector<uint32_t> > & mhigh, wrapper &);
+	a_reader_encode(const std::map<std::string, std::vector<uint32_t> > & mhigh);
 	~a_reader_encode();
 	inline void see_context(const std::string & context , size_t modification);
 
 	const std::map<std::string, std::vector<uint32_t> > & model_high;
 	std::vector<std::vector<unsigned int> > low_high_values;
-	wrapper& wrappers;
-
 
 };
 
@@ -146,7 +147,9 @@ class dynamic_mc_model {
 		static void modification(char enc, int & modify_base, int & num_delete, int & insert_base, int & num_keep);
 
 
-		void cost_function(const pw_alignment& , double & , double & , double & , double & )const ;
+		void cost_function(const pw_alignment& , double & , double & , double & , double & )const;
+		void cost_function(const pw_alignment& p , double & m1 , double & m2, size_t & acc1 , size_t acc2)const;
+
 		inline	void gain_function(const pw_alignment& p, double & g1, double & g2)const{
 			double c1;
 			double c2;
@@ -167,7 +170,7 @@ class dynamic_mc_model {
 		const std::map< std::string, std::vector<uint32_t>  > & get_sequence_model_highs(size_t & acc)const;
 		const std::map< std::string, std::vector<uint32_t>  > & get_center_model_highs(size_t & acc)const;
 		const std::map< std::string, std::vector<uint32_t>  > & get_alignment_model_highs(size_t & acc1, size_t & acc2)const;
-		void arith_encode_al(const pw_alignment & p, unsigned int & cent_ref, unsigned int & cent_left, std::vector< std::vector< unsigned int> > &);
+		void arith_encode_al(const pw_alignment & p, unsigned int & cent_ref, unsigned int & cent_left, std::vector<std::vector< unsigned int> > & low_high, wrapper & wrap, std::ofstream & encout);
 		void arith_encode_long_al(const pw_alignment & p, size_t & acc1, size_t & acc2, unsigned int & cent_ref, unsigned int & cent_left, std::vector<std::vector< unsigned int> > & low_high);
 		void write_al_high_onstream(std::ofstream & al_high_out);
 		size_t get_acc()const;

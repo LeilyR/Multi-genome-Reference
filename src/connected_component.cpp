@@ -3,13 +3,16 @@
 
 #include "connected_component.hpp"
 
-	void compute_cc_avl_fraction::non_recursive_compute(std::set< const pw_alignment* , compare_pointer_pw_alignment> & ccs, std::set<const pw_alignment* , compare_pointer_pw_alignment> & remainder, double & fraction){//It creats a graph and keep all the edges in a multimap. Graph might have more than one component
+	void compute_cc_avl_fraction::non_recursive_compute(std::set< const pw_alignment* , compare_pointer_pw_alignment> & ccs, std::set<const pw_alignment *, compare_pointer_pw_alignment> & remainder, double & fraction){//It creats a graph and keep all the edges in a multimap. Graph might have more than one component
 	//	for(size_t i = 0; i < als.size();i++) {
 	//		const pw_alignment * al = als.at(i);
 		edges.clear();
 		std::cout << "edges size1 "<<edges.size()<<std::endl;
+	//	size_t count = 0;
 		for(std::set<const pw_alignment* , compare_pointer_pw_alignment>::iterator it = remainder.begin(); it!= remainder.end();it++){//TODO time consuming! Need to be parallelized , can simply change the set to a vector (NO you cannot, then you will find the same component many times)
 			const pw_alignment * al = *it;
+		//	al->print();
+		//	std::cout << al << std::endl;
 			std::vector<size_t> left(2);
 			std::vector<size_t> right(2);
 			al->get_lr1(left.at(0), right.at(0));
@@ -20,18 +23,26 @@
 			for(size_t j =0; j < 2; j++){
 			//	std::cout<< al << " on ref "<< j<<std::endl;
 				cc_step_non_recursive(al, reference.at(j), left.at(j), right.at(j),ccs,fraction, remainder);	
-			}	
+			}
+		//	count ++;
+		//	if(count == 150) break;
 		}
 		
-		std::cout << "edges size "<<edges.size()<<std::endl;
-	//	for(std::multimap<const pw_alignment* , const pw_alignment*>::iterator it = edges.begin(); it!=edges.end(); it++){
-	//		std::cout << it->first << " " << it->second << std::endl;
+	//	std::cout << "edges size "<<edges.size()<<std::endl;
+	//	for(std::map<const pw_alignment* , std::set<const pw_alignment*> >::iterator it = edges.begin(); it!=edges.end(); it++){
+	//		std::cout << it->first << " to " ;
+	//		for(std::set<const pw_alignment*>::iterator adj = it->second.begin() ; adj != it->second.end(); adj ++){
+	//			std::cout << *adj << std::endl;
+	//		}
 	//	}
-	//	std::cout<< "ccs size "<<ccs.size()<<std::endl;
+		std::cout<< "ccs size "<<ccs.size()<<std::endl;
 		for(std::set< const pw_alignment* , compare_pointer_pw_alignment>::iterator it = ccs.begin(); it != ccs.end();it ++){
-			std::set<const pw_alignment*, compare_pointer_pw_alignment>::iterator it2 = remained_als.find(*it);
+			const pw_alignment * p = *it;
+		//	p->print();
+	//		std::cout << p << std::endl;
+			std::set<const pw_alignment*, compare_pointer_pw_alignment>::iterator it2 = remained_als.find(p);
 			assert(it2 != remained_als.end());
-			remained_als.erase(*it2);
+			remained_als.erase(it2);
 		}
 		std::cout << "remainded size "<< remained_als.size() <<std::endl;
 	}
@@ -74,9 +85,10 @@
 		std::cout << "remainded size "<< remained_als.size() <<std::endl;
 	}*/
 
-	void compute_cc_avl_fraction::cc_step_non_recursive(const pw_alignment*  al,  size_t & ref, size_t & left , size_t & right, std::set< const pw_alignment* , compare_pointer_pw_alignment> & ccs, double & fraction, std::set<const pw_alignment* , compare_pointer_pw_alignment> & remainder){
+	void compute_cc_avl_fraction::cc_step_non_recursive(const pw_alignment  * al,  size_t & ref, size_t & left , size_t & right, std::set< const pw_alignment* , compare_pointer_pw_alignment> & ccs, double & fraction, std::set<const pw_alignment* , compare_pointer_pw_alignment> & remainder){
 			std::vector<const pw_alignment*> results;
 			std::vector<const pw_alignment*> fraction_result;
+		//	std::cout << "left " << left << " right "<< right << std::endl;
 			alind->search_overlap_fraction(ref, left, right, fraction , fraction_result);
 		//	alind->search_overlap(ref, left, right, results);
 		//	compute_fraction(results, fraction,ref, left, right, fraction_result);
@@ -85,8 +97,17 @@
 				if(al != fraction_result.at(i) && it != remainder.end()){
 #pragma omp critical(edge)
 {
+				//	std::cout<< "HERE!"<<std::endl;
+				//	al->print();
 				//	std::cout << "al " << al << " fraction at " << i << " : "<< fraction_result.at(i) <<std::endl;
-					edges.insert(std::make_pair(al,fraction_result.at(i)));
+					std::map<const pw_alignment* , std::set<const pw_alignment*> >::iterator it1 = edges.find(al);
+					if(it1 == edges.end()){
+						edges.insert(std::make_pair(al,std::set<const pw_alignment*>()));
+						it1 = edges.find(al);
+					}
+					it1->second.insert(fraction_result.at(i));
+
+				//	edges.insert(std::make_pair(al,fraction_result.at(i)));
 				//	edges.insert(std::make_pair(fraction_result.at(i),al));
 					ccs.insert(al);
 				//	ccd.insert(fraction_result.at(i));
@@ -119,9 +140,9 @@
 					std::cout << *it << std::endl;
 				}
 				std::cout << "edges size "<<edges.size()<<std::endl;
-				for(std::multimap<const pw_alignment* , const pw_alignment*>::iterator it = edges.begin(); it!=edges.end(); it++){
-					std::cout << it->first << " " << it->second << std::endl;
-				}
+			//	for(std::multimap<const pw_alignment* , const pw_alignment*>::iterator it = edges.begin(); it!=edges.end(); it++){
+			//		std::cout << it->first << " " << it->second << std::endl;
+			//	}
 			//	for(std::set<std::pair<const pw_alignment*, const pw_alignment*> >::iterator it = edges.begin();it!=edges.end();it++){
 			//		std::pair<const pw_alignment*, const pw_alignment*> pair = *it;
 			//		std::cout<< pair.first << " "<<pair.second<<std::endl;
@@ -138,7 +159,7 @@
 				for(std::set<const pw_alignment*, compare_pointer_pw_alignment>::iterator it1 = it->second.begin(); it1 != it->second.end();it1++){
 					std::set<const pw_alignment*, compare_pointer_pw_alignment>::iterator it2 = remained_als.find(*it1);
 					assert(it2 != remained_als.end());
-					remained_als.erase(*it2);
+					remained_als.erase(it2);
 				//	remainders_als.erase(**it2);
 				}
 			}
@@ -181,11 +202,11 @@
 			if(&al != fraction_result.at(i)){
 			//	TODO change the container in a way that add it only once
 			//	std::cout << "al "<< &al << " fraction "<< fraction_result.at(i)<<std::endl;
-				std::cout<< edges.size()<<std::endl;
+			/*	std::cout<< edges.size()<<std::endl; //TODO !!!!
 				edges.insert(std::make_pair(&al,fraction_result.at(i)));
 				std::cout<< edges.size()<<std::endl;
 				edges.insert(std::make_pair(fraction_result.at(i),&al));
-				std::cout<< edges.size()<<std::endl;
+				std::cout<< edges.size()<<std::endl;*/
 			}
 		//	alind->erase(results.at(i));//XXX ????? It shouldnt be deleted, because it might itself have overlap with one of the other alignments in results. 
 		}
@@ -282,20 +303,24 @@
 		}
 		std::cout << "result size after checking the fraction is "<< results.size() << std::endl;
 	}
-	void compute_cc_avl_fraction::node_adjucents(const pw_alignment* p ,std::set<const pw_alignment*> & adj)const{
-		std::pair<std::multimap<const pw_alignment*, const pw_alignment*>::const_iterator ,std::multimap<const pw_alignment*,const pw_alignment*>::const_iterator > it = edges.equal_range(p);
-		for(std::multimap<const pw_alignment*, const pw_alignment*>::const_iterator it1 = it.first; it1!=it.second; ++it1) {
-			adj.insert(it1->second);
-		}
-		
+	void compute_cc_avl_fraction::node_adjacents(const pw_alignment* p ,std::set<const pw_alignment*> & adj)const{
+	//	std::pair<std::multimap<const pw_alignment*, const pw_alignment*>::const_iterator ,std::multimap<const pw_alignment*,const pw_alignment*>::const_iterator > it = edges.equal_range(p);
+	//	for(std::multimap<const pw_alignment*, const pw_alignment*>::const_iterator it1 = it.first; it1!=it.second; ++it1) {
+	//		adj.insert(it1->second);
+	//	}
+		std::map<const pw_alignment* , std::set<const pw_alignment*> >::const_iterator it1 = edges.find(p);
+		adj = it1->second;		
 
 	}
-	void compute_cc_avl_fraction::node_adjucents(const pw_alignment* p ,std::vector<const pw_alignment*> & adj)const{
-		std::pair<std::multimap<const pw_alignment*, const pw_alignment*>::const_iterator ,std::multimap<const pw_alignment*,const pw_alignment*>::const_iterator > it = edges.equal_range(p);
-		for(std::multimap<const pw_alignment*, const pw_alignment*>::const_iterator it1 = it.first; it1!=it.second; ++it1) {
-			adj.push_back(it1->second);
-		}
-		
+	void compute_cc_avl_fraction::node_adjacents(const pw_alignment* p ,std::vector<const pw_alignment*> & adj)const{
+//		std::pair<std::multimap<const pw_alignment*, const pw_alignment*>::const_iterator ,std::multimap<const pw_alignment*,const pw_alignment*>::const_iterator > it = edges.equal_range(p);
+//		for(std::multimap<const pw_alignment*, const pw_alignment*>::const_iterator it1 = it.first; it1!=it.second; ++it1) {
+//			adj.push_back(it1->second);
+//		}
+		std::map<const pw_alignment* , std::set<const pw_alignment*> >::const_iterator it = edges.find(p);
+		for(std::set<const pw_alignment *>::iterator it1 = it->second.begin() ; it1!= it->second.end() ; it1++){
+			adj.push_back(*it1);
+		}		
 
 	}
 
@@ -342,7 +367,7 @@
 		size_t childCount = 0;
 		bool isArticulation = false;
 		std::set<const pw_alignment*> adj;
-		cc_fraction.node_adjucents(alignments.at(at).at(node), adj);
+		cc_fraction.node_adjacents(alignments.at(at).at(node), adj);
 		std::cout<< alignments.at(at).at(node) <<std::endl;
 		for(std::set<const pw_alignment*>::iterator it = adj.begin(); it!= adj.end();it++){
 			std::cout << *it <<std::endl;
@@ -408,7 +433,9 @@
 			if(it->second == -1){
 				temp.clear();
 				temp.insert(alignments.at(i));
-				deep_first_search(alignments.at(i),alignments.at(i), mixed_als);   
+				deep_first_search(alignments.at(i),alignments.at(i), mixed_als);  
+			//	non_recursive_deep_first_search(alignments.at(i));  //TODO 1. only find bridges. 2. fill in a map with all the edges in cc class. 3. Then remove these edges
+ 
 			}
 		}
 		std::cout<< "stack is: "<<std::endl;
@@ -439,10 +466,10 @@
 		assert(low!= als_low.end());
 		low->second = vi->second;
 		std::vector<const pw_alignment*> adj;
-		cc_fraction.node_adjucents(parent, adj);
+		cc_fraction.node_adjacents(parent, adj);
 	//	std::cout<<"parent "<< parent << " adj size "<< adj.size()<<std::endl;
 		for(size_t i =0; i < adj.size(); i++){
-		//	std::cout<< adj.at(i)<<std::endl;
+		//	std::cout<< "adj" <<adj.at(i)<<std::endl;
 			std::map<const pw_alignment*, int>::iterator vis = visited_als.find(adj.at(i));
 			assert(vis!= visited_als.end());
 			if(adj.at(i) == child ) continue;
@@ -465,7 +492,10 @@
 				//	}
 				//	temp.clear();
 					bridge = true;
-				//	std::cout << parent << " to " << adj.at(i) << " is a bridge."<<std::endl;
+					parent->print();
+					std::cout << " to "<<std::endl;
+					adj.at(i)->print();
+					std::cout << " is a bridge."<<std::endl;
 				//	std::set<const pw_alignment*,compare_pointer_pw_alignment>::iterator t = temp.find(parent);
 				//	if(t == temp.end()){
 				//		mixed_als.insert(parent);
@@ -499,7 +529,163 @@
 		}
 
 	}
+void two_edge_cc::make_two_edge_graph(std::vector<std::set<const pw_alignment*,compare_pointer_pw_alignment> >& stacks, std::set<pw_alignment, compare_pw_alignment> & mixed_als){
+	for(size_t i =0; i < alignments.size();i++){
+		std::map<const pw_alignment*, int>::iterator it = visited_als.find(alignments.at(i));
+		assert(it!= visited_als.end());
+		if(it->second == -1){
+			find_bridges(alignments.at(i));  
+		}
+	}
+	remove_bridges(stacks,mixed_als);
+}
+void two_edge_cc::find_bridges(const pw_alignment * parent){
+	std::vector<const pw_alignment*> temp_stack;
+	temp_stack.push_back(parent);
+	std::map<const pw_alignment*, const pw_alignment*> edges;
 
+	while(!temp_stack.empty()){
+		const pw_alignment * current_node = temp_stack.back();
+		std::map<const pw_alignment*, int>::iterator vi = visited_als.find(current_node);
+	//	std::cout << "current node " << current_node << " count "<< count << std::endl;
+		assert(vi!= visited_als.end());
+		if(vi->second == -1){//Prior to visit the parent node (This condition is correct!)
+			vi->second = count;
+			count++;
+			std::map<const pw_alignment *, int>::iterator low = als_low.find(current_node);
+			assert(low!= als_low.end());
+			low->second = vi->second;
+			std::set<const pw_alignment *> adj;
+			cc_fraction.node_adjacents(current_node, adj);
+			for(std::set<const pw_alignment *>::iterator this_adj = adj.begin(); this_adj != adj.end(); this_adj++){
+				std::map<const pw_alignment *, int>::iterator vis = visited_als.find(*this_adj);
+				assert(vis!= visited_als.end());
+				if(vis->second == -1){
+					temp_stack.push_back(*this_adj);
+					edges.insert(std::make_pair(*this_adj,current_node));
+				}else{
+				//	std::cout << "update "<< std::endl;
+					std::map<const pw_alignment *, int>::iterator it = als_low.find(current_node);
+					assert(it != als_low.end());
+					std::map<const pw_alignment *, int>::iterator it1 = visited_als.find(*this_adj);
+					assert(it1 != visited_als.end());
+					it->second = std::min(it->second, it1->second);
+				}
+			}
+		}else{ //After visitng the parent node
+			temp_stack.pop_back();
+			std::set<const pw_alignment *> adj;
+			cc_fraction.node_adjacents(current_node, adj);
+			for(std::set<const pw_alignment *>::iterator this_adj = adj.begin(); this_adj != adj.end(); this_adj++){
+				std::map<const pw_alignment*, const pw_alignment*>::iterator it2 = edges.find(*this_adj);
+				if(it2 != edges.end() && it2->second == current_node){
+					std::cout<<"here! ! !"<<std::endl;
+					std::map<const pw_alignment *, int>::iterator it = als_low.find(current_node);
+					assert(it != als_low.end());
+					std::map<const pw_alignment *, int>::iterator it1 = als_low.find(*this_adj);
+					assert(it1 != als_low.end());
+					it->second = std::min(it->second, it1->second);
+					current_node->print();
+					std::cout<< "to "<<std::endl;
+					const pw_alignment * to = *this_adj;
+					to->print();
+					std::map<const pw_alignment *, int>::iterator it3 = visited_als.find(*this_adj);
+					assert(it3 != visited_als.end());
+					std::map<const pw_alignment *, int>::iterator it4 = visited_als.find(current_node);
+					assert(it4 != visited_als.end());
+					std::cout << "low "<< it1->second << " times " << it3 ->second <<std::endl;
+					std::cout << "low "<< it->second << " times " << it4 ->second <<std::endl;
+				//	if(it3->second == it1->second+1 && it1->second == it4->second){//low adj = vis adj
+					if(it1->second > it4->second){
+						std::cout << "a bridge happened from  "<<std::endl;
+						current_node->print();
+						std::cout<< "to "<<std::endl;
+						const pw_alignment * to = *this_adj;
+						to->print();
+						bridges.insert(std::make_pair(current_node, to));
+					}else{
+					}
+
+				}
+			}
+		}
+	}
+}
+void two_edge_cc::remove_bridges(std::vector<std::set<const pw_alignment*,compare_pointer_pw_alignment> >& stacks, std::set<pw_alignment, compare_pw_alignment> & mixed_als){
+	std::map<const pw_alignment* , std::set<const pw_alignment*> > edges = cc_fraction.get_edges();
+	for(std::multimap<const pw_alignment*,const pw_alignment*>::iterator it = bridges.begin() ; it != bridges.end() ; it++){
+		std::map<const pw_alignment* , std::set<const pw_alignment*> >::iterator bridge_edge = edges.find(it->first);
+		assert(bridge_edge != edges.end());
+		std::set<const pw_alignment*>::iterator adj = bridge_edge->second.find(it->second);
+		assert(adj != bridge_edge->second.end());
+		bridge_edge->second.erase(adj);
+	}
+	std::map<const pw_alignment* , std::set<const pw_alignment*> > edges1 = cc_fraction.get_edges();
+	if(bridges.size()>0){
+		assert(edges1.size() > edges.size());
+	}else{
+		assert(edges1.size()==edges.size());
+	}
+	
+	std::map<const pw_alignment*, bool> visited;
+	//Adding the rest to 'stacks' using breadth first search algorithm to seperate different components of the 2 edge graph
+	std::cout << "edges size is "<< edges.size() << std::endl;
+	for(std::map<const pw_alignment* , std::set<const pw_alignment*> >:: iterator it = edges.begin() ; it != edges.end() ; it++){
+		visited.insert(std::make_pair(it->first, false));
+	}
+	std::cout << "visited size "<< visited.size() <<std::endl;
+	for(std::map<const pw_alignment* , std::set<const pw_alignment*> >:: iterator it = edges.begin() ; it != edges.end() ; it++){
+		std::map<const pw_alignment*, bool>::iterator vis = visited.find(it->first);
+		assert(vis != visited.end());
+		if(vis->second == false){
+			std::cout << "calling bfs "<<std::endl;
+			bfs(it->first, edges,stacks,mixed_als,visited);
+		}
+	}
+
+	
+}
+void two_edge_cc::bfs(const pw_alignment* s, std::map<const pw_alignment* , std::set<const pw_alignment*> > & edges, std::vector<std::set<const pw_alignment*,compare_pointer_pw_alignment> >& stacks, std::set<pw_alignment, compare_pw_alignment> & mixed_als,std::map<const pw_alignment*, bool> &visited){
+	std::set<const pw_alignment*,compare_pointer_pw_alignment> this_stack;
+	std::vector<const pw_alignment*> queue;
+	std::map<const pw_alignment*, bool>::iterator vis = visited.find(s);
+	assert(vis != visited.end());
+	assert(vis->second == false);
+	vis->second = true;
+	queue.push_back(s);
+	this_stack.insert(s);
+	while(queue.size() > 0){
+		s = queue.back();
+		queue.pop_back();
+		std::map<const pw_alignment* , std::set<const pw_alignment*> >::iterator it=edges.find(s);
+		assert(it != edges.end());
+		assert(it->second.size()>0);
+		for(std::set<const pw_alignment*>::iterator adj = it->second.begin() ; adj != it->second.end(); adj++){
+			std::map<const pw_alignment*, bool>::iterator vis1 = visited.find(*adj);
+			assert(vis1 != visited.end());
+			if(vis1->second == false){
+				vis1->second = true;
+				queue.push_back(vis1->first);
+				this_stack.insert(vis1->first);
+				assert(vis1->first == *adj);
+			}
+	
+		}
+	}
+	assert(queue.size() == 0);
+	assert(this_stack.size()>1);
+	std::cout << "this stack size "<< this_stack.size() << std::endl;
+	if(this_stack.size()>2){
+		stacks.push_back(this_stack);
+	}else{
+		assert(this_stack.size() ==2);
+		for(std::set<const pw_alignment*,compare_pointer_pw_alignment>::iterator it = this_stack.begin() ; it != this_stack.end() ; it++){
+			const pw_alignment* p = *it;
+			mixed_als.insert(*p);
+		}
+	}
+
+}
 divide_and_conquer_alignments::divide_and_conquer_alignments(const all_data & data, const std::set<const pw_alignment*, compare_pointer_pw_alignment> & als_in, const dynamic_mc_model & model, size_t num_sequences, size_t num_threads):data(data), model(model), num_threads(num_threads), num_sequences(num_sequences), thread_info(num_threads, "waiting") {
 	std::cout << "IN DCA" << std::endl;
 	std::vector<size_t> alvec; // input for first problem
@@ -1148,9 +1334,9 @@ stringstream str;
 //		std::cout << " Test on " << ores.get_all().size() << std::endl;
 //		ores.test_partial_overlap();
 
-		const std::set<pw_alignment, compare_pw_alignment> & all = ores.get_all();
+		const std::set<pw_alignment, compare_alignment<pw_alignment> > & all = ores.get_all();
 		std::vector<pw_alignment> avec;
-		for(std::set<pw_alignment, compare_pw_alignment>::const_iterator it = all.begin(); it!=all.end(); ++it) {
+		for(std::set<pw_alignment, compare_alignment<pw_alignment> >::const_iterator it = all.begin(); it!=all.end(); ++it) {
 			avec.push_back(*it);
 		}
 		std::vector<std::vector<pw_alignment> > ccs;
@@ -1183,7 +1369,7 @@ stringstream str;
 	Tarjan's bridge finding algorithm
 Tarjan. Information Processing Letters. 1974.
 */
-void divide_and_conquer_al_problem::bridge_step(size_t & time, const std::map<size_t, std::set<size_t> > & edges, const size_t & node, std::vector<size_t> & parent, std::vector<bool> & visited, std::vector<size_t> & dfsnum, std::vector<size_t> & low, std::vector<std::pair<size_t, size_t> > & bridges) {
+/*void divide_and_conquer_al_problem::bridge_step(size_t & time, const std::map<size_t, std::set<size_t> > & edges, const size_t & node, std::vector<size_t> & parent, std::vector<bool> & visited, std::vector<size_t> & dfsnum, std::vector<size_t> & low, std::vector<std::pair<size_t, size_t> > & bridges) {
 	dfsnum.at(node) = ++time;
 	low.at(node) = time;
 	visited.at(node) = true;
@@ -1209,6 +1395,70 @@ void divide_and_conquer_al_problem::bridge_step(size_t & time, const std::map<si
 			}
 		}
 	}	
+}*/
+/*
+	Tarjan's bridge finding algorithm
+Tarjan. Information Processing Letters. 1974.
+
+nonrecursive implementation
+
+*/
+void divide_and_conquer_al_problem::bridge_step(size_t & time, const std::map<size_t, std::set<size_t> > & edges, const size_t & n, std::vector<size_t> & parent, std::vector<bool> & visited, std::vector<size_t> & dfsnum, std::vector<size_t> & low, std::vector<std::pair<size_t, size_t> > & bridges) {
+	std::vector<size_t> nstack;
+	nstack.push_back(n);
+
+	while(!nstack.empty()) {
+		// take last element of stack, it stays on stack for a second processing after "recursion"
+		size_t cur_node = nstack.back();
+		if(!visited.at(cur_node)){ // before "recursion" at cur_node
+			dfsnum.at(cur_node) = ++time;
+			low.at(cur_node) = time;
+			visited.at(cur_node) = true;
+			std::map<size_t, std::set<size_t> >::const_iterator findn=edges.find(cur_node);
+			if(findn!=edges.end()){ 
+				const std::set<size_t> & nedges = findn->second;
+				for(std::set<size_t>::const_iterator it = nedges.begin(); it!=nedges.end(); ++it){
+					size_t next = *it;
+					assert(next != cur_node);
+
+					if(!visited.at(next)){
+						parent.at(next) = cur_node;
+						// put not visited not on the stack (like recursive call)	
+						nstack.push_back(next);
+					} else{
+					//	if(next != parent.at(node)) {
+							// found a back-edge:
+							low.at(cur_node) = std::min(low.at(cur_node), dfsnum.at(next));
+					//	}
+					}
+				} 
+			}
+
+
+		}else{ // after "recursion" at cur_node. Entire subtree below cur_node was done
+			nstack.pop_back(); // remove cur_node from stack, we are done with this subtree
+			std::map<size_t, std::set<size_t> >::const_iterator findn=edges.find(cur_node);
+			if(findn!=edges.end()) { 
+				const std::set<size_t> & nedges = findn->second;
+				for(std::set<size_t>::const_iterator it = nedges.begin(); it!=nedges.end(); ++it) {
+					size_t next = *it;
+					assert(next != cur_node);
+					if(parent.at(next) == cur_node){ // after recursion step for cur_node->next
+						low.at(cur_node) = std::min(low.at(cur_node), low.at(next));
+						// found a bridge
+						if(low.at(next) > dfsnum.at(cur_node)) {
+							bridges.push_back(std::make_pair(cur_node, next));
+						}
+
+					}
+
+				}
+			}
+		}
+	}
+
+
+
 }
 
 void divide_and_conquer_al_problem::edge_insert(std::map<size_t, std::set<size_t> > & edges, size_t i, size_t j) {
@@ -1478,13 +1728,13 @@ stringstream str1;
 // slow check for partial overlap TODO 
 //	results.test_partial_overlap();
 
-	const std::set<pw_alignment, compare_pw_alignment> & rset = results.get_all();
+	const std::set<pw_alignment, compare_alignment<pw_alignment> >& rset = results.get_all();
 	std::vector<pw_alignment> avec(rset.size());
 	size_t i=0;
 
 	double sumg = 0;
 
-	for(std::set<pw_alignment, compare_pw_alignment>::const_iterator it = rset.begin(); it!=rset.end(); ++it) {
+	for(std::set<pw_alignment, compare_alignment<pw_alignment> >::const_iterator it = rset.begin(); it!=rset.end(); ++it) {
 		avec.at(i) = *it;
 		i++;
 

@@ -9,35 +9,40 @@
 #include "pw_alignment.hpp"
 #include"data.hpp"
 
-#define ALLOWED_GAP 500
+//#define ALLOWED_GAP 500
 
 class finding_centers{
 	public:
-	finding_centers(all_data &);
+	finding_centers(const all_data &);
 	~finding_centers();
 	void setOfAlignments(std::map<std::string,std::vector<pw_alignment> > &);
 	void findMemberOfClusters(std::map<std::string,std::vector<pw_alignment> > &);
-	void center_frequency(std::map<std::string,std::vector<pw_alignment> > &, std::vector<std::multimap<size_t, std::string> > & );
-	void find_seq_centers(std::map<int,bool> & , size_t & , std::vector<std::multimap<size_t, std::string> > & centerOnseq);
-	void find_long_centers(size_t &);
+	void center_frequency(std::map<std::string,std::vector<pw_alignment> > &, std::vector<std::map<size_t, std::string> > & );
+	void create_long_centers_candidates(std::vector<std::map<size_t, std::string> > & centerOnseq, size_t & gap_in_long_centers);
+	void find_seq_centers( size_t & , std::vector<std::map<size_t, std::string> > & centerOnseq);
+	void find_long_centers(size_t &, std::map<size_t, std::string> &, size_t & );
 	std::map<size_t, std::vector<int> >get_center(size_t &)const;//Returns long centers and their locations
 	const std::vector<std::vector<int> > & get_centers(size_t &)const;
-	size_t get_number_of_centers()const;//Returns the total number of centers
-	std::multimap< size_t, std::string> get_sequence_centers(size_t & )const;//It returns all the centers of a sequence, a center may happen more than once, thus it might be repeated in the vector. size_t shows the position of each center
+	const size_t get_number_of_centers();//Returns the total number of centers
+//	std::multimap< size_t, std::string> get_sequence_centers(size_t & )const;//It returns all the centers of a sequence, a center may happen more than once, thus it might be repeated in the vector. size_t shows the position of each center
 	std::string find_center_name(int &)const;
 	std::vector<size_t> get_long_center_position(size_t & seq_id , std::vector<std::string> & long_center);
 	const std::map<std::string, int> get_index()const;
-	
+	void add_nonaligned_regions(std::vector<std::map<size_t, std::string > > & centerOnSequence, std::map<std::string, std::vector<pw_alignment> > & alignments_in_a_cluster, std::vector<std::map<size_t , std::string> > & all_pieces, std::map<std::string, size_t> & non_aligned_right);
+	void add_to_alignments(std::vector<std::map<size_t, std::string > > & centerOnSequence, std::map<std::string, std::vector<pw_alignment> > & alignments_in_a_cluster, size_t & ref, size_t & position, std::string & sequence, std::string & center_name , bool direction);
+	const size_t find_right_on_seq(std::string & center,std::map<std::string, std::vector<pw_alignment> > & alignments_in_a_cluster, size_t & left , size_t & ref)const;
 	private://all these containers are local and their containts are replacing after each call of clustering:
-	all_data & data;
-	std::vector< std::map<size_t , pw_alignment*> >AlignmentsFromClustering;//It is changing in each call of clustering. contains als on each seq at position size_t
+	const all_data & data;
+	size_t INDEX;
+	std::vector< std::map<size_t , pw_alignment> >AlignmentsFromClustering;//It is changing in each call of clustering. contains als on each seq at position size_t
 	std::map<std::string,std::string> memberOfCluster; //first string is assocciated member and second one is its center
-	std::vector< std::multimap< size_t, std::string> >centersOnSequence;//all the centers that happen on each sequence and their positions 
-	std::vector< std::map< size_t , std::vector<int> > > centersOfASequence;//centers that happen on each sequence and have less than ALLOWED_GAP bases difference on their positions. Fully reveresed are removed.
-	std::map<size_t ,std::vector<std::vector<int> > > long_centers_of_a_sequence; //Potential long centers. size_t -->seq_id
+//	std::vector< std::multimap< size_t, std::string> >centersOnSequence;//all the centers that happen on each sequence and their positions 
+	std::vector< std::map< size_t , std::vector<int> > > centersOfASequence;//centers that happen on each sequence and have less than ALLOWED_GAP bases difference on their positions. Fully reveresed are removed. (position, long_cent)
+	std::map<size_t ,std::vector<std::vector<int> > > long_centers_of_a_sequence; //Potential long centers. size_t -->seq_id 
 	std::vector<std::multimap<std::vector<int>,size_t > > initial_suffixes;
 	std::map<std::string,int> center_id;
 	std::map<int,std::string> center_index;
+	
 //	std::map<std::string, int>oriented_index;// centers, their indecies which can be negative if they are used in their reverse direction.
 };
 
@@ -69,7 +74,7 @@ class suffixTree{
 	//	std::multimap<std::pair<std::vector<size_t>, size_t> , std::vector<size_t> > tree; //previous context, current node index, current context
 	//	std::multimap<std::vector<size_t>, size_t> edges_relations; //vector<size_t> is parent, size_t is current node index 
 		std::multimap<size_t, size_t> edges_relations; //parent, children
-		std::map<size_t, std::vector<int> > edges; //size_t is current node index , vector<size_t> is current edge content
+		std::map<size_t, std::vector<int> > edges; //size_t is current node index , vector<int> is current edge content
 		std::vector<std::vector<std::vector<int> > >words; // successive centers of sequences
 		std::vector<std::vector<int> >suffixes; // Has suffixes of a single string at the the time
 		std::map<size_t, size_t > first_edges; // its first center, its index

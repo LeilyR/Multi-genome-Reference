@@ -67,6 +67,7 @@ class all_data {
 		void read_fasta_sam(std::string fasta_all_sequences, std::string sam_all_alignments);
 		void read_accknown_fasta_sam(std::string fasta_all_sequences, std::string sam_all_alignments);
 		void read_fasta_maf(std::string fasta_all_sequences, std::string maf_all_alignments);
+		void read_fasta_maf_forward_read_only(std::string fasta_all_sequences, std::string maf_all_alignments);
 		void read_fasta(std::string fasta_reads);//It is used to read the reads for mapping.
 
 		// no copy constructor, never copy all data
@@ -97,10 +98,15 @@ class all_data {
 		size_t numOfAcc() const;
 		const std::map< std::string, size_t>& getLongname2seqidx()const;
 		void compare_seq_with_decoding(std::ifstream &);
+		void compare_seq_with_read(std::ifstream& in, size_t seq_id, size_t & from, size_t & to);
 		void checkAlignmentRange(const pw_alignment &)const;
 		std::vector<std::string> get_reads()const;
 		void make_fasta(std::ostream &, std::vector<std::string> & );
-
+		std::string extract_seq_part(unsigned int & ref, size_t & from , size_t & to)const;
+		std::string extract_reverse_seq_part(unsigned int & ref, size_t & from , size_t & to)const;
+		std::string get_read(unsigned int read_id)const{
+                        return reads.at(read_id);
+                }
 		bool alignmentAlreadyExist(const pw_alignment &a)const; //XXX Added by Marion. 
 		int findIdAlignment(std::string name,int startOnRead, int endOnRead,int startOnNode,int endOnNode);//XXX Added by Marion
 		int findIdAlignment(std::string name,unsigned int start, unsigned int end);//XXX Added by Marion

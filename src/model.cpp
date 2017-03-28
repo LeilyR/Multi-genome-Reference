@@ -538,7 +538,7 @@ std::vector<bool> & rem_free, std::vector<bool> & ins_taken, std::vector<bool> &
 						if(rem_free.at(j)) {
 							igain -= remove_gain.at(j);
 						} else {
-							igain = -numeric_limits<double>::max();
+							igain = -std::numeric_limits<double>::max();
 							break;
 						}
 					}
@@ -1026,6 +1026,7 @@ void initial_alignments_from_groups<T,overlap_type>::lazy_split_insert_step(over
 	splitpoints_interval_tree<overlap_type> spl1(alsp, ovrlp, data);
 	spl1.nonrecursive_splits();
 	std::set<pw_alignment, compare_pw_alignment> als_remove_als_set; 
+	std::cout << "spl1"<<std::endl;
 	spl1.split_all(als_remove_als_set, insert_als);
 	
 	split_time = clock() - split_time;
@@ -1496,7 +1497,7 @@ void initial_alignments_from_groups<T,overlap_type>::compute(overlap_type & o, s
 			long_groupgain = gain_of_als;
 		}
 
-		stringstream str;
+		std::stringstream str;
 		str <<ihead << ", ias compute " << i << "of "<< sorted_original_als.size() << " we had " << als.size() << " als in " << ins_als.size() << " out " << rem_als.size() <<  " gain " << gain_taken << " of " << gain_of_als << " time " << lts << " last long time " << longtime << " at " << longtime_at<< " in select gr " << long_groupstime << " size " << long_groupsize << " ins " << long_groupins << " rem " << long_grouprem << " allgain " << long_groupgain<<  " in overlap " << o.get_all().size() ;
 #pragma omp critical(scheduling)
 {

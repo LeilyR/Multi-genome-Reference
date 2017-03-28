@@ -3,34 +3,39 @@
 #define OVERLAP_CPP
 #include "overlap.hpp"
 
-overlap_interval_tree::overlap_interval_tree(const all_data & d): data(d), alind(d.numSequences()){
+template<typename alignment>
+overlap_interval_tree<alignment>::overlap_interval_tree(const all_data & d): data(d), alind(d.numSequences()){
 
 	}
 
-overlap_interval_tree::overlap_interval_tree(const overlap_interval_tree & o): data(o.data),alind(o.data.numSequences()){
+
+template<typename alignment>
+overlap_interval_tree<alignment>::overlap_interval_tree(const overlap_interval_tree & o): data(o.data),alind(o.data.numSequences()){
 	assert(alignments.size() == 0); // incomplete copy constructor, does not copy content of object
 }
 
-	
-overlap_interval_tree::~overlap_interval_tree(){
+
+template<typename alignment>	
+overlap_interval_tree<alignment>::~overlap_interval_tree(){
 }
 
-void overlap_interval_tree::remove_alignment(const pw_alignment & removeR){
+template<typename alignment>
+void overlap_interval_tree<alignment>::remove_alignment(const alignment_type & removeR){
 //	std::cout << "removeR"<<std::endl;
-	std::set<pw_alignment, compare_pw_alignment>::iterator findr = alignments.find(removeR);
-//	assert(findr != alignments.end()); XXX
+	typename std::set<alignment_type, compare_alignment<alignment_type> >::iterator findr = alignments.find(removeR);
+//	assert(findr != alignments.end()); XXX double alignment handling?
 	if(findr != alignments.end()){
-		const pw_alignment & al = *findr;
+		const alignment_type & al = *findr;
 		alind.erase(&al);
 		alignments.erase(removeR);
 	}
 }
 
+template<typename alignment>
+void overlap_interval_tree<alignment>::test_all() const {
 
-void overlap_interval_tree::test_all() const {
-
-	for(std::set<pw_alignment, compare_pw_alignment>::iterator it = alignments.begin(); it!=alignments.end(); ++it) {
-		const pw_alignment & al = *it;
+	for(typename std::set<alignment_type, compare_alignment<alignment_type> >::iterator it = alignments.begin(); it!=alignments.end(); ++it) {
+		const alignment_type & al = *it;
 		bool alok = data.alignment_fits_ref(al);
 		if(!alok) {
 			std::cout << " test all failed " << std::endl;
@@ -44,10 +49,10 @@ void overlap_interval_tree::test_all() const {
 
 
 
-
-void overlap_interval_tree::print_all_alignment() const {
-	for(std::set<pw_alignment, compare_pw_alignment>::const_iterator it = alignments.begin(); it!=alignments.end(); ++it ) {
-		const pw_alignment * al = &(*it);
+template<typename alignment>
+void overlap_interval_tree<alignment>::print_all_alignment() const {
+	for(typename std::set<alignment_type, compare_alignment<alignment_type> >::const_iterator it = alignments.begin(); it!=alignments.end(); ++it ) {
+		const alignment_type * al = &(*it);
 		//std::cout << " x " << al << std::endl;
 		al->print();
 		std::cout << std::endl;
@@ -55,7 +60,8 @@ void overlap_interval_tree::print_all_alignment() const {
 
 }
 
-void overlap_interval_tree::insert_without_partial_overlap(const pw_alignment & p){
+template<typename alignment>
+void overlap_interval_tree<alignment>::insert_without_partial_overlap(const alignment_type & p){
 //	std::cout << "insert_without_partial_overlap"<<std::endl;
 //	alind.insert(&p);
 //	std::cout << &p << std::endl;
@@ -63,21 +69,22 @@ void overlap_interval_tree::insert_without_partial_overlap(const pw_alignment & 
 
 // TODO can we avoid double insertions?
 //	assert(alignments.find(p) == alignments.end());
-	std::pair<std::set<pw_alignment, compare_pw_alignment>::iterator, bool > npp = alignments.insert(p);
-	std::set<pw_alignment, compare_pw_alignment>::iterator it = alignments.find(p);
+	std::pair<typename std::set<alignment_type, compare_alignment<alignment_type> >::iterator, bool > npp = alignments.insert(p);
+	typename std::set<alignment_type, compare_alignment<alignment_type>>::iterator it = alignments.find(p);
 	assert(it != alignments.end());
-	const pw_alignment & al = *it;
+	const alignment_type & al = *it;
 //	std::cout << "alignment size is "<< alignments.size() << std::endl;
 //	std::cout << &al <<std::endl;
 	alind.insert(&al);
 }
 
-const pw_alignment * overlap_interval_tree::get_al_at_left_end(size_t ref1, size_t ref2, size_t left1, size_t left2) const {
-/*		const std::multimap<size_t, const pw_alignment &> & r1map = als_on_reference.at(ref1);
-		std::pair<std::multimap<size_t, const pw_alignment &>::const_iterator,std::multimap<size_t, const pw_alignment &>::const_iterator> eqr = r1map.equal_range(left1);
-		for( std::multimap<size_t, const pw_alignment &>::const_iterator it = eqr.first; it!= eqr.second; ++it) {
-			const pw_alignment & calr = it->second;
-			const pw_alignment * cal = & calr;
+template<typename alignment>
+const alignment * overlap_interval_tree<alignment>::get_al_at_left_end(size_t ref1, size_t ref2, size_t left1, size_t left2) const {
+/*		const std::multimap<size_t, const alignment_type &> & r1map = als_on_reference.at(ref1);
+		std::pair<std::multimap<size_t, const alignment_type &>::const_iterator,std::multimap<size_t, const alignment_type &>::const_iterator> eqr = r1map.equal_range(left1);
+		for( std::multimap<size_t, const alignment_type &>::const_iterator it = eqr.first; it!= eqr.second; ++it) {
+			const alignment_type & calr = it->second;
+			const alignment_type * cal = & calr;
 			if(cal->getreference1()==ref1) {
 				size_t cal_left1 = cal->getbegin1();
 				if(cal->getend1() < cal_left1) cal_left1 = cal->getend1();
@@ -111,18 +118,21 @@ const std::multimap<size_t, const pw_alignment &> &  overlap_interval_tree::get_
 	return als_on_reference.at(sequence);
 }
 */
-
-void overlap_interval_tree::get_interval_result_on_interval(const size_t& sequence,  const size_t& left,  const size_t& right,std::vector<const pw_alignment *>& result)const{
+template<typename alignment>
+void overlap_interval_tree<alignment>::get_interval_result_on_interval(const size_t& sequence,  const size_t& left,  const size_t& right,std::vector<const alignment_type *>& result)const{
 //	alind.debug_print();
 	alind.search_overlap(sequence,left,right,result);
 //	std::cout<< "overlapped als: "<<std::endl;
 }
-void overlap_interval_tree::interval_result_on_point(const size_t & sequence, const size_t & split_point, std::vector<const pw_alignment* > & result)const{
+template<typename alignment>
+void overlap_interval_tree<alignment>::interval_result_on_point(const size_t & sequence, const size_t & split_point, std::vector<const alignment_type* > & result)const{
 	alind.search_overlap(sequence,split_point,result);
 }
 
 // TODO why not used
-void overlap_interval_tree::test_all_part()const{
+template<typename alignment>
+void overlap_interval_tree<alignment>::test_all_part()const{
+
 	
 	/*std::set < const pw_alignment*, compare_pw_alignment> alignment_parts;
 		
@@ -180,10 +190,11 @@ void overlap_interval_tree::test_all_part()const{
 		}*/
 }
 
-void overlap_interval_tree::test_overlap()const{
-	for(std::set<pw_alignment, compare_pw_alignment>::iterator it1 = alignments.begin(); it1!=alignments.end(); ++it1){	
-		const pw_alignment & alr = *it1;
-		const pw_alignment * al1 = &alr;
+template<typename alignment>
+void overlap_interval_tree<alignment>::test_overlap()const{
+	for(typename std::set<alignment_type, compare_alignment<alignment_type>>::iterator it1 = alignments.begin(); it1!=alignments.end(); ++it1){	
+		const alignment_type & alr = *it1;
+		const alignment_type * al1 = &alr;
 		size_t l1ref1 = al1->getbegin1();
 		size_t r1ref1 = al1->getend1();
 		size_t l1ref2 = al1->getbegin2();
@@ -196,9 +207,9 @@ void overlap_interval_tree::test_overlap()const{
 			l1ref2 = al1->getend2();
 			r1ref2 = al1->getbegin2();		
 		}
-		for(std::set<pw_alignment, compare_pw_alignment>::iterator it2 = alignments.begin(); it2!=alignments.end(); ++it2){
-			const pw_alignment & alr2 = *it2;
-			const pw_alignment * al2 = &alr2;
+		for(typename std::set<alignment_type, compare_alignment<alignment_type>>::iterator it2 = alignments.begin(); it2!=alignments.end(); ++it2){
+			const alignment_type & alr2 = *it2;
+			const alignment_type * al2 = &alr2;
 			size_t l2ref1 = al2->getbegin1();
 			size_t r2ref1 = al2->getend1();
 			size_t l2ref2 = al2->getbegin2();
@@ -227,9 +238,11 @@ void overlap_interval_tree::test_overlap()const{
 		}
 	}	
 }
-void overlap_interval_tree::test_no_overlap_between_ccs(const pw_alignment & p, std::set<const pw_alignment*, compare_pointer_pw_alignment> & ccs)const{
-	for(std::set< const pw_alignment* , compare_pointer_pw_alignment>::iterator it = ccs.begin();it != ccs.end();it++){
-		const pw_alignment * al = *it;
+
+template<typename alignment>
+void overlap_interval_tree<alignment>::test_no_overlap_between_ccs(const alignment_type & p, std::set<const alignment_type*, compare_pointer_alignment<alignment_type> > & ccs)const{
+	for(typename std::set< const alignment_type* , compare_pointer_alignment<alignment_type> >::iterator it = ccs.begin();it != ccs.end();it++){
+		const alignment_type * al = *it;
 		size_t l1,r1,l2,r2,pl1,pr1,pl2,pr2;
 		al->get_lr1(l1,r1);
 		al->get_lr2(l2,r2);
@@ -265,18 +278,21 @@ void overlap_interval_tree::test_no_overlap_between_ccs(const pw_alignment & p, 
 		}
 	}
 }
-bool overlap_interval_tree::checkAlignments(const pw_alignment & p)const{
-	std::set<pw_alignment, compare_pw_alignment>::iterator it=alignments.find(p);
+
+
+template<typename alignment>
+bool overlap_interval_tree<alignment>::checkAlignments(const alignment_type & p)const{
+	typename std::set<alignment_type, compare_alignment<alignment_type>>::iterator it=alignments.find(p);
 	if(it!=alignments.end()){
-		const pw_alignment al = *it;
+		const alignment_type al = *it;
 	//	al.print();
 		return true;	
 	}
 	else return false;	
 }
 	
-
-size_t overlap_interval_tree::size() const {
+template<typename alignment>
+size_t overlap_interval_tree<alignment>::size() const {
 
 //	for(size_t i=0; i<als_on_reference.size(); i++) {
 //		std::cout << " ref " << i << " al start/end points: " << als_on_reference.at(i).size() << std::endl;
@@ -286,13 +302,15 @@ size_t overlap_interval_tree::size() const {
 
 
 		
-const std::set<pw_alignment, compare_pw_alignment> & overlap_interval_tree::get_all() const {
+template<typename alignment>	
+const std::set<alignment, compare_alignment<alignment> > & overlap_interval_tree<alignment>::get_all() const {
 	return alignments;
 }
 
 
 // true if true partial overlap
-bool overlap_interval_tree::check_po(size_t l1, size_t r1, size_t l2, size_t r2) {
+template<typename alignment>
+bool overlap_interval_tree<alignment>::check_po(size_t l1, size_t r1, size_t l2, size_t r2) {
 	if(r2 >= l1 && l2 <= r1) {
 		if(l1!=l2 || r1!=r2) {
 			return true;	
@@ -301,22 +319,25 @@ bool overlap_interval_tree::check_po(size_t l1, size_t r1, size_t l2, size_t r2)
 	return false;
 }
 
-void overlap_interval_tree::test_partial_overlap_set(std::set< const pw_alignment *, compare_pw_alignment> & als) {
+template<typename alignment>
+void overlap_interval_tree<alignment>::test_partial_overlap_set(std::set< const alignment_type *, compare_alignment<alignment_type>> & als) {
 	
-	std::vector<const pw_alignment *> all;
-	for(std::set<const pw_alignment *, compare_pw_alignment>::iterator it = als.begin(); it!=als.end(); ++it) {
-		const pw_alignment * al = *it;
+	std::vector<const alignment_type *> all;
+	for(typename std::set<const alignment_type *, compare_alignment<alignment_type>>::iterator it = als.begin(); it!=als.end(); ++it) {
+		const alignment_type * al = *it;
 		all.push_back(al);
 	}
 	test_partial_overlap_vec(all);
 }
 
+
 // TODO ???
-void overlap_interval_tree::test_partial_overlap_vec(std::vector< const pw_alignment *> & all) {
+template<typename alignment>
+void overlap_interval_tree<alignment>::test_partial_overlap_vec(std::vector< const alignment_type *> & all) {
 	for(size_t i=0; i<all.size(); ++i) {
 		for(size_t j=i+1; j<all.size(); ++j) {
-			const pw_alignment * a = all.at(i);
-			const pw_alignment * b = all.at(j);
+			const alignment_type * a = all.at(i);
+			const alignment_type * b = all.at(j);
 			size_t al1, ar1, al2, ar2;
 			size_t bl1, br1, bl2, br2;
 			a->get_lr1(al1, ar1);
@@ -376,11 +397,13 @@ void overlap_interval_tree::test_partial_overlap_vec(std::vector< const pw_align
 
 
 }
-void overlap_interval_tree::test_partial_overlap() const {
+
+template<typename alignment>
+void overlap_interval_tree<alignment>::test_partial_overlap() const {
 	//test_al_on_ref(); TODO other tests?
-	std::vector<const pw_alignment *> all;
-	for(std::set<pw_alignment, compare_pw_alignment>::const_iterator it = alignments.begin(); it!=alignments.end(); ++it) {
-		const pw_alignment * al = &(*it);
+	std::vector<const alignment_type *> all;
+	for(typename std::set<alignment_type, compare_alignment<alignment_type>>::const_iterator it = alignments.begin(); it!=alignments.end(); ++it) {
+		const alignment_type * al = &(*it);
 	//	al->print();
 		all.push_back(al);
 	}

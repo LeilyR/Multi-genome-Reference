@@ -15,9 +15,10 @@ template<typename T>
 class needleman{
 	public:
 	//	needleman(all_data & , T & );
-		needleman(all_data & , T  &, std::string &  , std::string &);
+		needleman(const all_data & , T  &, std::string &  , std::string &);
 		~needleman();
-		void compute_matrix(size_t & read_id, size_t & ref_id);
+		void run_needleman(size_t & readacc , size_t & refacc, size_t & type, std::string & , std::string & );
+		void compute_matrix(size_t & readacc, size_t & refacc);
 		std::string get_first_context();
 		void count_first_row_delete(size_t &, char &, std::string & );
 		std::string get_previous_contexts();

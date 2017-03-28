@@ -28,6 +28,8 @@ class filter_als{
 	void recalculate_gain_value(const pw_alignment*, size_t &);
 	void find_als_with_highest_gain();
 	std::set<const pw_alignment*, compare_pointer_pw_alignment> get_filtered_als()const;
+//	std::set<pw_alignment, compare_pw_alignment> get_filtered_als()const;
+
 	private:
 	dynamic_mc_model & model;
 	size_t num_threads;
@@ -35,6 +37,8 @@ class filter_als{
 	std::vector<const pw_alignment*> alignments;
 	std::multimap<double,const pw_alignment*> new_gains;
 	std::set<const pw_alignment*, compare_pointer_pw_alignment> filtered_als;
+	std::set<pw_alignment, compare_pw_alignment> filtered_alignments;
+
 	alignment_index  * alind;
 
 

@@ -29,8 +29,9 @@ LIBARGS =   apclusterunix64.so -L../dlib_build -ldlib  libStatGen-1.0.13/libStat
 # include libStatGen-1.0.13/Makefiles/Makefile.include
 
 PROGS = graph
+#OBJS = pw_alignment.o data.o test.o graph.o needleman.o dynamic_mc.o alignment_index.o connected_component.o suffix_tree.o merging_centers.o filter_alignments.o read_daligner.o needleman_wunsch.o dijkstra.o map_read.o
 #OBJS = pw_alignment.o data.o test.o graph.o needleman.o dynamic_mc.o suffix_tree.o merging_centers.o  read_daligner.o needleman_wunsch.o map_read.o 
-OBJS = pw_alignment.o data.o test.o graph.o needleman.o dynamic_mc.o suffix_tree.o merging_centers.o  read_daligner.o needleman_wunsch.o map_read.o 
+OBJS = data.o test.o graph.o needleman.o suffix_tree.o merging_centers.o  read_daligner.o needleman_wunsch.o map_read.o dijkstra.o model.o
 
 # .DEFAULT_GOAL := graph 
 all: $(PROGS)
@@ -40,14 +41,15 @@ all: $(PROGS)
 
 #graph: main.cpp $(OBJS) model.cpp model.hpp pw_alignment.hpp data.hpp graph.hpp needleman.hpp encoder.hpp dynamic_encoder.hpp dynamic_decoder.hpp IntervalTree.hpp
 
-graph: main.cpp $(OBJS) model.cpp model.hpp pw_alignment.hpp data.hpp graph.hpp needleman.hpp needleman_wunsch.hpp encoder.hpp dynamic_encoder.hpp dynamic_decoder.hpp suffix_tree.hpp alignment_index.hpp IntervalTree.hpp overlap.hpp connected_component.hpp merging_centers.hpp filter_alignments.hpp read_daligner.hpp map_read.hpp connected_component.hpp connected_component.cpp overlap.cpp model.cpp encoder.cpp intervals.cpp dynamic_encoder.cpp dynamic_decoder.cpp needleman_wunsch.cpp filter_alignments.cpp alignment_index.cpp
+#graph: main.cpp $(OBJS) model.cpp model.hpp pw_alignment.hpp data.hpp graph.hpp needleman.hpp needleman_wunsch.hpp dijkstra.hpp encoder.hpp dynamic_encoder.hpp dynamic_decoder.hpp suffix_tree.hpp alignment_index.hpp IntervalTree.hpp overlap.hpp connected_component.hpp merging_centers.hpp filter_alignments.hpp read_daligner.hpp map_read.hpp
+graph: main.cpp $(OBJS) model.cpp model.hpp pw_alignment.hpp data.hpp graph.hpp needleman.hpp needleman_wunsch.hpp encoder.hpp dynamic_encoder.hpp dynamic_decoder.hpp suffix_tree.hpp alignment_index.hpp IntervalTree.hpp overlap.hpp merging_centers.hpp filter_alignments.hpp read_daligner.hpp map_read.hpp connected_component.hpp connected_component.cpp overlap.cpp model.cpp encoder.cpp intervals.cpp dynamic_encoder.cpp dynamic_decoder.cpp needleman_wunsch.cpp filter_alignments.cpp alignment_index.cpp dynamic_mc.hpp dynamic_mc.cpp
 	$(CXX) -o graph $(CXXFLAGS) $(INCLUDEARGS) main.cpp $(OBJS) $(LIBARGS)
 	
 graph.o: graph.hpp graph.cpp
 	$(CXX) -o graph.o $(CXXFLAGS) $(INCLUDEARGS) -c graph.cpp
 
-pw_alignment.o: pw_alignment.cpp pw_alignment.hpp
-	$(CXX) -o pw_alignment.o $(CXXFLAGS) $(INCLUDEARGS) -c pw_alignment.cpp 
+#pw_alignment.o: pw_alignment.cpp pw_alignment.hpp
+#	$(CXX) -o pw_alignment.o $(CXXFLAGS) $(INCLUDEARGS) -c pw_alignment.cpp 
 
 data.o: data.cpp pw_alignment.hpp data.hpp
 	$(CXX) -o data.o $(CXXFLAGS) $(INCLUDEARGS) -c data.cpp 
@@ -58,8 +60,8 @@ data.o: data.cpp pw_alignment.hpp data.hpp
 #	$(CXX) -o overlap.o $(CXXFLAGS) $(INCLUDEARGS) -c overlap.cpp
 
 
-dynamic_mc.o: dynamic_mc.cpp dynamic_mc.hpp  data.hpp
-	$(CXX) -o dynamic_mc.o $(CXXFLAGS) $(INCLUDEARGS) -c dynamic_mc.cpp
+#dynamic_mc.o: dynamic_mc.cpp dynamic_mc.hpp  data.hpp
+#	$(CXX) -o dynamic_mc.o $(CXXFLAGS) $(INCLUDEARGS) -c dynamic_mc.cpp
 
 #encoder.o: encoder.cpp encoder.hpp data.hpp 
 #	$(CXX) -o encoder.o $(CXXFLAGS) $(INCLUDEARGS) -c encoder.cpp
@@ -71,9 +73,16 @@ needleman.o: needleman.cpp needleman.hpp
 
 needleman_wunsch.o: needleman_wunsch.cpp needleman_wunsch.hpp
 	$(CXX) -o needleman_wunsch.o $(CXXFLAGS) $(INCLUDEARGS) -c needleman_wunsch.cpp
+dijkstra.o: dijkstra.hpp dijkstra.cpp
+	$(CXX) -o dijkstra.o $(CXXFLAGS) $(INCLUDEARGS) -c dijkstra.cpp
+
 
 map_read.o: map_read.cpp map_read.hpp
 	$(CXX) -o map_read.o $(CXXFLAGS) $(INCLUDEARGS) -c map_read.cpp
+
+#connected_component.o: connected_component.cpp connected_component.hpp
+#	$(CXX) -o connected_component.o $(CXXFLAGS) $(INCLUDEARGS) -c connected_component.cpp
+
 
 suffix_tree.o: suffix_tree.hpp suffix_tree.cpp
 	$(CXX) -o suffix_tree.o $(CXXFLAGS) $(INCLUDEARGS) -c suffix_tree.cpp
@@ -89,8 +98,8 @@ read_daligner.o: read_daligner.hpp read_daligner.cpp
 
 
 
-#model.o: model.cpp model.hpp
-#	$(CXX) -o model.o $(CXXFLAGS) $(INCLUDEARGS) -c model.cpp
+model.o: model.cpp model.hpp
+	$(CXX) -o model.o $(CXXFLAGS) $(INCLUDEARGS) -c model.cpp
 
 clean:
 	@-rm -f $(PROGS) *.o  *.a *~

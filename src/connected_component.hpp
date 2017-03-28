@@ -26,12 +26,18 @@ class compute_cc_avl_fraction {
 		this->num_threads = num_threads;
 		std::cout << " CC AVL build index on " << als_in.size() << std::endl << std::flush;
 		std::multimap<size_t, const pw_alignment *> sorter;
+	//	size_t count = 0;
 		for(std::set<const pw_alignment*, compare_pointer_pw_alignment>::const_iterator it = als_in.begin(); it!=als_in.end(); it++){
 			const pw_alignment * al = *it;
+		//	std::cout << "al "<< count << " is :"<<std::endl;
+		//	al->print();
+
 			als.push_back(al);
 			remained_als.insert(al);
 			size_t len = al->alignment_length();
 			sorter.insert(std::make_pair(len, al));
+		//	count ++;
+		//	if(count == 150) break;
 		}
 		std::cout << " Sorting done " << sorter.size()<< std::endl;
 		std::cout << "remainder size" << remained_als.size() << std::endl;
@@ -82,13 +88,16 @@ class compute_cc_avl_fraction {
 		delete alind;
 	}
 	void non_recursive_compute(std::set< const pw_alignment* , compare_pointer_pw_alignment> &, std::set<const pw_alignment* , compare_pointer_pw_alignment> & , double & );
-	void cc_step_non_recursive(const pw_alignment*  ,  size_t & , size_t & , size_t &, std::set< const pw_alignment* , compare_pointer_pw_alignment>& , double &  , std::set<const pw_alignment* , compare_pointer_pw_alignment>&);
+	void cc_step_non_recursive(const pw_alignment * ,  size_t & , size_t & , size_t &, std::set< const pw_alignment* , compare_pointer_pw_alignment>& , double &  , std::set<const pw_alignment* , compare_pointer_pw_alignment>&);
 	void compute(std::vector<std::set< const pw_alignment* , compare_pointer_pw_alignment> > &);
 	void get_cc(const pw_alignment & , std::set <const pw_alignment*, compare_pointer_pw_alignment> & , std::set <const pw_alignment*, compare_pointer_pw_alignment> & );
 	void cc_step(const pw_alignment &, size_t , size_t , size_t , std::set <const pw_alignment*, compare_pointer_pw_alignment> & , std::set <const pw_alignment* , compare_pointer_pw_alignment>  & );
 	void compute_fraction(std::vector<const pw_alignment*> &, const double  ,  const size_t & , const size_t & , const size_t &,std::vector<const pw_alignment*> & );
-	void node_adjucents(const pw_alignment*,std::set<const pw_alignment*>&)const;
-	void node_adjucents(const pw_alignment*,std::vector<const pw_alignment*>&)const;
+	void node_adjacents(const pw_alignment*,std::set<const pw_alignment*>&)const;
+	void node_adjacents(const pw_alignment*,std::vector<const pw_alignment*>&)const;
+	const std::map<const pw_alignment* , std::set<const pw_alignment*> > get_edges()const{
+		return edges;
+	}
 	size_t get_id (const pw_alignment*)const;
 	void test_redundancy(const pw_alignment* , std::set< const pw_alignment* , compare_pointer_pw_alignment> & );
 	std::set<const pw_alignment*, compare_pointer_pw_alignment> get_remaining_als()const;
@@ -103,7 +112,7 @@ class compute_cc_avl_fraction {
 	alignment_index  * alind;
 	size_t num_threads;
 //	std::map<const pw_alignment* , size_t> als_index;
-	std::multimap<const pw_alignment* , const pw_alignment*>edges; 
+	std::map<const pw_alignment* , std::set<const pw_alignment*> >edges; 
 //	std::set<std::pair<const pw_alignment*, const pw_alignment*> > edges;
 
 	size_t edge_size;
@@ -155,12 +164,17 @@ class two_edge_cc{
 	two_edge_cc(compute_cc_avl_fraction & cc, std::set< const pw_alignment* , compare_pointer_pw_alignment> & als):cc_fraction(cc){
 		count = 0;
 		bridge = false;
-	//	std::cout << "als are"<<std::endl;
+		std::cout << "als are"<<std::endl;
+		size_t count = 0;
 		for(std::set<const pw_alignment*, compare_pointer_pw_alignment>::iterator it = als.begin(); it !=als.end();it++){
 			alignments.push_back(*it);
-		//	std::cout<< *it<<std::endl;
+			std::cout << "al "<< count << " is :"<<std::endl;
+			const pw_alignment* al = *it;
+			al->print();
 			visited_als.insert(std::make_pair(*it,-1));
 			als_low.insert(std::make_pair(*it,-1));
+			count ++;
+	//		if(count == 30) break;
 		}
 		std::cout<< "visit size "<< visited_als.size() << "low size "<< als_low.size() << " al size "<< alignments.size() <<std::endl;
 	}
@@ -170,6 +184,12 @@ class two_edge_cc{
 	}
 	void find_bridges(std::vector<std::set<const pw_alignment*, compare_pointer_pw_alignment> >& , std::set<pw_alignment, compare_pw_alignment> &);
 	void deep_first_search(const pw_alignment*, const pw_alignment*,std::set<pw_alignment, compare_pw_alignment> &);
+
+//non recurssive:
+	void make_two_edge_graph(std::vector<std::set<const pw_alignment*,compare_pointer_pw_alignment> >& stacks, std::set<pw_alignment, compare_pw_alignment> & mixed_als);
+	void find_bridges(const pw_alignment*);
+	void remove_bridges(std::vector<std::set<const pw_alignment*,compare_pointer_pw_alignment> >& stacks, std::set<pw_alignment, compare_pw_alignment> & mixed_als);
+	void bfs(const pw_alignment* s, std::map<const pw_alignment* , std::set<const pw_alignment*> > & edges, std::vector<std::set<const pw_alignment*,compare_pointer_pw_alignment> >& stacks, std::set<pw_alignment, compare_pw_alignment> & mixed_als,std::map<const pw_alignment*, bool> & visited);
 	~two_edge_cc(){}
 	private:
 	compute_cc_avl_fraction & cc_fraction;	
@@ -179,7 +199,9 @@ class two_edge_cc{
 	size_t count;
 	bool bridge;
 
-	std::set<const pw_alignment*,compare_pointer_pw_alignment> temp;
+	std::multimap<const pw_alignment*,const pw_alignment*> bridges;
+	std::set<const pw_alignment*, compare_pointer_pw_alignment> temp;
+
 	std::vector<std::set<const pw_alignment*,compare_pointer_pw_alignment> > stack;
 	std::set<const pw_alignment*,compare_pointer_pw_alignment> remainder;
 
@@ -253,9 +275,9 @@ class divide_and_conquer_al_problem {
 	}
 	~divide_and_conquer_al_problem() {
 	}
-	typedef overlap_interval_tree overlap_type;
+	typedef overlap_interval_tree<pw_alignment> overlap_type;
 	typedef dynamic_mc_model use_model;
-	typedef initial_alignments_from_groups<dynamic_mc_model,overlap_interval_tree> use_ias;
+	typedef initial_alignments_from_groups<dynamic_mc_model,overlap_interval_tree<pw_alignment> > use_ias;
 	
 	enum state_type {WAIT_FOR_CC, WAIT_FOR_OVERLAP, WAIT_FOR_COMBINE, DONE};
 
