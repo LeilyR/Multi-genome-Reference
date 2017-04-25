@@ -20,6 +20,7 @@ class filter_als{
 		this ->num_threads = num_threads;
 		this->num_sequences = num_sequences;
 		alind = new alignment_index(num_sequences, num_threads, alignments);
+		std::cout << "created! "<< std::endl;
 	}
 	~filter_als(){}
 	void find_overlapped_references();

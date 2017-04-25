@@ -1,7 +1,6 @@
 #include "map_read.hpp"
 void ref_graph::read_dot_file(std::string & refgraph, std::string & refacc){
 	std::ifstream dotin(refgraph.c_str());
-	size_t counter =0;
 	if(!dotin){
 		std::cerr << "Error : Cannot open " << refgraph.c_str() << std::endl;
 		exit(1);
@@ -34,8 +33,6 @@ void ref_graph::read_dot_file(std::string & refgraph, std::string & refacc){
 				}
 				size_t seqid1 = findseq1->second;
 				if(parts.size() == 2){
-					graph.set_vertex(seqid1, name1);
-					counter ++;
 					add_adjacencies(dir1,name1);
 				}
 				else{
@@ -50,41 +47,17 @@ void ref_graph::read_dot_file(std::string & refgraph, std::string & refacc){
 						std::cerr << "Error: unknown sequence in dot File: " << longname2 << std::endl;
 						exit(1);
 					}
-					size_t seqid2 = findseq2->second;
-					//case 1 : RtoF
-					if((dir1 == "-") && (dir2 == "+")){
-						graph.addEdge(1,seqid1,name1,seqid2,name2);
-						counter ++;
-						continue;
-					}
-					//case 2 : RtoR
-					if((dir1 == "-") && (dir2 == "-")){
-						graph.addEdge(2,seqid1,name1,seqid2,name2);
-						counter ++;
-						continue;
-					}
-					//case 3 : FtoF
-					if((dir1 == "+") && (dir2 == "+")){
-						graph.addEdge(3,seqid1,name1,seqid2,name2);
-						counter ++;
-						continue;
-					}
-					//case 4 : FtoR
-					if((dir1 == "+") && (dir2 == "-")){
-						graph.addEdge(4,seqid1,name1,seqid2,name2);
-						counter ++;
-						continue;
-					}
 				}
 			}
 		}
 	}
-	std::cout << "number of aedges is "<< counter << std::endl;
 }
 
 void ref_graph::add_adjacencies(std::string & dir1 , std::string & dir2 , std::string & name1 , std::string & name2){
-	int node1 = std::stoi(name1);
+	std::cout << "n1 "<<name1 << " n2 "<<name2 <<std::endl;
+	int node1 = std::stoi(name1);//TODO it shoud be changed to size_t!!!!
 	int node2 = std::stoi(name2);
+	assert(node1 > 0 && node2 > 0);
 	if((dir1 == "+") && (dir2 == "+")){
 		std::map<int, std::set<int> >::iterator adj = adjacencies.find(node1);
 		if(adj == adjacencies.end()){
@@ -148,11 +121,12 @@ void ref_graph::add_adjacencies(std::string & dir , std::string & name){
 
 void ref_graph::add_predecessor(int & this_node , int & pre_node){
 	std::map<int, std::set<int> >::iterator pre = predecessors.find(this_node);
-		if(pre == predecessors.end()){
-			predecessors.insert(std::make_pair(this_node, std::set<int>()));
-			pre = predecessors.find(this_node);
-		}
-		pre->second.insert(pre_node);
+	if(pre == predecessors.end()){
+		predecessors.insert(std::make_pair(this_node, std::set<int>()));
+		pre = predecessors.find(this_node);
+	}
+	pre->second.insert(pre_node);
+	std::cout << "this node "<< this_node << " pre node " << pre_node<<std::endl;
 	
 }
 const std::map<int , std::set<int> > & ref_graph::get_adjacencies()const{
@@ -233,6 +207,57 @@ const void ref_graph::look_for_predecessor(int & node , size_t & length , size_t
 		this_pre_nodes.clear();
 		current_length = 0;
 	}
+}
+void ref_graph::read_gfa_for_adj(std::string & gfafile){
+	std::ifstream in(gfafile.c_str());
+	std::string line;
+	while(getline(in,line)){
+		if(line[0] == 'H'){//Skip the header
+			continue;
+		}else{
+			assert(line[0] == 'S' || line[0]=='L' || line[0] == 'P');
+		
+			if(line[0]== 'L'){
+				std::vector<std::string> nodes;
+				strsep(line, "\t" , nodes);
+				std::string name1 , name2, dir1, dir2;
+				name1 = nodes.at(1);
+				name2 = nodes.at(3);
+				dir1 = nodes.at(2);
+				dir2 = nodes.at(4);
+				std::cout << "L "<< line << std::endl;
+				std::cout << "name1 "<< name1 << " name2 " << name2 << " dir1 " << dir1 << " dir2 " << dir2<<std::endl;
+				add_adjacencies(dir1,dir2, name1, name2);
+			}
+
+		}
+	}
+}
+void ref_graph::read_gfa_for_seq(std::string & gfafile , std::ofstream & fasta , std::ofstream & paths){
+	std::ifstream in(gfafile.c_str());
+	std::string line;
+	while(getline(in,line)){
+		if(line[0] == 'H'){//Skip the header
+			continue;
+		}else{
+			assert(line[0] == 'S' || line[0]=='L' || line[0] == 'P');
+		
+			if(line[0]== 'S'){
+				std::vector<std::string> node;
+				strsep(line, "\t" , node);
+				fasta<<">"<<node.at(1)<<std::endl;
+				fasta<<node.at(2)<<std::endl;
+			}
+			if(line[0]=='P'){
+				std::vector<std::string> node;
+				strsep(line, "\t" , node);
+				paths<<node.at(1)<<std::endl;
+				paths<<node.at(2)<< std::endl;
+			}
+		}
+	}
+
+
 }
 const std::vector<std::vector<int> > ref_graph::get_successor(unsigned int & ref_id, bool dir , size_t & length)const{//int is ref number if negetive means reverse complement should be taken in to account
 	int seqname = std::stoi(data.get_seq_name(ref_id));
@@ -322,7 +347,7 @@ const unsigned int ref_graph::get_refid(size_t & refacc, int & seqname)const{
 	unsigned int refid = findseq->second;
 	return refid;
 }
-size_t deep_first::seq_length(std::string & seq_name, std::string & accname){
+size_t ref_graph::seq_length(std::string & seq_name, std::string & accname){
 	std::string longname = accname +":"+seq_name;
 	std::map<std::string, size_t> longname2seqidx = data.getLongname2seqidx();
 	std::map<std::string, size_t>::iterator findseq = longname2seqidx.find(longname);
@@ -332,7 +357,7 @@ size_t deep_first::seq_length(std::string & seq_name, std::string & accname){
 
 
 }
-std::string deep_first::seqname(int & node){
+std::string ref_graph::seqname(int & node){
 	std::string temp;
 	std::stringstream ss;
 	if(node< 0){
@@ -345,7 +370,7 @@ std::string deep_first::seqname(int & node){
 	return temp;
 }
 
-void deep_first::deep_first_search(int & startnode, std::string & refacc, size_t & right_on_ref){
+void ref_graph::deep_first_search(int & startnode, std::string & refacc, size_t & right_on_ref){
 	paths.clear();
 	nodes_on_paths.clear();
 	path_length.clear();
@@ -373,7 +398,7 @@ void deep_first::deep_first_search(int & startnode, std::string & refacc, size_t
 		}
 	}//TODO else?!
 }
-void deep_first::look_for_neighbors(int & node, std::map<int,bool> & visited , std::string & refacc, int & accu_length, std::vector<int> & apath, size_t & parent_length){//TODO Maybe i need to think of setting the parent length in a better way though it seems it works fine for the time being
+void ref_graph::look_for_neighbors(int & node, std::map<int,bool> & visited , std::string & refacc, int & accu_length, std::vector<int> & apath, size_t & parent_length){//TODO Maybe i need to think of setting the parent length in a better way though it seems it works fine for the time being
 	std::cout << "this node is "<< node << std::endl;
 	std::map<int,bool>::iterator it = visited.find(node);
 	assert(it != visited.end());
@@ -462,11 +487,104 @@ void deep_first::look_for_neighbors(int & node, std::map<int,bool> & visited , s
 	apath.pop_back();
 	std::cout<<"paths size is "<<paths.size()<<std::endl;
 }
+void ref_graph::bfs(int & startnode, std::string & refacc, size_t & right_on_ref){//Need the a container to save the length till the current position
+	paths.clear();
+	nodes_on_paths.clear();
+	path_length.clear();
+	std::multimap<int,int> seen;
+	std::map<int, std::set<int> >::iterator adj = adjacencies.find(startnode);//It is possible that a node has no adjacent node
+	if(adj != adjacencies.end()){
+		std::string seq_name = seqname(startnode);
+		size_t seqlength = seq_length(seq_name, refacc);
+		size_t remainder = seqlength-(right_on_ref+1);
+		std::cout<< remainder << " "<<seqlength << " "<<right_on_ref<< std::endl;
+		std::map<std::pair<int,int>, bool> visited;
+		for(std::map<int, std::set<int> >::iterator it = adjacencies.begin() ; it != adjacencies.end() ;it++){
+			for(std::set<int>::iterator this_adj = it->second.begin() ; this_adj != it->second.end(); this_adj ++){
+      				visited.insert(std::make_pair(std::make_pair(it->first,*this_adj),false)); //Was( it->first ,false )
+			}
+ 		}
+		std::map<int, std::vector<int> > all_paths;
+		all_paths.insert(std::make_pair(startnode,std::vector<int>()));
+		std::vector<int> queue;
+		std::vector<std::pair<int,size_t> > length;
+		length.push_back(std::make_pair(startnode,remainder));
+	//	std::map<int,bool>::iterator vis=visited.find(startnode);
+	//	assert(vis != visited.end());
+	//	vis->second = true;
+		queue.push_back(startnode);
+		while(!queue.empty()){
+			startnode = queue.back();
+			std::cout << "on node "<< startnode<< std::endl;
+			queue.pop_back();
+			std::pair<int,size_t> this_pair = length.back();
+			size_t this_length = this_pair.second;
+			std::cout << "this length " <<this_length <<std::endl;
+			length.pop_back();
+			if(this_length < MAXGAP){
+				std::map<int, std::set<int> >::iterator it = adjacencies.find(startnode);
+				assert(it != adjacencies.end());
+				std::set<int> this_adjs = it->second;
+				std::map<int, std::vector<int> >::iterator this_path = all_paths.find(startnode);
+				assert(this_path !=all_paths.end());
+				bool EXPANDED = false;
+				for(std::set<int>::iterator adj = this_adjs.begin() ; adj != this_adjs.end() ; adj++){
+					std::cout << *adj << std::endl;
+					std::map<std::pair<int,int>, bool>::iterator vis =visited.find(std::make_pair(startnode,*adj));
+					if(vis->second == false){
+						vis->second = true; 
+						queue.push_back(*adj);
+						int adjacent = *adj;
+						std::string adj_name = seqname(adjacent);
+						size_t adj_length = seq_length(adj_name, refacc);
+						length.push_back(std::make_pair(*adj,this_length + adj_length));
+						std::vector<int> subpath = this_path->second;
+						subpath.push_back(startnode);
+						std::cout << subpath <<std::endl;
+						all_paths.insert(std::make_pair(adjacent,subpath));
+						EXPANDED = true;
+					}
+				}
+				if(EXPANDED == true){
+					all_paths.erase(this_path);
+				}
+			}else{
+				std::cout << "end of a path "<<std::endl;
+			}
+		}
+		for(std::map<int,std::vector<int> >::iterator it = all_paths.begin() ; it != all_paths.end() ; it++){
+			std::vector<int> path = it->second;
+			path.push_back(it->first);
+			paths.push_back(path);
+			for(size_t i =0; i < path.size() ; i++){
+				std::cout << "on node "<< i << std::endl;
+				nodes_on_paths.insert(path.at(i));
+			}		
+		}
+	}
 
-const std::vector<std::vector<int> > deep_first::get_paths()const{
+
+}
+
+const std::vector<std::vector<int> > ref_graph::get_paths()const{
+/*	paths.clear();
+	std::set<int>::iterator it = nodes_on_paths.find(startnode);
+	assert(it != nodes_on_paths.end());
+	std::vector<int> temp
+	temp.push_back(startnode);
+	paths.insert(temp);
+	std::map<int, std::set<int> >::iterator it1 = adjacencies.find(startnode);
+	for(std::set<int>::iterator adj = this_adjs.begin() ; adj != this_adjs.end() ; adj++){
+		std::set<int>::iterator adj1 = nodes_on_paths.find(*adj);
+		if(adj1 != nodes_on_paths.end()){
+			temp.push_back(*adj);
+			paths.insert(temp);
+			temp.pop_back();
+			qeue.push_back(*adj);
+		}*/
 	return paths;
 }
-const std::set<int> deep_first::get_nodes()const{
+const std::set<int> ref_graph::get_nodes()const{
 	return nodes_on_paths;
 }
 void als_components::find_als_on_paths(std::ofstream & output,size_t & refacc, size_t & readacc){
@@ -481,7 +599,6 @@ void als_components::find_als_on_paths(std::ofstream & output,size_t & refacc, s
 		size_t lastr, lastl;
 		last_p.get_lr2(lastl,lastr);
 		for(std::multiset<pw_alignment,sort_pw_alignment_by_left>::iterator it = alignments.at(i).begin() ; it != alignments.at(i).end(); it++){//For each alignment all of its successors are found
-			std::multiset<pw_alignment,sort_pw_alignment_by_left> successors;//contains successors, ordered by left
 			pw_alignment p = *it;
 			p.print();
 			std::cout << " "<<std::endl;
@@ -490,31 +607,19 @@ void als_components::find_als_on_paths(std::ofstream & output,size_t & refacc, s
 			if(it==alignments.at(i).begin()){
 				first_left = l;
 			}
-			for(std::multiset<pw_alignment,sort_pw_alignment_by_left>::iterator it1 = it; it1 != alignments.at(i).end(); it1++){//TODO make it a new function!
-				pw_alignment al = *it1;
-				size_t l2,r2;
-				al.get_lr2(l2,r2);
-			//	al.print();
-				if((l2>r) && (l2-r <=MAXGAP)){//Overlap less than MAXGAP,//XXX For the moment we dont consider the cases that there is an overlap less than MAXGAP
-					std::cout<<"find one! "<<std::endl;
-					al.print();
-					successors.insert(al);
-				}
-				if(l2 > r+MAXGAP){//since alignments are ordered by their left
-					break;
-				}
-			}
+			//All the successor alignments, ordered by left:
+			std::multiset<pw_alignment,sort_pw_alignment_by_left> successors = find_successors(p,i);
 			std::cout<<"successors size is "<< successors.size()<<std::endl;//Closeer than MAXGAP to the current one
 			if(successors.size() != 0){
 				std::vector<std::vector<int> > paths;
-				get_paths(p,paths);//deep_first_search is called in the get_paths function!
-				std::set<int> nodes = dfirst.get_nodes();//nodes from the ref graph that have less than MAXGAP space to the node that this al is aligned on it
+				get_subgraph(p,paths);//deep_first_search is called in the get_paths function! //TODO 
+				std::set<int> nodes = rgraph.get_nodes();//nodes from the ref graph that have less than MAXGAP space to the node that this al is aligned on it
 				std::cout<< "nodes are "<<std::endl;
 				for(std::set<int>::iterator it = nodes.begin(); it!=nodes.end();it++){
 					std::cout<< *it<<std::endl;
 				}
 				if(paths.size()!=0){
-					look_for_neighbors_on_paths(i, p, nodes,paths, successors);
+					look_for_successors_on_paths(i, p, nodes,paths, successors);
 				}
 			}
 			std::cout << "find first and last als"<<std::endl;
@@ -620,8 +725,28 @@ void als_components::find_als_on_paths(std::ofstream & output,size_t & refacc, s
 	}
 
 }
-
-void als_components::get_paths(const pw_alignment & p, std::vector<std::vector<int> > & paths){//Return a sub graph that starts with reference1 of the current alignmnet and the nodes are closer than MAX_GAP to this first node.
+std::multiset<pw_alignment,sort_pw_alignment_by_left> als_components::find_successors(const pw_alignment & p, size_t & component){
+	std::multiset<pw_alignment,sort_pw_alignment_by_left> successors;
+	size_t l,r;
+	p.get_lr2(l,r);
+	std::multiset<pw_alignment,sort_pw_alignment_by_left>::iterator it = alignments.at(component).find(p);
+	assert(it != alignments.at(component).end());
+	for(std::multiset<pw_alignment,sort_pw_alignment_by_left>::iterator it1 = it; it1 != alignments.at(component).end(); it1++){
+		pw_alignment al = *it1;
+		size_t l2,r2;
+		al.get_lr2(l2,r2);
+		if((l2>r) && (l2-r <=MAXGAP)){//Overlap less than MAXGAP,//XXX For the moment we dont consider the cases that there is an overlap less than MAXGAP
+			std::cout<<"find one! "<<std::endl;
+			al.print();
+			successors.insert(al);
+		}
+		if(l2 > r+MAXGAP){//since alignments are ordered by their left
+			break;
+		}
+	}
+	return successors;
+}
+void als_components::get_subgraph(const pw_alignment & p, std::vector<std::vector<int> > & paths){//Return a sub graph that starts with reference1 of the current alignmnet and the nodes are closer than MAX_GAP to this first node.
 	size_t l1,r1;
 	p.get_lr1(l1,r1);
 	p.print();
@@ -633,8 +758,9 @@ void als_components::get_paths(const pw_alignment & p, std::vector<std::vector<i
 		name = -1*name;
 	}
 	std::cout << "name is " << name <<std::endl;
-	dfirst.deep_first_search(name, ref_accession,r1);
-	paths = dfirst.get_paths();
+//	rgraph.deep_first_search(name, ref_accession,r1);
+	rgraph.bfs(name,ref_accession,r1);
+	paths = rgraph.get_paths();
 	std::cout<< "path size is "<< paths.size()<<std::endl;
 	for(size_t i =0; i < paths.size(); i++){
 		for(size_t j =0; j < paths.at(i).size();j++){
@@ -653,7 +779,7 @@ void als_components::get_paths(const pw_alignment & p, std::vector<std::vector<i
 	(if the length of these two pieces of ref nodes is less than MAXGAP)
 	And using NeedlemanWunsch me create the centeral alignment. In fact we get three shorter als*/
 
-void als_components::look_for_neighbors_on_paths(size_t & comp, const pw_alignment & current_al ,std::set<int>& nodes,std::vector<std::vector<int> > & paths, std::multiset<pw_alignment,sort_pw_alignment_by_left> & neighbors){//XXX Directions should be checked on ref 
+void als_components::look_for_successors_on_paths(size_t & comp, const pw_alignment & current_al ,std::set<int>& nodes,std::vector<std::vector<int> > & paths, std::multiset<pw_alignment,sort_pw_alignment_by_left> & neighbors){//XXX Directions should be checked on ref 
 	std::cout<<"look for neighbors on paths "<<std::endl;
 	size_t from,to;
 	size_t l1,r1,l2,r2;
@@ -694,7 +820,7 @@ void als_components::look_for_neighbors_on_paths(size_t & comp, const pw_alignme
 		if(p.getbegin1()>p.getend1()){
 			name = -1*name;
 		}
-		std::cout << "name is " << name <<std::endl;
+		std::cout << "neighbor's name is " << name <<std::endl;
 		if(p.getreference1() == ref1){//If they share the same node on the reference
 			size_t onread_from = r2+1;
 			size_t onread_to = left2-1;
@@ -792,7 +918,7 @@ void als_components::look_for_neighbors_on_paths(size_t & comp, const pw_alignme
 				std::vector<size_t> this_refs;
 				std::vector<int> this_path;
 				this_refs.push_back(ref1);
-				append_nodes(paths,name,refacc,this_refs,this_path,str1);//add all the nodes to a string
+				append_nodes(paths,name,current_node_name,refacc,this_refs,this_path,str1);//add all the nodes to a string //TODO instead of paths use edges!
 				std::cout<< "str1 length "<< str1.length()<<std::endl;
 				assert(str1.length()<= MAXGAP);
 				std::cout << "from last node length "<< from_next_node.length()<<std::endl;
@@ -911,11 +1037,62 @@ void als_components::make_al_on_a_node(size_t & comp, const pw_alignment& first_
 	assert(str1.length() != 0 || str2.length() != 0);
 
 }
-void als_components::append_nodes(std::vector<std::vector<int> > & paths, int & name, size_t & refacc , std::vector<size_t> & this_refs, std::vector<int> & this_path, std::string & str1){
+void als_components::get_paths(int & node_name , int & current_node_name, std::vector<std::vector<int> > & paths){
+	std::map<int, std::vector<std::vector<int> > > all_paths;
+	std::vector<int> stack;
+	stack.push_back(node_name);
+	all_paths.insert(std::make_pair(node_name, std::vector<std::vector<int> >()));
+	while(stack.size() != 0){
+		int this_node = stack.back();
+		stack.pop_back();
+		std::set<int> preds = rgraph.get_predecessor(this_node);
+		std::cout << "thisnode "<< this_node<< std::endl;
+		if(preds.size() != 0){
+			for(std::set<int>::iterator it = preds.begin(); it != preds.end() ; it++){
+				std::map<int, std::vector<std::vector<int> > >::iterator node = all_paths.find(this_node);
+				assert(node!=all_paths.end());
+				if(*it != current_node_name){
+					stack.push_back(*it);
+				}
+				for(size_t i =0 ; i < node->second.size(); i++){
+					std::vector<int> p  = node->second.at(i);
+					p.push_back(this_node);
+					std::map<int, std::vector<std::vector<int> > >::iterator it1 = all_paths.find(*it);
+					if(it1 == all_paths.end()){
+						all_paths.insert(std::make_pair(*it, std::vector<std::vector<int> >()));
+						it1 = all_paths.find(*it);
+					}
+					it1->second.push_back(p);
+				}
+				if(node->second.size() == 0){
+					std::vector<int> p;
+					p.push_back(this_node);
+					std::map<int, std::vector<std::vector<int> > >::iterator it1 = all_paths.find(*it);
+					assert(it1 == all_paths.end());
+					all_paths.insert(std::make_pair(*it, std::vector<std::vector<int> >()));
+					it1 = all_paths.find(*it);
+					it1->second.push_back(p);	
+				}
+			}
+		}
+	}
+	std::map<int , std::vector<std::vector<int> > >::iterator it = all_paths.find(current_node_name);
+	assert(it != all_paths.end());
+	paths = it->second;
+}
+void als_components::append_nodes(std::vector<std::vector<int> > & paths, int & name, int & current_node_name,size_t & refacc , std::vector<size_t> & this_refs, std::vector<int> & this_path, std::string & str1){
 	std::string ref_accession = data.get_acc(refacc);
 	std::map< std::string, size_t> longname2seqidx;
 	longname2seqidx = data.getLongname2seqidx();
-	for(size_t i = 0; i < paths.size();i++){
+	std::vector<std::vector<int> > all_paths;
+	get_paths(name, current_node_name, all_paths);
+	std::cout << "all paths: "<<std::endl;//XXX Attention! It is reversed and doesnt have the first node!!
+	for(size_t i = 0; i < all_paths.size() ; i++){
+		std::cout << all_paths.at(i)<<std::endl;
+		std::cout<< "----------------"<<std::endl;
+	}
+	exit(0);
+/*	for(size_t i = 0; i < paths.size();i++){//TODO make the existing paths from the edges, could be several possible paths!
 		for(size_t j = 0; j < paths.at(i).size(); j++){
 			if(paths.at(i).at(j)==name){
 				std::cout<<"j " << j <<std::endl;
@@ -929,8 +1106,8 @@ void als_components::append_nodes(std::vector<std::vector<int> > & paths, int & 
 		if(this_path.size()>0){
 			break;
 		}
-	}
-	std::cout<< "this path size "<<this_path.size()<<std::endl;
+	}*/
+	std::cout<< "this path size "<<this_path.size()<<std::endl;//TODO could be more than one path then more than one one str1 !!
 	if(this_path.size()>2){
 		for(size_t j = 1; j < this_path.size()-1; j++){
 			std::stringstream ss;
@@ -1346,10 +1523,10 @@ void als_components::looking_for_first_al(size_t & comp, const pw_alignment & p,
 			size_t length = MAXGAP- seq_from_ref.length();
 			if(p.getbegin1()<p.getend1()){
 				std::cout << "length is "<< length << "ref1 is "<< ref1 <<std::endl;
-				refs=refgraph.get_predecessor(ref1,true,length);
+				refs=rgraph.get_predecessor(ref1,true,length);
 				std::cout << refs.size() <<std::endl;
 			}else{
-				refs=refgraph.get_predecessor(ref1,false,length);
+				refs=rgraph.get_predecessor(ref1,false,length);
 			}
 			if(refs.size()!=0){
 				std::reverse(seq.begin(),seq.end());
@@ -1361,12 +1538,12 @@ void als_components::looking_for_first_al(size_t & comp, const pw_alignment & p,
 						//Make an al between each member of refs and seq and pick the best
 						from = 0;
 						if(refs.at(i).at(j-1)>0){
-							unsigned int ref_id = refgraph.get_refid(refacc,refs.at(i).at(j-1));//gets node name, retruns node id
+							unsigned int ref_id = rgraph.get_refid(refacc,refs.at(i).at(j-1));//gets node name, retruns node id
 							to = data.getSequence(ref_id).length()-1;
 							refin += data.extract_seq_part(ref_id, from, to);
 						}else{
 							int temp = -1*refs.at(i).at(j-1);
-							unsigned int ref_id = refgraph.get_refid(refacc,temp);
+							unsigned int ref_id = rgraph.get_refid(refacc,temp);
 							to = data.getSequence(ref_id).length()-1;// Need to add  its reverse complement!
 							std::string temp_seq_in = data.extract_seq_part(ref_id, from, to);
 							std::string temp_seq_out;
@@ -1573,9 +1750,9 @@ void als_components::looking_for_last_al(size_t & comp, const pw_alignment & p, 
 			size_t remainder = MAXGAP- seq_from_ref.length();
 			std::cout << "length is "<< remainder << "ref1 is "<< ref1 <<std::endl;
 			if(p.getbegin1()<p.getend1()){
-				refs=refgraph.get_successor(ref1,true,remainder);
+				refs=rgraph.get_successor(ref1,true,remainder);
 			}else{
-				refs=refgraph.get_successor(ref1,false,remainder);//TODO
+				refs=rgraph.get_successor(ref1,false,remainder);//TODO
 			}
 			if(refs.size()!=0){
 				std::cout<< "post nodes size "<< refs.size() <<std::endl;
@@ -1586,12 +1763,12 @@ void als_components::looking_for_last_al(size_t & comp, const pw_alignment & p, 
 						//Make an al between each member of refs and seq and pick the best
 						size_t from = 0;
 						if(refs.at(i).at(j)>0){
-							unsigned int ref_id = refgraph.get_refid(refacc,refs.at(i).at(j));//gets node name, retruns node id
+							unsigned int ref_id = rgraph.get_refid(refacc,refs.at(i).at(j));//gets node name, retruns node id
 							size_t to = data.getSequence(ref_id).length()-1;
 							refin += data.extract_seq_part(ref_id, from, to);
 						}else{
 							int temp = -1*refs.at(i).at(j);
-							unsigned int ref_id = refgraph.get_refid(refacc,temp);
+							unsigned int ref_id = rgraph.get_refid(refacc,temp);
 							size_t to = data.getSequence(ref_id).length()-1;// Need to add  its reverse complement!
 							std::string temp_seq_in = data.extract_seq_part(ref_id, from, to);
 							std::string temp_seq_out;
@@ -1724,10 +1901,10 @@ void als_components::make_first_als(std::vector<int> & nodes , std::string & ref
 		}
 		unsigned int ref_id;
 		if(nodes.at(i)>0){
-			ref_id = refgraph.get_refid(refacc,nodes.at(i));//gets node name, retruns node id
+			ref_id = rgraph.get_refid(refacc,nodes.at(i));//gets node name, retruns node id
 		}else{
 			int temp = -1*nodes.at(i);
-			ref_id = refgraph.get_refid(refacc,temp);
+			ref_id = rgraph.get_refid(refacc,temp);
 		}
 		size_t current_node_length = data.getSequence(ref_id).length();
 		std::cout << refout.size() << " " <<current_position <<std::endl;
@@ -1810,10 +1987,10 @@ void als_components::make_last_als(std::vector<int> & nodes , std::string & refo
 	//	}
 		//Make the al here: read readout and refout from size-position-1
 		std::cout<< right_on_current_node+ref_counter << " "<< data.getSequence(current_node).length() << " " <<ref_counter << " "<<read_counter<<std::endl;
-		if(ref_counter == seq_from_ref.length()){
-			assert(right_on_current_node+ref_counter == data.getSequence(current_node).length()-1);
-		}
-		assert(right_on_current_node+ref_counter <= data.getSequence(current_node).length()-1);
+	//	if(ref_counter == seq_from_ref.length()){//XXX It is correct only for + nodes not the - ones
+	//		assert(right_on_current_node+ref_counter == data.getSequence(current_node).length()-1);
+	//	}
+	//	assert(right_on_current_node+ref_counter <= data.getSequence(current_node).length()-1);
 		if(read_counter != 0){
 			pw_alignment p(this_ref_part,this_read_part,right_on_current_node+1,first_begin,right_on_current_node+ref_counter, first_begin+(read_counter-1),current_node, read_id);
 			last_als.push_back(p);
@@ -1839,10 +2016,10 @@ void als_components::make_last_als(std::vector<int> & nodes , std::string & refo
 		std::cout<< "i "<< i <<std::endl;
 		unsigned int ref_id;
 		if(nodes.at(i)>0){
-			ref_id = refgraph.get_refid(refacc,nodes.at(i));//gets node name, retruns node id
+			ref_id = rgraph.get_refid(refacc,nodes.at(i));//gets node name, retruns node id
 		}else{
 			int temp = -1*nodes.at(i);
-			ref_id = refgraph.get_refid(refacc,temp);
+			ref_id = rgraph.get_refid(refacc,temp);
 		}
 		size_t current_node_length = data.getSequence(ref_id).length();
 		bool tillend = false;
@@ -2163,7 +2340,7 @@ void als_components::add_to_maf(const pw_alignment & al, std::ofstream & output,
 
 		}
 		assert(r2 != data.getSequence(ref2).length());
-		assert(al.getbegin2()< al.getend2());
+	//	assert(al.getbegin2()< al.getend2());
 
 		output << "s " << longname2.str() << " " << al.getbegin2() << " " << al.getend2()-al.getbegin2()+1 << " + " << data.getSequence(ref2).length() << " " << al.get_al_ref2() <<std::endl;
 		previous_right2 = r2;	
@@ -2196,7 +2373,7 @@ void map_check::read_graph_maf(std::ifstream & graph_maf){
 				assert(str.at(0)=='s');
 				bool IsCenter = true;
 				std::string ref1,ref2;
-				size_t begin1, begin2, end1, end2;
+				size_t begin1, begin2, end1, end2, left2, right2;
 				size_t counter = 0;
 				while(str.at(0)=='s'){
 					counter ++;
@@ -2209,6 +2386,7 @@ void map_check::read_graph_maf(std::ifstream & graph_maf){
 						ref2 = parts.at(6);
 						IsCenter = false;
 						unsigned int nodeLength = stoi(parts.at(3));
+						unsigned int seq_length = stoi(parts.at(5));
 						node_length.insert(std::make_pair(id, nodeLength));
 						if(parts.at(4) == "+"){
 							sstr<<parts.at(2);
@@ -2216,24 +2394,36 @@ void map_check::read_graph_maf(std::ifstream & graph_maf){
 							end1 = begin1+nodeLength-1;
 							begin2 = begin1;
 							end2 = end1;
-						}else{
+							left2 = begin2;
+							right2 = end2;
+						}else{//On the reverse strand the begin starts at end of the forward strand 
 							sstr<<parts.at(2);
 							sstr >> end1;
-							begin1 = end1+nodeLength-1;
+							left2 = seq_length-(end1+nodeLength-1)-1;
+							right2 = left2 + nodeLength-1;
+							begin1 = right2;
+							end1 = left2;
 							begin2 = begin1;
 							end2 = end1;
 						}
 					}else{
 						ref2 = parts.at(6);
 						unsigned int length = stoi(parts.at(3));
+						unsigned int seq_length = stoi(parts.at(5));
 						if(parts.at(4) == "+"){
 							sstr<<parts.at(2);
 							sstr >> begin2;
 							end2 = begin2+length-1;
-						}else{
+							left2 = begin2;
+							right2 = end2;
+						}else{//On the reverse strand the begin starts at end of the forward strand 
 							sstr<<parts.at(2);
 							sstr >> end2;
-							begin2 = end2+length-1;
+							left2 = seq_length-(end2+length-1)-1;
+							right2 = left2 + length-1;
+							begin2 = right2;
+							end2 = left2;
+							std::cout << "b2 "<< begin2 << " e2 "<<end2 <<std::endl;
 
 						}
 
@@ -2263,9 +2453,11 @@ void map_check::read_graph_maf(std::ifstream & graph_maf){
 					assert(it != clusters.end());
 					it->second.push_back(curseq.str());
 					//add them with their begin and end to the boundries container
-					size_t start = atoi(parts.at(2).c_str());
-					size_t length = atoi(parts.at(3).c_str());
-					size_t end = length+start-1;
+				//	size_t start = atoi(parts.at(2).c_str());
+				//	size_t length = atoi(parts.at(3).c_str());
+				//	size_t end = length+start-1;
+					size_t start = left2;
+					size_t end = right2;
 					boundries.insert(std::make_pair(curseq.str(),std::make_pair(start,end)));
 					std::stringstream thisseq;
 					thisseq<<acc_parts.at(0);
@@ -2327,7 +2519,8 @@ void map_check::read_alignments(std::ifstream & alignments){
 				it->second = std::make_pair(from,to);				
 			}
 		}
-	}	
+	}
+	std::cout << "done! "	<<std::endl;
 }
 void map_check::check_output(std::ifstream & mapping_maf,const std::string & seqname){
 	std::cout << "checking here! "<<std::endl;
@@ -2385,7 +2578,7 @@ void map_check::check_output(std::ifstream & mapping_maf,const std::string & seq
 					std::cout<<"length "<< length << " accu length "<< accu_length <<std::endl;
 
 					size_t end = length+start-1;//TODO consider only gap als!
-					std::cout << "form " << start << " to "<< end <<std::endl;
+					std::cout << "from " << start << " to "<< end <<std::endl;
 					size_t startonseq;
 					size_t endonseq;
 					if(readid>=1){
@@ -2453,19 +2646,26 @@ void map_check::check_an_alignment(unsigned int & ref1, const std::string & seqn
 		}			
 	}else{
 		//If it might be mapped to a cluster of size one
-		std::cout<< "mapped to a non aligned region!"<<std::endl;
+		std::cout<< "mapped to a non aligned region!" << ref1 <<std::endl;
 		std::map<int,std::pair<int, int> >::iterator it = non_aligned.find(ref1);
 		if(it == non_aligned.end()){
 			std::cout <<"mapping error"<<std::endl;
 		}
 	//	assert(it != non_aligned.end());
 		else{
-			assert(left2 >= it->second.first);
+			std::cout << "pos "<< left2 << " lower bound " << it->second.first << std::endl;
+			//assert(left2 >= it->second.first);
+			if(left2 < it->second.first){
+				std::cout<< "mapping error" <<std::endl;
+			}else{
+				std::cout << "correctly mapped"<<std::endl;
+			}
 		}
 	}
 
 }
-void map_check::read_txt_file(std::ifstream & txtfile){//Read the text file that come along with the fasta output of the graph
+void map_check::read_txt_file_long_center(std::ifstream & txtfile, std::string & sequence_of_interest){//Read the text file that come along with the fasta output of the graph
+	std::cout << "reading text file "<<std::endl;
 	std::string str;
 	getline(txtfile, str);
 	while(!txtfile.eof()){
@@ -2479,12 +2679,33 @@ void map_check::read_txt_file(std::ifstream & txtfile){//Read the text file that
 				std::vector<std::string>position;
 				strsep(parts.at(2),"r", position);
 				assert(position.size()==2);
+				std::cout<<"insert"<< parts.at(0)<< " : " << position.at(0) << " l " << position.at(1)<<std::endl;
 				assert(stoi(position.at(0))<=stoi(position.at(1)));
 			//	int length = std::stoi(position.at(1).substr(1,position.at(1).length()-1));
 				int length = std::stoi(position.at(1)) - std::stoi(position.at(0));
 				non_aligned.insert(std::make_pair(std::stoi(parts.at(0)), std::make_pair(std::stoi(position.at(0)),length)));
 			}
 
+		}
+		getline(txtfile, str);
+	}
+}
+void map_check::read_txt_file(std::ifstream & txtfile, std::string & sequence_of_interest){//Read the text file that come along with the fasta output of the graph
+	std::cout <<"read text file "<<std::endl;
+//	sequence_of_interest = "NC_000913.3";
+	std::string str;
+	getline(txtfile, str);
+	while(!txtfile.eof()){
+		std::vector<std::string> parts;
+		strsep(str, ":", parts);
+		assert(parts.size()==4);
+		std::vector<std::string>seq;
+		strsep(parts.at(1),"|", seq);
+		assert(seq.size()==4);
+		if(seq.at(3)=="NC_000913.3"){
+			std::cout << parts.at(2) << " " << parts.at(3)<<std::endl;
+			int length = std::stoi(parts.at(3)); //TODO change them to size_t
+			non_aligned.insert(std::make_pair(std::stoi(parts.at(0)), std::make_pair(std::stoi(parts.at(2)),length)));
 		}
 		getline(txtfile, str);
 	}
@@ -2906,4 +3127,60 @@ void test_sim_reads_mapping::find_position_on_member(unsigned int & center, size
 			break;
 		}
 	}
+}
+
+void test_reveal::read_the_result(std::ifstream & mapping_maf){ //Read the mapping maf file
+	if(mapping_maf) {
+		std::string str;
+		while(getline(mapping_maf, str)) {
+			if(str.at(0)!='#') { //Skip headers
+				if(str.at(0)=='a') { 
+					std::string al1;
+					std::string al2;
+					getline(mapping_maf, al1);
+					getline(mapping_maf, al2);
+	
+					//al1 is from ref
+					std::vector<std::string> parts1;
+					strsep(al1," ",parts1);
+				//	assert(parts1.size()==7); //XXX Temperary
+					if(parts1.size() != 7 ) break;
+					std::vector<std::string> refname_parts;
+					strsep(parts1.at(1),":",refname_parts);
+					assert(refname_parts.size()==2);
+				//	std::stringstream sstream(refname_parts.at(1));
+				//	size_t ref_id;
+				//	sstream >> ref_id;
+					std::string name_and_dir = refname_parts.at(1);
+					name_and_dir += parts1.at(4);
+					nodes.push_back(name_and_dir);
+				}
+			}
+		}
+	}
+	std::cout << "node size "<<nodes.size() <<std::endl;
+}
+void test_reveal::compare_with_path(std::ifstream & path){//Quick and dirty test!
+	std::string str;
+	getline(path, str);
+	getline(path,str);
+	assert(str.at(0) != 'n');
+	std::vector<std::string> path_parts;
+	strsep(str,",",path_parts);
+	std::cout << "path size "<< path_parts.size()<<std::endl;
+	for(size_t i =0; i < path_parts.size() ; i++){
+		if(i<nodes.size()){
+			if(path_parts.at(i)== nodes.at(i)){
+				std::cout << "correct"<<std::endl;
+			}else{
+				std::cout << "wrong! " << path_parts.at(i) << " "<< nodes.at(i) <<std::endl;
+			}
+		}else{
+			std::cout<< "ERROR: size of two container are not the same"<<std::endl;
+			break;
+		}
+
+	}
+
+
 }

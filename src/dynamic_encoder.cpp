@@ -698,11 +698,18 @@
 			std::cout<< it->first<<std::endl;//It has no direction here
 			temp_center.push_back(str.str());
 			all_centers.push_back(temp_center);
+			std::map<std::vector<std::string>, unsigned int >::iterator it1 = weight.find(temp_center);
+			assert(it1 != weight.end());
+			sumOfWeights += it1->second ;
 		}
 	//	Afterwards long centers are added
 		for(std::map<std::vector<std::string>, std::vector<pw_alignment> >::iterator it =new_centers.begin(); it != new_centers.end();it++){
 			if(it->first.size() != 1){
 				all_centers.push_back(it->first);
+				std::map<std::vector<std::string>, unsigned int >::iterator it1 = weight.find(it->first);
+				assert(it1 != weight.end());
+				sumOfWeights += it1->second ;
+
 			}
 		}
 		std::cout << "all_centers size is : "<< all_centers.size()<<std::endl;
@@ -714,51 +721,79 @@
 			}
 			std::cout << "" <<std::endl;
 		}
-		for(std::map<std::vector<std::string>, unsigned int >::iterator it = weight.begin(); it != weight.end(); it ++){// All the weights are summed up.
-			sumOfWeights += it->second ;
-		}
+		std::cout <<"weight size is "<< weight.size()<<std::endl;
+	//	for(std::map<std::vector<std::string>, unsigned int >::iterator it = weight.begin(); it != weight.end(); it ++){// All the weights are summed up.
+	//		sumOfWeights += it->second ;
+	//	}
 		std::cout << "sum of weight "<< sumOfWeights <<std::endl;
 		size_t numberOfPartitions = (sumOfWeights/TOTAL_FOR_ENCODING) + 1;
 		std::cout << numberOfPartitions <<std::endl;
-		size_t number_of_center = 0;
-		for(size_t j = 0 ; j < numberOfPartitions ; j ++){
-			long_center_partition.insert(std::make_pair(j,std::vector< std::vector<std::string> >( )));
+	//	size_t number_of_center = 0;
+	//	for(size_t j = 0 ; j < numberOfPartitions ; j ++){
+	//		std::cout << "at partition "<< j << std::endl;
+	//		long_center_partition.insert(std::make_pair(j,std::vector< std::vector<std::string> >( )));
 			size_t center_weight = 0;
-			for(size_t i = number_of_center; i < all_centers.size(); i++){
+			size_t no_partition = 0;
+			long_center_partition.insert(std::make_pair(no_partition,std::vector< std::vector<std::string> >( )));
+	//		for(size_t i = number_of_center; i < all_centers.size(); i++){
+			for(size_t i = 0; i < all_centers.size(); i++){
 				if(center_weight <= TOTAL_FOR_ENCODING){
-					std::map<size_t , std::vector< std::vector<std::string> > >::iterator it = long_center_partition.find(j);
+					std::map<size_t , std::vector< std::vector<std::string> > >::iterator it = long_center_partition.find(no_partition); 
 					assert(it != long_center_partition.end());
+					std::cout << "center at " << i <<" is "<< all_centers.at(i)<<std::endl;
 					it->second.push_back(all_centers.at(i));
 					std::map<std::vector<std::string>, unsigned int >::iterator it1 = weight.find(all_centers.at(i));
 					assert(it1 != weight.end());
 					center_weight +=  it1->second;
+					std::cout << "W "<< center_weight <<std::endl;
 				}else{
-					number_of_center = i;
-					break;
+				//	number_of_center = i;
+					std::cout << "go to the next partition!" << std::endl;
+					assert(center_weight >= TOTAL_FOR_ENCODING);
+					no_partition ++;
+					center_weight = 0;
+					std::map<size_t , std::vector< std::vector<std::string> > >::iterator it = long_center_partition.find(no_partition); 
+					assert(it == long_center_partition.end());
+					long_center_partition.insert(std::make_pair(no_partition,std::vector< std::vector<std::string> >( )));
+					it = long_center_partition.find(no_partition); 
+					assert(it != long_center_partition.end());
+					std::cout << "center at " << i <<" is "<< all_centers.at(i)<<std::endl;
+					it->second.push_back(all_centers.at(i));
+					std::map<std::vector<std::string>, unsigned int >::iterator it1 = weight.find(all_centers.at(i));
+					assert(it1 != weight.end());
+					std::cout << "cweight "<< center_weight <<std::endl;
+					center_weight +=  it1->second;
+					std::cout << "cweight "<< center_weight <<std::endl;
+
+				//	break;
 				}
 			}
-		}
+			std::cout << no_partition << " " << numberOfPartitions-1 <<std::endl;
+			assert(no_partition == numberOfPartitions-1);
+	//	}
 	}
 	template<typename T>
 	void dynamic_encoder<T>::calculate_long_center_high(std::map<std::vector<std::string>, std::vector<pw_alignment> > & new_centers,  std::map<std::string ,std::vector<pw_alignment> > & alignmentsOfClusters ,std::map<std::vector<std::string>, unsigned int> & weight){
 		std::cout << "calculate long centers high value"<<std::endl;
 		partitioning_long_centers(new_centers,alignmentsOfClusters, weight);//Includes both type of centers
 		unsigned int partition_high = 0;
-		for(size_t i =0; i < long_center_partition.size(); i++){//go through number of partitions
+		//for(size_t i =0; i < long_center_partition.size(); i++){//go through number of partitions
+		for(std::map<size_t , std::vector<std::vector<std::string> > >::iterator it= long_center_partition.begin() ; it != long_center_partition.end() ; it++){
+			std::cout << "at partition no.= "<< it->first << std::endl;
 			partition_high = partition_high + (TOTAL_FOR_ENCODING/long_center_partition.size());//calculates the high value of the partition.
 			unsigned int h = 0;
 			std::vector< std::pair<std::vector<std::string>, std::vector<unsigned int> > >high;
-			std::map<size_t , std::vector<std::vector<std::string> > >::iterator it = long_center_partition.find(i);
-			assert(it != long_center_partition.end());
+		//	std::map<size_t , std::vector<std::vector<std::string> > >::iterator it = long_center_partition.find(i);
+		//	assert(it != long_center_partition.end());
 			for(size_t j = 0; j <it->second.size(); j++){
 				std::vector<std::string> center = it->second.at(j);
 				std::map<std::vector<std::string>, unsigned int>::iterator it2 = weight.find(center);
 				std::cout<< center <<std::endl;
 				assert(it2 != weight.end());
-				for(size_t k =0; k < center.size();k++){
-					std::cout << center.at(k)<< " ";
-				}
-				std::cout << " "<<std::endl;
+			//	for(size_t k =0; k < center.size();k++){
+			//		std::cout << center.at(k)<< " ";
+			//	}
+			//	std::cout << " "<<std::endl;
 				unsigned int Low = h;
 				unsigned int High = h + it2->second;
 				h = High;
@@ -825,6 +860,7 @@
 					outs.put((char)0);
 				//	outs.put((char) center.size());//XXX
 					size_t length = center.size();
+					assert(length >=2);
 					outs.write(reinterpret_cast<char*>(&length),sizeof(size_t));
 
 					for(size_t k = 0 ; k < center.size(); k++){
@@ -1107,7 +1143,7 @@
 						unsigned int h1 = al_begin.at(1);
 						enc.encode(l1,h1,total);
 						wrappers.encode(l1,h1,total, enc_boundries);
-						std::cout<< "al position: "<< n << std::endl;
+						std::cout<< "al position: "<< n << " al begin "<< l1 << " al end "<< h1 << std::endl;
 					//	pw_alignment p1 = *it->second;
 						std::vector<std::string> current_center;
 						std::map<size_t , std::vector<std::string> >::iterator it1=centersPositionOnASeq.at(sequenceId).find(n);
@@ -1134,7 +1170,7 @@
 								if(par->second.at(k) == current_center){//If it reaches the end, you should check for the reverse
 									partition = j;
 									CenterIsFound = true;
-									std::cout << "center is found "<<std::endl;
+									std::cout << "center is found "<< j <<std::endl;
 									break;
 								}
 							}
@@ -1208,6 +1244,11 @@
 									std::cout << " seq id "<< sequenceId << " l1 " << n <<std::endl;
 									std::cout << "al length "<< p.alignment_length() <<std::endl;
 									p.print();
+									if(sequenceId == 1 && left_1 == 2183563){
+										std::cout << "wrong al: "<<std::endl;
+										std::cout<< p.get_al_ref1()<<std::endl;
+										std::cout << p.get_al_ref2() << std::endl;
+									}
 									//The non center reference of the alignment is always forward 
 									assert(p.getbegin1() < p.getend1());
 									//If center is reverse (50% it is not reverse, 50% it is reverse!!)
@@ -1295,6 +1336,9 @@
 								for(size_t k =0; k < low_high.size(); k++){
 									l1 = low_high.at(k).at(0);
 									h1 = low_high.at(k).at(1);
+									if(n == 1685864){
+										std::cout << "l "<< l1 << " h "<< h1 <<std::endl;
+									}
 									assert(h1<=al_end.at(0));
 									enc.encode(l1,h1,total);
 									wrappers.encode(l1,h1,total, enc_boundries);

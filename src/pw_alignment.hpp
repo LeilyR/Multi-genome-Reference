@@ -26,11 +26,6 @@ struct alblock {
 	double m2;
 };
 
-// short piece without gaps
-struct segment {
-	size_t begins[3]; // begin in r1, r2, and alignment col
-	size_t length;
-};
 
 
 class pw_alignment {
@@ -57,9 +52,9 @@ class pw_alignment {
 	virtual size_t getend2()const;
 	virtual size_t getreference1() const;
 	virtual size_t getreference2() const;
-	virtual void split(bool sample, size_t position, pw_alignment & first_part, pw_alignment & second_part) const;
-	virtual void remove_end_gaps(pw_alignment & res) const;
-	void split_the_gap(size_t & position , pw_alignment & al , size_t & gap_size1, size_t & gap_size2, bool & begin_gap, bool & end_gap)const;//Remove the gap at the beginning or end of the alignment
+	void split(bool sample, size_t position, pw_alignment & first_part, pw_alignment & second_part) const;
+	void remove_end_gaps(pw_alignment & res) const;
+
 	// TODO remove
 	void set_alignment_bits(std::vector<bool> s1, std::vector<bool> s2);
 	
@@ -113,18 +108,15 @@ class pw_alignment {
 	// inefficient in pw_aligment, we assert that it is never used
 	virtual void alignment_position(size_t col, size_t & r1pos, size_t & r2pos) const;
 
-//	virtual pw_alignment & operator=(const pw_alignment & al);
+	virtual pw_alignment & operator=(const pw_alignment & al);
 
 	// TODO remove this
-	virtual std::vector<bool> reverse_complement(std::vector<bool> & ) const; 
+	std::vector<bool> reverse_complement(std::vector<bool> & ); 
 
-	virtual void get_reverse(pw_alignment & ) const;
+	virtual void get_reverse(pw_alignment &);
 	virtual void get_reverse_complement_sample(std::vector<std::vector<bool> > &);
 	virtual void simulate_split(const size_t & ref, const size_t & pos, size_t & sp1, size_t & sp2) const ;
 	virtual bool onlyGapSample() const;
-
-	void drop_cache() const;
-
 	protected:
 	std::vector<size_t> begins;
 	std::vector<size_t> ends;
@@ -139,12 +131,12 @@ class pw_alignment {
 	mutable bool costs_cached;
 	mutable std::vector<double> create_costs;
 	mutable std::vector<double> modify_costs;
+	mutable std::vector<alblock> blocks;
 
-	mutable std::vector<alblock> blocks; // not used
-	std::vector<std::vector<bool> > samples;
 	private:
 
 	
+	std::vector<std::vector<bool> > samples;
 };
 
 // TODO if pw_alignment is not always fixed on a reference sequence, we should not use these comparators on it
@@ -157,7 +149,6 @@ class compare_pw_alignment {
 	public:
 	bool operator()(const pw_alignment &a, const pw_alignment &b) const ;
 };
-
 
 template<typename alignment>
 class compare_pointer_alignment {
@@ -181,6 +172,40 @@ class sort_pw_alignment_by_right{
 	public:
 	bool operator () (const pw_alignment &p1, const pw_alignment &p2 )const;
 };
+
+class sort_pw_alignment{
+	public:
+	bool operator () (const pw_alignment &p1, const pw_alignment &p2 )const;
+};
+class sort_right_pw_alignment{
+	public:
+	bool operator () (const pw_alignment &p1, const pw_alignment &p2 )const;
+};
+
+
+/*class wrapper{
+	public:
+		wrapper();
+		~wrapper();
+		void encode(unsigned int&, unsigned int &, unsigned int&);
+		void context(int &);
+				
+	private:
+		std::ofstream encodeout;
+		std::ofstream al_encode;
+	};
+
+class decoding_wrapper{
+	public:
+		decoding_wrapper();
+		~decoding_wrapper();
+		void decode(unsigned int &, unsigned int &, unsigned int&);
+		void decodeContext(int &);
+	private:
+		std::ofstream decodeout;
+		std::ofstream al_decode;
+};*/
+
 class wrapper{
 	public:
 		wrapper();
@@ -205,19 +230,17 @@ class decoding_wrapper{
 		std::ofstream al_decode;
 };
 
-
 class dnastring;
 class all_data;
 
 
-class located_alignment {
+class located_alignment : public pw_alignment {
 public:
 //	virtual located_alignment(const all_data * data, size_t sample1_begin, size_t sample2_begin, size_t sample1_end, size_t sample2_end,size_t sample1reference, size_t sample2reference);
 	virtual ~located_alignment();
 	located_alignment(const all_data * data, const pw_alignment & p);
 	located_alignment(const located_alignment & p);
-	located_alignment(const all_data * data, const size_t & allength, const std::vector<segment> & segments, const std::vector<alblock> & blocks, const std::vector<bool> & block_cached, const pw_alignment & p);
-	located_alignment();
+
 
 	virtual size_t alignment_length() const;
 	virtual void alignment_col(size_t c, char & s1, char & s2) const;
@@ -232,49 +255,17 @@ public:
 	virtual void simulate_split(const size_t & ref, const size_t & pos, size_t & sp1, size_t & sp2) const ;
 	virtual void split(bool sample, size_t position, located_alignment & first_part, located_alignment & second_part) const;
 	virtual void printseg() const;
-	void print() const;
-	virtual void remove_end_gaps(pw_alignment & res) const;
-//	virtual located_alignment & operator=(const located_alignment & al);
-	virtual std::vector<bool> reverse_complement(std::vector<bool> & ) const; 
-	virtual void get_lr1(size_t & left, size_t & right) const;
-	virtual void get_lr2(size_t & left, size_t & right) const;
-	virtual size_t getbegin1()const;
-	virtual size_t getbegin2() const;
-	virtual size_t getend1()const;
-	virtual size_t getend2()const;
-	virtual size_t getreference1() const;
-	virtual size_t getreference2() const;
-	virtual size_t getreference(size_t id)const;
-	virtual size_t getbegin(size_t id)const;
-	virtual size_t getend(size_t id)const;
-
-	virtual void set_cost(const std::vector<double> & create, const std::vector<double> & modify) const;
-	virtual bool is_cost_cached() const;
-	virtual double get_create1() const;
-	virtual double get_create2() const;
-	virtual double get_modify1() const;
-	virtual double get_modify2() const;
-	std::vector<alblock> & getblocks()const ;
-	void to_pw_alignment(pw_alignment & al);
-	virtual bool onlyGapSample() const;
-	virtual bool is_same_direction() const;
-	virtual void single_ref_intersect(size_t alref, const located_alignment & other, size_t otherref, located_alignment & result, located_alignment & otherresult) const;
-
-	private:
+private:
+	// short piece without gaps
+	struct segment {
+		size_t begins[3]; // begin in r1, r2, and alignment col
+		size_t length;
+	};
 
 	const all_data * data;
 	size_t length;
 	mutable size_t last_segment;
-	std::vector<segment> segments;
-
-	std::vector<size_t> begins;
-	std::vector<size_t> ends;
-	std::vector<size_t> references;
- 	mutable bool costs_cached;
-	mutable std::vector<double> create_costs;
-	mutable std::vector<double> modify_costs;
-	mutable std::vector<alblock> blocks;
-
+	std::vector<segment> segments; 
 // we cache costs per block (BLOCK_SIZE alignment columns) to be much faster in splitting huge alignments and in recomputing cost of split parts
 // edge effects between blocks can be ignored as BLOCK SIZE is large
 	
@@ -286,8 +277,6 @@ public:
 	virtual void make_blocks() const;
 	void bsearch_col(const size_t & col, const size_t & from, const size_t & to, size_t & seg, size_t & r1at, size_t & r2at, char & c1, char & c2) const;
 	void bsearch_ref(const size_t & ref, const size_t & refpos, const size_t & from, const size_t & to, size_t & seg, size_t & alcolumn) const;
-	void use_blocks_from(const size_t & cut_col, std::vector<alblock> & blo, std::vector<bool> & blcache) const;
-	void use_blocks_to(const size_t & cut_col, std::vector<alblock> & blo, std::vector<bool> & blcache) const;
 
 
 };

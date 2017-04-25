@@ -5,10 +5,10 @@
 #include "dijkstra.hpp"
 
 #define MAXGAP 400
-//This class is used to read the dot file includes reference graph
-class ref_graph{//XXX For the moment I use Marion's graph , if I face any further issue I might need to add new functions to this class to make the graph here. (Update! Seems using that graph is unnecessary and i take it out from my code!)
+//This class is only used to read the dot file includes the reference graph
+class ref_graph{
 	public:
-	ref_graph(Graph & g, const all_data & d):graph(g), data(d){
+	ref_graph( const all_data & d):data(d){
 		longname2seqidx = data.getLongname2seqidx();
 		std::map<std::string, size_t>::iterator longname = longname2seqidx.begin();
 		std::cout << "the begin is "<< longname->first<<std::endl;
@@ -23,17 +23,46 @@ class ref_graph{//XXX For the moment I use Marion's graph , if I face any furthe
 	const void look_for_predecessor(int & node , size_t & length , size_t & current_length, std::string & acc_name,std::set<int> & visited,std::vector<int> & this_pre_nodes, std::vector<std::vector<int> > & all_pre_nodes)const;
 	const std::vector<std::vector<int> > get_successor(unsigned int & ref_id, bool dir , size_t & length)const;
 	const void look_for_successor(int & node, size_t & length, size_t & current_length, std::string & acc_name, std::set<int> & visited, std::vector<int> & this_adjacencies, std::vector<std::vector<int> > & all_adjacencies)const;
+	void read_gfa_for_adj(std::string &);
+	void read_gfa_for_seq(std::string & gfafile , std::ofstream & fasta , std::ofstream & paths);
 	const unsigned get_refid(size_t & , int& )const;
+
+	size_t seq_length(std::string &, std::string &);
+	std::string seqname(int & );
+	void deep_first_search(int &, std::string & , size_t & );
+	void look_for_neighbors(int & , std::map<int,bool> &  , std::string &, int & accu_length, std::vector<int> & apath, size_t & );
+	void bfs(int & startnode, std::string & refacc, size_t & right_on_ref);
+	const vector<vector<int> > get_paths()const;
+	const std::set<int> get_nodes()const;
+	std::set<int> get_adjacencies(int & node)const{
+		std::map<int, std::set<int> >::const_iterator it = adjacencies.find(node);
+		assert( it != adjacencies.end());
+		return it->second;
+	}
+	std::set<int> get_predecessor(int& node)const {
+		std::set<int> nodes;
+		std::cout << "node: "<< node <<std::endl;
+		std::map<int, std::set<int> >::const_iterator it = predecessors.find(node);
+		if( it != predecessors.end()){
+			nodes = it->second;
+		}
+		return nodes;
+	}
+
 	private:
 	const all_data & data;
-	Graph & graph;
 	std::map<std::string, size_t> longname2seqidx;
 
 	std::map<int, std::set<int> > adjacencies;
 	std::map<int, std::set<int> > predecessors;
+
+	vector<vector<int> > paths;
+	std::set<int> nodes_on_paths;
+	std::map<int, size_t> path_length;
+	std::multimap<int,int> parental_relation; //first one shows the child node ,second one shows the parent
 };
 
-class deep_first{//It runs deep first algorithm on reference graph to retrun parts of graph that the distance between the first and the last node is less than MAXGAP.
+/*class deep_first{//It runs deep first algorithm on reference graph to retrun parts of graph that the distance between the first and the last node is less than MAXGAP.
 	public:
 	deep_first(const all_data & d, std::map<int, std::set<int> > & adjacencies):data(d){
 		this -> adjacencies = adjacencies;
@@ -47,6 +76,7 @@ class deep_first{//It runs deep first algorithm on reference graph to retrun par
 	std::string seqname(int & );
 	void deep_first_search(int &, std::string & , size_t & );
 	void look_for_neighbors(int & , std::map<int,bool> &  , std::string &, int & accu_length, std::vector<int> & apath, size_t & );
+	void bfs(int & startnode, std::string & refacc, size_t & right_on_ref);
 	const vector<vector<int> > get_paths()const;
 	const std::set<int> get_nodes()const;
 	private:
@@ -57,13 +87,13 @@ class deep_first{//It runs deep first algorithm on reference graph to retrun par
 	std::map<int, size_t> path_length;
 	std::multimap<int,int> parental_relation; //first one shows the child node ,second one shows the parent
 
-};
+};*/
 
 //This class is used to make several components on a read where each component contains aligned regions with less than MAX_GAP base distance
 class als_components{
 
 	public:
-	als_components(const all_data & d , deep_first & df, dynamic_mc_model & m,ref_graph & refg ,const std::vector<std::set<const pw_alignment* , compare_pointer_pw_alignment> >  & ccs):data(d), dfirst(df),model(m),refgraph(refg){
+	als_components(const all_data & d , ref_graph & refg, const dynamic_mc_model & m ,const std::vector<std::set<const pw_alignment* , compare_pointer_pw_alignment> >  & ccs):data(d), rgraph(refg),model(m){
 		index = 2;
 		alignments_left.resize(ccs.size());
 		alignments_right.resize(ccs.size());
@@ -150,10 +180,12 @@ class als_components{
 	For those which are not on those paths we check if their left is smaller than beginning of the current alignment component- MAXGAP/2, 
 	if so then we try to find the graph paths for it and go further otherwise discard it.*/
 	void find_als_on_paths(std::ofstream & output, size_t & refacc, size_t & readacc);
-	void get_paths(const pw_alignment &, std::vector<std::vector<int> > &);
-	void look_for_neighbors_on_paths(size_t & comp, const pw_alignment& , std::set<int>& , std::vector<std::vector<int> > & ,std::multiset<pw_alignment,sort_pw_alignment_by_left> &);
+	std::multiset<pw_alignment,sort_pw_alignment_by_left> find_successors(const pw_alignment & p , size_t &);
+	void get_subgraph(const pw_alignment &, std::vector<std::vector<int> > &);
+	void look_for_successors_on_paths(size_t & comp, const pw_alignment& , std::set<int>& , std::vector<std::vector<int> > & ,std::multiset<pw_alignment,sort_pw_alignment_by_left> &);
 	void make_al_on_a_node(size_t & comp, const pw_alignment&, const pw_alignment& ,bool dir, unsigned int & ref1, size_t & left1, size_t & right1, unsigned int & ref2, size_t & left2, size_t & right2, size_t & refacc, size_t & readacc);
-	void append_nodes(std::vector<std::vector<int> > & paths, int & name, size_t & refacc , std::vector<size_t> & this_refs,std::vector<int> & this_path, std::string & str1);
+	void get_paths(int & node_name , int & current_node_name, std::vector<std::vector<int> > & paths);
+	void append_nodes(std::vector<std::vector<int> > & paths, int & name, int & current_node_name, size_t & refacc , std::vector<size_t> & this_refs,std::vector<int> & this_path, std::string & str1);
 	void make_alignments(size_t & comp, size_t & begin_on_read, size_t & end_on_read, const pw_alignment & first_al, const pw_alignment & last_al, std::string & read_out, std::string & ref_out, std::vector<size_t> &this_refs, std::vector<int> & this_path, unsigned int & ref2, size_t & first_length, size_t & last_length,size_t &refacc,size_t&readacc);
 	void compute_samples(bool tillend, size_t node_length, size_t & current_pos, size_t & read_counter, size_t & ref_counter,std::string & read_in, std::string & read_out, std::string & ref_in, std::string & ref_out);
 	void get_reverse_complement(std::string & sequence_in , std::string & sequence_out);
@@ -172,9 +204,9 @@ class als_components{
 	const pw_alignment & get_alignment(size_t & , size_t &)const;
 	private:
 		const all_data & data;
-		deep_first & dfirst;
-		dynamic_mc_model & model;
-		ref_graph refgraph;
+	//	deep_first & dfirst;
+		ref_graph & rgraph;
+		const dynamic_mc_model & model;
 		std::vector<std::multiset<pw_alignment , sort_pw_alignment_by_left> >alignments_left;
 		std::vector<std::multiset<pw_alignment , sort_pw_alignment_by_right> >alignments_right;
 		std::map<size_t,size_t> boundries;
@@ -205,7 +237,8 @@ class map_check{
 	void read_alignments(std::ifstream & alignments);//Read all the intial created alignments before mapping any read against a graph
 	void check_output(std::ifstream & mapping_maf,const std::string & seqname);
 	void check_an_alignment(unsigned int & ref1, const std::string & seqname, size_t & left2 , size_t & right2);
-	void read_txt_file(std::ifstream & );
+	void read_txt_file_long_center(std::ifstream & , std::string & );
+	void read_txt_file(std::ifstream & , std::string &);
 	std::multimap<std::string, std::pair<unsigned int, unsigned int> > get_nodes()const{
 		return nodes;
 	}
@@ -260,4 +293,15 @@ class test_sim_reads_mapping{
 		std::map<size_t , const pw_alignment> alignments;
 
 };
+
+class test_reveal{
+	public:
+		test_reveal(){};
+		~test_reveal(){};
+		void read_the_result(std::ifstream &);
+		void compare_with_path(std::ifstream &);//TOO specific!!
+	private:
+		std::vector<std::string> nodes;
+};
+	
 #include "needleman_wunsch.cpp"

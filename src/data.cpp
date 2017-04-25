@@ -661,6 +661,9 @@ void all_data::read_fasta_maf(std::string fasta_all_sequences, std::string maf_a
 			if(str.at(0)=='>') {
 				if(0!=curname.compare("")) { // store previous sequence
 					if(curseq.str().size()!=0){
+					//	if(curname == "cluster_9_AT4G16860:Col-0|SCF_2"){
+					//		std::cout << curseq.str().at(2416) << curseq.str().at(2417)<<std::endl;
+					//	}
 						insert_sequence(curacc, curname, curseq.str());
 					}else{
 						std::cerr << "Warning: A sequence of length zero is skipped " <<std::endl;
@@ -1440,7 +1443,7 @@ bool all_data::alignment_fits_ref(const pw_alignment & alr) const {
 	//	std::cout << "c " << col << " " << al1char << " " << al2char << std::endl;	
 		if(al1char!='-') { 
 			char rchar = ref1.at(al1at);
-		//	std::cout << " al 1 at " << al1at;
+		//	std::cout << " al 1 at " << al1at << " " << rchar << std::endl;
 			if(al1fw) {
 				al1at++;
 			} else {
@@ -1450,7 +1453,7 @@ bool all_data::alignment_fits_ref(const pw_alignment & alr) const {
 			}
 		//	std::cout << " is " << rchar << std::endl;
 			if(rchar != al1char) {
-			//	al->print();
+				al->print();
 				std::cerr << "Warning: alignment test failed. Alignment has " << al1char << " at " << col <<" where reference sequence has " << rchar << std::endl;
 			//	print_ref(al);
 				return false;
@@ -1612,6 +1615,12 @@ void all_data::compare_seq_with_decoding(std::ifstream & in){
 //	}
 //	std::cout << "total base " << base <<std::endl;
 	for(size_t i = 0 ; i < numSequences();i++){
+	//	if(i == 1){
+	//		for(size_t j = 2183563 ; j < 2185530; j++){
+	//			std::cout << sequences.at(i).at(j);
+	//		}
+	//	}
+		std::cout << " " <<std::endl;
 		size_t n = 0;
 		char c1[sizeof(uint32_t)];
 		in.read(c1,sizeof(uint32_t));
@@ -1628,9 +1637,13 @@ void all_data::compare_seq_with_decoding(std::ifstream & in){
 			this_base += c;
 			if(sequence.at(j)== c){
 			//	std::cout<< "seq "<< i << " at " << j << " is " << sequence.at(j) << " and " << this_base << " is decoded " <<std::endl;
-			}else{
+			}
+			else{
 					std::cout<< "seq "<< i << " at " << j << " is " << sequence.at(j)  <<std::endl;
 			}
+			//if(i == 1){
+			//	std::cout<< "seq at "<< j << " " << sequence.at(j)<<std::endl;
+			//}
 		assert(sequence.at(j)== c);
 		}
 		std::cout<< "end of seq "<< i << std::endl;
@@ -2906,7 +2919,7 @@ void splitpoints::insert_split_point(size_t sequence, size_t position) {
 					}*/
 				//	std::cout<<"al length: "<< al->alignment_length() <<std::endl;
 				//	if(al->alignment_length()>1){
-
+				std::cout << "at 2910"<<std::endl;
 				al->split_on_reference(sequence, position, fp, sp);
 				
 

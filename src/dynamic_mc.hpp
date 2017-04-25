@@ -129,7 +129,7 @@ class dynamic_mc_model {
 		dynamic_mc_model(all_data &, wrapper &, size_t num_threads = 1);
 		~dynamic_mc_model();
 
-		void train(std::ofstream &);
+		void train();
 
 
 

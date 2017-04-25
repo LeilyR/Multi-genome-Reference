@@ -214,6 +214,7 @@
 			if(it != AlignmentsFromClustering.at(seq_id).end()){
 			//	std::cout << "at "<< n;
 				pw_alignment p = it->second;
+			//	p.print();
 				size_t l1,r1,l2,r2;
 				p.get_lr1(l1,r1);
 				p.get_lr2(l2,r2);
@@ -229,8 +230,8 @@
 				unsigned int cent_ref = atoi(center_parts.at(0).c_str());
 				unsigned int cent_left = atoi(center_parts.at(1).c_str());
 				if(p.getreference1()==cent_ref && l1==cent_left){
-					if(p.getbegin1()<p.getend1()){
-				//	if((p->getbegin1()<p->getend1()&&p->getbegin2()<p->getend2())||(p->getbegin1()>p->getend1()&&p->getbegin2()>p->getend2())){ //Dont check it here, it is checked in encoding if it occurs reverse or forward
+				//	if(p.getbegin1()<p.getend1()){//XXX CHECK!!
+					if((p.getbegin1()<p.getend1()&&p.getbegin2()<p.getend2())||(p.getbegin1()>p.getend1()&&p.getbegin2()>p.getend2())){ //Dont check it here, it is checked in encoding if it occurs reverse or forward
 						std::stringstream str;
 						str<<0<<":"<<center;
 						center = str.str();
@@ -243,8 +244,8 @@
 					}
 				}else{
 					assert(p.getreference2()==cent_ref && l2==cent_left);
-					if(p.getbegin2()<p.getend2()){
-				//	if((p->getbegin1()<p->getend1()&&p->getbegin2()<p->getend2())||(p->getbegin1()>p->getend1()&&p->getbegin2()>p->getend2())){
+				//	if(p.getbegin2()<p.getend2()){
+					if((p.getbegin1()<p.getend1()&&p.getbegin2()<p.getend2())||(p.getbegin1()>p.getend1()&&p.getbegin2()>p.getend2())){
 						std::stringstream str;
 						str<<0<<":"<<center;
 						center = str.str();

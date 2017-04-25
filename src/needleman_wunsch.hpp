@@ -15,7 +15,7 @@ template<typename T>
 class needleman{
 	public:
 	//	needleman(all_data & , T & );
-		needleman(const all_data & , T  &, std::string &  , std::string &);
+		needleman(const all_data & , const T  &, std::string &  , std::string &);
 		~needleman();
 		void run_needleman(size_t & readacc , size_t & refacc, size_t & type, std::string & , std::string & );
 		void compute_matrix(size_t & readacc, size_t & refacc);
@@ -36,7 +36,7 @@ class needleman{
 		void print_path();
 
 	private:
-		T & model;
+		const T & model;
 		const all_data & data;
 		std::vector<std::vector<double> > mod_matrix;//TODO can be removed
 		std::vector<std::vector<double> > score_matrix;

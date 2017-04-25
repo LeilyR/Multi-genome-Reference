@@ -49,7 +49,7 @@ class merging_centers{
 
 class mixing_centers{
 	public:
-		mixing_centers(all_data & d):data(d),all_pieces_long_centers(data.numSequences()), all_centers_on_a_seq(data.numSequences()){
+		mixing_centers(all_data & d):data(d),all_pieces_long_centers(data.numSequences()), all_centers_on_a_seq(data.numSequences()),path_on_a_seq(data.numSequences()){
 			
 		}
 		~mixing_centers(){
@@ -57,7 +57,7 @@ class mixing_centers{
 		}
 		void add_original_centers_to_long_centers(std::map<std::vector<std::string>, std::vector<pw_alignment> > & , std::map<std::string, std::vector<pw_alignment> > & , std::map<std::string, std::vector<pw_alignment> > &, std::vector<std::map<size_t, std::vector<std::string> > > &, std::vector<std::map<size_t, std::string> > & );
 		void swap_references(std::map<std::vector<std::string>, std::vector<pw_alignment> > &);
-		void add_to_long_center_map(const std::string & center, const pw_alignment &, std::vector<std::map<size_t, std::string> > &);
+		void add_to_long_center_map(const std::string & center, const pw_alignment &, std::vector<std::map<size_t, std::string> > &, std::map<std::vector<std::string>, std::vector<pw_alignment> > &);
 		void get_direction(const pw_alignment & p, size_t & dir);
 		void calculate_centers_weight(std::map<std::string, std::vector<pw_alignment> > & , std::map<std::string, unsigned int> &);
 		void calculate_long_centers_weight(std::map<std::vector<std::string>, std::vector<pw_alignment> > & , std::map<std::vector<std::string> , unsigned int> &);
@@ -84,6 +84,9 @@ class mixing_centers{
                 std::vector<std::string> get_reverse(std::vector<std::string>&)const;
 		void swap_refs(pw_alignment & al , const std::string & center);
 		bool is_forward(const std::string & center , pw_alignment & p);
+		const std::vector<std::vector<int> > get_path()const{
+			return path_on_a_seq;
+		}
 	private: 
 		const all_data & data;
 		std::map<std::string, std::string> non_aligned_context;//The first string is the context and the second string its name(ref:left). It is used for both short or long centers.
@@ -99,6 +102,7 @@ class mixing_centers{
 		std::vector<std::multimap<size_t , std::vector<std::string> > >all_pieces_long_centers;//contains long centers and non aligned regions between them.(pos,center)
 		std::map<std::vector<std::string>, size_t> long_center_id;//(center,id)
 		//TODO make another container like all_pieces_long_centers and save the content of each piece
+		std::vector<std::vector<int> > path_on_a_seq;
 
 };
 
@@ -110,8 +114,8 @@ class write_graph{
 	~write_graph(){}
 	void write_graph_dot(std::map<int, std::set<int> > & adjacencies , std::ostream & dotfile);
 
-	void write_graph_fasta(const std::string & graphout, std::map< std::string , std::vector<pw_alignment> > & alignments_in_a_cluster, std::map<std::string, size_t> & non_aligned_right);
-	void write_graph_fasta_with_long_centers(const std::string & graphout, std::map<vector<std::string>, std::vector<pw_alignment> > & long_centers, std::map<std::string, std::vector<pw_alignment> > & alignments_in_a_cluster, std::map<std::string, size_t> & non_aligned_right);
+	void write_graph_fasta(const std::string & graphout,std::ofstream & txtout, std::map< std::string , std::vector<pw_alignment> > & alignments_in_a_cluster, std::map<std::string, size_t> & non_aligned_right);
+	void write_graph_fasta_with_long_centers(const std::string & graphout, std::ofstream & txtout,std::map<vector<std::string>, std::vector<pw_alignment> > & long_centers, std::map<std::string, std::vector<pw_alignment> > & alignments_in_a_cluster, std::map<std::string, size_t> & non_aligned_right);
 
 	void write_maf_record(std::ostream & out, const std::string & src, size_t start, size_t size, char strand, size_t srcSize, const std::string & alignment_part);
 	void write_maf_record(std::ostream & out, const all_data & data, const pw_alignment & al, size_t reference);
@@ -119,7 +123,7 @@ class write_graph{
 	void msa_star_al_with_long_centers(const std::vector<std::string> & longCenter, std::vector<pw_alignment> & alignment);
 	void write_graph_maf(std::ofstream & gout, const std::map<std::string, std::vector<pw_alignment> > & cluster_result_al, std::map<std::string, size_t> & center_id);
 	void write_graph_maf_with_long_centers(std::ofstream & gout ,const std::map<std::vector<std::string>, std::vector<pw_alignment> > & new_centers,std::map<std::vector<std::string>, size_t>& long_center_id);
-	void write_graph_gfa();//TODO
+	void write_graph_gfa(std::map<int, std::set<int> > & adjacencies, std::ostream & graph_gfa, std::map<std::string, std::vector<pw_alignment> > & alignments_in_a_cluster, std::map<std::string, size_t> & non_aligned_right);//TODO
 	void make_fasta(std::ostream & graphfasta, std::map<std::string, std::string> & centers) ;
 	
 

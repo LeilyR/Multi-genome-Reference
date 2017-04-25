@@ -9,7 +9,7 @@
 //	}
 
 	template<typename T>
-	needleman<T>::needleman(const all_data & d, T & m , std::string & read , std::string & ref):data(d),model(m),mod_matrix(read.length()+1 , std::vector<double>(ref.length()+1)),score_matrix(read.length()+1 , std::vector<double>(ref.length()+1)), context_matrix(read.length()+1 , std::vector<std::string>(ref.length()+1)), keep_number(read.length()+1 , std::vector<size_t>(ref.length()+1)), delete_number(read.length()+1 , std::vector<size_t>(ref.length()+1)), path(read.length()+1 , std::vector<size_t>(ref.length()+1)){
+	needleman<T>::needleman(const all_data & d, const T & m , std::string & read , std::string & ref):data(d),model(m),mod_matrix(read.length()+1 , std::vector<double>(ref.length()+1)),score_matrix(read.length()+1 , std::vector<double>(ref.length()+1)), context_matrix(read.length()+1 , std::vector<std::string>(ref.length()+1)), keep_number(read.length()+1 , std::vector<size_t>(ref.length()+1)), delete_number(read.length()+1 , std::vector<size_t>(ref.length()+1)), path(read.length()+1 , std::vector<size_t>(ref.length()+1)){
 		this->read = read;
 		this->ref = ref;
 		std::cout << "this ref "<< this->ref << std::endl;

@@ -168,9 +168,9 @@ class two_edge_cc{
 		size_t count = 0;
 		for(std::set<const pw_alignment*, compare_pointer_pw_alignment>::iterator it = als.begin(); it !=als.end();it++){
 			alignments.push_back(*it);
-			std::cout << "al "<< count << " is :"<<std::endl;
+		//	std::cout << "al "<< count << " is :"<<std::endl;
 			const pw_alignment* al = *it;
-			al->print();
+		//	al->print();
 			visited_als.insert(std::make_pair(*it,-1));
 			als_low.insert(std::make_pair(*it,-1));
 			count ++;

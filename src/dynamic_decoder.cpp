@@ -899,9 +899,10 @@
 				char h1[sizeof(size_t)];
 				in.read(h1,sizeof(size_t));
 	
-				size_t *temp = reinterpret_cast<size_t*> (h1);
+				size_t *temp = reinterpret_cast<size_t*>(h1);
 				size_t center_length = *temp;
 				std::cout << "size 0f the center "<< center_length <<std::endl;
+				assert(center_length >=2);
 				vector<int>center;
 				for(size_t i =0; i < center_length ; i++){
 					char c1[sizeof(int)];
@@ -1337,6 +1338,7 @@
 				}
 				size_t counter = 0;
 				while(target< seq_acc_end.at(0)){//end of each seq
+					std::cout << "target" << target << " seq acc flag "<< seq_acc_end.at(0) << " al begin "<< al_begin.at(0) <<std::endl;
 					while(target< al_begin.at(0)){//If there is no alignment on that position
 						char p = dnastring::index_to_base(base);
 						std::stringstream s;
@@ -1462,7 +1464,8 @@
 						for(size_t m =0; m < center.size();m++){
 							std::cout << "on center " << m <<std::endl;
 							if(center.at(m) > 0){
-								if(reverse_center == true){
+								if(reverse_center == true){//Is the case only for short centers, because only the positive is considered even if the negative happened.
+									assert(center.size() == 1);
 									for(size_t j =0; j <decoded_long_center_in_partition.size() ;j++){
 										std::map<int, std::string>::iterator seq = decoded_long_center_in_partition.at(j).find(center.at(center.size()-1-m));
 										if(seq != decoded_long_center_in_partition.at(j).end()){
@@ -1485,8 +1488,9 @@
 										}
 									}
 								}
-							}else{//add reverse complement
+							}else{//add reverse complement, Only in long centers!
 								std::cout << "rev_comp is added !" <<std::endl;
+								assert(center.size() > 1);
 								for(size_t j =0; j <decoded_long_center_in_partition.size() ;j++){
 									std::map<int, std::string>::iterator seq = decoded_long_center_in_partition.at(j).find(-1*center.at(m));
 									if(seq != decoded_long_center_in_partition.at(j).end()){
@@ -1525,7 +1529,12 @@
 							std::vector<unsigned int>al_low(NUM_MODIFICATIONS,0);
 							size_t last_base;
 							if(reverse_center == true){
-								last_base = dnastring::base_to_index(dnastring::complement(decodedCenter.at(decodedCenter.length()-1-pos)));
+								std::cout <<"reverse center! "<<std::endl;
+								if(center.size() > 1){
+									last_base = dnastring::base_to_index(decodedCenter.at(pos));
+								}else{
+									last_base = dnastring::base_to_index(dnastring::complement(decodedCenter.at(decodedCenter.length()-1-pos)));
+								}
 							}
 							if(reverse_both == true){
 								std::cout << "reverse both "<<std::endl;
@@ -1593,14 +1602,20 @@
 								std::cout<< int(al_pattern.at(al))<< " ";
 							}
 							std::cout<<" " << std::endl;
-							if(reverse_center==true || reverse_both ==true){
+						//	if(reverse_center==true){
+//
+//
+//							}
+							if(reverse_both ==true || (reverse_center == true && center.size() ==1)){
 								std::string rev_decodedCenter;
 								for(size_t rev = 0; rev< decodedCenter.size(); rev++){
 									char chr= dnastring::complement(decodedCenter.at(decodedCenter.size()-1-rev));	
 									rev_decodedCenter +=chr;
 								}
 								std::cout << "associatedMem_both reverse "<<std::endl;
-								member += associatedMember(rev_decodedCenter,modification,pos);							
+								member += associatedMember(rev_decodedCenter,modification,pos);	
+								std::cout<< "member "<< member << " modification "<<modification<<std::endl;
+						
 							}else{
 								std::cout << "associatedMember "<<std::endl;
 								std::cout<< test_out<< std::endl;
@@ -1710,6 +1725,10 @@
 							std::cout << " End of an al! "<<std::endl;
 							std::cout << "t " << target << " " <<al_end.at(0)<< " "<< al_end.at(1)<<std::endl;
 							std::cout << "on  position " << test_out <<std::endl;
+						//	if(test_out == 1685864 && acc ==3){
+						//		out.close();
+						//		exit(0);
+						//	}
 						}
 						else{
 							std::cout<<"there is something wrong with end of al flag!"<<std::endl;

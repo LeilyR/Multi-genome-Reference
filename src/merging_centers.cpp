@@ -31,6 +31,7 @@
 				}
 			}
 			if(seriesOfCenters.at(seriesOfCenters.size()-1) == 1<<31){//The extra ending character is removed 
+				std::cout << "romve the last char!"<<std::endl;
 				seriesOfCenters.pop_back();	
 			}
 
@@ -450,10 +451,14 @@
 							new_cent->second.push_back(al);
 							std::cout << "al is added! "<<std::endl;
 							al.print();
-							if(al.getreference2() == 9){
-								std::cout << al.get_al_ref1() << std::endl;
-								std::cout << al.get_al_ref2() << std::endl;
-							}
+						//	if(al.getreference2() == 9){//XXX
+						//		std::cout << al.get_al_ref1() << std::endl;
+						//		std::cout << al.get_al_ref2() << std::endl;
+						//	}
+						}
+						if(it->second.size()==3 && it->second.at(0)=="0:1:1941043"){
+							std::cout << al.get_al_ref1() << std::endl;
+							std::cout << al.get_al_ref2() << std::endl;
 						}
 					}// no break is needed at the end of this if loop becasue a long center can occur more than one time on a sequence
 				}
@@ -468,12 +473,12 @@
 			}
 		}
 	}
-	void merging_centers::remove_fully_reverse_refs(vector<vector<std::string> > & local_long_centers, std::map<std::vector<std::string>, std::vector<pw_alignment> > & new_centers){
+	void merging_centers::remove_fully_reverse_refs(vector<vector<std::string> > & long_centers, std::map<std::vector<std::string>, std::vector<pw_alignment> > & new_centers){
 	//Translate centers to their indices and check for negetive reverse of each center. If it exists one of them is chosen and the other one is considered as the reverse of that reference.	
 		std::cout << "remove reverse centers "<< std::endl;
 		std::map<std::vector<int> , std::vector<std::string> >long_center_index;
-		for(size_t j =0;j< local_long_centers.size();j++){
-			std::vector<std::string> center = local_long_centers.at(j);
+		for(size_t j =0;j< long_centers.size();j++){
+			std::vector<std::string> center = long_centers.at(j);
 			std::vector<int> indices;
 			for(size_t i =0; i < center.size();i++){
 				std::map<std::string,int>::iterator it1 = center_index.find(center.at(i));
@@ -1092,11 +1097,10 @@
 			if(find_al==merged_als.end()){
 				//Add it to new_centers
 				std::cout << "not part of a long center " << it->second.size() <<std::endl;
-			//	new_centers.insert(std::make_pair(temp,it->second));
-				new_cent->second = it->second;
+			//	new_cent->second = it->second;
 				//Add this centers to long centers that happen on a seq
 				for(size_t i = 0; i < it->second.size();i++){
-					bool direction = is_forward(it->first, it->second.at(i));
+				/*	bool direction = is_forward(it->first, it->second.at(i));
 					if(direction == true){//Check coordinate and see if forward or backward
 						new_cent->second.push_back(it->second.at(i));
 					}else{
@@ -1112,8 +1116,8 @@
 							rnew_cent=new_centers.find(temp1);
 						}
 						rnew_cent->second.push_back(it->second.at(i));
-					}
-					add_to_long_center_map(it->first,it->second.at(i), centerOnSequence);
+					}*/
+					add_to_long_center_map(it->first,it->second.at(i), centerOnSequence , new_centers);
 				}
 			}else{
 				//Add the rest of als but not the existing ones
@@ -1133,7 +1137,7 @@
 					//	}
 						std::cout << "original al is saved "<<std::endl;
 						it->second.at(k).print();
-						bool direction = is_forward(it->first, it->second.at(k));
+					/*	bool direction = is_forward(it->first, it->second.at(k));
 						if(direction == true){//Check coordinate and see if forward or backward
 							new_cent->second.push_back(it->second.at(k));
 						}else{
@@ -1148,8 +1152,8 @@
 								rnew_cent=new_centers.find(temp1);
 							}
 							rnew_cent->second.push_back(it->second.at(k));
-						}
-						add_to_long_center_map(it->first,it->second.at(k), centerOnSequence);
+						}*/
+						add_to_long_center_map(it->first,it->second.at(k), centerOnSequence, new_centers);
 					}
 				}
 				if(new_cent->second.size()==0){
@@ -1199,6 +1203,7 @@
 		size_t left1, right1, left2, right2;
 		p.get_lr1(left1, right1);
 		p.get_lr2(left2, right2);
+		std::cout << p.get_al_ref1()  << " " << p.get_al_ref2() << std::endl;
 		if(ref1 == center_ref && left1 == center_left){	
 			std::cout << p.get_al_ref1()  << " " << p.get_al_ref2() << " "<< data.extract_reverse_seq_part(ref1,left1,right1)<< " " << data.extract_seq_part(ref1,left1,right1) <<std::endl;
 			std::cout << data.extract_reverse_seq_part(ref2,left2,right2)<< " " << data.extract_seq_part(ref2,left2,right2) <<std::endl;
@@ -1265,18 +1270,22 @@
 	}
 	
 
-	void mixing_centers::add_to_long_center_map(const std::string & center,const pw_alignment & al, std::vector<std::map<size_t, std::string> > & centerOnSequence){
+	void mixing_centers::add_to_long_center_map(const std::string & center,const pw_alignment & al, std::vector<std::map<size_t, std::string> > & centerOnSequence, std::map<std::vector<std::string>, std::vector<pw_alignment> > & new_centers){
 		std::vector<std::string> center_parts;
 		strsep(center, ":" , center_parts);
 		unsigned int center_ref = atoi(center_parts.at(0).c_str());
 		unsigned int center_left = atoi(center_parts.at(1).c_str());
 
-		size_t ref1 = al.getreference1();
-		size_t ref2 = al.getreference2();
+		unsigned int ref1 = al.getreference1();
+		unsigned int ref2 = al.getreference2();
 		size_t left1, right1, left2, right2;
 		al.get_lr1(left1, right1);
 		al.get_lr2(left2, right2);
-
+		if(al.alignment_length()==1){ //XXX error point in ecoli16!
+			std::cout << "center of length 1 "<< center_ref << " " << center_left << std::endl;
+			std::cout << al.get_al_ref1()  << " " << al.get_al_ref2() << " "<< data.extract_reverse_seq_part(ref1,left1,right1)<< " " << data.extract_seq_part(ref1,left1,right1) <<std::endl;
+			std::cout << data.extract_reverse_seq_part(ref2,left2,right2)<< " " << data.extract_seq_part(ref2,left2,right2) <<std::endl;
+		}
 		if(ref1 ==center_ref && left1 == center_left){
 			std::map<size_t, std::vector<std::string> >::iterator it = all_centers_on_a_seq.at(ref1).find(left1);
 			if(it==all_centers_on_a_seq.at(ref1).end()){
@@ -1286,22 +1295,30 @@
 				this_cent.push_back(temp.str());
 				all_centers_on_a_seq.at(ref1).insert(std::make_pair(left1,this_cent));	
 			}
-			size_t dir = 0;
-		//	get_direction(al,dir);
-		//	if(al.getbegin1()< al.getend1()){ dir = 0; } 
-		//	else{dir = 1; }
 			std::map<size_t, std::vector<std::string> >::iterator it1 = all_centers_on_a_seq.at(ref2).find(left2);
+			if(it1 == all_centers_on_a_seq.at(ref2).end()){
+				std::cout<< "left "<< left2 << std::endl;
+			}
 			assert(it1 == all_centers_on_a_seq.at(ref2).end());
-		//	std::stringstream temp;
-		//	temp<<dir<<":"<<center;
 			std::vector<std::string> this_cent;
-		//	this_cent.push_back(temp.str());
 			std::multimap<size_t, std::string>::iterator short_cent=centerOnSequence.at(ref2).find(left2);
 			assert(short_cent != centerOnSequence.at(ref2).end());
 			std::cout<< "short cent: " <<short_cent->second <<std::endl;
 			this_cent.push_back(short_cent->second);
 			all_centers_on_a_seq.at(ref2).insert(std::make_pair(left2,this_cent));
-		//	assert(short_cent->second == temp.str());
+			//ADD IT TO NEW_CENTERS:
+		//	std::map<std::vector<std::string>, std::vector<pw_alignment> >::iterator long_cent = new_centers.find(this_cent);
+			std::stringstream temp;
+			temp<<0<<":"<<center;
+			std::vector<std::string>Center;
+			Center.push_back(temp.str());
+			std::map<std::vector<std::string>, std::vector<pw_alignment> >::iterator long_cent = new_centers.find(Center);
+
+			if(long_cent == new_centers.end()){
+				new_centers.insert(std::make_pair(Center,std::vector<pw_alignment>()));
+				long_cent = new_centers.find(Center);
+			}
+			long_cent->second.push_back(al);
 		}
 		else{
 			assert(ref2 == center_ref && left2 == center_left);
@@ -1313,25 +1330,31 @@
 				this_cent.push_back(temp.str());
 				all_centers_on_a_seq.at(ref2).insert(std::make_pair(left2,this_cent));	
 			}
-			size_t dir = 0;
-		//	get_direction(al,dir);
-		//	if(al.getbegin2()< al.getend2()){ dir = 0; } 
-		//	else{dir = 1; }
 			std::map<size_t, std::vector<std::string> >::iterator it1 = all_centers_on_a_seq.at(ref1).find(left1);
 			if(it1 != all_centers_on_a_seq.at(ref1).end()){
 				std::cout << it1->first << " " << it1->second << std::endl;
 			}
 			assert(it1==all_centers_on_a_seq.at(ref1).end());
-		//	std::stringstream temp;
-		//	temp<<dir<<":"<<center;
 			std::vector<std::string> this_cent;
-		//	this_cent.push_back(temp.str());
 			std::multimap<size_t, std::string>::iterator short_cent=centerOnSequence.at(ref1).find(left1);
 			assert(short_cent != centerOnSequence.at(ref1).end());
 			std::cout<< "short cent: " <<short_cent->second <<std::endl;
 			this_cent.push_back(short_cent->second);
 			all_centers_on_a_seq.at(ref1).insert(std::make_pair(left1,this_cent));
-		//	assert(short_cent->second == temp.str());
+			//ADD IT TO NEW_CENTERS:
+		//	std::map<std::vector<std::string>, std::vector<pw_alignment> >::iterator long_cent = new_centers.find(this_cent);
+			std::stringstream temp;
+			temp<<0<<":"<<center;
+			std::vector<std::string>Center;
+			Center.push_back(temp.str());
+
+			std::map<std::vector<std::string>, std::vector<pw_alignment> >::iterator long_cent = new_centers.find(Center);
+			if(long_cent == new_centers.end()){
+				new_centers.insert(std::make_pair(Center,std::vector<pw_alignment>()));
+				long_cent = new_centers.find(Center);
+			}
+			long_cent->second.push_back(al);
+
 		}
 	}
 	void mixing_centers::get_direction(const pw_alignment & p, size_t & dir){
@@ -1649,12 +1672,14 @@ const size_t mixing_centers::find_right_on_seq(std::string & center,std::map<std
 	}
 
 	const size_t mixing_centers::find_right_of_long_center_on_seq(std::vector<std::string>& center ,  std::map<vector<std::string>, std::vector<pw_alignment> > & new_centers, size_t & position , size_t & reference, const std::map<std::string, std::vector<pw_alignment> > & alignments_in_a_cluster)const{
-		std::map<vector<std::string>, std::vector<pw_alignment> >::iterator it = new_centers.find(center);
-	/*	if(it==new_centers.end()){//Now I keep the right drection of centers then this condition can be removed
-			center = get_reverse(center);
-			std::cout << "got reversed " << center <<std::endl;
-			it = new_centers.find(center);
-		}*/
+		std::vector<std::string> this_cent = center;
+		std::map<vector<std::string>, std::vector<pw_alignment> >::iterator it = new_centers.find(this_cent);
+		if(it==new_centers.end()){//Now I keep the right drection of centers then this condition can be removed
+			this_cent = get_reverse(this_cent);
+			std::cout << "got reversed " << this_cent <<std::endl;
+			it = new_centers.find(this_cent);
+			assert(this_cent.size()==1);
+		}
 		assert(it != new_centers.end());
 		std::vector<pw_alignment> als = it->second;
 		std::cout << "als size "<< als.size() <<std::endl;
@@ -1686,10 +1711,10 @@ const size_t mixing_centers::find_right_on_seq(std::string & center,std::map<std
 			
 			}
 		}else{//If als.size()==0 check in als_in_cluster
-			assert(center.size()==1);
+			assert(this_cent.size()==1);
 			std::cout << "no als left! "<<std::endl;
 			std::vector<std::string> center_parts;
-			strsep(center.at(0), ":" , center_parts);
+			strsep(this_cent.at(0), ":" , center_parts);
 			unsigned int center_dir = atoi(center_parts.at(0).c_str());
 			unsigned int center_ref = atoi(center_parts.at(1).c_str());
 			unsigned int center_left = atoi(center_parts.at(2).c_str());
@@ -1882,16 +1907,26 @@ const size_t mixing_centers::find_right_on_seq(std::string & center,std::map<std
 								all_pieces_long_centers.at(i).insert(std::make_pair(pre_pos,temp));
 							}
 							std::vector<std::string> temp;
-							temp.push_back(it->second.at(j));
+							std::vector<std::string> temp1;
+
+							std::vector<std::string> center_parts;
+							strsep(it->second.at(j),":", center_parts);
+							unsigned int center_dir = atoi(center_parts.at(0).c_str());
+							unsigned int center_ref = atoi(center_parts.at(1).c_str());
+							unsigned int center_left = atoi(center_parts.at(2).c_str());
+							std::stringstream center;
+							center<< 0<<":"<<center_ref<<":"<<center_left;
+							temp1.push_back(it->second.at(j));
+							temp.push_back(center.str());
 							std::cout << "added: "<< pos << " to "<< right << std::endl;
-							all_pieces_long_centers.at(i).insert(std::make_pair(pos,temp));
-							std::map<vector<std::string>, std::vector<pw_alignment> >::iterator add_al = new_centers.find(temp);
+							all_pieces_long_centers.at(i).insert(std::make_pair(pos,temp1));
+							std::map<vector<std::string>, std::vector<pw_alignment> >::iterator add_al = new_centers.find(temp);// Only the forward direction is kept
 							if(add_al == new_centers.end()){
 								new_centers.insert(std::make_pair(temp,std::vector<pw_alignment>()));
 								add_al = new_centers.find(temp);
 							}
 							assert(add_al != new_centers.end());
-							//TODO swap ref if necessary!
+							//Swap ref if necessary!
 							swap_refs(p, it->second.at(j));
 							add_al->second.push_back(p);
 							pos = right + 1;
@@ -2018,33 +2053,55 @@ const size_t mixing_centers::find_right_on_seq(std::string & center,std::map<std
 				}
 			}
 		}*/
-		for(size_t i =0; i < data.numSequences();i++){
+		for(size_t i =0; i < data.numSequences();i++){ //XXX TEST
 			std::cout << "on sequence "<< i << ":" <<std::endl;
 			for(std::map<size_t , std::vector<std::string> >::iterator it = all_pieces_long_centers.at(i).begin() ; it != all_pieces_long_centers.at(i).end() ; it++){
-				std::cout << "at "<< it->first << " to ";
+				std::cout << "at "<< it->first << std::endl;
 				size_t at = it->first;
+				std::vector<std::string> this_center = it->second;
+				std::vector<std::string> reverse = get_reverse(this_center);
 				std::map<std::vector<std::string>, std::vector<pw_alignment> >::iterator it1= long_centers.find(it->second);
+				std::map<std::vector<std::string>, std::vector<pw_alignment> >::iterator rev_cent= long_centers.find(reverse);//Since only forward direction of short centers are kept in new_center container
+				std::cout << "this center "<< this_center.size() <<std::endl;
+				std::cout << this_center << std::endl;
 				if(it1 != long_centers.end()){
 					size_t right = find_right_of_long_center_on_seq(it->second,long_centers, at , i, alignments_in_a_cluster);
-					std::cout << right << std::endl;
-				}else{	
+					std::cout<< "to" << right << std::endl;
+					std::cout <<"here!!"<<std::endl;
+				}else if(it->second.size()==1 && rev_cent != long_centers.end()){
+					size_t right = find_right_of_long_center_on_seq(it->second,long_centers, at , i, alignments_in_a_cluster);
+					std::cout << "to "<<right << std::endl;
+					std::cout << "was a reverse center! "<<std::endl;
+				}
+				else{//NON ALIGNED
 					assert(it->second.size()==1);
 					std::map<std::string, size_t>::iterator it2= non_aligned_right.find(it->second.at(0));
 					if(it2 == non_aligned_right.end()){
 						std::cout << it->second.at(0)<<std::endl;
 					}
 					assert(it2 != non_aligned_right.end());
-					std::cout << it2->second << std::endl;
+					std::cout << "to "<< it2->second << std::endl;
 				}
 			}
 		}
+		std::cout<< "make indices "<<std::endl;
 		for(std::map<std::vector<std::string>, std::vector<pw_alignment> >::iterator it = long_centers.begin() ; it != long_centers.end() ; it++){
 			std::cout << it->first<<std::endl;
+			std::vector<std::string> this_center = it->first;
+			std::vector<std::string> reverse_center = get_reverse(this_center);
 			std::map<std::vector<std::string>, size_t>::iterator it1 = long_center_id.find(it->first);
-			if(it1==long_center_id.end()){
+			std::map<std::vector<std::string>, size_t>::iterator rev = long_center_id.find(reverse_center);
+			assert(it1==long_center_id.end());
+			if(it->first.size() == 1 && rev == long_center_id.end()){//TODO check for the reverse!! //TODO update! If it works with one direction then this is unnecessay
 				long_center_id.insert(std::make_pair(it->first,num));
 				num++;
 			}
+			if(it->first.size() > 1){
+				assert(rev==long_center_id.end());
+				long_center_id.insert(std::make_pair(it->first,num));
+				num++;
+			}
+
 		}
 		for(std::map<std::string, size_t>::iterator it= non_aligned_right.begin(); it != non_aligned_right.end() ; it++){
 			std::vector<std::string> temp;
@@ -2144,6 +2201,7 @@ const size_t mixing_centers::find_right_on_seq(std::string & center,std::map<std
 					direction = 1;
 					this_id = (-1)*id->second;
 				}
+				path_on_a_seq.at(i).push_back(this_id);
 			//	assert(id != long_center_id.end());
 				if(it == all_pieces_long_centers.at(i).begin()){
 					assert(pos == 0);
@@ -2397,10 +2455,10 @@ const size_t mixing_centers::find_right_on_seq(std::string & center,std::map<std
 		}
 		dotfile << "/};"<<std::endl;
 	}
-	void write_graph::write_graph_fasta(const std::string & graphout, std::map<std::string ,std::vector<pw_alignment> > & alignments_in_a_cluster,std::map<std::string, size_t> & non_aligned_right){//All the cneters are saved from their forward strand
+	void write_graph::write_graph_fasta(const std::string & graphout, std::ofstream & txtout, std::map<std::string ,std::vector<pw_alignment> > & alignments_in_a_cluster,std::map<std::string, size_t> & non_aligned_right){//All the cneters are saved from their forward strand
 		std::cout<< "write fasta file "<<std::endl;
-		std::ofstream longid;
-		longid.open("centersid_name.txt");//This text file includes all the information about each center. In fact it shows where each center came from.
+	//	std::ofstream longid;
+	//	longid.open("centersid_name.txt");//This text file includes all the information about each center. In fact it shows where each center came from.
 		std::map<std::string, size_t> center_id = mixcenter.get_center_id();//All pieces on sequences(centers and non aligned regions) names and id with no direction.
 		std::ofstream gout(graphout.c_str());
 		std::map< std::string , std::string> centers;
@@ -2420,7 +2478,7 @@ const size_t mixing_centers::find_right_on_seq(std::string & center,std::map<std
 			std::stringstream id;
 			id<<it->second;
 			size_t length = right - center_left + 1;
-			longid << it->second<< ":"<<seqname<<":"<<center_left<<":"<<length<<std::endl;
+			txtout << it->second << ":"<<seqname<<":"<<center_left<<":"<<length<<std::endl;
 			dnastring seq = data.getSequence(center_ref);
 			for(size_t i = center_left ; i <=right ; i++){
 				sub+=seq.at(i);
@@ -2428,20 +2486,20 @@ const size_t mixing_centers::find_right_on_seq(std::string & center,std::map<std
 			centers.insert(std::make_pair(id.str(), sub));
 		}
 		make_fasta(gout,centers);
-		longid.close();
+		txtout.close();
 	}
-	void write_graph::write_graph_fasta_with_long_centers(const std::string & graphout, std::map<vector<std::string>, std::vector<pw_alignment> > & long_centers, std::map<std::string, std::vector<pw_alignment> > & alignments_in_a_cluster, std::map<std::string, size_t> & non_aligned_right){
+	void write_graph::write_graph_fasta_with_long_centers(const std::string & graphout, std::ofstream & txtout,std::map<vector<std::string>, std::vector<pw_alignment> > & long_centers, std::map<std::string, std::vector<pw_alignment> > & alignments_in_a_cluster, std::map<std::string, size_t> & non_aligned_right){
 	//Go over long_centers if the length is one, its id will be the id from center_index if not it will get an id which center_id size + the number of already seen long centers
 		std::cout<< "write fasta file "<<std::endl;
-		std::ofstream longid;
-		longid.open("centersid_name.txt");//This text file includes all the information about each center. In fact it shows where each center came from.
+	//	std::ofstream longid;
+	//	longid.open("centersid_name.txt");//This text file includes all the information about each center. In fact it shows where each center came from.
 		std::map< std::string , std::string> centers; //first string is the id, second string is the context		
 		std::map<std::vector<std::string>, size_t> center_id = mixcenter.get_long_center_id();//All long centers and non aligned regions in between
 		std::cout<< "center id size is "<< center_id.size() << std::endl;
 		std::ofstream gout(graphout.c_str());
 		for(std::map<vector<std::string>, size_t >::iterator it = center_id.begin() ; it != center_id.end(); it++){//Go over all the pieces, using long_center_id. 
 			std::vector<std::string> this_center = it->first;
-			longid <<it->second<<":";//Id of a long center is added to the file
+			txtout <<it->second<<":";//Id of a long center is added to the file
 			std::string sequence;
 			size_t length = 0;
 			for(size_t i = 0; i < this_center.size(); i++){
@@ -2460,25 +2518,26 @@ const size_t mixing_centers::find_right_on_seq(std::string & center,std::map<std
 				size_t left = center_left;
 				length +=(right-left)+1;
 			//	longid<<"r"<<right;
+				if(this_center.size()==1) assert(center_dir == 0);
 				if(center_dir==0){
 				 	sequence.append(data.extract_seq_part(center_ref,left,right));
-					longid <<seqname<<":"<<center_left<<"r"<<right<<":";
+					txtout <<seqname<<":"<<center_left<<"r"<<right<<":";
 
 				}else{
 					assert(center_dir == 1);
 					std::cout << temp.str() <<"has dir = 1" << std::endl;
 					sequence.append(data.extract_reverse_seq_part(center_ref,left,right));
-					longid <<seqname<<":"<<right<<"r"<<left<<":";
+					txtout <<seqname<<":"<<right<<"r"<<left<<":";
 
 				}
 			}
-			longid<<"l"<<length<<std::endl;
+			txtout <<"l"<<length<<std::endl;
 			std::stringstream this_id;
 			this_id<<it->second;
 			centers.insert(std::make_pair(this_id.str(), sequence));
 		}
 		make_fasta(gout,centers);
-		longid.close();
+		txtout.close();
 	}
 	void write_graph::make_fasta(std::ostream & graphfasta, std::map<std::string, std::string> & centers){
 		for(std::map<std::string, std::string>::iterator it = centers.begin() ; it != centers.end() ; it++){
@@ -2516,6 +2575,8 @@ const size_t mixing_centers::find_right_on_seq(std::string & center,std::map<std
 */
 
 void write_graph::write_maf_record(std::ostream & out, const std::string & src, size_t start, size_t size, char strand, size_t srcSize, const std::string & alignment_part) {
+	std::cout << "s " << src << " " << start << " " << size << " " << strand << " " << srcSize << std::endl;
+
 	out << "s " << src << " " << start << " " << size << " " << strand << " " << srcSize << " " << alignment_part << std::endl;
 }
 
@@ -2922,8 +2983,8 @@ void write_graph::msa_star_al_with_long_centers(const std::vector<std::string> &
 		gout << "#" << std::endl;
 		for(std::map<std::vector<std::string> , std::vector<pw_alignment> >::const_iterator it = new_centers.begin(); it != new_centers.end(); it++){//It includes all the centers
 			std::vector<std::string> longCenter = it->first;
-		//	std::cout<< "this long center: "<<std::endl;
-		//	std::cout<< longCenter << std::endl;
+			std::cout<< "this long center: "<<std::endl;
+			std::cout<< longCenter << std::endl;
 			std::vector<pw_alignment> als = it->second;
 		//	assert(als.size()>0);
 			if(als.size()==0){
@@ -2948,9 +3009,103 @@ void write_graph::msa_star_al_with_long_centers(const std::vector<std::string> &
 			}
 		}
 	}
-	void write_graph::write_graph_gfa(){
+	void write_graph::write_graph_gfa(std::map<int, std::set<int> > & adjacencies , std::ostream & graph_gfa, std::map<std::string, std::vector<pw_alignment> > & alignments_in_a_cluster, std::map<std::string, size_t> & non_aligned_right){
 
-
+		graph_gfa << "H\tVN:Z:1.0" << std::endl;
+	//	graph_gfa << "H" << std::endl;
+		std::map<size_t , std::string> centers; //size_t is the id of a center and std::string is the sequence content of it
+		std::map<std::vector<std::string>, size_t> center_id = mixcenter.get_long_center_id();//All long centers and non aligned regions in between
+		for(std::map<vector<std::string>, size_t >::iterator it = center_id.begin() ; it != center_id.end(); it++){//Go over all the pieces, using long_center_id. 
+			std::vector<std::string> this_center = it->first;
+			graph_gfa << "S\t"<<std::abs(it->second)<<"\t";
+			std::string sequence;
+			size_t length = 0;
+			for(size_t i = 0; i < this_center.size(); i++){
+				std::vector<std::string> center_parts;
+				strsep(this_center.at(i), ":" , center_parts);
+				unsigned int center_dir = atoi(center_parts.at(0).c_str());
+				unsigned int center_ref = atoi(center_parts.at(1).c_str());
+				unsigned int center_left = atoi(center_parts.at(2).c_str());
+				std::string seqname = data.get_seq_name(center_ref);
+				std::stringstream temp;
+				temp<<center_ref<<":"<<center_left;
+				std::string cent = temp.str();
+				size_t right = mixcenter.get_right(cent,alignments_in_a_cluster, non_aligned_right);
+				size_t left = center_left;
+				length +=(right-left)+1;
+				if(center_dir==0){
+				 	sequence.append(data.extract_seq_part(center_ref,left,right));
+				}else{
+					assert(center_dir == 1);
+					sequence.append(data.extract_reverse_seq_part(center_ref,left,right));
+				}
+			}
+			std::stringstream this_id;
+			this_id<<it->second;
+			centers.insert(std::make_pair(it->second, sequence));
+			graph_gfa<<sequence<<std::endl;
+		}
+	//	size_t number = center_id.size(); Apparently it works with no overlap!
+		for(std::map<int, std::set<int> >::iterator adj = adjacencies.begin(); adj != adjacencies.end() ; adj++){
+			if(adj->second.size()>0){
+			//	std::string seq;
+			//	std::map<size_t , std::string>::iterator it = centers.find(std::abs(adj->first));
+			//	assert(it != centers.end());
+			//	char ch = it->second.back();
+			//	if(adj->first < 0){
+			//		ch = dnastring::complement(it->second.at(0));
+			//	}
+				std::set<int> nodes = adj->second;	
+				for(std::set<int>::iterator it1 = nodes.begin(); it1 != nodes.end() ; it1++){
+			//		graph_gfa << "S\t"<< number<< "\t";
+			//		seq += ch;
+			//		it = centers.find(std::abs(*it1));
+			//		assert(it != centers.end());
+			//		char ch1 = it->second.at(0);
+			//		if(*it1 < 0){
+			//			ch1 = dnastring::complement(it->second.back());
+			//		}
+			//		seq += ch1;
+			//		graph_gfa <<seq<<std::endl;
+					if(adj->first > 0){
+					//	graph_gfa << "L\t"<<adj->first<<"\t+\t"<<number<<"\t+\t1M"<<std::endl;
+						graph_gfa << "L\t"<<adj->first<<"\t+\t";
+					}else{
+					//	graph_gfa << "L\t"<<std::abs(adj->first)<<"\t-\t"<<number<<"\t+\t1M"<<std::endl;
+						graph_gfa << "L\t"<<std::abs(adj->first)<<"\t-\t";
+					}
+					if(*it1 > 0){
+					//	graph_gfa <<"L\t"<<number<<"\t+\t"<<*it1<<"\t+\t1M"<<std::endl;	
+						graph_gfa <<*it1<<"\t+\t0M"<<std::endl;							
+					}else{
+					//	graph_gfa <<"L\t"<<number<<"\t+\t"<<(-1*(*it1))<<"\t-\t1M"<<std::endl;						
+						graph_gfa <<*it1<<"\t-\t0M"<<std::endl;			
+					}
+				//	number++;
+				}
+			}
+		}
+		size_t number = center_id.size();
+		std::vector<std::vector<int> > path_on_sequences = mixcenter.get_path();
+		for(size_t i =0; i < path_on_sequences.size() ; i++){
+			graph_gfa<<"P\t"<<number<<"\t";
+			for(size_t j = 0 ; j < path_on_sequences.at(i).size() ; j++){
+				if(path_on_sequences.at(i).at(j)> 0){
+					graph_gfa<< std::abs(path_on_sequences.at(i).at(j))<<"+";
+				}else{
+					graph_gfa<< std::abs(path_on_sequences.at(i).at(j))<<"-";
+				}
+				if(j != path_on_sequences.at(i).size()-1){
+					graph_gfa<<",";
+				}
+			}
+			graph_gfa<<"\t";
+			for(size_t j = 0 ; j < path_on_sequences.at(i).size()-2 ; j++){
+				graph_gfa<<"0M,";
+			}
+			graph_gfa <<"0M"<<std::endl;
+			number++;
+		}
 	}
 
 

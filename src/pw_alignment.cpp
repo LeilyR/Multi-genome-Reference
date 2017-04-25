@@ -30,9 +30,6 @@ pw_alignment::pw_alignment(std::string sample1str, std::string sample2str, size_
 	references.at(0) = sample1reference;
 	references.at(1) = sample2reference;
 
-	assert(!samples.at(0).empty());
-	assert(!samples.at(1).empty());
-
 }
 
 pw_alignment::pw_alignment(const size_t & begin1, const size_t & begin2, const size_t & end1, const size_t & end2, const size_t & reference1, const size_t & reference2):begins(2), ends(2), references(2), costs_cached(false), create_costs(0), modify_costs(0), samples(0)  {
@@ -91,22 +88,14 @@ void  pw_alignment::set_alignment_bits(std::vector<bool> s1, std::vector<bool> s
 /* cut before position
 */
 void pw_alignment::split(bool sample, size_t position, pw_alignment & first_part, pw_alignment & second_part ) const{
-	std::cout << "on ref "<< (size_t)sample << " at "<< position <<std::endl;
 	std::vector<bool> fps1(samples.at(0).size());
 	std::vector<bool> fps2(samples.at(0).size());
 	std::vector<bool> sps1(samples.at(0).size());
 	std::vector<bool> sps2(samples.at(0).size());
-	assert(!samples.at(0).empty());
-	assert(!samples.at(1).empty());
-//	pw_alignment first_part;
-//	pw_alignment second_part;
-	
 	size_t s = 0;
 	size_t s2 = 0;
 	if (sample == true) {
 		if (getbegin1()<getend1()){
-			std::cout << getbegin1()<<std::endl;
-			print();
 			assert(position > getbegin1());
 			assert(position <= getend1());
 				for (size_t i=0; i<samples.at(0).size()/3; ++i){
@@ -353,15 +342,6 @@ void pw_alignment::split(bool sample, size_t position, pw_alignment & first_part
 	
 	
 	}
-//	std::cout<< "first part "<< std::endl;
-//	first_part.print();
-//	std::cout << "second part "<<std::endl;
-//	second_part.print();
-//	std::cout << "-------------"<<std::endl;
-
-	first_part.remove_end_gaps(first_part);//XXX was parte!
-	second_part.remove_end_gaps(second_part);
-
 }
 
 /*
@@ -499,138 +479,6 @@ void pw_alignment::single_ref_intersect(size_t alref, const pw_alignment & other
 
 }
 
-// TODO this can use simulate_split
-void located_alignment::single_ref_intersect(size_t alref, const located_alignment & other, size_t otherref, located_alignment & alresult, located_alignment & otherresult) const {
-	size_t intersect_ref;
-	size_t all, alr, otl, otr;
-	
-	if(alref) {
-		get_lr2(all, alr);
-	} else {
-		get_lr1(all, alr);
-	}
-	if(otherref) {
-		other.get_lr2(otl, otr);
-	} else {
-		other.get_lr1(otl, otr);
-	}
-	assert( all <= otr && otl <= alr);
-	bool alforward = true;
-	bool otforward = true;
-	if(getbegin(alref) > getend(alref)) {
-		alforward = false;
-	}
-	if(other.getbegin(otherref) > other.getend(otherref)) {
-		otforward = false;
-	}
-	if( (all==otl) && (alr==otr) ) {
-		alresult = *this;
-		otherresult = other;
-		return;
-	}
-
-	located_alignment trash1;
-	located_alignment trash2;
-
-	if(all < otl) {
-		if(otr > alr) {
-		// alalalalalal
-		//     otototototot
-		// intersection: otl to alr	
-			if(alforward)
-				this->split(1 - (bool) alref, otl, trash1, alresult);
-			else 
-				this->split(1 - (bool) alref, otl, alresult, trash1);
-			if(otforward)
-				other.split(1 - (bool) otherref, alr + 1, otherresult, trash2);
-			else 
-				other.split(1 - (bool) otherref, alr + 1, trash2, otherresult);
-		} else if (otr < alr) {
-		// alalalalalalalalalal
-		//     otototototot
-		// intersection: otl to otr
-			located_alignment altmp;
-			if(alforward) {
-				this->split(1 - (bool) alref,  otl, trash1, altmp);
-				altmp.split(1 - (bool) alref,  otr + 1, alresult, trash1);
-			} else {
-				this->split(1 - (bool) alref,  otl, altmp, trash1);
-				altmp.split(1 - (bool) alref,  otr + 1, trash1, alresult);
-			}	
-			otherresult = other;
-		} else {
-		// alalalalalalal
-		//       otototot
-		// intersection: otl to alr/otr
-			if(alforward)
-				this->split(1 - (bool) alref, otl, trash1, alresult);
-			else
-				this->split(1 - (bool) alref, otl, alresult, trash1);
-			otherresult = other;
-		}
-	} else if (otl < all) {
-		if( otr > alr) {
-		//       alalala
-		// ototototototototot
-		// intersection: all to alr
-			alresult = *this; 
-			located_alignment ottmp;
-			if(otforward) {
-				other.split(1 - (bool) otherref, all, trash1, ottmp);
-				ottmp.split(1 - (bool) otherref, alr + 1, otherresult, trash1); 
-			} else {
-				other.split(1 - (bool) otherref, all, ottmp, trash1);
-				ottmp.split(1 - (bool) otherref, alr + 1, trash1, otherresult); 
-			}
-		} else if (otr < alr) {
-		//     alalalalalalalal
-		// otototototototot
-		// intersection: all to alr
-			if(alforward)
-				this->split(1 - (bool) alref, otr + 1, alresult, trash1);
-			else 
-				this->split(1 - (bool) alref, otr + 1, trash1, alresult);
-			if(otforward)
-				other.split(1 - (bool) otherref, all, trash2, otherresult);
-			else 
-				other.split(1 - (bool) otherref, all, otherresult, trash2);
-		} else {
-		//   alalalalalalalal
-		// ototototototototot
-		// intersection: all to alr/otr
-			alresult = *this;
-			if(otforward)
-				other.split(1 - (bool) otherref, all, trash2, otherresult);
-			else
-				other.split(1 - (bool) otherref, all, otherresult, trash2);
-		}
-	} else {
-		if( otr > alr) {
-		// alalalalalalal
-		// otototototototototot
-		// intersection: all/otl to alr
-			alresult = *this;
-			if(otforward)
-				other.split(1 - (bool) otherref, alr + 1, otherresult, trash2);
-			else 
-				other.split(1 - (bool) otherref, alr + 1, trash2, otherresult);
-		} else {
-		// alalalalalalalalalalal
-		// otototototototot
-		// intersection: all/otl to otr
-			if(alforward)
-				this->split(1 - (bool) alref, otr + 1, alresult, trash1);
-			else 
-				this->split(1 - (bool) alref, otr + 1, trash1, alresult);
-			otherresult = other;
-		}
-	}
-	
-	
-
-}
-
-
 /*
 	returns true if both references go in the same direction
 */
@@ -640,17 +488,6 @@ bool pw_alignment::is_same_direction() const {
 	return false;
 }
 
-
-bool located_alignment::is_same_direction() const {
-	if(begins.at(0) < ends.at(0) && begins.at(1) < ends.at(1)) return true;
-	if(begins.at(0) > ends.at(0) && begins.at(1) > ends.at(1)) return true;
-	return false;
-}
-
-
-void located_alignment::remove_end_gaps(pw_alignment & res) const {
-	assert(0);
-}
 /*
 
    	remove gap containing columns at the ends of an alignment
@@ -663,8 +500,8 @@ void located_alignment::remove_end_gaps(pw_alignment & res) const {
 */   
 void pw_alignment::remove_end_gaps(pw_alignment & res) const {
 
-//	std::cout << "before gap removal: " << std::endl;
-//	res.print();
+//	std::cout << "reg: " << std::endl;
+//	print();
 //	std::cout << std::endl;
 
 	// get first/last alignment column without gaps
@@ -689,11 +526,9 @@ void pw_alignment::remove_end_gaps(pw_alignment & res) const {
 		char c1;
 		char c2;
 		alignment_col(i, c1, c2);
-	//	std::cout<< " i "<< i << "c1 "<< c1 << " c2 "<<c2 <<std::endl;
 		if(c1=='-') end_gaps1++;
 		if(c2=='-') end_gaps2++;
 		if(c1!='-' && c2!='-') {
-//			std::cout << "here "<<std::endl;
 			last_col = i;
 			break;
 		}
@@ -709,141 +544,56 @@ void pw_alignment::remove_end_gaps(pw_alignment & res) const {
 	assert(end_gaps1==0 || end_gaps2==0);
 
 	res = *this;
-	bool begin_gap = false;
-	bool end_gap = false;
 	// cut alignment first part
 	if(first_col>0) {
-//		pw_alignment gaps;
-//		std::cout<< "begin gap "<<std::endl;
-		begin_gap = true;
-		split_the_gap(first_col,res,start_gaps1,start_gaps2,begin_gap, end_gap);
-/*		if(start_gaps1>0) {//TODO what if both are positive??
+		pw_alignment gaps;
+		if(start_gaps1>0) {
 			if(getbegin2()<getend2()) {
-				std::cout << " split 1 " << getbegin2()+start_gaps1 << std::endl;
-			//	split_the_gap(false, getbegin2()+start_gaps1, res, begin_gap, end_gap);	
-				
+//				std::cout << " split 1 " << std::endl;
+				split(false, getbegin2()+start_gaps1, gaps, res);	
 			} else {
-				std::cout << " split 2 "<< getbegin2()-start_gaps1+1 << std::endl;
-				split_the_gap(false, getbegin2()-start_gaps1+1 res, begin_gap, end_gap);
+//				std::cout << " split 2 " << std::endl;
+				split(false, getbegin2()-start_gaps1+1, gaps, res); // falsch?
 			}
 		} else { // gaps on second ref
 			if(getbegin1()<getend1()) {
-				std::cout << " split 3 "<< getbegin1()+start_gaps2 << std::endl;
-				split_the_gap(true, getbegin1()+start_gaps2, res, begin_gap, end_gap);
+//				std::cout << " split 3 " << std::endl;
+				split(true, getbegin1()+start_gaps2, gaps, res);
 			} else {
-				std::cout << " split 4 "<< getbegin1()-start_gaps2+1 << std::endl;
-				split_with_gap(true, getbegin1()-start_gaps2+1, res, begin_gap, end_gap);
+//				std::cout << " split 4 " << std::endl;
+				split(true, getbegin1()-start_gaps2+1, gaps, res);
 			}
-		}*/
-		begin_gap = false;
+		}
 	}
 	// cut alignment last part
 	if(last_col + 1 < alignment_length()) {
-	//	pw_alignment gaps;
-		end_gap = true;
-		split_the_gap(last_col,res,end_gaps1,end_gaps2,begin_gap, end_gap);
-
-/*		if(end_gaps1>0) {
+		pw_alignment gaps;
+		if(end_gaps1>0) {
 			if(getbegin2()<getend2()) {
-				std::cout << " split 5 "<< getend2()-end_gaps1+1 << std::endl;
-				res.split_the_gap(false, getend2()-end_gaps1+1, res, begin_gap, end_gap);
+//				std::cout << " split 5 " << std::endl;
+				res.split(false, getend2()-end_gaps1+1, res, gaps);
 			} else {
-				std::cout << " split 6 "<< getend2()+end_gaps1 << std::endl;
-				res.split_the_gap(false, getend2()+end_gaps1, res, being_gap, end_gap);
+//				std::cout << " split 6 " << std::endl;
+				res.split(false, getend2()+end_gaps1, res, gaps);
 			}
 		} else { // gaps on first ref
 			if(getbegin1()<getend1()) {
-				std::cout << " split 7 "<< getend1()-end_gaps2+1 << std::endl;
-				res.split_the_gap(true, getend1()-end_gaps2+1, res, begin_gap, end_gap);
+//				std::cout << " split 7 " << std::endl;
+				res.split(true, getend1()-end_gaps2+1, res, gaps);
 			} else {
-				std::cout << " split 8 "<< getend2()+end_gaps2 << std::endl;
-				res.split_the_gap(true, getend2()+end_gaps2, res, begin_gap, end_gap);
+//				std::cout << " split 8 " << std::endl;
+				res.split(true, getend2()+end_gaps2, res, gaps);
 			}
-		}*/
-		end_gap = false;
+		}
 	}
 
 	res.costs_cached = false;
 
-//	std::cout << " after gap removal " << std::endl;
+//	std::cout << " regres " << std::endl;
 //	res.print();
 //	std::cout << std::endl;
 }
-void pw_alignment::split_the_gap(size_t & position , pw_alignment & al , size_t & gap_size1, size_t & gap_size2, bool & begin_gap, bool & end_gap)const{
-//	std::cout << " at "<< position <<std::endl;
-	std::vector<bool> fps1(samples.at(0).size());
-	std::vector<bool> fps2(samples.at(0).size());
-	std::vector<bool> sps1(samples.at(0).size());
-	std::vector<bool> sps2(samples.at(0).size());
-	assert(!samples.at(0).empty());
-	assert(!samples.at(1).empty());
-	pw_alignment first_part;
-	pw_alignment second_part;
-	
-	size_t s = 0;
-	size_t s2 = 0;
-	if(end_gap == true){
-		assert(begin_gap == false);
-		for (size_t i=0; i<=position; ++i){
- 			fps1.at(3*i) = samples.at(0).at(3*i);
-			fps2.at(3*i) = samples.at(1).at(3*i);
-			fps1.at(3*i+1) = samples.at(0).at(3*i+1);
-			fps2.at(3*i+1) = samples.at(1).at(3*i+1);
-			fps1.at(3*i+2) = samples.at(0).at(3*i+2);
-			fps2.at(3*i+2) = samples.at(1).at(3*i+2);
-		}
-		fps1.resize(3*(position+1));
-		fps2.resize(3*(position+1));
-		first_part.set_alignment_bits(fps1,fps2); 
-		first_part.setbegin1(getbegin1());
-		first_part.setbegin2(getbegin2());
-		if(getbegin1()<getend1()){
-			first_part.setend1(getend1()-gap_size2);			
-		}else{
-			first_part.setend1(getend1()+gap_size2);			
-		}
-		if(getbegin2()<getend2()){
-			first_part.setend2(getend2()-gap_size1);
-		}else{
-			first_part.setend2(getend2()+gap_size1);
-		}
-		first_part.setreference1(getreference1());
-		first_part.setreference2(getreference2());
-		al = first_part;
-	}else{
-		assert(end_gap == false && begin_gap == true);		
-		for (size_t i=position;i<samples.at(0).size()/3;++i){
-      			sps1.at(3*(i-position)) = samples.at(0).at(3*i);
-			sps2.at(3*(i-position)) = samples.at(1).at(3*i);
-			sps1.at(3*(i-position)+1) = samples.at(0).at(3*i+1);
-			sps2.at(3*(i-position)+1) = samples.at(1).at(3*i+1);
-			sps1.at(3*(i-position)+2) = samples.at(0).at(3*i+2);
-			sps2.at(3*(i-position)+2) = samples.at(1).at(3*i+2);
-		}
-		sps1.resize(samples.at(0).size()-3*position);
-		sps2.resize(samples.at(0).size()-3*position);
-		second_part.set_alignment_bits(sps1,sps2);
-		if(getbegin1()<getend1()){
-		//	assert(position > getbegin1());
-		//	assert(position <= getend1());
-			second_part.setbegin1(getbegin1()+gap_size2);
-		}else{
-		//	assert(position > getend1());
-		//	assert(position <= getbegin1());
-			second_part.setbegin1(getbegin1()-gap_size2);
-		}
-		if(getbegin2()<getend2()){
-			second_part.setbegin2(getbegin2()+gap_size1);
-		}else{						
-			second_part.setbegin2(getbegin2()-gap_size1);
-		}
-		second_part.setend1(getend1());
-		second_part.setend2(getend2());
-		second_part.setreference1(getreference1());
-		second_part.setreference2(getreference2());
-		al = second_part;
-	}
-}
+
 
 void pw_alignment::get_lr_on_reference(size_t sequence, size_t & left, size_t & right) const {
 	size_t ref_idx = 2;
@@ -870,26 +620,6 @@ void pw_alignment::get_lr1(size_t & left, size_t & right) const {
 }
 
 void pw_alignment::get_lr2(size_t & left, size_t & right) const {
-	left = begins.at(1);
-	right = ends.at(1);
-	if(left > right) {
-		left = ends.at(1);
-		right = begins.at(1);
-	}
-
-}
-
-
-void located_alignment::get_lr1(size_t & left, size_t & right) const {
-	left = begins.at(0);
-	right = ends.at(0);
-	if(left > right) {
-		left = ends.at(0);
-		right = begins.at(0);
-	}
-}
-
-void located_alignment::get_lr2(size_t & left, size_t & right) const {
 	left = begins.at(1);
 	right = ends.at(1);
 	if(left > right) {
@@ -1044,27 +774,6 @@ char pw_alignment::base_translate_back(bool bit1, bool bit2, bool bit3) {
 	size_t pw_alignment::getreference2() const{
 	return references.at(1);
 }
-
-
-size_t located_alignment::getbegin1()const{
-	return begins.at(0);
-}
-size_t located_alignment::getbegin2()const{
-	return begins.at(1);
-}
-size_t located_alignment::getend1()const{
-	return ends.at(0);
-}
-size_t located_alignment::getend2()const{
-	return ends.at(1);
-}
-size_t located_alignment::getreference1() const{
-	return references.at(0);
-}
-size_t located_alignment::getreference2() const{
-	return references.at(1);
-}
-
 	std::vector<bool> pw_alignment::getsample(size_t id)const{
 	return samples.at(id);
 }
@@ -1073,22 +782,11 @@ size_t located_alignment::getreference2() const{
 }
 size_t pw_alignment::getend(size_t id)const{
 	return ends.at(id);
-}	
-size_t located_alignment::getbegin(size_t id)const{
-	return begins.at(id);
 }
-size_t located_alignment::getend(size_t id)const{
-	return ends.at(id);
-}
-
 
 size_t pw_alignment::getreference(size_t id)const{
 	return references.at(id);
 }
-size_t located_alignment::getreference(size_t id)const{
-	return references.at(id);
-}
-
 
 void pw_alignment::get_bits(char& base, std::vector<bool> & three_bits){
 	bool b1,b2,b3;
@@ -1148,35 +846,8 @@ void pw_alignment::setreference1(size_t ref1){
 void pw_alignment::setreference2(size_t ref2){
 	references.at(1)=ref2;
 }
+
 void pw_alignment::print()const{ 
-	std::cout << "al1 seq "<< getreference1() << " b " << getbegin1() << " e " << getend1() <<  " l "  << alignment_length() << std::endl;
-	std::cout << "al2 seq "<< getreference2() << " b " << getbegin2() << " e " << getend2() << std::endl;
-//	if(alignment_length() > 5){
-	size_t counter = 0;
-	size_t counter1 = 0;
-//	for(size_t col = 0; col < 5; col++) {	
-/*	for(size_t col = 0; col < alignment_length(); col++) {
-//	//	if(col < 3 || (alignment_length() - col < 3)) {
-			char c1;
-			char c2;
-			alignment_col(col, c1, c2);
-			std::cout <<col <<"\t"<< c1<<"\t"<<c2<<std::endl;
-			if(c2 == '-'){
-				counter ++;
-			}
-			if(c1 == '-'){
-				counter1 ++;
-			}
-	//	}
-	}*/
-
-//	std::cout << "counter "<<counter << " counter1 "<< counter1 <<std::endl;
-//}
-	
-}
-
-
-void located_alignment::print()const{ 
 	std::cout << "al1 seq "<< getreference1() << " b " << getbegin1() << " e " << getend1() <<  " l "  << alignment_length() << std::endl;
 	std::cout << "al2 seq "<< getreference2() << " b " << getbegin2() << " e " << getend2() << std::endl;
 //	if(alignment_length() > 5){
@@ -1205,7 +876,6 @@ void located_alignment::print()const{
 bool compare_pointer_pw_alignment::operator()(const pw_alignment * a, const pw_alignment *b) const {
 	size_t asmaller = 0;
 	size_t abigger = 1;
-//	std::cout<< a->getreference(0) << " " << a->getreference(1)<<std::endl;
 	if(a->getreference(0) > a->getreference(1)) {
 		asmaller = 1;
 		abigger = 0;
@@ -1342,18 +1012,7 @@ bool compare_pw_alignment::operator()(const pw_alignment &ar, const pw_alignment
 	return false;
 
 }
-bool sort_pw_alignment_by_left::operator() (const pw_alignment &p1, const pw_alignment &p2)const{
-	size_t l1,r1,l2,r2;
-	p1.get_lr2(l1,r1);
-	p2.get_lr2(l2,r2);
-	return (l1 < l2);
-}
-bool sort_pw_alignment_by_right::operator() (const pw_alignment &p1, const pw_alignment &p2)const{
-	size_t l1,r1,l2,r2;
-	p1.get_lr2(l1,r1);
-	p2.get_lr2(l2,r2);
-	return (r1 < r2);
-}
+
 template<typename alignment>
 bool compare_pointer_alignment<alignment>::operator()(const alignment_type * a, const alignment_type *b) const {
 	size_t asmaller = 0;
@@ -1496,6 +1155,35 @@ bool compare_alignment<alignment>::operator()(const alignment_type &ar, const al
 }
 
 
+
+
+bool sort_pw_alignment::operator() (const pw_alignment &p1, const pw_alignment &p2)const{
+	size_t l1,r1,l2,r2;
+	p1.get_lr2(l1,r1);
+	p2.get_lr2(l2,r2);
+	return (l1 <= l2);
+}
+
+bool sort_right_pw_alignment::operator() (const pw_alignment &p1, const pw_alignment &p2)const{
+	size_t l1,r1,l2,r2;
+	p1.get_lr2(l1,r1);
+	p2.get_lr2(l2,r2);
+	return (r1 <= r2);
+}
+
+bool sort_pw_alignment_by_left::operator() (const pw_alignment &p1, const pw_alignment &p2)const{
+	size_t l1,r1,l2,r2;
+	p1.get_lr2(l1,r1);
+	p2.get_lr2(l2,r2);
+	return (l1 < l2);
+}
+bool sort_pw_alignment_by_right::operator() (const pw_alignment &p1, const pw_alignment &p2)const{
+	size_t l1,r1,l2,r2;
+	p1.get_lr2(l1,r1);
+	p2.get_lr2(l2,r2);
+	return (r1 < r2);
+}
+
 void pw_alignment::set_cost(const std::vector<double> & create, const std::vector<double> & modify) const{
 	assert(create.size()==2 && modify.size()==2);
 	create_costs = create;
@@ -1503,9 +1191,6 @@ void pw_alignment::set_cost(const std::vector<double> & create, const std::vecto
 	costs_cached = true;
 }
 
-void pw_alignment::drop_cache() const {
-	costs_cached = false;
-}
 bool pw_alignment::is_cost_cached() const {
 	return costs_cached;
 }
@@ -1523,39 +1208,6 @@ double pw_alignment::get_modify2() const {
 	return modify_costs.at(1);
 }
 
-double located_alignment::get_create1() const {
-	return create_costs.at(0);
-}
-double located_alignment::get_create2() const {
-	return create_costs.at(1);
-}
-double located_alignment::get_modify1() const {
-	return modify_costs.at(0);
-}
-double located_alignment::get_modify2() const {
-	return modify_costs.at(1);
-}
-
-void located_alignment::set_cost(const std::vector<double> & create, const std::vector<double> & modify) const{
-	assert(create.size()==2 && modify.size()==2);
-	create_costs = create;
-	modify_costs = modify; 
-	costs_cached = true;
-}
-
-bool located_alignment::is_cost_cached() const {
-	return costs_cached;
-}
-
-
-std::vector<alblock> & located_alignment::getblocks()const {
-	return blocks;
-}
-
-std::vector<alblock> & pw_alignment::getblocks()const {
-	assert(0);
-	return blocks;
-}
 
 bool pw_alignment::equals(const pw_alignment & al) const {
 	if(al.getreference1()==references.at(0) && al.getreference2()==references.at(1)) {
@@ -1600,11 +1252,10 @@ bool pw_alignment::equals(const pw_alignment & al) const {
 	return false;
 }
 
-/*
+
 pw_alignment & pw_alignment::operator=(const pw_alignment & al) {
 	if(&al!=this) {
 		samples = al.samples;
-		assert(!samples.empty());
 		begins = al.begins;
 		ends = al.ends;
 		references = al.references;
@@ -1613,31 +1264,11 @@ pw_alignment & pw_alignment::operator=(const pw_alignment & al) {
 		create_costs = al.create_costs;
 		modify_costs = al.modify_costs;
 		costs_cached = al.costs_cached;
+// TODO should this also copy located_alignment s
 	}
 
 	return *this;
 }
-
-located_alignment & located_alignment::operator=(const located_alignment & al) {
-	if(&al!=this) {
-		samples = al.samples;
-		assert(samples.empty());
-		begins = al.begins;
-		ends = al.ends;
-		references = al.references;
-		blocks = al.blocks;
-		data = al.data;
-		length = al.length;
-		last_segment = al.last_segment;
-		segments = al.segments;
-		block_cached = al.block_cached;
-
-
-	}
-	return *this;
-}
-*/
-
 char pw_alignment::complement(char & c){
 	switch(c) {
 		case 'a':
@@ -1689,13 +1320,7 @@ char pw_alignment::complement(char & c){
 	}
 	return 'X';
 }
-
-std::vector<bool> located_alignment::reverse_complement(std::vector<bool> & sample) const {
-	assert(0);
-	return std::vector<bool>(0);
-}
-
-std::vector<bool> pw_alignment::reverse_complement(std::vector<bool> & sample) const {
+std::vector<bool> pw_alignment::reverse_complement(std::vector<bool> & sample){
 	std::vector<bool> temp;
 	for(int i =sample.size()-1; i > 1;i--){
 		char s = base_translate_back(sample.at(i-2),sample.at(i-1),sample.at(i));
@@ -1711,21 +1336,46 @@ std::vector<bool> pw_alignment::reverse_complement(std::vector<bool> & sample) c
 	}
 	return temp;
 }
-void pw_alignment::get_reverse(pw_alignment & al) const{
+void pw_alignment::get_reverse(pw_alignment & al){
 	al.references = references;
 	al.ends = begins;
 	al.begins = ends;
 	std::vector< std::vector<bool> >temp = samples;
 	al.samples.at(0) = reverse_complement(temp.at(0)); 
 	al.samples.at(1) = reverse_complement(temp.at(1)); 
-	al.print();
 }
 void pw_alignment::get_reverse_complement_sample(std::vector<std::vector<bool> > & sample){
 	sample.push_back(reverse_complement(samples.at(0)));
 	sample.push_back(reverse_complement(samples.at(1)));
 }
 
-        wrapper::wrapper(){}
+/*        wrapper::wrapper():encodeout("enc1.txt"),al_encode("al_encode1.txt"){
+        }
+        wrapper::~wrapper(){}
+        void wrapper::encode(unsigned int& low, unsigned int& high, unsigned int & total){
+                encodeout << "l"<< low << "h"<< high;
+//              al_encode << " low: "<< low << " high: "<< high <<std::endl;
+
+        }
+        void wrapper::context(int & context){
+		al_encode<<"c"<<context;
+             //   al_encode << "position: " << pos << " context: " <<  context <<std::endl;
+
+        }
+       	decoding_wrapper::decoding_wrapper():decodeout("dec1.txt"),al_decode("al_decode1.txt"){}
+	decoding_wrapper::~decoding_wrapper(){}
+	void decoding_wrapper::decode(unsigned int& low, unsigned int& high, unsigned int & total){
+                decodeout << "l"<< low << "h"<< high;
+//		std::cout << "high in wrapper " << high <<std::endl;
+//              al_decode << " low: "<< low << " high: "<< high <<std::endl;
+        }
+        void decoding_wrapper::decodeContext(int & context){
+		al_decode<<"c"<<context;
+	//	std::cout << "context "<< context << std::endl;
+            //    al_decode << "position: " << pos << " context: " <<  context <<std::endl;
+        }
+*/
+  wrapper::wrapper(){}
         wrapper::~wrapper(){}
         void wrapper::encode(unsigned int& low, unsigned int& high, unsigned int & total, std::ofstream & encodeout){
                 encodeout << "l"<< low << "h"<< high;
@@ -1800,120 +1450,19 @@ located_alignment::located_alignment(const located_alignment & p) {
 	ends = p.ends;
 	references = p.references;
 	costs_cached = p.costs_cached;
-	create_costs = p.create_costs;
-	modify_costs = p.modify_costs;
+       	create_costs = p.create_costs;
+       	modify_costs = p.modify_costs;
 
-	assert(!block_cached.empty());
 
 
 }
 
-located_alignment::located_alignment():costs_cached(false), create_costs(2), modify_costs(2) {}
 
-
-
-located_alignment::located_alignment(const all_data * data, const size_t & allength, const std::vector<segment> & segments, const std::vector<alblock> & bl,const  std::vector<bool> & block_cached, const pw_alignment & p): data(data), length(allength), last_segment(0), segments(segments), block_cached(block_cached), begins(2), ends(2), references(2), costs_cached(false), create_costs(2), modify_costs(2)  {
-	blocks = bl;
-	begins.at(0) = p.getbegin1();
-	begins.at(1) = p.getbegin2();
-	ends.at(0) = p.getend1();
-	ends.at(1) = p.getend2();
-	references.at(0) = p.getreference1();
-	references.at(1) = p.getreference2();
-
-// check that blocks fit
-#ifndef NDEBUG
-	size_t prev_bl = std::numeric_limits<size_t>::max();
-	assert(!blocks.empty());
-	for(size_t i=0; i<blocks.size(); i++) {
-		const alblock & bl = blocks.at(i);
-		if(i==0) {
-			assert(bl.cfrom == 0);
-		} else {
-			assert(bl.cfrom == prev_bl + 1);
-		}
-		prev_bl=bl.cto;
-	}
-
-	size_t lcheck = 0;
-	size_t last_r1, last_r2;
-	size_t last_col = 0;
-	bool r1forward = true;
-	bool r2forward = true;
-	if(p.getbegin1() > p.getend1()) r1forward = false;
-	if(p.getbegin2() > p.getend2()) r2forward = false;
-	for(size_t i=0; i<segments.size(); ++i) {
-		const segment & sg = segments.at(i);
-//		std::cout << " on seg " << i << " fro " << sg.begins[2] << " to " << sg.begins[2] + sg.length -1 << " r1 " << sg.begins[0] << " r2 " << sg.begins[1] << std::endl;
-		lcheck+=sg.length;
-		if(i>0) {
-			size_t gap_r1, gap_r2;
-
-			if(r1forward) {
-				assert(sg.begins[0] > last_r1);
-				gap_r1 = sg.begins[0] - last_r1 - 1;
-			} else {
-				assert(sg.begins[0] < last_r1);
-				gap_r1 = last_r1 - sg.begins[0] - 1;
-			}	
-			if(r2forward) {
-				assert(sg.begins[1] > last_r2);
-				gap_r2 = sg.begins[1] - last_r2 - 1;
-			} else {
-				assert(sg.begins[1] < last_r2);
-				gap_r2 = last_r2 - sg.begins[1] - 1;
-			}	
-			assert(gap_r1==0 || gap_r2==0);
-
-//			std::cout << " gaps r1 " << gap_r1 << " r2 " << gap_r2 << std::endl;	
-			lcheck+=gap_r1;
-			lcheck+=gap_r2;
-			last_col+=gap_r1;
-			last_col+=gap_r2;
-			// current segment fits after gaps
-			assert(sg.begins[2] == last_col + 1);
-			
-			last_col += sg.length;
-		} else {
-			assert(sg.begins[2] == 0);
-			last_col = sg.length - 1;
-		}
-//		std::cout << " after " << i << " last col is " << last_col << std::endl;
-		if(r1forward) {
-			last_r1 = sg.begins[0] + sg.length - 1;
-		} else {
-			last_r1 = sg.begins[0] - sg.length + 1;
-		}
-		if(r2forward) {
-			last_r2 = sg.begins[1] + sg.length - 1;
-		} else {
-			last_r2 = sg.begins[1] - sg.length + 1;
-		}
-
-
-	}
-	assert(lcheck == length);
-	assert(last_col + 1 == length || length == 0);
-
-	assert(blocks.at(blocks.size()-1).cto + 1 == length);
-
-
-//	std::cout << "DONE " << std::endl;
-#endif
-		
-}
 
 /*
 	create from pairwise alignment. la is always without gaps at ends
 */
-located_alignment::located_alignment(const all_data * data, const pw_alignment & p): data(data), length(p.alignment_length()), last_segment(0), begins(2), ends(2), references(2), costs_cached(false), create_costs(2), modify_costs(2) {
-	begins.at(0) = p.getbegin1();
-	begins.at(1) = p.getbegin2();
-	ends.at(0) = p.getend1();
-	ends.at(1) = p.getend2();
-	references.at(0) = p.getreference1();
-	references.at(1) = p.getreference2();
-
+located_alignment::located_alignment(const all_data * data, const pw_alignment & p): data(data), length(p.alignment_length()), last_segment(0), pw_alignment(p.getbegin1(), p.getbegin2(), p.getend1(), p.getend2(), p.getreference1(), p.getreference2()) {
 // separate content of p into segments without gap
 	size_t last_begin1 = std::numeric_limits<size_t>::max();
 	size_t last_begin2 = std::numeric_limits<size_t>::max();
@@ -1927,7 +1476,7 @@ located_alignment::located_alignment(const all_data * data, const pw_alignment &
 	size_t in_seg_l = 0;
 	size_t r1_gap_l = 0;
 	size_t r2_gap_l = 0;
-// TODO check if gaps at beginning are handled correctly
+
 //	std::cout << " r fr al  len " << length << std::endl;
 	for(size_t i=0; i<p.alignment_length(); ++i) {
 		char c1;
@@ -2046,73 +1595,6 @@ located_alignment::located_alignment(const all_data * data, const pw_alignment &
 //		std::cout << " s " << i << " c " << s.begins[2] << " l " << s.length << " to " << s.begins[2] + s.length -1 << " r1 " << s.begins[0] << " r2 " << s.begins[1] << std::endl;
 
 	}
-
-
-#ifndef NDEBUG
-
-	size_t lcheck = 0;
-	size_t last_r1, last_r2;
-	size_t last_col = 0;
-	for(size_t i=0; i<segments.size(); ++i) {
-		const segment & sg = segments.at(i);
-//		std::cout << " on seg " << i << " fro " << sg.begins[2] << " to " << sg.begins[2] + sg.length -1 << " r1 " << sg.begins[0] << " r2 " << sg.begins[1] << std::endl;
-		lcheck+=sg.length;
-		if(i>0) {
-			size_t gap_r1, gap_r2;
-
-			if(r1forward) {
-				assert(sg.begins[0] > last_r1);
-				gap_r1 = sg.begins[0] - last_r1 - 1;
-			} else {
-				assert(sg.begins[0] < last_r1);
-				gap_r1 = last_r1 - sg.begins[0] - 1;
-			}	
-			if(r2forward) {
-				assert(sg.begins[1] > last_r2);
-				gap_r2 = sg.begins[1] - last_r2 - 1;
-			} else {
-				assert(sg.begins[1] < last_r2);
-				gap_r2 = last_r2 - sg.begins[1] - 1;
-			}	
-			assert(gap_r1==0 || gap_r2==0);
-
-//			std::cout << " gaps r1 " << gap_r1 << " r2 " << gap_r2 << std::endl;	
-			lcheck+=gap_r1;
-			lcheck+=gap_r2;
-			last_col+=gap_r1;
-			last_col+=gap_r2;
-			// current segment fits after gaps
-			assert(sg.begins[2] == last_col + 1);
-			
-			last_col += sg.length;
-		} else {
-			assert(sg.begins[2] == 0);
-			last_col = sg.length - 1;
-		}
-//		std::cout << " after " << i << " last col is " << last_col << std::endl;
-		if(r1forward) {
-			last_r1 = sg.begins[0] + sg.length - 1;
-		} else {
-			last_r1 = sg.begins[0] - sg.length + 1;
-		}
-		if(r2forward) {
-			last_r2 = sg.begins[1] + sg.length - 1;
-		} else {
-			last_r2 = sg.begins[1] - sg.length + 1;
-		}
-
-
-	}
-	assert(lcheck == length);
-	assert(last_col + 1 == length || length == 0);
-
-
-#endif
-
-
-
-
-
 
 	make_blocks();
 }
@@ -2415,6 +1897,10 @@ void pw_alignment::alignment_position(size_t col, size_t & r1pos, size_t & r2pos
 	assert(0);
 }
 
+std::vector<alblock> & pw_alignment::getblocks() const {
+	return blocks;
+}
+
 void located_alignment::set_block_cached(const size_t & bl) const {
 	block_cached.at(bl) = true;
 }
@@ -2427,8 +1913,6 @@ void located_alignment::printseg() const {
 	bool r2forward = true;
 	if(begins.at(0) > ends.at(0)) r1forward = false;
 	if(begins.at(1) > ends.at(1)) r2forward = false;
-
-	std::cout << " references " << references.at(0) << " " << references.at(1) << std::endl;
 
 	for(size_t i=0; i<segments.size(); ++i) {
 		segment s = segments.at(i);
@@ -2445,7 +1929,7 @@ void located_alignment::printseg() const {
 		}
 		
 		
-		std::cout << " seg " << i << " r1 " << s.begins[0] << " to " << r1to << " r2 " << s.begins[1] << " to " << r2to << " col " << s.begins[2] << " to " << s.begins[2] + s.length -1 << " len " << s.length << std::endl;
+//		std::cout << " seg " << i << " r1 " << s.begins[0] << " to " << r1to << " r2 " << s.begins[1] << " to " << r2to << " col " << s.begins[2] << " to " << s.begins[2] + s.length -1 << " len " << s.length << std::endl;
 		if(i+1 < segments.size()) {
 			segment n = segments.at(i+1);
 			size_t gc = n.begins[2] - s.begins[2] - s.length;
@@ -2460,7 +1944,7 @@ void located_alignment::printseg() const {
 			} else {
 				g2 = s.begins[1] - n.begins[1] - n.length;
 			}
-			std::cout << " gaps   r1 " << g1 << " r2 " << g2 << " col " << gc << std::endl; 
+//		std::cout << " gaps   r1 " << g1 << " r2 " << g2 << " col " << gc << std::endl; 
 		}  
 
 	}
@@ -2481,11 +1965,6 @@ bool pw_alignment::onlyGapSample() const {
                        }               
                }
                return gapOnSample1 || gapOnSample2;
-}
-	
-// TODO
-bool located_alignment::onlyGapSample() const {
-	return false;
 }
 
 /* old code compatibility function, this is slow
@@ -2526,8 +2005,7 @@ void pw_alignment::simulate_split(const size_t & al_ref, const size_t & position
        size_t speleft = (size_t) -1;
        size_t speright = (size_t) -1;
        if(!fgaps) {
-            //  fp.remove_end_gaps(fpe);
-		fpe = fp;
+               fp.remove_end_gaps(fpe);
                if(al_ref)
                        fpe.get_lr1(fpeleft, fperight);
                else
@@ -2539,8 +2017,7 @@ void pw_alignment::simulate_split(const size_t & al_ref, const size_t & position
 #endif
                }
                if(!sgaps) {
-//                       sp.remove_end_gaps(spe);
-			spe = sp;
+                       sp.remove_end_gaps(spe);
                        if(al_ref)
                                spe.get_lr1(speleft, speright);
                        else 
@@ -2674,408 +2151,8 @@ void located_alignment::simulate_split(const size_t & ref, const size_t & pos, s
 
 }
 
-/*
-	cut_col ist the first column that we keep
-*/
-void located_alignment::use_blocks_from(const size_t & cut_col, std::vector<alblock> & blo, std::vector<bool> & blcache) const {
-		size_t gap_to = alignment_length() - 1; // we have to fill the gap until this column using blocks
-		size_t keep_from = blocks.size(); // first block that we keep
-		for(size_t i=0; i<blocks.size(); ++i) {
-			const alblock & bl = blocks.at(i);
-			if(bl.cfrom > cut_col) {
-				gap_to = bl.cfrom - 1;
-				keep_from = i;
-			}
-		}
-		
-		size_t gap_from = cut_col;
-		size_t gapl = gap_to - gap_from  +1;
-		// if gap is short we destroy a block to integrate gap into it
-		if(gapl < ALIGNMENT_BLOCK_SIZE) {
-			if(keep_from < blocks.size()) {
-				keep_from++;
-				if(keep_from < blocks.size()) {
-					gap_to = blocks.at(keep_from).cfrom - 1;
-				} else {	
-					gap_to = alignment_length() - 1;
-				}
-				gapl = gap_to - gap_from  + 1;
-			}
-		}
-		// make new blocks from gap
-		while(gapl > 0) {
-			alblock nb;
-			if(gapl >= 2*ALIGNMENT_BLOCK_SIZE) {
-				nb.cfrom = gap_from;
-				nb.cto = gap_from + ALIGNMENT_BLOCK_SIZE - 1;
-			} else {
-				nb.cfrom = gap_from;
-				nb.cto = gap_to;
-			} 	
-			gap_from = nb.cto + 1;
-			gapl = gap_to - gap_from + 1;
-			nb.cfrom -= cut_col; // change coordinate to new alignment from cut_col
-			nb.cto -= cut_col;
-			blo.push_back(nb);
-			blcache.push_back(false);
-		}
-		
-		for(size_t i=keep_from; i<blocks.size(); ++i) {
-			alblock bl = blocks.at(i);
-			bl.cfrom -= cut_col;
-			bl.cto -= cut_col;
-			blo.push_back(bl);
-			blcache.push_back(block_cached.at(i));
-		}
-
-
-}
-
-
-/*
-
-	cut_col is the first alignment column that we dont take
-
-*/
-void located_alignment::use_blocks_to(const size_t & cut_col, std::vector<alblock> & blo, std::vector<bool> & blcache) const {
-
-	size_t gap_from = length; // first alignment column in gap
-	size_t blocks_used = blocks.size(); // complete blocks could be reused until here
-	size_t gapl = length;
-	for(size_t i=0; i<blocks.size(); ++i) {
-		const alblock & bl = blocks.at(i);
-//		std::cout << " prev block fro " << bl.cfrom << " to " << bl.cto << std::endl;
-		if(bl.cto < cut_col) {
-			blo.push_back(blocks.at(i));
-			blcache.push_back(block_cached.at(i));
-			gap_from = bl.cto + 1;
-			gapl = cut_col - gap_from;
-			blocks_used = i;
-//			std::cout << " USE " << i << std::endl;
-		}
-	}
-	if(gapl == length) {
-		gapl = cut_col;
-		gap_from = 0;
-	} else {
-	// if gap is too short, we make it larger by destroying a block
-		if(gapl < ALIGNMENT_BLOCK_SIZE) {
-			if(blocks_used < blocks.size()) {
-				gap_from = blocks.at(blocks_used).cfrom;
-				blo.pop_back();
-				blcache.pop_back();
-				gapl = cut_col - gap_from;
-			}
-		}
-	}
-
-//	std::cout << " blocks for gap from " << gap_from << " to " << cut_col << std::endl;
-	while(gapl > 0) {
-		alblock nb;
-		nb.cfrom = gap_from;
-		if(gapl >= 2*ALIGNMENT_BLOCK_SIZE) {
-			nb.cto = gap_from + ALIGNMENT_BLOCK_SIZE - 1;
-			gap_from = nb.cto + 1;
-		} else {
-			nb.cto = cut_col - 1;
-			gap_from = cut_col;
-		}
-		gapl = cut_col - gap_from;
-
-//		std::cout << " new block from " << nb.cfrom << " to " <<nb.cto<<std::endl;
-		blo.push_back(nb);
-		blcache.push_back(false);
-	}
-}
-
 void located_alignment::split(bool sample, size_t pos, located_alignment & first_part, located_alignment & second_part) const {
        size_t ref = 1 - (size_t) sample;
        assert(ref < 2);
-
-
-	size_t l, r;
-	if(ref == 0) {
-		get_lr1(l,r);
-	}
-	if(ref == 1) {
-		get_lr2(l,r);
-	}
-
-	assert(l<=pos);
-	assert(pos<=r);
-
-	size_t split_col;
-	get_column(ref, pos, split_col);
-	size_t r1pos, r2pos;
-	char c1, c2;
-	alignment_col(split_col, c1, c2, r1pos, r2pos);
-	size_t segid = last_segment;
-	const segment & seg = segments.at(segid);
-
-//     std::cout << " simulate split at " << split_col << " r1 " << r1pos << " r2 " << r2pos << " content " << c1 << " " << c2 << std::endl;
-//     printseg();
-
-	
-	bool rforward = true;
-	bool oforward = true;
-	if(begins.at(ref) > ends.at(ref)) rforward = false;
-	if(begins.at(1-ref) > ends.at(1-ref)) oforward = false;
-	
-	size_t seg_l, seg_r;
-	if(rforward) {
-		seg_l = seg.begins[ref];
-		seg_r = seg_l + seg.length - 1;
-	} else {
-		seg_r = seg.begins[ref];
-		seg_l = seg_r - seg.length + 1;
-	}
-//  	std::cout << " split point on ref " << pos << " close to segment l " << seg_l << " r " << seg_r << std::endl;	
-
-	if(seg_l < pos && pos <= seg_r) { // we would cut within seg
-		// cut before cut_col within the segment (at first cut_col is relative to seg)
-		size_t cut_col;
-		if(rforward) {
-			cut_col = pos - seg.begins[ref];	
-		} else {
-			cut_col = seg.begins[ref] - pos + 1;
-		}
-//		std::cout << " cut in that segment before column  " << cut_col<< std::endl;
-		assert(cut_col > 0 && cut_col < seg.length); // assert cut_col in that segment
-
-// we split in segment seg to create segf and segs
-		segment segf;
-		segment segs;
-		
-		segf.begins[2] = seg.begins[2];
-		segf.length = cut_col;
-//		segs.begins[2] = seg.begins[2] + cut_col;
-		segs.length = seg.length - cut_col;
-
-		assert(segf.length + segs.length == seg.length);
-
-
-		size_t fbr, fbo, fer, feo, sbr, sbo, ser, seo; // new borders for first and second part on references ref and other (for the whole alignment)
-
-		if(rforward) {
-			segf.begins[ref] = seg.begins[ref];
-			segs.begins[ref] = seg.begins[ref] + cut_col;  
-
-			fbr = begins.at(ref);
-			fer = segf.begins[ref] + segf.length - 1;
-			sbr = segs.begins[ref];
-			ser = ends.at(ref);
-		} else {
-			segf.begins[ref] = seg.begins[ref];
-			segs.begins[ref] = seg.begins[ref] - segf.length; 
-
-			fbr = begins.at(ref);
-			fer = segf.begins[ref] - segf.length + 1;
-			sbr = segs.begins[ref];
-			ser = ends.at(ref);
-		}
-		if(oforward) {
-			segf.begins[1-ref] = seg.begins[1-ref];
-			segs.begins[1-ref] = seg.begins[1-ref] + cut_col;  
-
-			fbo = begins.at(1-ref);
-			feo = segf.begins[1-ref] + segf.length - 1;
-			sbo = segs.begins[1-ref];
-			seo = ends.at(1-ref);
-		} else {
-			segf.begins[1-ref] = seg.begins[1-ref];
-			segs.begins[1-ref] = seg.begins[1-ref] - segf.length; 
-
-			fbo = begins.at(1-ref);
-			feo = segf.begins[1-ref] - segf.length + 1;
-			sbo = segs.begins[1-ref];
-			seo = ends.at(1-ref);
-		}
-
-
-			
-
-		cut_col += seg.begins[2]; // now relative to whole al begin
-		segs.begins[2] = 0;
-
-		size_t fb1, fb2, fe1, fe2, sb1, sb2, se1, se2; // new borders for first and second part on references 1 and 2 (same order as in *this)
-		if(ref) {
-			fb1 = fbo;
-			fb2 = fbr;
-			fe1 = feo;
-			fe2 = fer;
-			sb1 = sbo;
-			sb2 = sbr;
-			se1 = seo;
-			se2 = ser;
-		} else {
-			fb1 = fbr;
-			fb2 = fbo;
-			fe1 = fer;
-			fe2 = feo;
-			sb1 = sbr;
-			sb2 = sbo;
-			se1 = ser;
-			se2 = seo;
-		}
-	
-		pw_alignment fp_borders(fb1, fb2, fe1, fe2, references.at(0), references.at(1));	
-		pw_alignment sp_borders(sb1, sb2, se1, se2, references.at(0), references.at(1));	
-
-
-		std::vector<segment> fsegments;
-		std::vector<segment> ssegments;
-
-		for(size_t i=0; i<segid; i++) {
-			fsegments.push_back(segments.at(i));
-		}
-		fsegments.push_back(segf);
-		ssegments.push_back(segs);
-		for(size_t i=segid+1; i<segments.size(); ++i) {
-			segment s = segments.at(i);
-			s.begins[2] -= cut_col;
-
-			ssegments.push_back(s);
-		}
-
-		std::vector<alblock> f_blocks; 
-		std::vector<alblock> s_blocks; 
-		std::vector<bool> f_cached;
-		std::vector<bool> s_cached;
-
-// alignment blocks first part
-		use_blocks_to(cut_col, f_blocks, f_cached);
-// alignment blocks second part: (offset it cut_col, cut_col is position 0 in segs alignment)
-		use_blocks_from(cut_col, s_blocks, s_cached);
-
-		first_part = located_alignment(data, cut_col, fsegments, f_blocks, f_cached, fp_borders);
-		second_part = located_alignment(data, length - cut_col, ssegments, s_blocks, s_cached, sp_borders);
-
-
-		return;
-	} 
-// cut in gaps between segf and segs (first and second in alignment space)
-	segment segf;
-	segment segs;
-
-	size_t segf_id;
-
-	if(rforward) {
-		if(pos <= seg_l) {
-			assert(segid > 0);
-			segs = seg;
-			segf = segments.at(segid - 1);
-
-			segf_id = segid - 1;
-		} else {
-			assert(segid + 1 < segments.size());
-			segf = seg;
-			segs = segments.at(segid + 1);
-			segf_id = segid;
-		}
-	} else {
-		if(pos <= seg_l) {	
-			assert(segid + 1 < segments.size());
-			segf = seg;
-			segs = segments.at(segid + 1);
-			segf_id = segid;
-		} else {
-			assert(segid > 0);
-			segs = seg;
-			segf = segments.at(segid - 1);
-
-			segf_id = segid-1;
-		}
-	}
-
-	// all blocks until here for first part
-	size_t segf_to = segf.begins[2] + segf.length - 1;
-	// all blocks from here to second part
-	size_t segs_from = segs.begins[2];
-
-// compute blocks
-	std::vector<alblock> f_blocks; 
-	std::vector<alblock> s_blocks; 
-	std::vector<bool> f_cached;
-	std::vector<bool> s_cached;
-
-	use_blocks_to(segf_to + 1, f_blocks, f_cached);
-	use_blocks_from(segs_from, s_blocks, s_cached);
-
-// separate segments
-	std::vector<segment> fsegments;
-	std::vector<segment> ssegments;
-	for(size_t i=0; i<segments.size(); i++) {
-		if(i<=segf_id) {
-			fsegments.push_back(segments.at(i));
-		} else {
-			segment s = segments.at(i);
-			s.begins[2] -= segs_from;
-			ssegments.push_back(s);
-		}
-	}
-
-// compute new alignment borders
-	size_t fbr, fbo, fer, feo, sbr, sbo, ser, seo; // new borders for first and second part on references ref and other
-	fbr = begins.at(ref);
-	fbo = begins.at(1-ref);
-	ser = ends.at(ref);
-	seo = ends.at(1-ref);
-	sbr = segs.begins[ref];
-	sbo = segs.begins[1-ref];
-	if(rforward) {
-		fer = segf.begins[ref] + segf.length - 1;
-	} else {
-		fer = segf.begins[ref] - segf.length + 1;
-	}
-	if(oforward) {
-		feo = segf.begins[1-ref] + segf.length - 1;
-	} else {
-		feo = segf.begins[1-ref] - segf.length + 1;
-	}
-	size_t fb1, fb2, fe1, fe2, sb1, sb2, se1, se2; // new borders for first and second part on references 1 and 2 (same order as in *this)
-	if(ref) {
-		fb1 = fbo;
-		fb2 = fbr;
-		fe1 = feo;
-		fe2 = fer;
-		sb1 = sbo;
-		sb2 = sbr;
-		se1 = seo;
-		se2 = ser;
-	} else {
-		fb1 = fbr;
-		fb2 = fbo;
-		fe1 = fer;
-		fe2 = feo;
-		sb1 = sbr;
-		sb2 = sbo;
-		se1 = ser;
-		se2 = seo;
-	}
-	pw_alignment fp_borders(fb1, fb2, fe1, fe2, references.at(0), references.at(1));	
-	pw_alignment sp_borders(sb1, sb2, se1, se2, references.at(0), references.at(1));	
-
-
-	first_part = located_alignment(data, segf_to + 1, fsegments, f_blocks, f_cached, fp_borders);
-	second_part = located_alignment(data, length - segs_from, ssegments, s_blocks, s_cached, sp_borders);
-
+	assert(0);
 }
-
-void located_alignment::to_pw_alignment(pw_alignment & al) {
-	std::string s1(length, ' '), s2(length, ' ');
-	for(size_t i=0; i<length; ++i) {
-		char c1, c2;
-		alignment_col(i, c1, c2);
-		s1.at(i) = c1;
-		s2.at(i) = c2;
-	}
-	al = pw_alignment(s1, s2, getbegin1(), getbegin2(), getend1(), getend2(), getreference1(), getreference2());
-	if(is_cost_cached()) {
-		al.set_cost(create_costs, modify_costs);
-	}
-
-}
-
-
-
-
