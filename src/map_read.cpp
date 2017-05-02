@@ -491,7 +491,7 @@ void ref_graph::bfs(int & startnode, std::string & refacc, size_t & right_on_ref
 	paths.clear();
 	nodes_on_paths.clear();
 	path_length.clear();
-	std::multimap<int,int> seen;
+	std::set<int> seen;
 	std::map<int, std::set<int> >::iterator adj = adjacencies.find(startnode);//It is possible that a node has no adjacent node
 	if(adj != adjacencies.end()){
 		std::string seq_name = seqname(startnode);
@@ -504,63 +504,155 @@ void ref_graph::bfs(int & startnode, std::string & refacc, size_t & right_on_ref
       				visited.insert(std::make_pair(std::make_pair(it->first,*this_adj),false)); //Was( it->first ,false )
 			}
  		}
-		std::map<int, std::vector<int> > all_paths;
-		all_paths.insert(std::make_pair(startnode,std::vector<int>()));
-		std::vector<int> queue;
-		std::vector<std::pair<int,size_t> > length;
-		length.push_back(std::make_pair(startnode,remainder));
+		std::map<int, std::vector<std::vector<int> > > all_paths;
+		all_paths.insert(std::make_pair(startnode,std::vector<std::vector<int> >()));
+		std::list<int> queue;
+	//	std::map<int,size_t> length;
+		std::map<int, std::vector<std::pair<std::vector<int> , size_t > > > length;
+		std::vector<std::pair<std::vector<int>,size_t> > this_pair;
+		std::vector<int> temp;
+		this_pair.push_back(std::make_pair(temp, remainder));
+		length.insert(std::make_pair(startnode, this_pair));
+		size_t this_length = remainder;
+	//	length.insert(std::make_pair(startnode,remainder));
 	//	std::map<int,bool>::iterator vis=visited.find(startnode);
 	//	assert(vis != visited.end());
 	//	vis->second = true;
 		queue.push_back(startnode);
 		while(!queue.empty()){
-			startnode = queue.back();
+			startnode = queue.front();
 			std::cout << "on node "<< startnode<< std::endl;
-			queue.pop_back();
-			std::pair<int,size_t> this_pair = length.back();
-			size_t this_length = this_pair.second;
-			std::cout << "this length " <<this_length <<std::endl;
-			length.pop_back();
-			if(this_length < MAXGAP){
+			queue.pop_front();
+		//	std::map<int, std::vector<std::pair<std::vector<int> , size_t > > >::iterator len = length.find(startnode); //TODO
+		//	assert(len != length.end());
+		//	size_t this_length = len->second;
+		//	std::cout << "this length " <<this_length <<std::endl;
+		//	if(this_length < MAXGAP)
+		//	if(all_paths.size()!=0){//Its member are removed when they reach MAXGAP
 				std::map<int, std::set<int> >::iterator it = adjacencies.find(startnode);
 				assert(it != adjacencies.end());
 				std::set<int> this_adjs = it->second;
-				std::map<int, std::vector<int> >::iterator this_path = all_paths.find(startnode);
-				assert(this_path !=all_paths.end());
+				std::map<int, std::vector<std::vector<int> > >::iterator this_path = all_paths.find(startnode);
+			/*	if(this_path == all_paths.end()){
+					for(std::map<int, std::vector<std::vector<int> > >::iterator test = all_paths.begin() ; test != all_paths.end() ; test++){
+						std::cout << test->first<<std::endl;
+						std::cout << test->second << std::endl;
+					}
+				}*/
+			//	assert(this_path !=all_paths.end());
+				if(this_path !=all_paths.end()){
+				std::map<int, std::vector<std::pair<std::vector<int> , size_t > > >::iterator pre_len = length.find(startnode);
+				std::cout << pre_len->second << std::endl;
+				assert(pre_len != length.end());
 				bool EXPANDED = false;
 				for(std::set<int>::iterator adj = this_adjs.begin() ; adj != this_adjs.end() ; adj++){
 					std::cout << *adj << std::endl;
 					std::map<std::pair<int,int>, bool>::iterator vis =visited.find(std::make_pair(startnode,*adj));
+					std::cout << "bool "<< int(vis->second)<<std::endl;
 					if(vis->second == false){
 						vis->second = true; 
-						queue.push_back(*adj);
+						std::set<int>::iterator s = seen.find(*adj);
+						if(s == seen.end()){
+							queue.push_back(*adj);
+						}
+						seen.insert(*adj);
 						int adjacent = *adj;
 						std::string adj_name = seqname(adjacent);
 						size_t adj_length = seq_length(adj_name, refacc);
-						length.push_back(std::make_pair(*adj,this_length + adj_length));
-						std::vector<int> subpath = this_path->second;
-						subpath.push_back(startnode);
-						std::cout << subpath <<std::endl;
-						all_paths.insert(std::make_pair(adjacent,subpath));
+						std::cout << adjacent << "adj length" << adj_length <<std::endl;
+					//	len = length.find(*adj);
+					//	assert(len == length.end());
+					//	length.insert(std::make_pair(*adj,this_length + adj_length));
+						std::vector<std::vector<int> >subpath = this_path->second;
+						std::cout << subpath.size() <<std::endl;
+						for(size_t i =0;i < subpath.size();i++){
+							subpath.at(i).push_back(startnode);
+							std::cout<< "Here: "<<subpath.at(i)<<std::endl;
+						}
+						if(subpath.size()==0){
+							std::vector<int> temp;
+							temp.push_back(startnode);
+							subpath.push_back(temp);
+						}
+					//	std::cout << subpath <<std::endl;
+						std::map<int, std::vector<std::vector<int> > >::iterator from_adj = all_paths.find(adjacent);
+						if(from_adj == all_paths.end()){
+							all_paths.insert(std::make_pair(adjacent,std::vector<std::vector<int> >()));
+							from_adj = all_paths.find(adjacent);
+						}
+						assert(from_adj != all_paths.end());
+						for(size_t i =0;i < subpath.size();i++){
+							from_adj->second.push_back(subpath.at(i));
+						}
+						std::map<int, std::vector<std::pair<std::vector<int> , size_t > > >::iterator len = length.find(adjacent);
+						std::vector<std::pair<std::vector<int>,size_t> > this_pair;
+						if(len == length.end()){
+							length.insert(std::make_pair(adjacent, this_pair));
+							len = length.find(adjacent);
+						}
+						assert(len !=length.end());
+						this_pair = pre_len->second;
+						for(size_t i = 0; i < this_pair.size() ;i++){
+							std::pair<std::vector<int>, size_t> p = this_pair.at(i);
+							p.first.push_back(startnode);
+							p.second+=adj_length;
+							std::cout << p.second << std::endl;
+							if(p.second< MAXGAP){
+								len->second.push_back(p);
+							}
+							if(p.second>=MAXGAP){
+								std::cout << "MAX reached! "<<std::endl;
+								std::cout << p.first<<std::endl;
+								std::vector<int> add_to_path = p.first;
+								for(size_t n = 0; n < add_to_path.size() ; n++){
+									nodes_on_paths.insert(add_to_path.at(n));
+								}
+								add_to_path.push_back(adjacent);
+								nodes_on_paths.insert(adjacent);
+								paths.push_back(add_to_path);
+								bool SEEN = false;
+								for(size_t j =0; j < from_adj->second.size() ;j++){
+									if(from_adj->second.size()== 6){
+										std::cout<< from_adj->second.at(j)<<std::endl;
+									}
+									if(from_adj->second.at(j)==p.first){
+										from_adj->second.erase(from_adj->second.begin()+j);
+										SEEN = true;
+										break;
+									}
+								}
+								if(SEEN!=true) std::cout << from_adj->second.size() <<std::endl;
+								assert(SEEN == true);
+							}
+						}
+						if(from_adj->second.size()==0){
+							all_paths.erase(from_adj);
+							//Remove it from the queue
+						}
 						EXPANDED = true;
 					}
 				}
 				if(EXPANDED == true){
 					all_paths.erase(this_path);
 				}
-			}else{
-				std::cout << "end of a path "<<std::endl;
-			}
+}
+		//	}else{
+		//		std::cout << "end of a path "<<std::endl;
+		//	}
 		}
-		for(std::map<int,std::vector<int> >::iterator it = all_paths.begin() ; it != all_paths.end() ; it++){
-			std::vector<int> path = it->second;
-			path.push_back(it->first);
-			paths.push_back(path);
+		std::cout << "HERE!!"<<std::endl;
+	/*	for(std::map<int,std::vector<std::vector<int> > >::iterator it = all_paths.begin() ; it != all_paths.end() ; it++){
+			std::vector<std::vector<int> >path = it->second;
 			for(size_t i =0; i < path.size() ; i++){
-				std::cout << "on node "<< i << std::endl;
-				nodes_on_paths.insert(path.at(i));
-			}		
-		}
+				path.at(i).push_back(it->first);
+				for(size_t j =0; j < path.at(i).size() ; j++){
+					nodes_on_paths.insert(path.at(i).at(j));
+				}
+				paths.push_back(path.at(i));
+				std::cout << "this path "<< path.at(i)<<std::endl;
+			}
+			nodes_on_paths.insert(it->first);		
+		}*/
 	}
 
 
@@ -592,16 +684,18 @@ void als_components::find_als_on_paths(std::ofstream & output,size_t & refacc, s
 //	add_to_end.resize(alignments.size());
 	shortest_path.resize(alignments.size());//Shortest path is found for each component
 	for(size_t i =0; i < alignments.size(); i++){//Over components of alignments between one specific read and the reference graph
-		std::cout << "all als at comp "<< i<< std::endl;
+		std::cout << "all als at comp "<< i << " are " << alignments.size() << std::endl;
 		size_t first_left;
 		std::multiset<pw_alignment,sort_pw_alignment_by_right>::reverse_iterator revit = ordered_als_by_right.at(i).rbegin(); //finds the last alignment of the component
 		pw_alignment last_p = *revit;
 		size_t lastr, lastl;
 		last_p.get_lr2(lastl,lastr);
+		size_t counter = 0;
 		for(std::multiset<pw_alignment,sort_pw_alignment_by_left>::iterator it = alignments.at(i).begin() ; it != alignments.at(i).end(); it++){//For each alignment all of its successors are found
 			pw_alignment p = *it;
 			p.print();
-			std::cout << " "<<std::endl;
+			std::cout << "al number  "<< counter <<std::endl;
+			counter++;
 			size_t l,r;
 			p.get_lr2(l,r);
 			if(it==alignments.at(i).begin()){
@@ -612,7 +706,7 @@ void als_components::find_als_on_paths(std::ofstream & output,size_t & refacc, s
 			std::cout<<"successors size is "<< successors.size()<<std::endl;//Closeer than MAXGAP to the current one
 			if(successors.size() != 0){
 				std::vector<std::vector<int> > paths;
-				get_subgraph(p,paths);//deep_first_search is called in the get_paths function! //TODO 
+				get_subgraph(p,paths);//deep_first_search is called in the get_paths function!
 				std::set<int> nodes = rgraph.get_nodes();//nodes from the ref graph that have less than MAXGAP space to the node that this al is aligned on it
 				std::cout<< "nodes are "<<std::endl;
 				for(std::set<int>::iterator it = nodes.begin(); it!=nodes.end();it++){
@@ -625,15 +719,24 @@ void als_components::find_als_on_paths(std::ofstream & output,size_t & refacc, s
 			std::cout << "find first and last als"<<std::endl;
 			add_first_and_last_als(i,p,first_left,lastr);//Make alignment to add the current al to the start and end node, use NW with the right type--> it can start at any cell on the last row and ends at any cell on the first row (type 3)
 			std::cout << "adj size is "<< adjacencies.size()<<std::endl;
-			for(std::multimap<size_t, size_t>::iterator it = adjacencies.at(i).begin(); it != adjacencies.at(i).end(); it++){
-				std::cout << it->first << " " << it->second << std::endl;
+			for(std::map<size_t, std::set<size_t> >::iterator it = adjacencies.at(i).begin(); it != adjacencies.at(i).end(); it++){
+				std::cout << it->first << " connects to: " << std::endl;
+				for(std::set<size_t>::iterator s = it->second.begin() ; s != it->second.end() ; s++){
+			//		std::cout << *s << " ";
+				}
+				std::cout << " "<<std::endl;
+
 			}
 		}
 		add_expensive_edges(i,refacc,readacc);//i-->component
 
 		std::cout << "adj size is "<< adjacencies.size()<<std::endl;
-		for(std::multimap<size_t, size_t>::iterator it = adjacencies.at(i).begin(); it != adjacencies.at(i).end(); it++){
-			std::cout << it->first << " " << it->second << std::endl;
+		for(std::map<size_t, std::set<size_t> >::iterator it = adjacencies.at(i).begin(); it != adjacencies.at(i).end(); it++){
+			std::cout << it->first << " to: " << std::endl;
+			for(std::set<size_t>::iterator s = it->second.begin() ; s != it->second.end() ; s++){
+				std::cout << *s << " ";
+			}
+			std::cout << " "<<std::endl;
 		}
 		for(std::multimap<const pw_alignment, size_t , compare_pw_alignment>::iterator it = node_indices.at(i).begin(); it != node_indices.at(i).end();it++){
 			std::cout<< it->second << " : " <<std::endl;
@@ -893,7 +996,7 @@ void als_components::look_for_successors_on_paths(size_t & comp, const pw_alignm
 
 		}else{//When they DONT share the same node on the ref graph
 			std::set<int>::iterator it1 = nodes.find(name);
-			if(it1 != nodes.end()){//if the neighbor is  aligned on a close node. NeedlemanWunsch is used to create an alignment for the gap part 
+			if(it1 != nodes.end()){//if the neighbor is  aligned on a close node. NeedlemanWunsch is used to create an alignments for the gap part 
 				std::cout<<"here is one! "<<std::endl;
 				unsigned int reference1 = p.getreference1();
 				std::string from_next_node;
@@ -913,62 +1016,65 @@ void als_components::look_for_successors_on_paths(size_t & comp, const pw_alignm
 					std::cout<<"starts from the beginning of the last node on the path"<<std::endl;
 				}
 				size_t last_remainder = left1;
-				std::string str1 = from_current_node;
-				std::cout<< "str1 size "<< str1.size()<<std::endl;
-				std::vector<size_t> this_refs;
-				std::vector<int> this_path;
-				this_refs.push_back(ref1);
-				append_nodes(paths,name,current_node_name,refacc,this_refs,this_path,str1);//add all the nodes to a string //TODO instead of paths use edges!
-				std::cout<< "str1 length "<< str1.length()<<std::endl;
-				assert(str1.length()<= MAXGAP);
-				std::cout << "from last node length "<< from_next_node.length()<<std::endl;
-				str1.append(from_next_node);
-				this_refs.push_back(reference1);
-				from = r2+1;
-				to = left2-1;//We dont need to check for left2==0 now since we already picked those which are bigger than r2 but if one day we look for overlapped one we should consider that too.
-				std::string str2 = data.extract_seq_part(ref2,from,to);
-				size_t type = 1; //Both ends are fixed.
-				std::string read_out;
-				std::string ref_out;
-				if(str1.length() != 0 && str2.length() !=0 && str1.length()<=MAXGAP){//TODO
-					std::cout<< "str2 " << str2.size() << " str1 "<< str1.size() <<std::endl;
-					assert(str2.length()<=MAXGAP);
-					std::cout << str1 << std::endl;
-					std::cout << str2 << std::endl;
-					needleman<dynamic_mc_model> nl(data, model, str2, str1);
-					nl.run_needleman(readacc,refacc,type,read_out,ref_out);
-					std::cout << "read out size "<<read_out.size() << " ref out size "<<ref_out.size()<<std::endl;
-					std::cout<< "current " << current_remainder << " last "<< last_remainder<<std::endl;
-					make_alignments(comp,from,to,current_al,p,read_out,ref_out, this_refs,this_path,ref2,current_remainder,last_remainder,refacc,readacc);//make als and save them in a container
-				}else if(str1.length()==0 && str2.length()!=0){
-					assert(str2.length()<=MAXGAP);
-					std::string onlygap(str2.length(),'-');
-					std::cout<<"gap on ref graph "<<std::endl;
-					pw_alignment onlygap_al(onlygap,str2,0,from,0,to,data.numSequences()+1,ref2); //basically there is no ref for the gap, i set it to numseq+1.
-					onlygap_al.print();
-					std::cout <<"add adjs: "<<std::endl;
-					add_adjacencies(comp, current_al,onlygap_al,refacc,readacc);
+				std::vector<std::vector<size_t> >all_refs;
+				std::vector<std::vector<int> >all_paths;
+				std::vector<std::string> all_strings_from_ref_graph;
+				append_nodes(nodes,name,current_node_name,reference1, ref1, refacc,all_refs,all_paths,all_strings_from_ref_graph);//add all the nodes to a string 
+				assert(all_strings_from_ref_graph.size()==all_paths.size());
+				assert(all_strings_from_ref_graph.size() == all_refs.size());
+				assert(all_strings_from_ref_graph.size() > 0);
+				for(size_t s = 0; s < all_strings_from_ref_graph.size(); s++){
+					std::string str1 = from_current_node; //Remainder form the current node
+					str1.append(all_strings_from_ref_graph.at(s));
+					std::cout<< "str1 length "<< str1.length()<<std::endl;
+				//	assert(str1.length()<= MAXGAP);
+					std::cout << "from last node length "<< from_next_node.length()<<std::endl;
+					str1.append(from_next_node);
+					std::cout<< "str1 length at the end "<< str1.length()<<std::endl;
+					from = r2+1;
+					to = left2-1;//We dont need to check for left2==0 now since we already picked those which are bigger than r2 but if one day we look for overlapped one we should consider that too.
+					std::string str2 = data.extract_seq_part(ref2,from,to);
 
-					add_adjacencies(comp,onlygap_al,p,refacc,readacc);
-				}else if(str1.length()!=0&&str2.length()==0 && str1.length()<=MAXGAP){
-					assert(str2.length()<=MAXGAP);
-					std::string onlygap(str1.length(),'-');
-					std::cout<< str1.length()<<std::endl;
-					from = r2;
-					if(r2 == data.getSequence(ref2).length()){//It is unnecessary here i guess, since we always started with an ungapped alignment
-						from = l2;
+					size_t type = 1; //Both ends are fixed.
+					std::string read_out;
+					std::string ref_out;
+
+					if(str1.length() != 0 && str2.length() !=0 && str1.length()<=MAXGAP){
+						std::cout<< "str2 " << str2.size() << " str1 "<< str1.size() <<std::endl;
+						assert(str2.length()<=MAXGAP);
+						std::cout << str1 << std::endl;
+						std::cout << str2 << std::endl;
+						needleman<dynamic_mc_model> nl(data, model, str2, str1);
+						nl.run_needleman(readacc,refacc,type,read_out,ref_out);
+						std::cout << "read out size "<<read_out.size() << " ref out size "<<ref_out.size()<<std::endl;
+						std::cout<< "current " << current_remainder << " last "<< last_remainder<<std::endl;
+						make_alignments(comp,from,to,current_al,p,read_out,ref_out, all_refs.at(s),all_paths.at(s),ref2,current_remainder,last_remainder,refacc,readacc);//makes als and save them in a container
+					}else if(str1.length()==0 && str2.length()!=0){
+						assert(str2.length()<=MAXGAP);
+						std::string onlygap(str2.length(),'-');
+						std::cout<<"gap on ref graph "<<std::endl;
+						pw_alignment onlygap_al(onlygap,str2,0,from,0,to,data.numSequences()+1,ref2); //basically there is no ref for the gap, i set it to numseq+1.
+						onlygap_al.print();
+						std::cout <<"add adjs: "<<std::endl;
+						add_adjacencies(comp, current_al,onlygap_al,refacc,readacc);
+						add_adjacencies(comp,onlygap_al,p,refacc,readacc);
+					}else if(str1.length()!=0&&str2.length()==0 && str1.length()<=MAXGAP){
+						assert(str2.length()<=MAXGAP);
+						std::string onlygap(str1.length(),'-');
+						std::cout<< str1.length()<<std::endl;
+						from = r2;
+						if(r2 == data.getSequence(ref2).length()){//It is unnecessary here i guess, since we always started with an ungapped alignment
+							from = l2;
+						}
+						to = data.getSequence(ref2).length();
+						std::cout<< "gap on read "<<std::endl;
+						unsigned int virtual_ref = ref2;
+						make_alignments(comp, from,to,current_al,p,onlygap,str1, all_refs.at(s),all_paths.at(s), virtual_ref,current_remainder,last_remainder,refacc,readacc);//XXX not so sure about this line, might need to write another make_al function to handle this situtation
+					}else if(str1.length()==0 && str2.length()==0){
+						std::cout<< "should be here!"<<std::endl;
+						add_adjacencies(comp, current_al,p,refacc,readacc);
+
 					}
-					to = data.getSequence(ref2).length();
-				//	from = data.getSequence(ref2).length();
-				//	to = data.getSequence(ref2).length();
-					std::cout<< "gap on read "<<std::endl;
-				//	unsigned int virtual_ref = data. numSequences()+2;
-					unsigned int virtual_ref = ref2;
-					make_alignments(comp, from,to,current_al,p,onlygap,str1, this_refs,this_path, virtual_ref,current_remainder,last_remainder,refacc,readacc);//XXX not so sure about this line, might need to write another make_al function to handle this situtation
-				}else if(str1.length()==0 && str2.length()==0){
-					std::cout<< "should be here!"<<std::endl;
-					add_adjacencies(comp, current_al,p,refacc,readacc);
-
 				}
 			}
 		}
@@ -1037,106 +1143,129 @@ void als_components::make_al_on_a_node(size_t & comp, const pw_alignment& first_
 	assert(str1.length() != 0 || str2.length() != 0);
 
 }
-void als_components::get_paths(int & node_name , int & current_node_name, std::vector<std::vector<int> > & paths){
+void als_components::get_paths(const std::set<int> & bfs_nodes, int & node_name , int & current_node_name, std::set<std::vector<int> > & paths){ //TODO do it with adjacencies also when they are read from the te stack add them to a seen container and never add the seen ones to the stack any more to avoid the loop!!
+	std::set<int> seen;
 	std::map<int, std::vector<std::vector<int> > > all_paths;
 	std::vector<int> stack;
-	stack.push_back(node_name);
-	all_paths.insert(std::make_pair(node_name, std::vector<std::vector<int> >()));
+	stack.push_back(current_node_name);
+	all_paths.insert(std::make_pair(current_node_name, std::vector<std::vector<int> >()));
 	while(stack.size() != 0){
-		int this_node = stack.back();
-		stack.pop_back();
-		std::set<int> preds = rgraph.get_predecessor(this_node);
+		int this_node;
+		this_node = stack.at(0);
+		stack.erase(stack.begin());
+		seen.insert(this_node);
+		std::set<int> adjs = rgraph.get_adjacencies(this_node);
+		assert(adjs.size() != 0);
 		std::cout << "thisnode "<< this_node<< std::endl;
-		if(preds.size() != 0){
-			for(std::set<int>::iterator it = preds.begin(); it != preds.end() ; it++){
+		for(std::set<int>::iterator it = adjs.begin(); it != adjs.end() ; it++){
 				std::map<int, std::vector<std::vector<int> > >::iterator node = all_paths.find(this_node);
 				assert(node!=all_paths.end());
-				if(*it != current_node_name){
+				std::set<int>::const_iterator bfsn = bfs_nodes.find(*it);
+				std::set<int>::iterator see = seen.find(*it);
+				if(*it != node_name && bfsn != bfs_nodes.end() && see == seen.end()){
 					stack.push_back(*it);
 				}
-				for(size_t i =0 ; i < node->second.size(); i++){
-					std::vector<int> p  = node->second.at(i);
-					p.push_back(this_node);
-					std::map<int, std::vector<std::vector<int> > >::iterator it1 = all_paths.find(*it);
-					if(it1 == all_paths.end()){
-						all_paths.insert(std::make_pair(*it, std::vector<std::vector<int> >()));
-						it1 = all_paths.find(*it);
+				if(bfsn != bfs_nodes.end()){
+					for(size_t i =0 ; i < node->second.size(); i++){
+						std::vector<int> p  = node->second.at(i);
+						std::cout << "p size "<<p.size()<<std::endl;
+						p.push_back(this_node);
+						std::map<int, std::vector<std::vector<int> > >::iterator it1 = all_paths.find(*it);
+						if(it1 == all_paths.end()){
+							all_paths.insert(std::make_pair(*it, std::vector<std::vector<int> >()));
+							it1 = all_paths.find(*it);
+						}
+						it1->second.push_back(p);
 					}
-					it1->second.push_back(p);
+					if(node->second.size() == 0){
+						std::vector<int> p;
+						p.push_back(this_node);
+						std::map<int, std::vector<std::vector<int> > >::iterator it1 = all_paths.find(*it);
+						assert(it1 == all_paths.end());
+						all_paths.insert(std::make_pair(*it, std::vector<std::vector<int> >()));
+						it1 = all_paths.find(*it);//TODO all_paths contains the same path several times and has to get fixed!!!
+						it1->second.push_back(p);	
+					}
 				}
-				if(node->second.size() == 0){
-					std::vector<int> p;
-					p.push_back(this_node);
-					std::map<int, std::vector<std::vector<int> > >::iterator it1 = all_paths.find(*it);
-					assert(it1 == all_paths.end());
-					all_paths.insert(std::make_pair(*it, std::vector<std::vector<int> >()));
-					it1 = all_paths.find(*it);
-					it1->second.push_back(p);	
-				}
-			}
 		}
 	}
-	std::map<int , std::vector<std::vector<int> > >::iterator it = all_paths.find(current_node_name);
+	std::map<int , std::vector<std::vector<int> > >::iterator it = all_paths.find(node_name);
 	assert(it != all_paths.end());
-	paths = it->second;
+	for(size_t i = 0; i < it->second.size();i++){
+		paths.insert(it->second.at(i));
+	}
 }
-void als_components::append_nodes(std::vector<std::vector<int> > & paths, int & name, int & current_node_name,size_t & refacc , std::vector<size_t> & this_refs, std::vector<int> & this_path, std::string & str1){
+void als_components::append_nodes(const std::set<int> & bfs_nodes ,int & name, int & current_node_name, unsigned int & next_ref_id, unsigned int & current_ref_id, size_t & refacc , std::vector<std::vector<size_t> >& all_refs, std::vector<std::vector<int> >& all_paths, std::vector<std::string> & all_strings){
 	std::string ref_accession = data.get_acc(refacc);
 	std::map< std::string, size_t> longname2seqidx;
 	longname2seqidx = data.getLongname2seqidx();
-	std::vector<std::vector<int> > all_paths;
-	get_paths(name, current_node_name, all_paths);
-	std::cout << "all paths: "<<std::endl;//XXX Attention! It is reversed and doesnt have the first node!!
-	for(size_t i = 0; i < all_paths.size() ; i++){
-		std::cout << all_paths.at(i)<<std::endl;
-		std::cout<< "----------------"<<std::endl;
+	std::vector<std::vector<int> > all_p = rgraph.get_paths();
+//	get_paths(bfs_nodes, name, current_node_name, all_p);
+//	std::cout << "all paths: "<<std::endl;//XXX Attention! It is reversed and doesnt have the first node!!
+//	for(std::set<std::vector<int> >::iterator it =all_p.begin() ; it != all_p.end() ; it++){
+//		std::cout << *it <<std::endl;
+//		std::cout<< "----------------"<<std::endl;
+//	}
+	std::cout << "name !"<<name <<std::endl;
+	std::set<std::vector<int> > PATH;
+	for(size_t i = 0; i < all_p.size(); i++){
+		std::vector<int> temp = all_p.at(i);
+		std::vector<int> this_p;
+		for(size_t j = 0; j < temp.size(); j++){
+			this_p.push_back(temp.at(j));
+			if(temp.at(j)==name) break;
+		}
+		std::cout << this_p <<std::endl;
+		PATH.insert(this_p);
 	}
-	exit(0);
-/*	for(size_t i = 0; i < paths.size();i++){//TODO make the existing paths from the edges, could be several possible paths!
-		for(size_t j = 0; j < paths.at(i).size(); j++){
-			if(paths.at(i).at(j)==name){
-				std::cout<<"j " << j <<std::endl;
-				for(size_t k = 0; k <= j;k++){
-					std::cout<< paths.at(i).at(k) <<std::endl;
-					this_path.push_back(paths.at(i).at(k));
+	std::cout << "PATH size "<< PATH.size()<<std::endl;
+	for(std::set<std::vector<int> >::iterator it =PATH.begin() ; it != PATH.end() ; it++){ //could be more than one path then more than one string !!
+		std::vector<int> this_path = *it;
+	//	this_path.push_back(name);
+		std::vector<size_t> this_refs;
+		this_refs.push_back(current_ref_id);
+		std::string str1;
+		std::cout<< "this path size "<<this_path.size()<<std::endl;
+		std::cout << this_path <<std::endl;
+		if(this_path.size()>2){
+			for(size_t j = 1; j < this_path.size()-1; j++){
+				std::stringstream ss;
+				int index = this_path.at(j);
+				if(index<0){
+					index = -1*index;
 				}
-				break;
+				ss << index;
+				std::string this_name = ss.str();
+				std::string longname = ref_accession + ":"+this_name;
+				std::cout<<longname<<std::endl;
+				std::map<std::string, size_t>::iterator findseq = longname2seqidx.find(longname);
+				assert(findseq != longname2seqidx.end());
+				unsigned int ref = findseq->second;
+				this_refs.push_back(ref);
+				size_t from = 0;
+				size_t to = data.getSequence(ref).length()-1;
+				if(this_path.at(j)<0){
+					std::string temp_in = data.extract_seq_part(ref,from,to);
+					std::string temp_out;
+					get_reverse_complement(temp_in,temp_out);
+					str1.append(temp_out);
+					std::cout << "temp out size "<< temp_out<<std::endl;
+				}else{
+					std::string temp = data.extract_seq_part(ref,from, to);
+					std::cout << "temp size "<< temp.size()<<std::endl;
+					str1.append(data.extract_seq_part(ref, from, to));
+				}
+			//	assert(str1.length() < MAXGAP);
 			}
 		}
-		if(this_path.size()>0){
-			break;
+		this_refs.push_back(next_ref_id);
+		if(str1.length() >= MAXGAP){
+			std::cout << "PATH LENGTH IS LONGER THAN MAXGAP! "<<std::endl;
 		}
-	}*/
-	std::cout<< "this path size "<<this_path.size()<<std::endl;//TODO could be more than one path then more than one one str1 !!
-	if(this_path.size()>2){
-		for(size_t j = 1; j < this_path.size()-1; j++){
-			std::stringstream ss;
-			int index = this_path.at(j);
-			if(index<0){
-				index = -1*index;
-			}
-			ss << index;
-			std::string this_name = ss.str();
-			std::string longname = ref_accession + ":"+this_name;
-			std::cout<<longname<<std::endl;
-			std::map<std::string, size_t>::iterator findseq = longname2seqidx.find(longname);
-			assert(findseq != longname2seqidx.end());
-			unsigned int ref = findseq->second;
-			this_refs.push_back(ref);
-			size_t from = 0;
-			size_t to = data.getSequence(ref).length()-1;
-			if(this_path.at(j)<0){
-				std::string temp_in = data.extract_seq_part(ref,from,to);
-				std::string temp_out;
-				get_reverse_complement(temp_in,temp_out);
-				str1.append(temp_out);
-				std::cout << "temp out size "<< temp_out<<std::endl;
-			}else{
-				std::string temp = data.extract_seq_part(ref,from, to);
-				std::cout << "temp size "<< temp.size()<<std::endl;
-				str1.append(data.extract_seq_part(ref, from, to));
-			}
-			assert(str1.length() < MAXGAP);
+		if(str1.length()<MAXGAP){
+			all_strings.push_back(str1);
+			all_refs.push_back(this_refs);
+			all_paths.push_back(this_path);
 		}
 	}
 }
@@ -1246,12 +1375,16 @@ void als_components::make_alignments(size_t & comp, size_t & begin_on_read, size
 		if(read_counter >0){
 			e2 = begin_on_read + read_counter-1;
 			std::cout<< "b2 "<< b2 << " e2 "<<e2 <<std::endl;
+			if(sample1.length() == 1){
+				std::cout << "sample1 "<<sample1 <<std::endl;
+				std::cout << "sample2 "<<sample2 <<std::endl;
+			}
 			pw_alignment p(sample1,sample2,b1,b2,e1,e2,this_refs.at(i),ref2);
 			std::cout<<"p "<<std::endl;
 			p.print();
 			if(e2 != end_on_read){
 				b2 = e2+1;
-			}else{//TODO
+			}else{//TODO check it!
 				std::cout<< "end of read part is reached! "<<std::endl;
 				b2 = e2;
 			}
@@ -1622,13 +1755,26 @@ void als_components::looking_for_first_al(size_t & comp, const pw_alignment & p,
 		//There will no alignment before this node and it is directly connected to the start node
 		std::multimap<const pw_alignment, size_t, compare_pw_alignment>::iterator it=node_indices.at(comp).find(p);
 		if(it!=node_indices.at(comp).end()){
-			adjacencies.at(comp).insert(std::make_pair(0,it->second));
+			std::map<size_t , std::set<size_t> >::iterator adj = adjacencies.at(comp).find(0);
+			if(adj == adjacencies.at(comp).end()){
+				adjacencies.at(comp).insert(std::make_pair(0, std::set<size_t>()));
+				adj = adjacencies.at(comp).find(0);
+			}
+			adj->second.insert(it->second);
+			//adjacencies.at(comp).insert(std::make_pair(0,it->second));
 		}else{
 			node_indices.at(comp).insert(std::make_pair(p,index));
 			indices_nodes.at(comp).insert(std::make_pair(index,p));
 			index++;
 			it=node_indices.at(comp).find(p);
-			adjacencies.at(comp).insert(std::make_pair(0,it->second));
+			std::map<size_t , std::set<size_t> >::iterator adj = adjacencies.at(comp).find(0);
+			if(adj == adjacencies.at(comp).end()){
+				adjacencies.at(comp).insert(std::make_pair(0, std::set<size_t>()));
+				adj = adjacencies.at(comp).find(0);
+			}
+			adj->second.insert(it->second);
+
+		//	adjacencies.at(comp).insert(std::make_pair(0,it->second));
 		}
 
 		double c1,c2,m1,m2;
@@ -1829,13 +1975,27 @@ void als_components::looking_for_last_al(size_t & comp, const pw_alignment & p, 
 		assert(r2==length-1);
 		std::multimap<const pw_alignment, size_t, compare_pw_alignment>::iterator it=node_indices.at(comp).find(p);
 		if(it!=node_indices.at(comp).end()){
-			adjacencies.at(comp).insert(std::make_pair(it->second,1));
+			std::map<size_t , std::set<size_t> >::iterator adj = adjacencies.at(comp).find(it->second);
+			if(adj == adjacencies.at(comp).end()){
+				adjacencies.at(comp).insert(std::make_pair(it->second, std::set<size_t>()));
+				adj = adjacencies.at(comp).find(it->second);
+			}
+			adj->second.insert(1);
+
+		//	adjacencies.at(comp).insert(std::make_pair(it->second,1));
 		}else{
 			node_indices.at(comp).insert(std::make_pair(p,index));
 			indices_nodes.at(comp).insert(std::make_pair(index,p));
 			index++;
 			it=node_indices.at(comp).find(p);
-			adjacencies.at(comp).insert(std::make_pair(it->second,1));
+			std::map<size_t , std::set<size_t> >::iterator adj = adjacencies.at(comp).find(it->second);
+			if(adj == adjacencies.at(comp).end()){
+				adjacencies.at(comp).insert(std::make_pair(it->second, std::set<size_t>()));
+				adj = adjacencies.at(comp).find(it->second);
+			}
+			adj->second.insert(1);
+
+		//	adjacencies.at(comp).insert(std::make_pair(it->second,1));
 		}
 		weight_of_edges.at(comp).insert(std::make_pair(std::make_pair(it->second,1),0));
 
@@ -2150,13 +2310,40 @@ void als_components::add_adjacencies(size_t & comp, const pw_alignment & p1 , co
 		indices_nodes.at(comp).insert(std::make_pair(index,p2));
 		size_t p2_index = index;
 		index++;
-		adjacencies.at(comp).insert(std::make_pair(p1_index, p2_index));
-		weight_of_edges.at(comp).insert(std::make_pair(std::make_pair(p1_index, p2_index),m1));
+		std::set<int> temp;
+		temp.insert(p2_index);
+		std::map<size_t , std::set<size_t> >::iterator it = adjacencies.at(comp).find(p1_index);
+		if(it == adjacencies.at(comp).end()){
+			adjacencies.at(comp).insert(std::make_pair(p1_index, std::set<size_t>()));
+			it = adjacencies.at(comp).find(p1_index);
+		}
+		it->second.insert(p2_index);
+
+	//	adjacencies.at(comp).insert(std::make_pair(p1_index, temp));
+		std::pair<size_t, size_t> this_pair;
+		this_pair = std::make_pair(p1_index,p2_index);
+		std::map<std::pair<size_t,size_t>,double>::iterator weight = weight_of_edges.at(comp).find(this_pair);
+		if(weight == weight_of_edges.at(comp).end()){
+			weight_of_edges.at(comp).insert(std::make_pair(std::make_pair(p1_index, p2_index),m1));
+		}
 	}else{
 		std::cout<<"else! "<<std::endl;
 		size_t p2_index = it1->second;
-		adjacencies.at(comp).insert(std::make_pair(p1_index, p2_index));
-		weight_of_edges.at(comp).insert(std::make_pair(std::make_pair(p1_index, p2_index),m1));
+		std::cout << p1_index << " to "<< p2_index<<std::endl;
+		std::map<size_t , std::set<size_t> >::iterator it = adjacencies.at(comp).find(p1_index);
+		if(it == adjacencies.at(comp).end()){
+			adjacencies.at(comp).insert(std::make_pair(p1_index, std::set<size_t>()));
+			it = adjacencies.at(comp).find(p1_index);
+		}
+		it->second.insert(p2_index);
+	//	weight_of_edges.at(comp).insert(std::make_pair(std::make_pair(p1_index, p2_index),m1)); 
+		std::pair<size_t, size_t> this_pair;
+		this_pair = std::make_pair(p1_index,p2_index);
+		std::map<std::pair<size_t,size_t>,double>::iterator weight = weight_of_edges.at(comp).find(this_pair);
+		if(weight == weight_of_edges.at(comp).end()){
+			weight_of_edges.at(comp).insert(std::make_pair(std::make_pair(p1_index, p2_index),m1));
+		}
+
 	}
 //	size_t p2_index = it1->second;
 //	adjacencies.at(comp).insert(std::make_pair(p1_index, p2_index));
@@ -2167,7 +2354,14 @@ void als_components::add_adjacencies(size_t & comp, const pw_alignment & p1 , co
 void als_components::add_edge_to_begin(size_t & comp , const pw_alignment & p, size_t & read_acc, size_t & ref_acc){
 	typename std::multimap<const pw_alignment, size_t,compare_pw_alignment >::const_iterator it=node_indices.at(comp).find(p);
 	assert(it != node_indices.at(comp).end());
-	adjacencies.at(comp).insert(std::make_pair(0, it->second));
+	std::map<size_t , std::set<size_t> >::iterator adj = adjacencies.at(comp).find(0);
+	if(adj == adjacencies.at(comp).end()){
+		adjacencies.at(comp).insert(std::make_pair(0, std::set<size_t>()));
+		adj = adjacencies.at(comp).find(0);
+	}
+	adj->second.insert(it->second);
+
+//	adjacencies.at(comp).insert(std::make_pair(0, it->second));
 	double c1,c2,m1,m2;
 //	if(p.getreference1() != data.numSequences()+1 && p.getreference2() != data.numSequences()+2){
 //		model.cost_function(p,c1,c2,m1,m2);
@@ -2182,7 +2376,14 @@ void als_components::add_edge_to_end(size_t & comp , const pw_alignment & p){
 	p.print();
 	typename std::multimap<const pw_alignment ,size_t,compare_pw_alignment>::const_iterator it=node_indices.at(comp).find(p);
 	assert(it != node_indices.at(comp).end());
-	adjacencies.at(comp).insert(std::make_pair(it->second,1));
+	std::map<size_t , std::set<size_t> >::iterator adj = adjacencies.at(comp).find(it->second);
+	if(adj == adjacencies.at(comp).end()){
+		adjacencies.at(comp).insert(std::make_pair(it->second, std::set<size_t>()));
+		adj = adjacencies.at(comp).find(it->second);
+	}
+	adj->second.insert(1);
+
+//	adjacencies.at(comp).insert(std::make_pair(it->second,1));
 	weight_of_edges.at(comp).insert(std::make_pair(std::make_pair(it->second,1),0));
 }
 const pw_alignment & als_components::get_alignment(size_t & comp, size_t & nodeid)const{
@@ -2200,14 +2401,17 @@ void als_components::add_expensive_edges(size_t & comp,size_t & refacc, size_t &
 		p.get_lr2(left2,right2);
 		p.print();
 	//	std::cout<< data.getSequence(p.getreference2()).length()<<std::endl;
-		std::pair<std::multimap<size_t,size_t>::iterator , std::multimap<size_t,size_t>::iterator> this_node = adjacencies.at(comp).equal_range(node);
+	/*	std::pair<std::multimap<size_t,size_t>::iterator , std::multimap<size_t,size_t>::iterator> this_node = adjacencies.at(comp).equal_range(node);
 		std::set<size_t> adjs;
 		for(std::multimap<size_t,size_t>::iterator it1 = this_node.first ; it1 != this_node.second ;it1++){
 			adjs.insert(it1->second);
 			std::cout << it1->second << " ";
 		}
 		std::cout << " "<<std::endl;
-		std::cout << "adjs size "<< adjs.size() <<std::endl;
+		std::cout << "adjs size "<< adjs.size() <<std::endl;*/
+		std::set<size_t> adjs;
+		std::map<size_t , std::set<size_t> >::iterator this_node = adjacencies.at(comp).find(node);
+		adjs = this_node->second;
 		for(typename std::multimap<size_t, const pw_alignment>::const_iterator it1 =indices_nodes.at(comp).begin(); it1 != indices_nodes.at(comp).end() ;it1++){
 			const pw_alignment al = it1->second;
 			size_t l1,l2, r1,r2;
@@ -2226,7 +2430,8 @@ void als_components::add_expensive_edges(size_t & comp,size_t & refacc, size_t &
 				model.cost_function(al, m1, m2, refacc, readacc);
 				std::cout << "m1 "<< m1 << " m2 "<< m2 <<std::endl;
 
-				adjacencies.at(comp).insert(std::make_pair(node, it1->first));
+			//	adjacencies.at(comp).insert(std::make_pair(node, it1->first));
+				this_node->second.insert(it1->first);
 				//These weight of these nodes are added to the weight map
 				std::pair<size_t , size_t> this_edge(node,it1->first);
 				double weight = (MAXGAP/2 * 2.5)+1000; 

@@ -1461,7 +1461,11 @@ void dynamic_mc_model::model_bits_to_full_high_values(const std::map< std::strin
 		model_widths_to_highs(widths, target_total, highs);
 		model_to_costs(bits, model_index, target_total, costs);
 
-	//	std::cout << " high and costs for " << cont << std::endl;
+		std::cout << " high and costs for " ;
+		for(size_t i = 0 ; i < cont.size() ; i++){
+			std::cout << int(cont.at(i))<< " ";
+		}
+		std::cout << " " << std::endl;
 
 
 		lsorted_res.at(len).insert(std::make_pair(cont, std::make_pair(highs, costs)));
@@ -1494,7 +1498,13 @@ void dynamic_mc_model::model_bits_to_full_high_values(const std::map< std::strin
 		const std::vector<double> & costs = it->second.second;
 
 		hv_results.insert(std::make_pair(cont, widths));
-		cost_results.insert(std::make_pair(cont, costs));
+		cost_results.insert(std::make_pair(cont, costs)); //XXX All the non-existing contexts are also added	
+		std::cout << "cost_results"<<std::endl;
+		for(size_t i = 0 ; i < cont.size() ; i++){
+			std::cout << int(cont.at(i))<< " ";
+		}
+		std::cout << " " << std::endl;
+
 	}
 	itime = clock() - itime;
 
@@ -2311,7 +2321,16 @@ void dynamic_mc_model::train_alignment_model() {
 }
 
 		std::cout << " select " << mod_model.size() << " contexts, cost: " << enc_cost << " ( " << (enc_cost/(double) alignment_length_sums.at(a1).at(a2))<< " bits/alignment column)" << std::endl;
-		alignment_models.at(a1).at(a2) = mod_model;
+		alignment_models.at(a1).at(a2) = mod_model;//Contains patterns of different length and doesn't have all the patterns but only those that happened.
+	//	std::cout << "model mod: "<< a1 << " " << a2 <<std::endl;
+	//	if(a1 == 0 && a2 == 1){
+	//		for(std::map<std::string, std::pair<unsigned char, std::vector<uint32_t> > >::iterator it = mod_model.begin() ; it != mod_model.end() ;it++){
+	//			for(size_t i = 0; i < it->first.size() ; i++){
+	//				std::cout << int(it->first.at(i))<< " " ;
+	//			}
+	//			std::cout << " " <<std::endl;
+	//		}
+	//	}
 	}
 
 
@@ -2515,12 +2534,17 @@ void dynamic_mc_model::cost_function(const pw_alignment& p , double & c1 , doubl
 void dynamic_mc_model::cost_function(const pw_alignment& p , double & m1 , double & m2, size_t & acc1 , size_t acc2)const{
         size_t a1 = acc1;
         size_t a2 = acc2;
-        vector<double> ccost(2,0);
+    //   vector<double> ccost(2,0);
         vector<double> mcost(2,0);
 // compute alignment cost
         const std::map< std::string, std::vector<double> > & model12 = alignment_model_costs.at(a1).at(a2);
         const std::map< std::string, std::vector<double> > & model21 = alignment_model_costs.at(a2).at(a1);
-
+	if(p.alignment_length()==1){
+		for(std::map<std::string, std::vector<double> >::const_iterator it = alignment_model_costs.at(a1).at(a2).begin(); it != alignment_model_costs.at(a1).at(a2).end(); it++){
+			std::cout << "con: "<<int(it->first.at(0)) << " "<<int(it->first.at(1))<< " " <<int(it->first.at(2)) << std::endl;
+			std::cout << it->second<<std::endl;
+		}
+	}
         a_reader_costs costs12(model12);
         a_reader_costs costs21(model21);
 
@@ -2529,7 +2553,10 @@ void dynamic_mc_model::cost_function(const pw_alignment& p , double & m1 , doubl
 
         ccost12.read_alignment_1_2(p);
         ccost21.read_alignment_2_1(p);
-
+	if(p.alignment_length()==1){
+		std::cout << costs12.cost_sum << std::endl;
+		exit(0);
+	}
         m1=costs12.cost_sum + alignment_base_cost.at(a1).at(a2);
         m2=costs21.cost_sum + alignment_base_cost.at(a2).at(a1);
 
