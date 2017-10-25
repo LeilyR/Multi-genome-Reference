@@ -784,7 +784,7 @@ void dynamic_mc_model::compute_alignment_model() {
 	for(size_t a1 = 0; a1<data.numAcc(); ++a1) {
 		for(size_t a2 = 0; a2<data.numAcc(); ++a2) {
 			// TODO can we make this faster?
-			std::cout << "al end in model " << a1 << " " << a2 << " " <<  alignments_all_modification_total.at(a1).at(a2) <<std::endl;			
+//			std::cout << "al end in model " << a1 << " " << a2 << " " <<  alignments_all_modification_total.at(a1).at(a2) <<std::endl;			
 			model_bits_to_full_high_values(alignment_models.at(a1).at(a2), alignments_all_modification_total.at(a1).at(a2), MAX_ALIGNMENT_MARKOV_CHAIN_LEVEL+1, alignment_alphabet, alignment_model_highs.at(a1).at(a2), alignment_model_costs.at(a1).at(a2));
 		}
 	}
@@ -804,7 +804,7 @@ void dynamic_mc_model::compute_alignment_model() {
 	alignment_begin_cost.resize(data.numAcc());
 	alignment_end_cost.resize(data.numAcc());
 	alignment_base_cost.resize(data.numAcc());
-	std::cout << "alignment base cost estimate: " << alignment_adress_cost << std::endl;
+//	std::cout << "alignment base cost estimate: " << alignment_adress_cost << std::endl;
 	for(size_t a = 0; a<data.numAcc(); ++a) {
 		alignment_end_cost.at(a).resize(data.numAcc());
 		alignment_base_cost.at(a).resize(data.numAcc());
@@ -813,14 +813,14 @@ void dynamic_mc_model::compute_alignment_model() {
 		size_t al_begin_width = alflag - bases;
 		double al_begin_cost = -log2((double) al_begin_width / (double) TOTAL_FOR_ENCODING);
 		alignment_begin_cost.at(a) = al_begin_cost;
-		std::cout << "acc "<< a << " alignment begin cost estimate " << alignment_begin_cost.at(a) << std::endl;
+	//	std::cout << "acc "<< a << " alignment begin cost estimate " << alignment_begin_cost.at(a) << std::endl;
 		for(size_t a2 =0; a2<data.numOfAcc(); ++a2) {
 			size_t al_mods = alignments_all_modification_total.at(a).at(a2);
 			size_t al_end_width = TOTAL_FOR_ENCODING - al_mods;
 			double al_end_cost = -log2((double) al_end_width / (double) TOTAL_FOR_ENCODING);
 			alignment_end_cost.at(a).at(a2) = al_end_cost;
 			alignment_base_cost.at(a).at(a2) = alignment_adress_cost + alignment_begin_cost.at(a) + alignment_end_cost.at(a).at(a2);
-			std::cout << " acc " << a << " to acc " << a2 << " alignment end cost estimate " << alignment_end_cost.at(a).at(a2) <<  " total base cost " << alignment_base_cost.at(a).at(a2) << std::endl;
+	//		std::cout << " acc " << a << " to acc " << a2 << " alignment end cost estimate " << alignment_end_cost.at(a).at(a2) <<  " total base cost " << alignment_base_cost.at(a).at(a2) << std::endl;
 		}
 	}
 
@@ -847,7 +847,7 @@ void dynamic_mc_model::compute_alignment_model_decoding(){
 	alignment_model_costs = std::vector<std::vector<std::map<std::string, std::vector<double> > > > (data.numOfAcc(), std::vector<std::map<std::string, std::vector<double> > >(data.numOfAcc()));
 	for(size_t a1 = 0; a1<data.numOfAcc(); ++a1) {
 		for(size_t a2 = 0; a2<data.numOfAcc(); ++a2) {
-			std::cout << "al end in model " << a1 << " " << a2 << " " <<  alignments_all_modification_total.at(a1).at(a2) <<std::endl;			
+	//		std::cout << "al end in model " << a1 << " " << a2 << " " <<  alignments_all_modification_total.at(a1).at(a2) <<std::endl;			
 			model_bits_to_full_high_values(alignment_models.at(a1).at(a2), alignments_all_modification_total.at(a1).at(a2), MAX_ALIGNMENT_MARKOV_CHAIN_LEVEL+1, alignment_alphabet, alignment_model_highs.at(a1).at(a2), alignment_model_costs.at(a1).at(a2));
 			for(std::map<std::string, std::vector<uint32_t> >::iterator it = alignment_model_highs.at(a1).at(a2).begin();it != alignment_model_highs.at(a1).at(a2).end();it++){
 				assert(it->second.at(it->second.size()-1) <=  alignments_all_modification_total.at(a1).at(a2));
@@ -917,7 +917,7 @@ void dynamic_mc_model::train_sequence_model() {
 		size_t acc_sequence_ends = data.getAcc(acc).size()+1;// +1 is added to be used as the end of accession flag
 #pragma omp critical(count_results)
 {
-		std::cout << "on acc " << acc << " there are " << al_on_this_acc << " half alignments " << acc_num_bases << " bases and " << acc_sequence_ends << " sequence ends " << std::endl;
+	//	std::cout << "on acc " << acc << " there are " << al_on_this_acc << " half alignments " << acc_num_bases << " bases and " << acc_sequence_ends << " sequence ends " << std::endl;
 		if(al_on_this_acc < 1 ) al_on_this_acc = 1;
 		assert(acc_num_bases>0);
 		size_t total = acc_sequence_ends + al_on_this_acc + acc_num_bases;
@@ -1461,11 +1461,11 @@ void dynamic_mc_model::model_bits_to_full_high_values(const std::map< std::strin
 		model_widths_to_highs(widths, target_total, highs);
 		model_to_costs(bits, model_index, target_total, costs);
 
-		std::cout << " high and costs for " ;
-		for(size_t i = 0 ; i < cont.size() ; i++){
-			std::cout << int(cont.at(i))<< " ";
-		}
-		std::cout << " " << std::endl;
+	//	std::cout << " high and costs for " ;
+	//	for(size_t i = 0 ; i < cont.size() ; i++){
+	//		std::cout << int(cont.at(i))<< " ";
+	//	}
+	//	std::cout << " " << std::endl;
 
 
 		lsorted_res.at(len).insert(std::make_pair(cont, std::make_pair(highs, costs)));
@@ -1499,11 +1499,11 @@ void dynamic_mc_model::model_bits_to_full_high_values(const std::map< std::strin
 
 		hv_results.insert(std::make_pair(cont, widths));
 		cost_results.insert(std::make_pair(cont, costs)); //XXX All the non-existing contexts are also added	
-		std::cout << "cost_results"<<std::endl;
-		for(size_t i = 0 ; i < cont.size() ; i++){
-			std::cout << int(cont.at(i))<< " ";
-		}
-		std::cout << " " << std::endl;
+	//	std::cout << "cost_results"<<std::endl;
+	//	for(size_t i = 0 ; i < cont.size() ; i++){
+	//		std::cout << int(cont.at(i))<< " ";
+	//	}
+	//	std::cout << " " << std::endl;
 
 	}
 	itime = clock() - itime;

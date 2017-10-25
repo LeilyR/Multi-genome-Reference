@@ -1574,8 +1574,8 @@ void initial_alignment_set<T,overlap_type>::compute_simple_lazy_splits(overlap_t
 #if PRINT
 		std::cout << "on alignment " << i << std::endl;
 		cout << " start recursive lazy insert tree on " << endl;
-		al->print();
-		cout << endl;
+	//	al->print();
+	//	cout << endl;
 #endif
 
 		std::vector<pw_alignment> ins_als;
@@ -3069,7 +3069,7 @@ void affpro_clusters<tmodel,overlap_type>::add_alignment(const pw_alignment & al
 	}
 	
 //	std::cout<<"data2 ad in add_al: "<< & dat << std::endl;	
-	std::cout << "ref1 id" << ref1idx <<" ref2 id "<< ref2idx<<std::endl;
+//	std::cout << "ref1 id" << ref1idx <<" ref2 id "<< ref2idx<<std::endl;
 	// enlarge similarity matrix
 	size_t max = ref1idx;
 	if(ref2idx > max) {

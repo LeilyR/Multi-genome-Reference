@@ -538,10 +538,10 @@ void two_edge_cc::make_two_edge_graph(std::vector<std::set<const pw_alignment*,c
 		if(it->second == -1){
 			count ++;
 			find_bridges(alignments.at(i));  
-			std::cout<< count << std::endl;
+		//	std::cout<< count << std::endl;
 		}else{
 			count1 ++;
-			std::cout << "seen! "<< count1 <<std::endl;
+//			std::cout << "seen! "<< count1 <<std::endl;
 		}
 	}
 	std::cout<<"bridges were found! "<<std::endl;

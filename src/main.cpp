@@ -2992,10 +2992,11 @@ int do_dynamic_mc_model_with_two_edge(int argc, char * argv[]) {
 
 	clock_t cc_comp_time = clock();
 	double fraction = 0.99;
-	while(fraction > 0.50){
+	while(fraction > 0.50){ //TODO change the remainder to a copy instead of a pointer!
 		std::set<const pw_alignment* , compare_pointer_pw_alignment> ccs; 
 		std::cout << "fraction is "<< fraction << " run on " << remainders.size()<<std::endl;
-		cccs.non_recursive_compute(ccs,remainders,fraction); //A graph of als with 95% overlap is made.
+
+		cccs.non_recursive_compute(ccs,remainders,fraction); //A graph of als with fraction% overlap is made.
 		remainders = cccs.get_remaining_als();//XXX is faster if fill it in at the same time with running "non_recursive_compute"
 		cc_comp_time = clock() - cc_comp_time;
 
@@ -3023,7 +3024,7 @@ int do_dynamic_mc_model_with_two_edge(int argc, char * argv[]) {
 		}
 		std::cout << "total number of stacks' member is "<< Counter <<std::endl;*/		
 //Cutting partial overlaps in 'stacks' 
-		std::vector<overlap_type> cc_overlap(stacks.size(), overlap_type(data));
+	//	std::vector<overlap_type> cc_overlap(stacks.size(), overlap_type(data));
 		size_t COUNT = 0;
 #pragma omp parallel for num_threads(num_threads)
 		for(size_t i=0; i<stacks.size(); ++i) {//TODO Order them by size before cutting, It can happen in parallel!
@@ -3034,14 +3035,76 @@ int do_dynamic_mc_model_with_two_edge(int argc, char * argv[]) {
 				assert(it1 != temp.end());
 				temp.erase(*it1);
 			}*/
+			if(stack.size()>3000){
+				std::set< pw_alignment , compare_pw_alignment> temp_mixed_als; //TODO work on this idea!
+				for(size_t k = 0; k < stack.size()/3000 ; k++){
+					std::set< const pw_alignment* , compare_pointer_pw_alignment> substack;
+					std::set< const pw_alignment* , compare_pointer_pw_alignment>::iterator it = stack.begin();
+					std::advance(it, k*3000);						
+					for(size_t L = 0; L< 3000; L++){
+						substack.insert(*it);
+						it++;
+					}
+					overlap_type ov(data);
+					std::cout << "substack size "<< substack.size()<<std::endl;
+					use_ias ias(data,substack, m, cluster_base_cost,num_threads);
+					std::cout << "HERE!"<<std::endl;
+					ias.compute(ov);
+					std::cout << "HERE1!"<<std::endl;
+					const std::set<pw_alignment, compare_alignment<pw_alignment> > & als_in_overlap = ov.get_all();
+					COUNT += als_in_overlap.size();
+					for(std::set<pw_alignment, compare_alignment<pw_alignment> >::const_iterator it = als_in_overlap.begin(); it != als_in_overlap.end();it++){
+						if(fraction > 0.95){
+							temp_mixed_als.insert(*it);
+						}else{
+							mixed_als.insert(*it);							
+						}
+					}
+				}
+				size_t pos = stack.size()/3000;
+				pos = pos*3000;
+				std::set< const pw_alignment* , compare_pointer_pw_alignment> substack;
+				std::set< const pw_alignment* , compare_pointer_pw_alignment>::iterator it = stack.begin();
+				std::advance(it,pos);						
+				for(std::set< const pw_alignment* , compare_pointer_pw_alignment>::iterator it1 = it ; it1 != stack.end(); it1++){
+					substack.insert(*it1);
+				}
+				std::cout << "last substack size "<< substack.size()<<std::endl;
+				use_ias ias(data,substack, m, cluster_base_cost,num_threads);
+				overlap_type ov(data);
+				ias.compute(ov);
+				const std::set<pw_alignment, compare_alignment<pw_alignment> > & als_in_overlap = ov.get_all();
+				std::cout << "ov size " << als_in_overlap.size()<<std::endl;
+				COUNT += als_in_overlap.size();
+				for(std::set<pw_alignment, compare_alignment<pw_alignment> >::const_iterator it = als_in_overlap.begin(); it != als_in_overlap.end();it++){
+					if(fraction > 0.95){
+						temp_mixed_als.insert(*it);
+					}else{
+						mixed_als.insert(*it);							
+					}
+				}
+				//TODO here add temp_mixed
+				if(fraction > 0.95){
+					use_ias ias1(data,temp_mixed_als, m, cluster_base_cost,num_threads);
+					overlap_type ov1(data);
+					ias1.compute(ov1);
+					const std::set<pw_alignment, compare_alignment<pw_alignment> > & als_in_overlap1 = ov1.get_all();
+					std::cout << "ov1 size " << als_in_overlap1.size()<<std::endl;
+					COUNT += als_in_overlap1.size();
+					for(std::set<pw_alignment, compare_alignment<pw_alignment> >::const_iterator it1 = als_in_overlap1.begin(); it1 != als_in_overlap1.end();it1++){
+						mixed_als.insert(*it1);							
+					}
+				}
 
-			use_ias ias(data,stack, m, cluster_base_cost,num_threads);
-			ias.compute(cc_overlap.at(i));
-			const std::set<pw_alignment, compare_alignment<pw_alignment> > & als_in_overlap = cc_overlap.at(i).get_all();
-			COUNT += als_in_overlap.size();
+			}else{
+				overlap_type ov(data);
+				use_ias ias(data,stack, m, cluster_base_cost,num_threads);
+				ias.compute(ov);
+				const std::set<pw_alignment, compare_alignment<pw_alignment> > & als_in_overlap = ov.get_all();
+				COUNT += als_in_overlap.size();
 #pragma omp critical(al_insert)
 {
-			for(std::set<pw_alignment, compare_alignment<pw_alignment> >::const_iterator it = als_in_overlap.begin(); it != als_in_overlap.end();it++){
+				for(std::set<pw_alignment, compare_alignment<pw_alignment> >::const_iterator it = als_in_overlap.begin(); it != als_in_overlap.end();it++){
 			//	if(fraction > 0.6){//Just added it as a test to check the speed of running! For that i need to change the remainder from pointer to copy! TODO think about that! It may make it faster! . For that i need to change the pointer to copy
 			//		std::cout << "add to remainer: " << &*it << std::endl;
 			//		pw_alignment pw = *it;
@@ -3050,6 +3113,7 @@ int do_dynamic_mc_model_with_two_edge(int argc, char * argv[]) {
 			//	}else{
 					mixed_als.insert(*it);
 			//	}
+				}
 			}
 }
 		}
@@ -3059,7 +3123,7 @@ int do_dynamic_mc_model_with_two_edge(int argc, char * argv[]) {
 		}*/
 		std::cout << "mixed als size3 "<< mixed_als.size() << std::endl;
 		fraction -= 0.05;
-	}
+	}//End of the while loop
 	for(std::set<const pw_alignment* , compare_pointer_pw_alignment>::iterator it = remainders.begin(); it != remainders.end();it++){
 		mixed_als.insert(**it);
 	}
@@ -3103,9 +3167,103 @@ int do_dynamic_mc_model_with_two_edge(int argc, char * argv[]) {
 	size_t num_cluster_inputs_al = 0;
 	clock_t ap_time = 0;
 	typedef affpro_clusters<use_model,overlap_type> use_affpro;
+	std::cout <<"HERE!"<<std::endl;
 	for(size_t i=0; i<no_fraction_ccs.size(); ++i) {
-		std::set< const pw_alignment*, compare_pointer_pw_alignment> & cc = no_fraction_ccs.at(i);
-		use_ias ias(data,cc, m, cluster_base_cost,num_threads);
+		std::cout << " on CC " << i << " size " << no_fraction_ccs.at(i).size() << std::endl;
+		std::set< const pw_alignment*, compare_pointer_pw_alignment> cc;
+		std::set< pw_alignment , compare_pw_alignment> temp_mixed_als; 
+		if(no_fraction_ccs.at(i).size()> 3000){//XXX first recursively break them here then put them all together and add to cc (I am testing it now)
+			for(size_t k = 0; k < no_fraction_ccs.at(i).size()/3000 ; k++){
+				std::set< const pw_alignment* , compare_pointer_pw_alignment> subset;
+				std::set< const pw_alignment* , compare_pointer_pw_alignment>::iterator it =  no_fraction_ccs.at(i).begin();
+				std::advance(it, k*3000);						
+				for(size_t L = 0; L< 3000; L++){
+					subset.insert(*it);
+					it++;
+				}
+				overlap_type ov(data);
+				std::cout << "substack size "<< subset.size()<<std::endl;
+				use_ias ias(data,subset, m, cluster_base_cost,num_threads);
+				std::cout << "HERE!"<<std::endl;
+				ias.compute(ov);
+				std::cout << "HERE1!"<<std::endl;
+				const std::set<pw_alignment, compare_alignment<pw_alignment> > & als_in_overlap = ov.get_all();
+				for(std::set<pw_alignment, compare_alignment<pw_alignment> >::const_iterator it = als_in_overlap.begin(); it != als_in_overlap.end();it++){
+					temp_mixed_als.insert(*it);
+				}
+			}
+			size_t pos = no_fraction_ccs.at(i).size()/3000;
+			pos = pos*3000;
+			std::set< const pw_alignment* , compare_pointer_pw_alignment> subset;
+			std::set< const pw_alignment* , compare_pointer_pw_alignment>::iterator it =  no_fraction_ccs.at(i).begin();
+			std::advance(it,pos);						
+			for(std::set< const pw_alignment* , compare_pointer_pw_alignment>::iterator it1 = it ; it1 !=  no_fraction_ccs.at(i).end(); it1++){
+					subset.insert(*it1);
+			}
+			std::cout << "last subset size "<< subset.size()<<std::endl;
+			use_ias ias(data,subset, m, cluster_base_cost,num_threads);
+			overlap_type ov(data);
+			ias.compute(ov);
+			const std::set<pw_alignment, compare_alignment<pw_alignment> > & als_in_overlap = ov.get_all();
+			for(std::set<pw_alignment, compare_alignment<pw_alignment> >::const_iterator it = als_in_overlap.begin(); it != als_in_overlap.end();it++){
+				temp_mixed_als.insert(*it); 
+			}
+			std::cout << "temp size "<< temp_mixed_als.size()<<std::endl;
+			/*if(temp_mixed_als.size()>3000){//XXX One more recursion on temp_mixed_als!
+				std::set<pw_alignment, compare_alignment<pw_alignment> > cutting_temp;
+				for(size_t k = 0; k < temp_mixed_als.size()/3000 ; k++){
+					std::set< pw_alignment , compare_pw_alignment> subset;
+					std::set< pw_alignment , compare_pw_alignment>::iterator it =  temp_mixed_als.begin();
+					std::advance(it, k*3000);						
+					for(size_t L = 0; L< 3000; L++){
+						subset.insert(*it);
+						it++;
+					}
+					overlap_type ov(data);
+					std::cout << "substack size "<< subset.size()<<std::endl;
+					use_ias ias(data,subset, m, cluster_base_cost,num_threads);
+					std::cout << "HERE!"<<std::endl;
+					ias.compute(ov);
+					std::cout << "HERE1!"<<std::endl;
+					const std::set<pw_alignment, compare_alignment<pw_alignment> > & als_in_overlap = ov.get_all();
+					for(std::set<pw_alignment, compare_alignment<pw_alignment> >::const_iterator it = als_in_overlap.begin(); it != als_in_overlap.end();it++){
+						cutting_temp.insert(*it);
+					}
+				}
+				//Last part:
+				pos = temp_mixed_als.size()/3000;
+				pos = pos*3000;
+				std::set< pw_alignment , compare_pw_alignment> subset;
+				std::set< pw_alignment , compare_pw_alignment>::iterator it =  temp_mixed_als.begin();
+				std::advance(it,pos);						
+				for(std::set< pw_alignment , compare_pw_alignment>::iterator it1 = it ; it1 !=  temp_mixed_als.end(); it1++){
+					subset.insert(*it1);
+					cutting_temp.insert(*it1); 
+				}
+				std::cout << "last subset size "<< subset.size()<<std::endl;
+				use_ias ias(data,subset, m, cluster_base_cost,num_threads);
+				overlap_type ov(data);
+				ias.compute(ov);
+				const std::set<pw_alignment, compare_alignment<pw_alignment> > & als_in_overlap = ov.get_all();
+				for(std::set<pw_alignment, compare_alignment<pw_alignment> >::const_iterator it = als_in_overlap.begin(); it != als_in_overlap.end();it++){
+					cutting_temp.insert(*it); 
+				}
+				//Add them all to cc
+				for(std::set<pw_alignment, compare_alignment<pw_alignment> >::const_iterator it = cutting_temp.begin(); it != cutting_temp.end();it++){
+						cc.insert(&*it);							
+				}
+
+			}else{*/
+				//Add them all to cc
+				for(std::set<pw_alignment, compare_alignment<pw_alignment> >::const_iterator it = temp_mixed_als.begin(); it != temp_mixed_als.end();it++){
+						cc.insert(&*it);							
+				}
+		//	}
+		}else{
+			cc = no_fraction_ccs.at(i);
+		}
+		std::cout << "cc size " << cc.size() << std::endl;
+		use_ias ias(data,cc, m, cluster_base_cost,num_threads); //XXX Last time of cutting overlaps
 		ias.compute(ccc_overlap.at(i));
 		const std::set<pw_alignment, compare_alignment<pw_alignment> > check_gain = ccc_overlap.at(i).get_all();
 		for(std::set<pw_alignment, compare_alignment<pw_alignment> >::const_iterator it = check_gain.begin(); it != check_gain.end(); it++){//XXX Just a test
@@ -3113,10 +3271,14 @@ int do_dynamic_mc_model_with_two_edge(int argc, char * argv[]) {
 			double g1 ,g2;
 			m.gain_function(pal,g1,g2);
 			double av_gain = (g1+g2)/2 ;
+			if(av_gain <= 0){
+				std::cout << "negative gain! "<<std::endl;
+				pal.print();
+			}
 			assert(av_gain > 0);
 		}
 		std::vector< std::set<const pw_alignment* , compare_pointer_pw_alignment> > cc_cluster_in; //have shorter length than original alignemnts
-		std::cout<< "using the cc again!"<<std::endl;
+		std::cout<< "using the cc again!"<<std::endl;//Just to partition them
 		ccc_type occ(ccc_overlap.at(i), num_seq ,1);
 		occ.compute(cc_cluster_in);
 	/*	for(size_t i=0; i<cc_cluster_in.size()-1; i++) {//A test function that chckes overlap between components. There shouldn't be any overlap between them.
@@ -3214,7 +3376,7 @@ int do_dynamic_mc_model_with_two_edge(int argc, char * argv[]) {
 		std::cout<< "end of cluster in! "  <<std::endl;
 	}
 
-		std::cout << "end of no fraction ccs" << alignments_in_a_cluster.size() <<std::endl;
+	std::cout << "end of no fraction ccs" << alignments_in_a_cluster.size() <<std::endl;
 	std::cout << "before addin non aligned regions "<< alignments_in_a_cluster.size() << std::endl;
 // Long centers are created here! 
 	finding_centers centers(data);
@@ -3226,13 +3388,13 @@ int do_dynamic_mc_model_with_two_edge(int argc, char * argv[]) {
 	std::cout << "centers on all the sequences were found!"<<std::endl;
 //Finding non aligned regions and group them together if they have the same content
 	centers.add_nonaligned_regions(centerOnSequence, alignments_in_a_cluster, all_pieces,non_aligned_right);//Also add non aligned regions that are goups together to the centerOnSeq and treat them as center form here on!
-		for(size_t i =0; i < data.numSequences(); i++){
+	/*	for(size_t i =0; i < data.numSequences(); i++){
 			std::cout << "centers on sequence " << i << " are :"<<std::endl;
 		//	size_t pos;
 			for(std::multimap<size_t, std::string >::iterator it = centerOnSequence.at(i).begin(); it != centerOnSequence.at(i).end();it++){
 				std::cout << "pos "<< it->first << " cent "<< it->second << std::endl;
 			}
-		}
+		}*/
 		std::cout << "all the non aligned regions are: "<<std::endl;
 		for(std::map<std::string, size_t>::iterator it = non_aligned_right.begin() ; it != non_aligned_right.end() ; it++){
 			std::cout << it->first << " "<< it->second << std::endl;
@@ -3245,7 +3407,7 @@ int do_dynamic_mc_model_with_two_edge(int argc, char * argv[]) {
 //Trees are created iteratively and centers are merged:
 	merging_centers merg(data, centers);
 	//grouped-non aligned regions are added too!
-	merg.adding_new_centers(long_centers,centersPositionOnASeq,centerOnSequence);//After merging a group of centers we iteratively create new suffixes and a new tree based on them, then recalculate the gains again. At the end those with gain>0 go to the long_centers and centersPositionOnASeq.
+/* XXX	merg.adding_new_centers(long_centers,centersPositionOnASeq,centerOnSequence);//After merging a group of centers we iteratively create new suffixes and a new tree based on them, then recalculate the gains again. At the end those with gain>0 go to the long_centers and centersPositionOnASeq.
 	std::cout<< "new centers are made! " << long_centers.size() <<std::endl;
 	for(size_t j  =0; j < long_centers.size();j++){
 		std::cout<< "center "<< j <<std::endl;
@@ -3254,10 +3416,12 @@ int do_dynamic_mc_model_with_two_edge(int argc, char * argv[]) {
 	std::cout << "long center size is "<< long_centers.size() << std::endl;
 	merg.create_alignment(long_centers,new_centers,alignments_in_a_cluster,centersPositionOnASeq,centerOnSequence,gap_in_long_centers);//Here we fill in the 'new_centers' with longer alignments in the way that center is always the second ref
 	merg.get_merged_als(merged_als);//They will be used later on to see which alignments were not merged together when we are going to add short centers to the long centers.
-	
+*/ //XXX	
 //Mixing long and short centers, find the adjacencies and add non aligned regins as a cluser with no memeber
 	mixing_centers mix(data);
-	mix.add_original_centers_to_long_centers(new_centers, alignments_in_a_cluster, merged_als, centersPositionOnASeq, centerOnSequence);//I fill in a local container with the final situation of centers including both short and long ones. 
+	std::cout << "new center size before merging "<< new_centers.size() << std::endl;
+//XXX	mix.add_original_centers_to_long_centers(new_centers, alignments_in_a_cluster, merged_als, centersPositionOnASeq, centerOnSequence);//I fill in a local container with the final situation of centers including both short and long ones. //XXX Bus error on node 444 & 505!!!!
+	std::cout << "new center size after merging "<< new_centers.size() << std::endl;	
 	std::cout<<"original als were added! "<<std::endl;
 	if(center_type){
 		mix.find_adjacencies_with_direction(adjacencies_with_dir, all_pieces); //It is only on short cneters and non aligned regions
@@ -3354,10 +3518,14 @@ int do_dynamic_mc_model_with_two_edge(int argc, char * argv[]) {
 		dotout.close();
 
 	}
-	if(0!=gfafile.compare("nogfa")) {//TODO figure out why it is so slow on short centers! and see if it is possible making it faster
+	if(0!=gfafile.compare("nogfa")) { //TODO check it! I am not sure if it works properly!
 
 		std::ofstream gfaout(gfafile.c_str());
-		wrgraph.write_graph_gfa(adjacencies_with_dir, gfaout, alignments_in_a_cluster,non_aligned_right);//Same function can be used for both short and long centers.
+		if(center_type){
+			wrgraph.write_graph_gfa(adjacencies_with_dir, gfaout, alignments_in_a_cluster,non_aligned_right);
+		}else{
+			wrgraph.write_graph_gfa_with_long_centers(adjacencies_with_dir, gfaout, alignments_in_a_cluster,non_aligned_right);	
+		}
 		gfaout.close();
 
 	}
@@ -3429,8 +3597,8 @@ int do_dynamic_decoding(int argc, char * argv[]){
 //	dec.arithmetic_decoding_centers(in,decode);
 //	dec.al_decode_with_long_center(in,decode,out);
 //	dec.al_decode_long_center_optimized_flag(in,decode,out);
-//	dec.al_decoding(in,decode,out);
-	dec.al_decode_with_long_center(in,decode,out);
+	dec.al_decoding(in,decode,out); //XXX this is the correct one for short centers
+//	dec.al_decode_with_long_center(in,decode,out); //This is the correct one for long centers
 	cout<< "decoding is done!"<<endl;
 	out.close();
 

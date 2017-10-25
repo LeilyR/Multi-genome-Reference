@@ -34,7 +34,7 @@
 	void finding_centers::findMemberOfClusters(std::map<std::string,vector<pw_alignment> > & alignmentsOfClusters){//fills in a map with centers and their members and removes the direction from members
 		for(std::map<std::string, std::vector<pw_alignment> >::iterator it = alignmentsOfClusters.begin(); it != alignmentsOfClusters.end(); it++){
 			assert(it->second.size() != 0);
-			std::cout << "no of als " << it->second.size()  << " " << it->first << std::endl;
+		//	std::cout << "no of als " << it->second.size()  << " " << it->first << std::endl;
 			for(size_t i = 0; i < it->second.size(); i++){
 				size_t ref1;
 				size_t ref2;

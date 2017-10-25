@@ -123,7 +123,8 @@ class write_graph{
 	void msa_star_al_with_long_centers(const std::vector<std::string> & longCenter, std::vector<pw_alignment> & alignment);
 	void write_graph_maf(std::ofstream & gout, const std::map<std::string, std::vector<pw_alignment> > & cluster_result_al, std::map<std::string, size_t> & center_id);
 	void write_graph_maf_with_long_centers(std::ofstream & gout ,const std::map<std::vector<std::string>, std::vector<pw_alignment> > & new_centers,std::map<std::vector<std::string>, size_t>& long_center_id);
-	void write_graph_gfa(std::map<int, std::set<int> > & adjacencies, std::ostream & graph_gfa, std::map<std::string, std::vector<pw_alignment> > & alignments_in_a_cluster, std::map<std::string, size_t> & non_aligned_right);//TODO
+	void write_graph_gfa(std::map<int, std::set<int> > & adjacencies , std::ostream & graph_gfa, std::map<std::string, std::vector<pw_alignment> > & alignments_in_a_cluster, std::map<std::string, size_t> & non_aligned_right);
+	void write_graph_gfa_with_long_centers(std::map<int, std::set<int> > & adjacencies, std::ostream & graph_gfa, std::map<std::string, std::vector<pw_alignment> > & alignments_in_a_cluster, std::map<std::string, size_t> & non_aligned_right);
 	void make_fasta(std::ostream & graphfasta, std::map<std::string, std::string> & centers) ;
 	
 

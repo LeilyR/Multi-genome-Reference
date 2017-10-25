@@ -458,6 +458,9 @@
 				}
 				else {
 					std::cout<<"Sequence starts with an alignment!" << target <<std::endl;
+					pattern = first_pattern;
+					std::cout<< "pattern size: "<<pattern.size()<<std::endl;
+
 				}
 				
 				while(target< seq_acc_end.at(0)){//end of each seq
@@ -775,10 +778,16 @@
 								base = dnastring::base_to_index(decodedCenter.at(decodedCenter.length()-1));
 							}else{
 //									pattern + base + decodedCenter --> it is surely longer than level, then pick the level last bases of it
+									std::cout << "HEre"<<std::endl;
+
 									char p = dnastring::index_to_base(base);
 									std::stringstream combine_pieces;
 									combine_pieces << pattern << p <<decodedCenter;
+
+									std::cout << pattern << " " << p << " " << decodedCenter<< std::endl;
 									std::string  str = combine_pieces.str();
+									std::cout << "str " << str << " " <<str.size() << " " << MAX_SEQUENCE_MARKOV_CHAIN_LEVEL << std::endl;
+									assert(str.length() > MAX_SEQUENCE_MARKOV_CHAIN_LEVEL);
 									for(size_t sl=MAX_SEQUENCE_MARKOV_CHAIN_LEVEL; sl > 0; sl--){
 									char center_base = str.at(str.length()-sl-1);
 									temp +=center_base;

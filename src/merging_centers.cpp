@@ -2170,10 +2170,13 @@ const size_t mixing_centers::find_right_on_seq(std::string & center,std::map<std
 					}
 					std::cout<<" this id is "<< pre_id<<std::endl;
 					adj->second.insert(pre_id);
+					path_on_a_seq.at(i).push_back(pre_id);
 					previous = id->second;
 				}
 			}
 			if(pre_id != 0){
+				path_on_a_seq.at(i).push_back(pre_id);
+
 				std::map< int , std::set<int> >::iterator adj = adjacencies.find(pre_id);
 				if(adj == adjacencies.end()){
 					adjacencies.insert(std::make_pair(pre_id,std::set<int>()));
@@ -2400,10 +2403,10 @@ const size_t mixing_centers::find_right_on_seq(std::string & center,std::map<std
 		//	std::cout<< "non-aligned " <<std::endl;
 			std::stringstream str;
 			str<<0<<":"<<center_name;
-			std::cout<< "non-aligned "<< str.str() <<std::endl;			
+		//	std::cout<< "non-aligned "<< str.str() <<std::endl;			
 			std::map<std::string, size_t>::const_iterator it1 = non_aligned_right.find(str.str());
 			assert(it1 != non_aligned_right.end());
-			std::cout<< it1->second<<std::endl;
+		//	std::cout<< it1->second<<std::endl;
 			return it1->second;
 		}
 
@@ -2449,8 +2452,11 @@ const size_t mixing_centers::find_right_on_seq(std::string & center,std::map<std
 					}
 				}
 			}else{
-				dotfile << it->first<<"+ ;"<<std::endl;
-				dotfile << it->first<<"- ;"<<std::endl;
+				if(it->first > 0){
+					dotfile << it->first<<"+ ;"<<std::endl;
+				}else{		
+					dotfile << -1*it->first<<"- ;"<<std::endl;
+				}
 			}
 		}
 		dotfile << "/};"<<std::endl;
@@ -3010,13 +3016,104 @@ void write_graph::msa_star_al_with_long_centers(const std::vector<std::string> &
 		}
 	}
 	void write_graph::write_graph_gfa(std::map<int, std::set<int> > & adjacencies , std::ostream & graph_gfa, std::map<std::string, std::vector<pw_alignment> > & alignments_in_a_cluster, std::map<std::string, size_t> & non_aligned_right){
+		std::cout << "write gfa "<< std::endl;
+		graph_gfa << "H\tVN:Z:1.0" << std::endl;
+		std::map<size_t , std::string> centers; //size_t is the id of a center and std::string is the sequence content of it
+		std::map<std::string, size_t> short_center_id = mixcenter.get_center_id();//All the centers and non aligned regions in between them
+		std::cout << "short center id size "<< short_center_id.size()<<std::endl;
+		for(std::map<std::string, size_t >::iterator it = short_center_id.begin() ; it != short_center_id.end(); it++){//Go over all the pieces, using long_center_id. 
+			std::string this_center = it->first;
+		//	std::cout << "this center "<<std::endl;
+			assert(it->second> 0);
+		//	std::cout << this_center << std::endl;
+			graph_gfa << "S\t"<<it->second<<"\t";
+			std::string sequence;
+			size_t length = 0;
+			std::vector<std::string> center_parts;
+			strsep(this_center, ":" , center_parts);
+			unsigned int center_ref = atoi(center_parts.at(0).c_str());
+			unsigned int center_left = atoi(center_parts.at(1).c_str());
+			std::string seqname = data.get_seq_name(center_ref);
+			std::stringstream temp;
+			temp<<center_ref<<":"<<center_left;
+			std::string cent = temp.str();
+			size_t right = mixcenter.get_right(cent,alignments_in_a_cluster, non_aligned_right);
+			size_t left = center_left;
+			length +=(right-left)+1;
+		 	sequence.append(data.extract_seq_part(center_ref,left,right));
+			std::stringstream this_id;
+			this_id<<it->second;
+			centers.insert(std::make_pair(it->second, sequence));
+			graph_gfa<<sequence<<std::endl;
+			int this_node_id = it->second;
+			std::map<int, std::set<int> >::iterator adj = adjacencies.find(this_node_id);
+			if(adj->second.size()>0){
+				std::set<int> nodes = adj->second;	
+				for(std::set<int>::iterator it1 = nodes.begin(); it1 != nodes.end() ; it1++){
+					assert(adj->first > 0);
+					graph_gfa << "L\t"<<adj->first<<"\t+\t";
+					if(*it1 > 0){
+						graph_gfa <<*it1<<"\t+\t0M"<<std::endl;							
+					}else{
+						graph_gfa <<std::abs(*it1)<<"\t-\t0M"<<std::endl;			
+					}
+				}
+			}
+			int reverse_id = -1 * this_node_id;
+			adj = adjacencies.find(reverse_id);
+			if(adj != adjacencies.end() && adj->second.size()>0){
+			//	std::cout << "neg. node" << reverse_id <<std::endl;
+				std::set<int> nodes = adj->second;	
+				for(std::set<int>::iterator it1 = nodes.begin(); it1 != nodes.end() ; it1++){
+					assert(adj->first < 0);
+					graph_gfa << "L\t"<<std::abs(adj->first)<<"\t-\t";
+					if(*it1 > 0){
+						graph_gfa <<*it1<<"\t+\t0M"<<std::endl;							
+					}else{
+						graph_gfa <<std::abs(*it1)<<"\t-\t0M"<<std::endl;			
+					}
+				}
+			}
+		}
 
+		size_t number = 0; //TODO instead have to write the name of the seq
+		std::vector<std::vector<int> > path_on_sequences = mixcenter.get_path();
+		std::cout<< path_on_sequences.size() << std::endl;
+		for(size_t i =0; i < path_on_sequences.size() ; i++){
+			std::cout << "on path "<< i<<std::endl;
+			std::cout << path_on_sequences.at(i).size()<<std::endl;
+			graph_gfa<<"P\t"<<number<<"\t";
+			for(size_t j = 0 ; j < path_on_sequences.at(i).size() ; j++){
+				if(path_on_sequences.at(i).at(j)> 0){
+					graph_gfa<< std::abs(path_on_sequences.at(i).at(j))<<"+";
+				}else{
+					graph_gfa<< std::abs(path_on_sequences.at(i).at(j))<<"-";
+				}
+				if(j != path_on_sequences.at(i).size()-1){
+					graph_gfa<<",";
+				}
+			}
+			graph_gfa<<"\t";
+			for(size_t j = 0 ; j < path_on_sequences.at(i).size()-2 ; j++){
+				graph_gfa<<"0M,";
+			}
+			graph_gfa <<"0M"<<std::endl;
+			number++;
+		}
+	}
+
+
+	void write_graph::write_graph_gfa_with_long_centers(std::map<int, std::set<int> > & adjacencies , std::ostream & graph_gfa, std::map<std::string, std::vector<pw_alignment> > & alignments_in_a_cluster, std::map<std::string, size_t> & non_aligned_right){
+		std::cout << "write gfa "<< std::endl;
 		graph_gfa << "H\tVN:Z:1.0" << std::endl;
 	//	graph_gfa << "H" << std::endl;
 		std::map<size_t , std::string> centers; //size_t is the id of a center and std::string is the sequence content of it
 		std::map<std::vector<std::string>, size_t> center_id = mixcenter.get_long_center_id();//All long centers and non aligned regions in between
+		std::cout << "long center id size "<< center_id.size()<<std::endl;
 		for(std::map<vector<std::string>, size_t >::iterator it = center_id.begin() ; it != center_id.end(); it++){//Go over all the pieces, using long_center_id. 
 			std::vector<std::string> this_center = it->first;
+			std::cout << "this center "<<std::endl;
+			std::cout << this_center << std::endl;
 			graph_gfa << "S\t"<<std::abs(it->second)<<"\t";
 			std::string sequence;
 			size_t length = 0;
@@ -3045,7 +3142,8 @@ void write_graph::msa_star_al_with_long_centers(const std::vector<std::string> &
 			centers.insert(std::make_pair(it->second, sequence));
 			graph_gfa<<sequence<<std::endl;
 		}
-	//	size_t number = center_id.size(); Apparently it works with no overlap!
+	
+		std::cout << "adj size "<< adjacencies.size()<<std::endl;
 		for(std::map<int, std::set<int> >::iterator adj = adjacencies.begin(); adj != adjacencies.end() ; adj++){
 			if(adj->second.size()>0){
 			//	std::string seq;
@@ -3079,15 +3177,19 @@ void write_graph::msa_star_al_with_long_centers(const std::vector<std::string> &
 						graph_gfa <<*it1<<"\t+\t0M"<<std::endl;							
 					}else{
 					//	graph_gfa <<"L\t"<<number<<"\t+\t"<<(-1*(*it1))<<"\t-\t1M"<<std::endl;						
-						graph_gfa <<*it1<<"\t-\t0M"<<std::endl;			
+						graph_gfa <<std::abs(*it1)<<"\t-\t0M"<<std::endl;			
 					}
 				//	number++;
 				}
 			}
 		}
-		size_t number = center_id.size();
+	//	size_t number = center_id.size();
+		size_t number = 0; //TODO Change it the name of sequences
 		std::vector<std::vector<int> > path_on_sequences = mixcenter.get_path();
+		std::cout<< path_on_sequences.size() << std::endl;
 		for(size_t i =0; i < path_on_sequences.size() ; i++){
+			std::cout << "on path "<< i<<std::endl;
+			std::cout << path_on_sequences.at(i).size()<<std::endl;
 			graph_gfa<<"P\t"<<number<<"\t";
 			for(size_t j = 0 ; j < path_on_sequences.at(i).size() ; j++){
 				if(path_on_sequences.at(i).at(j)> 0){
@@ -3107,8 +3209,6 @@ void write_graph::msa_star_al_with_long_centers(const std::vector<std::string> &
 			number++;
 		}
 	}
-
-
 	
 
 #endif

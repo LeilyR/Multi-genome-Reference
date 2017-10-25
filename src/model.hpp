@@ -117,6 +117,29 @@ class initial_alignment_set {
 	//	assert(pos == sorter.size());
 	//	std::cout << " " << sorter.size() << " input alignments, total gain: " << sumgain << " bit " << std::endl;
 	}
+	initial_alignment_set(const all_data & d, const std::set< pw_alignment, compare_pw_alignment> & als, const T & a_model, double base_cost, size_t & num_threads): data(d), common_model(a_model){
+		this->base_cost = base_cost;
+		this->num_threads = num_threads;
+		std::multimap<double, const pw_alignment*> sorter;
+		double sumgain = 0;
+		for(std::set<pw_alignment , compare_pw_alignment>::const_iterator it = als.begin(); it!=als.end(); it++) { 
+			const pw_alignment * cur = &*it;
+			double gain1, gain2;
+			common_model.gain_function(*cur, gain1, gain2);
+			double vgain = (gain1+gain2)/2 - base_cost;
+			assert(vgain >=0.0);
+			sorter.insert(std::make_pair(vgain, cur));
+
+			sumgain+=vgain;
+		}
+
+		for(std::multimap<double, const pw_alignment*>::reverse_iterator rit = sorter.rbegin(); rit!=sorter.rend(); rit++) {
+			const pw_alignment * alit = rit->second;
+	
+			sorted_original_als.push_back(alit);
+		}
+		max_gain = sumgain;
+	}
 	initial_alignment_set(const all_data & d, const std::set< const pw_alignment*, compare_pointer_pw_alignment> & als, const T & a_model, double base_cost, size_t & num_threads): data(d), common_model(a_model){
 		this->base_cost = base_cost;
 		this->num_threads = num_threads;
@@ -756,7 +779,7 @@ class affpro_clusters {
 			all_als.insert(al);
 			add_alignment(*al); 
 		//	std::cout<<"data4 ad in afp: "<< & dat << std::endl;
-			al->print();	
+		//	al->print();	
 			double g1 ,g2;
 			model.gain_function(*al,g1,g2);
 			double av_gain = (g1+g2)/2 ;
@@ -791,14 +814,14 @@ void run(std::map<std::string, std::vector<std::string> > & cluster_result, std:
 		apoptions.progress=NULL; apoptions.progressf=NULL;
 		double netsim;	
 		int iter = apcluster32(data, NULL, NULL, simmatrix.size()*simmatrix.size(), result, &netsim, &apoptions);
-		std::cout << "iter " << iter << "result[0] "<< result[0] << " netsim "<< netsim<< std::endl;
+	//	std::cout << "iter " << iter << "result[0] "<< result[0] << " netsim "<< netsim<< std::endl;
 		if(iter <= 0 || result[0]==-1) {
 			apoptions.minimum_iterations = 10000;
 			apoptions.converge_iterations = 15000;
 			apoptions.maximum_iterations = 150000;
 			apoptions.lambda = 0.6;
 			iter = apcluster32(data, NULL, NULL, simmatrix.size()*simmatrix.size(), result, &netsim, &apoptions);
-			std::cout << "iter " << iter << std::endl;
+		//	std::cout << "iter " << iter << std::endl;
 		}
 		if(iter <= 0 || result[0]==-1) {
 			apoptions.minimum_iterations = 100000;
@@ -806,12 +829,12 @@ void run(std::map<std::string, std::vector<std::string> > & cluster_result, std:
 			apoptions.maximum_iterations = 250000;
 			apoptions.lambda = 0.99;
 			iter = apcluster32(data, NULL, NULL, simmatrix.size()*simmatrix.size(), result, &netsim, &apoptions);
-			std::cout << "iter1 " << iter << "result[0] " <<result[0]<< std::endl;
+		//	std::cout << "iter1 " << iter << "result[0] " <<result[0]<< std::endl;
 		}
 	} else {
 		if(simmatrix.size()==1) {
 			result[0] = 0;
-			std::cout << "result[0] " <<result[0]<< std::endl;
+		//	std::cout << "result[0] " <<result[0]<< std::endl;
 
 		} else {
 		// simpler algorithm for only 2 element
@@ -819,7 +842,7 @@ void run(std::map<std::string, std::vector<std::string> > & cluster_result, std:
 			double one = simmatrix.at(0).at(0) + simmatrix.at(0).at(1);
 			double two = simmatrix.at(1).at(1) + simmatrix.at(1).at(0);
 			double separate = simmatrix.at(0).at(0) + simmatrix.at(1).at(1);
-			std::cout << "one "<< one << " two "<< two << " sep "<< separate << std::endl;
+		//	std::cout << "one "<< one << " two "<< two << " sep "<< separate << std::endl;
 			if(one > two && one > separate) {
 				result[0] = 0;
 				result[1] = 0;
@@ -830,7 +853,7 @@ void run(std::map<std::string, std::vector<std::string> > & cluster_result, std:
 				result[0] = 0;
 				result[1] = 1;
 			}
-			std::cout << "2 elements: " << "result[0] " <<result[0] << " result[1] "<< result[1] << std::endl;		
+		//	std::cout << "2 elements: " << "result[0] " <<result[0] << " result[1] "<< result[1] << std::endl;		
 		}
 	}
 // TODO conv error res -1
@@ -863,12 +886,12 @@ void run(std::map<std::string, std::vector<std::string> > & cluster_result, std:
 			}
 		}
 	}
-	std::cout << "simmatrix size "<< simmatrix.size()<<std::endl;
+//	std::cout << "simmatrix size "<< simmatrix.size()<<std::endl;
 	for(size_t i=0; i<simmatrix.size(); ++i) {//cluster center may happen whenever i == result[i]
-		std::cout << sequence_names.at(i) << " res " << i << " is " << result[i] << " ( length " << sequence_lengths.at(i) << ")"<<std::endl;
+	//	std::cout << sequence_names.at(i) << " res " << i << " is " << result[i] << " ( length " << sequence_lengths.at(i) << ")"<<std::endl;
 
 		if( (size_t)result[i]==i) {
-			std::cout << " center !!" << simmatrix.at(i).at(i) << std::endl;
+		//	std::cout << " center !!" << simmatrix.at(i).at(i) << std::endl;
 			std::map<std::string, std::vector<std::string> >::iterator it=cluster_result.find(sequence_names.at(i));
 			if(it==cluster_result.end()){
 				cluster_result.insert(make_pair(sequence_names.at(i), std::vector<std::string>()));
@@ -895,7 +918,7 @@ void run(std::map<std::string, std::vector<std::string> > & cluster_result, std:
 		//	std::string reverse_seq = make_reverse(sequence_names.at(i));//Reverse of the member
 			//Make the al here:
 			pw_alignment pal;
-			std::cout << "center is "<< sequence_names.at(result[i])<<std::endl;
+		//	std::cout << "center is "<< sequence_names.at(result[i])<<std::endl;
 			make_an_alignment(sequence_names.at(result[i]),sequence_names.at(i),pal);//Using result[i] as center and i as member find the corresponding al.
 		/*	double gain = model.get_the_gain(pal,sequence_names.at(result[i]));
 			std::map<std::string,std::string>::iterator mem = members_of_clusters.find(reverse_seq);
