@@ -952,7 +952,7 @@ void run(std::map<std::string, std::vector<std::string> > & cluster_result, std:
 			temp1.push_back(sequence_names.at(result[i]));
 			temp1.push_back(sequence_names.at(i));
 			alignments.insert(std::make_pair(temp1,pal));
-			std::cout << sequence_names.at(result[i]) << " " << sequence_names.at(i) <<std::endl;
+		//	std::cout << sequence_names.at(result[i]) << " " << sequence_names.at(i) <<std::endl;
 			members_of_clusters.insert(std::make_pair(sequence_names.at(i),sequence_names.at(result[i])));
 		//	}
 			

@@ -712,6 +712,8 @@ void all_data::read_fasta_maf(std::string fasta_all_sequences, std::string maf_a
 	size_t skip_alt = 0;
 	size_t skip_reverse = 0;
 	std::set<pw_alignment, compare_pw_alignment> setOfAls;
+	size_t ACCULENGTH = 0;
+	size_t NUMAL = 0;
 	if(mafin) {
 		std::cout << " loading 1000 alignments per dot: ";
 		
@@ -747,6 +749,8 @@ void all_data::read_fasta_maf(std::string fasta_all_sequences, std::string maf_a
 					char strand1 = parts.at(4).at(0);
 					size_t seqlength1 = atoi(parts.at(5).c_str());
 					std::string al1 = parts.at(6);
+					ACCULENGTH += al1.length();
+					NUMAL ++;
 					std::map<std::string, size_t>::iterator findseq1 = longname2seqidx.find(parts.at(1));
 					if(findseq1==longname2seqidx.end()) {
 						std::cerr << "Error: unknown sequence: " << parts.at(1) << std::endl;
@@ -881,7 +885,7 @@ void all_data::read_fasta_maf(std::string fasta_all_sequences, std::string maf_a
 		std::cout << skip_self << " self alignments were skipped" << std::endl;
 		std::cout << skip_alt << " alternative alignments of identical regions were skipped" << std::endl;
 		std::cout << skip_reverse << " reverse alignment duplicates were skipped" << std::endl;
-
+		std::cout << "Average al length " << ACCULENGTH/NUMAL << std::endl;
 // slow test, do pw_alignment and located_alignment have the same content
 /*
 		for(size_t i=0; i<alignments.size(); ++i) {

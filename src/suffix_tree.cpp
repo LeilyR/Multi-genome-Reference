@@ -634,7 +634,7 @@ void finding_centers::add_nonaligned_regions(std::vector<std::map<size_t, std::s
 				all_pieces.at(i).insert(std::make_pair(it->first,it->second));//Add the aligned region to the all_pieces;
 
 			}
-			if(pre_pos < data.get_seq_size(i)-1){
+			if(pre_pos < data.get_seq_size(i)){
 			//	std::cout <<"there is a last piece! "<<std::endl;
 				//add the last piece!
 				std::stringstream str;

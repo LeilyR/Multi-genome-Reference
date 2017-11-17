@@ -3173,7 +3173,7 @@ void affpro_clusters<tmodel,overlap_type>::add_alignment(const pw_alignment & al
 	void affpro_clusters<tmodel,overlap_type>::write_clusters(std::map<std::string, std::vector<std::string> > & cluster_result, std::map<std::string, std::vector<pw_alignment> > & local_al_in_a_cluster){
 	//Go through alignments and members_of_clusters
 		for(std::map<std::vector<std::string>,pw_alignment>::iterator it = alignments.begin(); it != alignments.end(); it++){
-			std::cout << "cent is " << it->first.at(0) << std::endl;
+		//	std::cout << "cent is " << it->first.at(0) << std::endl;
 
 			std::map<std::string, std::vector<pw_alignment> >::iterator al = local_al_in_a_cluster.find(it->first.at(0));
 			if(al == local_al_in_a_cluster.end()){

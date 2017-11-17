@@ -2112,7 +2112,7 @@ int do_dynamic_mc_model(int argc, char * argv[]) {
 			for(std::map<std::string,std::vector<string> >::iterator it=cluster_result.begin();it !=cluster_result.end();it++){
 				counter++;
 				std::string center = it->first;
-				std::cout << "center is "<<center << std::endl;
+			//	std::cout << "center is "<<center << std::endl;
 				std::map<std::string, std::vector<pw_alignment> >::iterator it1 = local_al_in_a_cluster.find(center);
 				if(it1 == local_al_in_a_cluster.end()){
 					local_al_in_a_cluster.insert(make_pair(center, std::vector<pw_alignment>()));
@@ -2178,7 +2178,7 @@ int do_dynamic_mc_model(int argc, char * argv[]) {
 					al_of_a_ccs.insert(*it);//Here we keep two directions separately because we need them later in creating long alignments
 				}
 				std::string reverse_center = get_reverse(it->first);
-				std::cout << "center " << it->first <<" and its reverse "<< reverse_center <<std::endl;
+			//	std::cout << "center " << it->first <<" and its reverse "<< reverse_center <<std::endl;
 				std::map<std::string,std::vector<string> >::iterator result_it = cluster_result.find(it->first);//local map
 				assert(result_it != cluster_result.end());
 				std::map<std::string,std::vector<string> >::iterator rev_result_it = global_results.find(reverse_center);
@@ -3283,7 +3283,7 @@ int do_dynamic_mc_model_with_two_edge(int argc, char * argv[]) {
 		occ.compute(cc_cluster_in);
 	/*	for(size_t i=0; i<cc_cluster_in.size()-1; i++) {//A test function that chckes overlap between components. There shouldn't be any overlap between them.
 			std::cout << "cc cluster in  "<< i << " contains " << cc_cluster_in.at(i).size() << " alignments" << std::endl;
-			for(std::set< const pw_alignment* , compare_pointer_pw_alignment>::iterator it = cc_cluster_in.at(i).begin();it != cc_cluster_in.at(i).end();it++){
+				for(std::set< const pw_alignment* , compare_pointer_pw_alignment>::iterator it = cc_cluster_in.at(i).begin();it != cc_cluster_in.at(i).end();it++){
 				const pw_alignment * p = *it;
 			//	p->print();
 				for(std::set< const pw_alignment* , compare_pointer_pw_alignment>::iterator it1 = it ;it1 != cc_cluster_in.at(i).end();it1++){
@@ -3407,7 +3407,7 @@ int do_dynamic_mc_model_with_two_edge(int argc, char * argv[]) {
 //Trees are created iteratively and centers are merged:
 	merging_centers merg(data, centers);
 	//grouped-non aligned regions are added too!
-/* XXX	merg.adding_new_centers(long_centers,centersPositionOnASeq,centerOnSequence);//After merging a group of centers we iteratively create new suffixes and a new tree based on them, then recalculate the gains again. At the end those with gain>0 go to the long_centers and centersPositionOnASeq.
+	merg.adding_new_centers(long_centers,centersPositionOnASeq,centerOnSequence);//After merging a group of centers we iteratively create new suffixes and a new tree based on them, then recalculate the gains again. At the end those with gain>0 go to the long_centers and centersPositionOnASeq.
 	std::cout<< "new centers are made! " << long_centers.size() <<std::endl;
 	for(size_t j  =0; j < long_centers.size();j++){
 		std::cout<< "center "<< j <<std::endl;
@@ -3416,11 +3416,11 @@ int do_dynamic_mc_model_with_two_edge(int argc, char * argv[]) {
 	std::cout << "long center size is "<< long_centers.size() << std::endl;
 	merg.create_alignment(long_centers,new_centers,alignments_in_a_cluster,centersPositionOnASeq,centerOnSequence,gap_in_long_centers);//Here we fill in the 'new_centers' with longer alignments in the way that center is always the second ref
 	merg.get_merged_als(merged_als);//They will be used later on to see which alignments were not merged together when we are going to add short centers to the long centers.
-*/ //XXX	
+	
 //Mixing long and short centers, find the adjacencies and add non aligned regins as a cluser with no memeber
 	mixing_centers mix(data);
 	std::cout << "new center size before merging "<< new_centers.size() << std::endl;
-//XXX	mix.add_original_centers_to_long_centers(new_centers, alignments_in_a_cluster, merged_als, centersPositionOnASeq, centerOnSequence);//I fill in a local container with the final situation of centers including both short and long ones. //XXX Bus error on node 444 & 505!!!!
+	mix.add_original_centers_to_long_centers(new_centers, alignments_in_a_cluster, merged_als, centersPositionOnASeq, centerOnSequence);//I fill in a local container with the final situation of centers including both short and long ones. //XXX Bus error on node 444 & 505 & 512!!!!
 	std::cout << "new center size after merging "<< new_centers.size() << std::endl;	
 	std::cout<<"original als were added! "<<std::endl;
 	if(center_type){
@@ -3688,6 +3688,7 @@ int do_read_data(int argc, char * argv[]) {
 //	std::vector<pw_alignment> alignments = data.getAlignments();
 	size_t seq_length = 0;
 	for(size_t i =0; i < data.numSequences();i++){
+		std::cout << "length of seq " << i << " is " << data.getSequence(i).length() << std::endl;
 		seq_length += data.getSequence(i).length();
 	}
 	std::cout << "total base number is " << seq_length <<std::endl;
