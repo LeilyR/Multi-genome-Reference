@@ -3083,7 +3083,6 @@ int do_dynamic_mc_model_with_two_edge(int argc, char * argv[]) {
 						mixed_als.insert(*it);							
 					}
 				}
-				//TODO here add temp_mixed
 				if(fraction > 0.95){
 					use_ias ias1(data,temp_mixed_als, m, cluster_base_cost,num_threads);
 					overlap_type ov1(data);
@@ -3105,7 +3104,7 @@ int do_dynamic_mc_model_with_two_edge(int argc, char * argv[]) {
 #pragma omp critical(al_insert)
 {
 				for(std::set<pw_alignment, compare_alignment<pw_alignment> >::const_iterator it = als_in_overlap.begin(); it != als_in_overlap.end();it++){
-			//	if(fraction > 0.6){//Just added it as a test to check the speed of running! For that i need to change the remainder from pointer to copy! TODO think about that! It may make it faster! . For that i need to change the pointer to copy
+			//	if(fraction > 0.6){//Just added it as a test to check the speed of running! For that i need to change the remainder from pointer to copy! TODO think about that! Make it faster! . For that i need to change the pointer to copy
 			//		std::cout << "add to remainer: " << &*it << std::endl;
 			//		pw_alignment pw = *it;
 			//		pw.print();
@@ -3396,13 +3395,13 @@ int do_dynamic_mc_model_with_two_edge(int argc, char * argv[]) {
 			}
 		}*/
 		std::cout << "all the non aligned regions are: "<<std::endl;
-		for(std::map<std::string, size_t>::iterator it = non_aligned_right.begin() ; it != non_aligned_right.end() ; it++){
+	/*	for(std::map<std::string, size_t>::iterator it = non_aligned_right.begin() ; it != non_aligned_right.end() ; it++){
 			std::cout << it->first << " "<< it->second << std::endl;
-		}
+		}*/
 	std::cout << "after addin non aligned regions "<< alignments_in_a_cluster.size() << std::endl;
-	for(std::map<std::string, std::vector<pw_alignment> >::iterator it = alignments_in_a_cluster.begin() ; it != alignments_in_a_cluster.end() ; it++){
+/*	for(std::map<std::string, std::vector<pw_alignment> >::iterator it = alignments_in_a_cluster.begin() ; it != alignments_in_a_cluster.end() ; it++){
 		std::cout << it->first <<std::endl;
-	}
+	}*/
 	centers.create_long_centers_candidates(centerOnSequence, gap_in_long_centers);//Make potential long centers
 //Trees are created iteratively and centers are merged:
 	merging_centers merg(data, centers);
@@ -3597,8 +3596,8 @@ int do_dynamic_decoding(int argc, char * argv[]){
 //	dec.arithmetic_decoding_centers(in,decode);
 //	dec.al_decode_with_long_center(in,decode,out);
 //	dec.al_decode_long_center_optimized_flag(in,decode,out);
-	dec.al_decoding(in,decode,out); //XXX this is the correct one for short centers
-//	dec.al_decode_with_long_center(in,decode,out); //This is the correct one for long centers
+//	dec.al_decoding(in,decode,out); //XXX this is the correct one for short centers
+	dec.al_decode_with_long_center(in,decode,out); //This is the correct one for long centers
 	cout<< "decoding is done!"<<endl;
 	out.close();
 

@@ -3183,7 +3183,7 @@ void affpro_clusters<tmodel,overlap_type>::add_alignment(const pw_alignment & al
 			al->second.push_back(it->second);
 		}
 		for(std::map<std::string, std::string>::iterator it= members_of_clusters.begin(); it != members_of_clusters.end(); it++){
-			std::cout << "center is " << it->second << std::endl;
+		//	std::cout << "center is " << it->second << std::endl;
 			std::map<std::string, std::vector<std::string> >::iterator cl = cluster_result.find(it->second);
 			assert(cl != cluster_result.end());
 		//	if(cl == cluster_result.end()){

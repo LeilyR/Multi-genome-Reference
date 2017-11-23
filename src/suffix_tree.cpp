@@ -73,7 +73,7 @@
 
 			memberOfCluster.insert(std::make_pair(it->first,it->first));
 		}
-		std::cout << "memberOfCluster size "<< memberOfCluster.size() << std::endl;
+	//	std::cout << "memberOfCluster size "<< memberOfCluster.size() << std::endl;
 	}
 	void finding_centers::center_frequency(std::map<std::string,std::vector<pw_alignment> > & alignmentsOfClusters, std::vector<std::map<size_t, std::string> > & centerOnseq){//it basically returns indices of centers on each sequence
 		setOfAlignments(alignmentsOfClusters);//set all the alignments on each sequence
@@ -98,7 +98,7 @@
 		}*/
 	//	std::cout<< "center index size before " << center_index.size()<<std::endl;
 		for(size_t i = 0; i< data.numSequences(); i++){
-			std::cout << "sequence: " << i << std::endl;
+		//	std::cout << "sequence: " << i << std::endl;
 			//Second: Find all the centers on a sequence
 			find_seq_centers(i,centerOnseq);
 		//	std::cout<< "center size at " << i <<" is "<< centerOnseq.at(i).size()<< std::endl;
@@ -114,10 +114,10 @@
 				center_id.erase(id);
 			}
 		}*/
-		std::cout<< "center index size after " << center_index.size() << " " <<center_id.size()<<std::endl;
+	//	std::cout<< "center index size after " << center_index.size() << " " <<center_id.size()<<std::endl;
 		//Just an assertion:
 		std::map<int, std::string>::reverse_iterator id = center_index.rbegin();
-		std::cout << id->first <<  " "<< alignmentsOfClusters.size() <<std::endl;
+	//	std::cout << id->first <<  " "<< alignmentsOfClusters.size() <<std::endl;
 		assert(id->first <= alignmentsOfClusters.size());
 	}
 	void finding_centers::create_long_centers_candidates(std::vector<std::map<size_t, std::string> > & centerOnseq, size_t & gap_in_long_centers){
@@ -133,7 +133,7 @@
 				std::map<size_t,std::vector<int> >::iterator rev_pos = intermediate.find(it->first);
 				assert(rev_pos == intermediate.end());
 					std::map<int,std::string>::iterator centid = center_index.find(it->second.at(0));
-					std::cout<< it->second.at(0)<<std::endl;
+				//	std::cout<< it->second.at(0)<<std::endl;
 					assert(centid != center_index.end());
 					std::string center = centid->second;
 					std::vector<std::string> center_parts;
@@ -198,13 +198,13 @@
 				}
 			}
 			//Print the potential long centers:
-			for(std::map< size_t , std::vector<int> >::iterator it = centersOfASequence.at(i).begin();it != centersOfASequence.at(i).end();it++){
+		/*	for(std::map< size_t , std::vector<int> >::iterator it = centersOfASequence.at(i).begin();it != centersOfASequence.at(i).end();it++){
 				std::cout << "position "<< it->first <<std::endl;
 				for(size_t i =0; i < it->second.size();i++){
 					std::cout << it->second.at(i)<<  " ";
 				}
 				std::cout << ""<<std::endl;
-			}
+			}*/
 		}
 	}
 	void finding_centers::find_seq_centers( size_t & seq_id , std::vector<std::map<size_t, std::string> > & centerOnseq){
@@ -308,7 +308,7 @@
 		size_t dir;
 		size_t dir1;
 		for(std::map<size_t, std::string>::iterator it = centerOnseq.begin(); it != centerOnseq.end();it++){
-			std::cout<< "at position "<< it->first << " center name is "<< it->second<<std::endl;
+		//	std::cout<< "at position "<< it->first << " center name is "<< it->second<<std::endl;
 			std::map<size_t, pw_alignment>::iterator it1=AlignmentsFromClustering.at(seq_id).find(it->first);
 			assert(it1 != AlignmentsFromClustering.at(seq_id).end());
 			pw_alignment al = it1->second;
@@ -341,23 +341,23 @@
 			}else{
 				direction = false;
 			}
-			std::cout << "position " << it->first << " allowed gap "<< gap_in_long_centers<<std::endl;
+		//	std::cout << "position " << it->first << " allowed gap "<< gap_in_long_centers<<std::endl;
 			if((it->first - last_position) < gap_in_long_centers && direction == true){
 				if(vectorOfcenters.size()!=0){
-					std::cout << "smaller than ALLOWED_GAP! "<< it->second <<std::endl;
+				//	std::cout << "smaller than ALLOWED_GAP! "<< it->second <<std::endl;
 				}
 				std::map<std::string,int>::iterator id=center_id.find(it->second);
 				assert(id != center_id.end());
 				int index = id->second;//TODO what if id is negative?
 				vectorOfcenters.push_back(index);
 				position_of_each_suffix.push_back(it->first);
-				std::cout << "index "<< index << std::endl;		
+			//	std::cout << "index "<< index << std::endl;		
 			}else{
-				std::cout<< "bigger than ALLOWED_GAP: " <<std::endl;
+			/*	std::cout<< "bigger than ALLOWED_GAP: " <<std::endl;
 				for(size_t i =0; i < vectorOfcenters.size();i++){
 					std::cout << vectorOfcenters.at(i)<< " ";
 				}
-				std::cout << "-------"<<std::endl;
+				std::cout << "-------"<<std::endl*/
 				AllConnectedOnes.insert(std::make_pair(first_position, vectorOfcenters));
 				//Creates suffix and their related position , then clear the 'position_of_each_suffix' 
 				if(vectorOfcenters.size()>1){
@@ -388,7 +388,7 @@
 					dir = 0;
 				}
 			}
-			std::cout << "last position "<< last_position << std::endl;
+		//	std::cout << "last position "<< last_position << std::endl;
 		}
 		//If the last center had ALLOWED_GAP with its previous one and there is no more left to go through the else
 		AllConnectedOnes.insert(make_pair(first_position, vectorOfcenters));
@@ -404,13 +404,13 @@
 		std::vector<std::vector<int> > temp;
 		for(std::map<size_t, std::vector<int> >::iterator it = AllConnectedOnes.begin(); it != AllConnectedOnes.end(); it++){
 			if(it->second.size() != 1 && it->second.size() != 0){
-				std::cout<< "pos "<< it->first <<std::endl;
+			//	std::cout<< "pos "<< it->first <<std::endl;
 				centersOfASequence.at(seq_id).insert(std::make_pair(it->first, it->second));//connected centers that can be potential long centers
 				temp.push_back(it->second);
-				for(size_t i =0; i < it->second.size();i++){
+			/*	for(size_t i =0; i < it->second.size();i++){
 					std::cout << it->second.at(i)<< " ";
 				}
-				std::cout << "-------"<<std::endl;
+				std::cout << "-------"<<std::endl;*/
 			}
 		}
 		long_centers_of_a_sequence.insert(std::make_pair(seq_id, temp));
@@ -426,12 +426,12 @@
 	std::vector<size_t> finding_centers::get_long_center_position(size_t & seq_id , std::vector<std::string> & long_center){
 		std::vector<size_t> position;
 		std::vector<int> centers;
-		std::cout << "current long cent " <<std::endl;
+	//	std::cout << "current long cent " <<std::endl;
 
 		for(size_t i =0; i < long_center.size();i++){
 			std::map<std::string, int>::iterator it = center_id.find(long_center.at(i));
 			assert(it != center_id.end());
-			std::cout << long_center.at(i)<< " "<< it->second <<std::endl;
+		//	std::cout << long_center.at(i)<< " "<< it->second <<std::endl;
 			centers.push_back(it->second);
 		}
 		std::multimap<std::vector<int>,size_t>::iterator suf = initial_suffixes.at(seq_id).find(centers);
@@ -492,12 +492,12 @@ void finding_centers::add_nonaligned_regions(std::vector<std::map<size_t, std::s
 		std::set<std::string> erased;
 		assert(center_index.size()==center_id.size());
 		for(size_t i =0; i < data.numSequences(); i++){
-			std::cout << "centers on sequence " << i << " are :"<<std::endl;
+		//	std::cout << "centers on sequence " << i << " are :"<<std::endl;
 			size_t pre_pos = 0;//later on will be updated to right+1
 			for(std::multimap<size_t, std::string >::iterator it = centerOnSequence.at(i).begin(); it != centerOnSequence.at(i).end();it++){
-				std::cout<< it->second << " ";
+			//	std::cout<< it->second << " ";
 				size_t pos = it->first;
-				std::cout<< "prepos "<< pre_pos << " pos "<<pos <<std::endl;
+			//	std::cout<< "prepos "<< pre_pos << " pos "<<pos <<std::endl;
 				assert(pre_pos <=pos);
 				if(pre_pos != pos){//There is a non aligned region in between
  					std::stringstream str;
@@ -510,20 +510,20 @@ void finding_centers::add_nonaligned_regions(std::vector<std::map<size_t, std::s
 					std::map<std::string, std::string>::iterator context=non_aligned_context.find(this_part);//the reverse complement can also be checked.
 					std::map<std::string, std::string>::iterator rev_context=non_aligned_context.find(reverse_comp_this_string);
 					if(context==non_aligned_context.end()&& rev_context==non_aligned_context.end()){ //If no other non aligned region has this context or its reverse.
-						std::cout<<"if context doesn't exist"<< str.str()<<std::endl;
+				//		std::cout<<"if context doesn't exist"<< str.str()<<std::endl;
 						non_aligned_context.insert(std::make_pair(this_part, str.str()));
 						all_pieces.at(i).insert(std::make_pair(pre_pos,str.str()));
 						non_aligned_right.insert(std::make_pair(str.str(),pos-1));
 					}else if(context!=non_aligned_context.end()){ //If another non aligned region with the exact same context exist.
 						if(rev_context != non_aligned_context.end()){
-							std::cout << this_part << std::endl;
-							std::cout << reverse_comp_this_string << std::endl;
+						//	std::cout << this_part << std::endl;
+						//	std::cout << reverse_comp_this_string << std::endl;
 						}
 						if(this_part != reverse_comp_this_string){//To avoid the Palindromic regions
 							assert(rev_context==non_aligned_context.end());
 						}
 						assert(rev_context == non_aligned_context.end() || this_part == reverse_comp_this_string);
-						std::cout<< "if context exists "<< context->second<< std::endl;
+				//		std::cout<< "if context exists "<< context->second<< std::endl;
 						std::vector<std::string> center_parts;
 						strsep(context->second, ":" , center_parts);
 						unsigned int center_dir = atoi(center_parts.at(0).c_str());
@@ -538,7 +538,7 @@ void finding_centers::add_nonaligned_regions(std::vector<std::map<size_t, std::s
 					//	non_aligned_right.insert(std::make_pair(context->second,pos-1));
 						std::map<std::string, size_t>::iterator nonaligned = non_aligned_right.find(context->second);
 						if(nonaligned == non_aligned_right.end()){
-							std::cout << "already removed "<<context->second << " "<< context->first <<std::endl;
+						//	std::cout << "already removed "<<context->second << " "<< context->first <<std::endl;
 						}
 						if(nonaligned != non_aligned_right.end()){
 							non_aligned_right.erase(nonaligned); //It is getting removed from the non_aligned_right container 'cus it is not a non aligned region anymore
@@ -553,7 +553,7 @@ void finding_centers::add_nonaligned_regions(std::vector<std::map<size_t, std::s
 						//	std::cout<< "center index size is "<< center_index.size() << std::endl;
 							std::map<int, std::string>::reverse_iterator lastind = center_index.rbegin();
 							size_t this_index = lastind->first + 1;
-							std::cout<< "this index "<< this_index <<std::endl;
+						//	std::cout<< "this index "<< this_index <<std::endl;
 							center_index.insert(std::make_pair(this_index, context->second));
 							center_id.insert(std::make_pair(context->second, this_index));
 						}else if(id == center_id.end()){
@@ -565,7 +565,7 @@ void finding_centers::add_nonaligned_regions(std::vector<std::map<size_t, std::s
 							assert(id != center_id.end());
 							assert(id->second > 0);
 						}
-						std::cout << "when true " << context->second <<std::endl;
+					//	std::cout << "when true " << context->second <<std::endl;
 						add_to_alignments(centerOnSequence, alignments_in_a_cluster, i, pre_pos, this_part, context->second,true); //this_part --> sequence content of both member and so called center , context->second --> center name
 					}else{//If its context doesn't exist itself but its reverse context does exist.
 						assert(context==non_aligned_context.end() && rev_context!=non_aligned_context.end());
@@ -582,8 +582,8 @@ void finding_centers::add_nonaligned_regions(std::vector<std::map<size_t, std::s
 					//	non_aligned_right.insert(std::make_pair(str.str(),pos-1));
 						std::map<std::string, size_t>::iterator nonaligned = non_aligned_right.find(rev_context->second);
 						if(nonaligned == non_aligned_right.end()){
-							std::cout<<"if its reverse exists " << rev_context->second <<std::endl;
-							std::cout << rev_context->first << " "<< this_part <<std::endl;
+						//	std::cout<<"if its reverse exists " << rev_context->second <<std::endl;
+						//	std::cout << rev_context->first << " "<< this_part <<std::endl;
 						}
 						if(nonaligned != non_aligned_right.end()){
 							non_aligned_right.erase(nonaligned);
@@ -595,7 +595,7 @@ void finding_centers::add_nonaligned_regions(std::vector<std::map<size_t, std::s
 						std::map<std::string, int>::iterator id = center_id.find(rev_context->second);
 						std::map<std::string, int>::iterator rev_id = center_id.find(str1.str());
 						if(id == center_id.end() && rev_id == center_id.end()){
-							std::cout << "here! "<<std::endl;
+						//	std::cout << "here! "<<std::endl;
 							std::map<int, std::string>::reverse_iterator lastind = center_index.rbegin();
 							std::map<int,std::string>::iterator firstind = center_index.begin();
 							size_t this_index = std::abs(lastind->first) + 1;
@@ -609,14 +609,14 @@ void finding_centers::add_nonaligned_regions(std::vector<std::map<size_t, std::s
 							center_id.insert(std::make_pair(rev_context->second,this_index));
 
 						}else if(id == center_id.end()){ //XXX Is it even happening?? Seems it shouldn't happen 'cus it happend atleast once before.
-							std::cout << "HERE! "<<std::endl;
+						//	std::cout << "HERE! "<<std::endl;
 							assert(rev_id != center_id.end());
 							assert(rev_id->second < 0);
 
 						}else if(rev_id == center_id.end()){
 							assert(id != center_id.end());
 							assert(id->second > 0);
-							std::cout << "here1"<<std::endl;
+						//	std::cout << "here1"<<std::endl;
 							center_index.insert(std::make_pair(-1*id->second, str1.str()));
 							center_id.insert(std::make_pair(str1.str(), -1*id->second));
 
@@ -649,7 +649,7 @@ void finding_centers::add_nonaligned_regions(std::vector<std::map<size_t, std::s
 
 	}
 	void finding_centers::add_to_alignments(std::vector<std::map<size_t, std::string > > & centerOnSequence, std::map<std::string, std::vector<pw_alignment> > & alignments_in_a_cluster, size_t & ref, size_t & position, std::string & sequence, std::string & center_name , bool direction){//it adds newly made alignments between identical non aligned regions to alignmnets_in_a_cluster and AlignmentFromClustering
-		std::cout << "add the al "<<std::endl;
+	//	std::cout << "add the al "<<std::endl;
 		std::vector<std::string> center_parts;
 		strsep(center_name, ":" , center_parts);
 		unsigned int center_dir = atoi(center_parts.at(0).c_str());
@@ -691,9 +691,9 @@ void finding_centers::add_nonaligned_regions(std::vector<std::map<size_t, std::s
 			centerOnSequence.at(center_ref).insert(std::make_pair(center_left, str1.str()));
 		}
 		it->second.push_back(p);
-		p.print();
-		std::cout << p.get_al_ref1() << std::endl;
-		std::cout << p.get_al_ref2() << std::endl;
+	//	p.print();
+	//	std::cout << p.get_al_ref1() << std::endl;
+	//	std::cout << p.get_al_ref2() << std::endl;
 
 	}
 	const size_t finding_centers::find_right_on_seq(std::string & center,std::map<std::string, std::vector<pw_alignment> > & alignments_in_a_cluster, size_t & left , size_t & ref)const{
@@ -762,11 +762,11 @@ void finding_centers::add_nonaligned_regions(std::vector<std::map<size_t, std::s
 
 	void suffixTree::add_leaves(size_t & parent , std::vector<int> & new_suffix){
 	//	double inf = std::numeric_limits<double>::infinity();
-		std::cout<< "last node index "<< last_node_index << " new suffix size "<< new_suffix.size() << std::endl;
+	//	std::cout<< "last node index "<< last_node_index << " new suffix size "<< new_suffix.size() << std::endl;
 		edges_relations.insert(std::make_pair(parent, last_node_index));
 		edges.insert(std::make_pair(last_node_index,new_suffix));
 		last_node_index++;
-		std::cout << "relation size "<<edges_relations.size()<< std::endl;
+	//	std::cout << "relation size "<<edges_relations.size()<< std::endl;
 	}
 	void suffixTree::add_internal_node(size_t & parent_index , std::vector<int> & new_suffix){//equal range for parent
 		std::multimap<size_t,size_t>::iterator it2 = edges_relations.find(parent_index);
@@ -780,19 +780,19 @@ void finding_centers::add_nonaligned_regions(std::vector<std::map<size_t, std::s
 		edges_relations.erase(parent_index);
 		it2 = edges_relations.find(parent_index);
 		assert(it2 == edges_relations.end());
-		std::cout << "child nodes were deleted"<<std::endl;
+	//	std::cout << "child nodes were deleted"<<std::endl;
 		edges_relations.insert(std::make_pair(parent_index, last_node_index));
-		std::cout<< "intermediate size "<< intermediate.size()<<std::endl;
+	//	std::cout<< "intermediate size "<< intermediate.size()<<std::endl;
 		for(size_t i =0; i < intermediate.size();i++){
 			edges_relations.insert(std::make_pair(last_node_index, intermediate.at(i)));						
-			std::cout << "test at "<< i << " is " << intermediate.at(i)<<std::endl;
+		//	std::cout << "test at "<< i << " is " << intermediate.at(i)<<std::endl;
 		}
 		edges.insert(std::make_pair(last_node_index,new_suffix));
 		last_node_index ++;
 
 	}
 	void suffixTree::update_node(size_t & node_index, std::vector<int> & new_content){
-		std::cout<< "node index "<< node_index << " new content "<< new_content << std::endl;
+	//	std::cout<< "node index "<< node_index << " new content "<< new_content << std::endl;
 		std::map<size_t, std::vector<int> >::iterator it = edges.find(node_index);
 		assert(it != edges.end());
 		it->second = new_content;
@@ -801,57 +801,57 @@ void finding_centers::add_nonaligned_regions(std::vector<std::map<size_t, std::s
 	void suffixTree::split(size_t & parent_index, std::vector<int> & parent , std::vector<int> & new_suffix, std::vector<int> & common_part, bool & make_a_tree){
 		assert(common_part.size() <= parent.size());
 		std::vector<int> parent_non_common;
-		std::cout << "common part size "<< common_part.size() << " parent size "<< parent.size()<<std::endl;
+	//	std::cout << "common part size "<< common_part.size() << " parent size "<< parent.size()<<std::endl;
 		for(size_t i =common_part.size(); i < parent.size();i++){
 			parent_non_common.push_back(parent.at(i));
 		}
 		if(parent_non_common.size() != 0){//common part shorter than parent's length
-			std::cout << "if parent_non_common.size() != 0 "<<std::endl;
+		//	std::cout << "if parent_non_common.size() != 0 "<<std::endl;
 			std::multimap<size_t, size_t>::iterator it = edges_relations.find(parent_index);
 			if(it == edges_relations.end()){
-				std::cout<< "add leaves "<<std::endl;
+			//	std::cout<< "add leaves "<<std::endl;
 				add_leaves(parent_index,parent_non_common); 
 			}else{
-				std::cout<< "add internal "<<std::endl;
+			//	std::cout<< "add internal "<<std::endl;
 				add_internal_node(parent_index,parent_non_common);
 			}
-			std::cout<< "parent index is "<< parent_index<< " " << new_suffix.size() << " >= " << common_part.size() << " " << parent_non_common <<std::endl;
+		//	std::cout<< "parent index is "<< parent_index<< " " << new_suffix.size() << " >= " << common_part.size() << " " << parent_non_common <<std::endl;
 			update_node(parent_index,common_part);//update its content
-			std::cout<< "1parent index is "<< parent_index<< " " << new_suffix.size() << " >= " << common_part.size() <<std::endl;
+		//	std::cout<< "1parent index is "<< parent_index<< " " << new_suffix.size() << " >= " << common_part.size() <<std::endl;
 			if(new_suffix.size()>= common_part.size()){
 				std::vector<int> current_non_common;
 				for(size_t i =common_part.size(); i < new_suffix.size();i++){
-					std::cout << new_suffix.at(i) << " " ;
+				//	std::cout << new_suffix.at(i) << " " ;
 					current_non_common.push_back(new_suffix.at(i));
 				}
-				std::cout<< "current non common size is "<< current_non_common <<std::endl;
+			//	std::cout<< "current non common size is "<< current_non_common <<std::endl;
 				if(current_non_common.size() != 0){
-					std::cout<< "add leaves1 "<<std::endl;
+				//	std::cout<< "add leaves1 "<<std::endl;
 					add_leaves(parent_index,current_non_common); 
 				}
 			}
 			make_a_tree = false;
 		}else{//common part is equal to parent's length - the new suffix is longer than the parent and fully covers it.
-			std::cout << "i am here!" <<std::endl;
+		//	std::cout << "i am here!" <<std::endl;
 			assert(parent_non_common.size() == 0);
 			if(common_part.size() < new_suffix.size()){ //TRICKY ONE!!!!
 				std::vector<int> current_non_common;
 				for(size_t i =common_part.size(); i < new_suffix.size();i++){
-					std::cout<< new_suffix.at(i) << " ";
+				//	std::cout<< new_suffix.at(i) << " ";
 					current_non_common.push_back(new_suffix.at(i));
 				}
-				std::cout << " "<<std::endl;
+			//	std::cout << " "<<std::endl;
 				assert(current_non_common.size()!=0);
 				std::multimap<size_t, size_t>::iterator it = edges_relations.find(parent_index);
 				if(it != edges_relations.end()){//check on the childrens for a common part
-					std::cout<< "has child node"<<std::endl;
+				//	std::cout<< "has child node"<<std::endl;
 					size_t new_parent_index = edges.size();
 					find_next_parent(parent_index, current_non_common, common_part, new_parent_index, parent);
-					std::cout << new_parent_index <<std::endl;
+				//	std::cout << new_parent_index <<std::endl;
 					if(new_parent_index != edges.size()){
 						new_suffix = current_non_common;
 						parent_index = new_parent_index;
-						std::cout << "here "<< std::endl;
+					//	std::cout << "here "<< std::endl;
 					}else{
 						add_leaves(parent_index,current_non_common);
 						make_a_tree = false;
@@ -879,7 +879,8 @@ void finding_centers::add_nonaligned_regions(std::vector<std::map<size_t, std::s
 			}//For convenience add 1<<31 at the end of all the suffixes
 			suffix.push_back(1<<31);
 			suffixes.push_back(suffix);
-		} 		std::cout << " "<<std::endl;	
+		} 
+//		std::cout << " "<<std::endl;	
 	
 	}
 	void suffixTree::find_first_edges_after_root(size_t & deepest_parent, std::vector<int> & new_suffix){
@@ -893,16 +894,16 @@ void finding_centers::add_nonaligned_regions(std::vector<std::map<size_t, std::s
 		common_part.clear();
 		std::pair<std::multimap<size_t, size_t>::iterator, std::multimap<size_t, size_t>::iterator> it = edges_relations.equal_range(parent_index);
 		for(std::multimap<size_t,size_t>::iterator it1 = it.first ; it1 != it.second; it1++){
-			std::cout << "child "<< it1->second << std::endl;
+		//	std::cout << "child "<< it1->second << std::endl;
 			std::map<size_t, std::vector<int> >::iterator edge=edges.find(it1->second);
 			assert(edge != edges.end());
-			std::cout << edge->second.at(0)<< " "<<current_non_common.at(0)<<std::endl;
+		//	std::cout << edge->second.at(0)<< " "<<current_non_common.at(0)<<std::endl;
 			if(edge->second.at(0)==current_non_common.at(0)){
-				std::cout<< "got it"<< std::endl;
+			//	std::cout<< "got it"<< std::endl;
 				find_common_part(edge->second, current_non_common,common_part);
 				new_parent_index = edge->first;
 				parent = edge->second;
-				std::cout << "new parent index "<< new_parent_index << std::endl;
+			//	std::cout << "new parent index "<< new_parent_index << std::endl;
 				break;
 			}
 		}
@@ -929,27 +930,27 @@ void finding_centers::add_nonaligned_regions(std::vector<std::map<size_t, std::s
 		for(size_t i = 0; i < words.at(seq).size(); i ++){
 			std::vector<int> this_word = words.at(seq).at(i);//current string of centers on a seq
 			make_suffix(this_word);
-			std::cout<< "suffixes size "<<suffixes.size()<<std::endl;
+	//		std::cout<< "suffixes size "<<suffixes.size()<<std::endl;
 			for(size_t j =0; j< suffixes.size(); j++){
 				size_t deepest_parent =edges.size();
 				find_first_edges_after_root(deepest_parent, suffixes.at(j));
 				if(deepest_parent == edges.size()){
-					std::cout << "no first parent! "<<std::endl;
+				//	std::cout << "no first parent! "<<std::endl;
 					first_edges.insert(std::make_pair(suffixes.at(j).at(0),last_node_index));
 					size_t root_index =0;
 					add_leaves(root_index,suffixes.at(j));
 				}else{
 					std::map<size_t, std::vector<int> >::iterator it = edges.find(deepest_parent);
 					assert(it != edges.end());
-					std::cout<< "has a parent"<<std::endl;
+				//	std::cout<< "has a parent"<<std::endl;
 					std::vector<int> common_part;
 					std::vector<int> parent = it->second;
 					std::vector<int> current = suffixes.at(j);
 					find_common_part(parent, current,common_part);
-					for(size_t n =0; n < common_part.size();n++){
-						std::cout<< common_part.at(n) << " ";
-					}
-					std::cout << " "<<std::endl;
+				//	for(size_t n =0; n < common_part.size();n++){
+				//		std::cout<< common_part.at(n) << " ";
+				//	}
+				//	std::cout << " "<<std::endl;
 					bool make_a_tree = true;
 					size_t parent_index = deepest_parent;
 					while(make_a_tree == true){
@@ -958,11 +959,11 @@ void finding_centers::add_nonaligned_regions(std::vector<std::map<size_t, std::s
 				}
 			}
 		}
-		print_tree();
+	//	print_tree();
 
 	}
 	void suffixTree::make_tree(std::vector<int> & center_with_highest_gain, int & highest_index){	
-		std::cout << "words size is "<< words.size() <<std::endl;
+	//	std::cout << "words size is "<< words.size() <<std::endl;
 		for(size_t seq_id = 0; seq_id < num_seq; seq_id++){
 			if(center_with_highest_gain.size() == 0){
 				std::cout<< "seq id "<<seq_id <<std::endl;
@@ -975,9 +976,12 @@ void finding_centers::add_nonaligned_regions(std::vector<std::map<size_t, std::s
 		}
 		count_branches();
 	}
-	void suffixTree::update_centers(size_t & seq_id, std::vector<int> & edge_with_highest_gain, int & highest_index){
+	void suffixTree::update_centers(size_t & seq_id, std::vector<int> & edge_with_highest_gain, int & highest_index){ 
 		for(size_t i = 0; i < words.at(seq_id).size(); i++){
+			std::cout << "before update at " << i <<std::endl;
 			std::vector<int> centers = words.at(seq_id).at(i);
+			std::cout << centers <<std::endl;
+			std::cout << "rev: " << -1 * edge_with_highest_gain.back()<<std::endl;
 			for(size_t k =0; k < centers.size();k++){
 				if(centers.at(k) == edge_with_highest_gain.at(0)&& ((centers.size()-k)>= edge_with_highest_gain.size())){
 					size_t first_common_index;
@@ -999,9 +1003,33 @@ void finding_centers::add_nonaligned_regions(std::vector<std::map<size_t, std::s
 						}
 						centers=new_center;
 					}
+				}else if(centers.at(k) == -1 * edge_with_highest_gain.back() && ((centers.size()-k)>= edge_with_highest_gain.size())){
+					std::cout << "here!"<<std::endl;
+					std::vector<int> common;
+					common.push_back(-1 * edge_with_highest_gain.back());
+					for(size_t i = edge_with_highest_gain.size()-1; i> 0; i--){
+						std::cout << " i " << i << std::endl;
+						if(centers.at(k+edge_with_highest_gain.size()-i)== -1 * edge_with_highest_gain.at(i-1)){
+							std::cout << "cent " << centers.at(k+edge_with_highest_gain.size()-i) << " " << -1 * edge_with_highest_gain.at(i-1) <<std::endl;
+							common.push_back(-1 * edge_with_highest_gain.at(i-1));
+						}else break;
+					}
+					if(common.size() == edge_with_highest_gain.size()){
+						std::vector<int> new_center;
+						for(size_t m = 0; m < k ;m++){
+							new_center.push_back(centers.at(m));
+						}
+						new_center.push_back(-1*highest_index);
+						for(size_t m = k + common.size(); m < centers.size();m++){
+							new_center.push_back(centers.at(m));
+						}
+						centers=new_center;
+					}
 				}
 			}
 			words.at(seq_id).at(i) = centers;
+			std::cout << "after update at "<< i <<std::endl;
+			std::cout << centers << std::endl;
 		}
 
 	}
@@ -1010,9 +1038,9 @@ void finding_centers::add_nonaligned_regions(std::vector<std::map<size_t, std::s
 			for(size_t w = 0; w< words.at(seq).size(); w++){
 				std::vector<int> this_word = words.at(seq).at(w);//current string of centers on a seq
 				make_suffix(this_word);
-				std::cout<< "suffixes size "<<suffixes.size()<<std::endl;
+			//	std::cout<< "suffixes size "<<suffixes.size()<<std::endl;
 				for(size_t j =0; j< suffixes.size(); j++){
-					std::cout << "j "<<j <<std::endl;
+				//	std::cout << "j "<<j <<std::endl;
 					std::vector<size_t> branch;
 					std::vector<int> current = suffixes.at(j);
 					size_t deepest_parent =edges.size();
@@ -1022,12 +1050,12 @@ void finding_centers::add_nonaligned_regions(std::vector<std::map<size_t, std::s
 					assert(it != edges.end());
 					if(it->second.size()==current.size()){
 						branch.push_back(deepest_parent);
-						std::cout << "all the suffix is on one edge!"<<std::endl;
+					//	std::cout << "all the suffix is on one edge!"<<std::endl;
 					}else{//Note that first parent can not be longer than current.
 						std::vector<int> updated_current;
-						std::cout<<"updated current: "<<std::endl;
+					//	std::cout<<"updated current: "<<std::endl;
 						for(size_t k =it->second.size() ; k < current.size(); k++){
-							std::cout << current.at(k)<< " ";
+						//	std::cout << current.at(k)<< " ";
 							updated_current.push_back(current.at(k));
 						}
 						std::cout << " "<<std::endl;
@@ -1036,14 +1064,14 @@ void finding_centers::add_nonaligned_regions(std::vector<std::map<size_t, std::s
 						current = updated_current;
 						while(current.size()>0){
 							traverse_the_tree(parent_index,current);
-							std::cout << "current size "<< current.size() <<std::endl;
+						//	std::cout << "current size "<< current.size() <<std::endl;
 							branch.push_back(parent_index);							
 						}
 					}
 					std::vector<size_t> sub_branch;
-					std::cout<<"branch size "<< branch.size()<<std::endl;
+				//	std::cout<<"branch size "<< branch.size()<<std::endl;
 					for(size_t i = 0 ; i < branch.size(); i++){
-						std::cout << "i "<< i << " " << branch.at(i) <<std::endl;
+					//	std::cout << "i "<< i << " " << branch.at(i) <<std::endl;
 						sub_branch.push_back(branch.at(i));
 						std::map<std::vector<size_t>,size_t>::iterator it1 = branches.find(sub_branch);
 						if(it1 == branches.end()){
@@ -1058,24 +1086,24 @@ void finding_centers::add_nonaligned_regions(std::vector<std::map<size_t, std::s
 		}
 	}
 	void suffixTree::traverse_the_tree(size_t & parent_index, std::vector<int> & new_suffix){
-		std::cout<< "parent index is "<< parent_index <<std::endl;
+	//	std::cout<< "parent index is "<< parent_index <<std::endl;
 		std::multimap<size_t, size_t>::iterator check = edges_relations.find(parent_index);
 		assert(check != edges_relations.end());
 		std::pair<std::multimap<size_t, size_t>::iterator, std::multimap<size_t, size_t>::iterator > it = edges_relations.equal_range(parent_index);
 		for(std::multimap<size_t, size_t>::iterator it1 = it.first; it1 !=it.second;it1++){
 			std::map<size_t,std::vector<int> >::iterator it2 = edges.find(it1->second);
-			std::cout<< it1->second <<std::endl;
+		//	std::cout<< it1->second <<std::endl;
 			assert(it2 != edges.end());
 			if(it2->second.at(0)== new_suffix.at(0)){
 				parent_index = it1->second;
-				std::cout<< "new parent index " << parent_index<<std::endl;
+			//	std::cout<< "new parent index " << parent_index<<std::endl;
 				std::vector<int> updated_current;
-				std::cout<< "updated:"<<std::endl;
+			//	std::cout<< "updated:"<<std::endl;
 				for(size_t i = it2->second.size(); i < new_suffix.size(); i++){
-					std::cout<< new_suffix.at(i)<< " ";
+				//	std::cout<< new_suffix.at(i)<< " ";
 					updated_current.push_back(new_suffix.at(i));
 				}		
-				std::cout << " "<<std::endl;
+			//	std::cout << " "<<std::endl;
 				new_suffix = updated_current;
 				break;
 			}

@@ -16,29 +16,41 @@
 		std::map<size_t,std::vector<int> > edges = tree.get_edges();
 		std::map<std::vector<size_t> , size_t> counts = tree.get_branches();
 		std::map<std::vector<int>, int> intermediate;
+		std::map<std::vector<int>, size_t> centers_frequency;
 		for(std::map<std::vector<size_t> , size_t>::iterator it = counts.begin(); it != counts.end(); it++){
 			vector<size_t> br = it->first;//list of nodes of a path
 			size_t number = it->second;//number of the path happening
 			std::vector<int> seriesOfCenters;
+			std::vector<int> reverse_centers;
 		//	std::cout<< "centers on these nodes are "<<std::endl;
-			std::cout<< "series of centers: " <<std::endl;
+		//	std::cout<< "series of centers: " <<std::endl;
 			for(size_t j = 0 ; j < br.size(); j++){
 				std::map<size_t, std::vector<int> >::iterator nodes= edges.find(br.at(j));
 				assert(nodes != edges.end());
 				for(size_t k =0; k < nodes->second.size();k++){
-					std::cout<< nodes->second.at(k) <<std::endl;
-					seriesOfCenters.push_back(nodes->second.at(k));//push back all the centers of all the nodes on the path br
+					if(nodes->second.at(k) != 1 <<31){
+					//	std::cout<< nodes->second.at(k) <<std::endl;
+						seriesOfCenters.push_back(nodes->second.at(k));//push back all the centers of all the nodes on the path br
+						reverse_centers.push_back(-1 * nodes->second.at(k));
+					}
 				}
 			}
-			if(seriesOfCenters.at(seriesOfCenters.size()-1) == 1<<31){//The extra ending character is removed 
+			std::reverse(reverse_centers.begin(),reverse_centers.end());
+		/*	if(seriesOfCenters.at(seriesOfCenters.size()-1) == 1<<31){//The extra ending character is removed 
 				std::cout << "romve the last char!"<<std::endl;
 				seriesOfCenters.pop_back();	
-			}
+			}*/
 
 			std::map<std::vector<int>, int>::iterator it1 = gains.find(seriesOfCenters);
+			std::map<std::vector<int>, int>::iterator rev_it1 = gains.find(reverse_centers);
 			if(it1 != gains.end()){//It is kept as it is
+				assert(rev_it1 == gains.end());
 				intermediate.insert(make_pair(it1->first,it1->second));
+			}else if(rev_it1 != gains.end()){
+				assert(it1 == gains.end());
+				intermediate.insert(make_pair(rev_it1->first,rev_it1->second));
 			}else{
+				assert(it1 == gains.end() && rev_it1 == gains.end());
 			//	size_t number_of_new_center = 0;
 			//	for(size_t i = 0; i < seriesOfCenters.size(); i++){
 			//		if(seriesOfCenters.at(i)== index){//??
@@ -48,16 +60,31 @@
 		//		size_t old_length = seriesOfCenters.size()+ (number_of_new_center*center_string.size());
 		//		std::cout << "old_length " << old_length << std::endl;
 //				size_t gain = number*old_length - (number + seriesOfCenters.size());
-				size_t gain = number*seriesOfCenters.size() - (number + seriesOfCenters.size());
-				intermediate.insert(make_pair(seriesOfCenters,gain));
+			/*	size_t gain = number*seriesOfCenters.size() - (number + seriesOfCenters.size());
+				intermediate.insert(make_pair(seriesOfCenters,gain)); */
 			//	gains.insert(make_pair(seriesOfCenters,gain));
+				if(seriesOfCenters.size() >1){
+					std::map<std::vector<int> , size_t>::iterator freq=centers_frequency.find(seriesOfCenters);
+					std::map<std::vector<int> , size_t>::iterator freq1=centers_frequency.find(reverse_centers);
+					if(freq == centers_frequency.end() && freq1 == centers_frequency.end()){ //non of the 'centers' and its reverse have been saved. 
+						centers_frequency.insert(std::make_pair(seriesOfCenters,number));
+					}else if(freq == centers_frequency.end() && freq1 != centers_frequency.end()){
+						freq1->second += number;
+					}else{
+						assert(freq != centers_frequency.end() && freq1 == centers_frequency.end());
+						freq->second += number;
+					}
+				}	
 			}
 		}
 		gains.clear();
 		for(std::map<std::vector<int>,int>::iterator it = intermediate.begin(); it != intermediate.end(); it++){
 			gains.insert(make_pair(it->first,it->second));
 		}
-
+		for(std::map<std::vector<int> , size_t>::iterator it = centers_frequency.begin(); it != centers_frequency.end(); it++){
+			int gain = (it->second * it->first.size()) - (it->second + it->first.size());
+			gains.insert(std::make_pair(it->first , gain));
+		}
 	}
 
 	void merging_centers::merg_gain_value(suffixTree & tree){//calculates the gain value and builds second tree and so on iteratively
@@ -67,32 +94,57 @@
 		std::cout << "original center number: "<< original_center_numbers << std::endl; 
 		std::map<std::vector<size_t> , size_t> counts = tree.get_branches();//vector<size_t> shows a path(size_t s are node indices) and size_t is its number of happening. 
 		//calculating the initial gain values:
+		std::map<std::vector<int> , size_t> centers_frequency;
 		for(std::map<std::vector<size_t> , size_t>::iterator it = counts.begin(); it != counts.end(); it++){
 			std::vector<size_t> br = it->first;//list of nodes of a path
 			size_t number = it->second;
 			std::vector<int> centers;
+			std::vector<int> rev_centers;
 			int gain = 0;
 			for(size_t j = 0 ; j < br.size(); j++){
 				std::map<size_t, std::vector<int> >::iterator nodes= edges.find(br.at(j));
 				assert(nodes != edges.end());
 				for(size_t k =0; k < nodes->second.size();k++){
-					centers.push_back(nodes->second.at(k));//push back all the centers of all the nodes on the path br
+					if(nodes->second.at(k) !=  1<<31){
+						centers.push_back(nodes->second.at(k));//push back all the centers of all the nodes on the path br
+						rev_centers.push_back( -1*(nodes->second.at(k)));
+					}
 				}
 			}
-			if(centers.at(centers.size()-1) == 1<<31){//The extra ending character is removed 
+			std::reverse(rev_centers.begin(),rev_centers.end());
+		/*	if(centers.at(centers.size()-1) == 1<<31){//The extra ending character is removed 
 				centers.pop_back();	
-			}
+			}*/
 			std::cout<< "centers " ;
 			for(size_t j =0; j < centers.size();j++){
 				std::cout<< centers.at(j) << " " ;
 			}
 			std::cout << " " <<std::endl;
-			std::cout<< "center size: " << centers.size() << "  number of happening: "<< number << std::endl;
-			gain = number*(centers.size())-(number+centers.size());
+		//	std::cout<< "center size: " << centers.size() << "  number of happening: "<< number << std::endl;
+		/*	gain = number*(centers.size())-(number+centers.size());
 			if(centers.size()!= 0){// We may get zero when the original path only had the extra endign char.
 				gains.insert(make_pair(centers,gain));//centers-->index of centers, gain of the long center
 				std::cout<< "gain "<<gain <<std::endl;
+			} */
+			if(centers.size() > 1){
+				std::map<std::vector<int> , size_t>::iterator freq=centers_frequency.find(centers);
+				std::map<std::vector<int> , size_t>::iterator freq1=centers_frequency.find(rev_centers);
+				if(freq == centers_frequency.end() && freq1 == centers_frequency.end()){ //non of the 'centers' and its reverse have been saved. 
+					centers_frequency.insert(std::make_pair(centers,number));
+					std::cout << "here_freq!"<<std::endl;
+				}else if(freq == centers_frequency.end() && freq1 != centers_frequency.end()){
+					freq1->second += number;
+					std::cout << "here_freq1!"<<std::endl;
+				}else{
+					assert(freq != centers_frequency.end() && freq1 == centers_frequency.end());
+					freq->second += number;
+					std::cout << "here_freq2!"<<std::endl;
+				}
 			}
+		}
+		for(std::map<std::vector<int> , size_t>::iterator it = centers_frequency.begin(); it != centers_frequency.end(); it++){
+			int gain = (it->second * it->first.size()) - (it->second + it->first.size());
+			gains.insert(std::make_pair(it->first , gain));
 		}
 		int highest_gain=0;
 		std::vector<int> highest_path;
@@ -119,16 +171,16 @@
 			seen.push_back(hi->second);//Because we dont want to use the same center again as the one with the highest gain //XXX Shall i look for all the previous ones?!!
 			find_highest_gain(highest_path, highest_gain,seen);
 			if(gains.size() != 0){
-				std::cout << "check highest path: " <<std::endl;
+			/*	std::cout << "check highest path: " <<std::endl;
 				for(size_t j = 0; j < highest_path.size(); j++){
 					std::cout << highest_path.at(j)<< " ";
-				}
+				}*/
 			//	std::cout << " " <<std::endl;
 			}
 			center_numbers = center_numbers +1;
 			merged_centers.insert(make_pair(highest_path, center_numbers));
 		}
-//		std::cout << "final result: " << std::endl;
+		std::cout << "final result " << std::endl;
 //		for(map<std::vector<size_t>, int>::iterator it = gains.begin(); it != gains.end(); it++){
 //			for(size_t j =0; j < it->first.size(); j++){
 //				std::cout<< it->first.at(j)<< " ";
@@ -167,11 +219,11 @@
 		merg_gain_value(tree);
 		size_t biggest_index = 0;
 		std::vector<std::string> sequence_of_centers;
-		std::cout << "merged centers size: "<< merged_centers.size()<<std::endl;
+	//	std::cout << "merged centers size: "<< merged_centers.size()<<std::endl;
 		for(std::map<std::vector<int>,size_t>::iterator it = merged_centers.begin(); it != merged_centers.end(); it++){//The new indices are converted to their name
-			std::cout << " merged_center: " << it->second << std::endl;
+		/*	std::cout << " merged_center: " << it->second << std::endl;
 			for(size_t j =0;j< it->first.size();j++){ std::cout<< it->first.at(j)<< " ";}
-			std::cout<< " "<<std::endl;
+			std::cout<< " "<<std::endl;*/
 		//	std::vector<size_t> updated_center = it->first;
 			std::vector<int> list;
 			list = it->first;
@@ -182,7 +234,7 @@
 			//	std::cout << "number of original centers: "<< centers.get_number_of_centers()<<std::endl;
 				for(size_t j =0; j < list.size(); j++){
 					id = list.at(j);
-					std::cout << "id " << id <<std::endl;
+				//	std::cout << "id " << id <<std::endl;
 					int id1 = id;
 					if(id < 0){
 						id1 = (-1)*id;
@@ -191,35 +243,35 @@
 						for(std::map<std::vector<int>,size_t>::iterator it1 = merged_centers.begin(); it1 != merged_centers.end(); it1++){
 							if(it1->second == id1){
 								std::vector<int> temp;
-								std::cout << "j "<< j << std::endl;
+							//	std::cout << "j "<< j << std::endl;
 								if(j != 0){
 									for(size_t i = 0; i < j;i++){
 										temp.push_back(list.at(i));	
 									}
-									std::cout<< "temp0: "<<std::endl;
-									for(size_t i = 0; i < temp.size(); i ++){
-										std::cout << temp.at(i)<< " ";
-									}
-									std::cout << " " <<std::endl;
+								//	std::cout<< "temp0: "<<std::endl;
+								//	for(size_t i = 0; i < temp.size(); i ++){
+								//		std::cout << temp.at(i)<< " ";
+								//	}
+								//	std::cout << " " <<std::endl;
 								}
 								for(size_t i = 0; i < it1->first.size();i++){
 									temp.push_back(it1->first.at(i));
 								}
-								std::cout<< "temp1: "<<std::endl;
-								for(size_t i = 0; i < temp.size(); i ++){
-									std::cout << temp.at(i)<< " ";
-								}
-								std::cout << " " <<std::endl;
+							//	std::cout<< "temp1: "<<std::endl;
+							//	for(size_t i = 0; i < temp.size(); i ++){
+							//		std::cout << temp.at(i)<< " ";
+							//	}
+							//	std::cout << " " <<std::endl;
 								for(size_t i = j+1; i < list.size();i++){
 									temp.push_back(list.at(i));
 								}
-								std::cout<< "temp: "<<std::endl;
-								for(size_t i = 0; i < temp.size(); i ++){
-									std::cout << temp.at(i)<< " ";
-								}
+							//	std::cout<< "temp: "<<std::endl;
+							//	for(size_t i = 0; i < temp.size(); i ++){
+							//		std::cout << temp.at(i)<< " ";
+							//	}
 								list = temp;
 								j = j + it1->first.size()-1;
-								std::cout << "j1 "<< j <<std::endl;
+							//	std::cout << "j1 "<< j <<std::endl;
 								break;
 							} else continue;
 						}
@@ -228,8 +280,8 @@
 				ThereIsStillABigID = false;
 				for(size_t j =0; j < list.size(); j++){
 					id = list.at(j);//TODO Check how you got negetive id!!
-					std::cout << "j2 " << j <<std::endl;
-					std::cout << "id "<< id <<" num of centers "<< centers.get_number_of_centers() <<std::endl;
+				//	std::cout << "j2 " << j <<std::endl;
+				//	std::cout << "id "<< id <<" num of centers "<< centers.get_number_of_centers() <<std::endl;
 					int id1 = id;
 					if(id < 0){
 						id1 = (-1)*id;
@@ -241,12 +293,12 @@
 					}else continue;
 				}
 			}
-			std::cout << "list size is "<< list.size() <<std::endl;
+		//	std::cout << "list size is "<< list.size() <<std::endl;
 			for(size_t j =0; j < list.size(); j++){
 				int id = list.at(j);
 				std::string center = centers.find_center_name(id);
 				sequence_of_centers.push_back(center);
-				std::cout << center << std::endl;
+			//	std::cout << center << std::endl;
 			}
 			long_centers.push_back(sequence_of_centers);
 			for(size_t i = 0; i < data.numSequences(); i++){
@@ -286,10 +338,10 @@
 				center_index.insert(make_pair(center,-1*(it1->second)));
 			}			
 		}
-		std::cout << "indices"<<std::endl;
+	/*	std::cout << "indices"<<std::endl;
 		for(std::map<std::string, int>::iterator it = center_index.begin(); it!=center_index.end();it++){
 			std::cout << it->first << " " << it->second <<std::endl;
-		}		
+		}	*/	
 	}
 	void merging_centers::add_long_centers_to_map(std::vector<std::vector<std::string> > & long_centers, std::map<vector<std::string>, std::vector<pw_alignment> > & new_centers){
 		for(size_t i =0; i < long_centers.size(); i ++){
