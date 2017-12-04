@@ -1473,18 +1473,30 @@
 						for(size_t m =0; m < center.size();m++){
 							std::cout << "on center " << m <<std::endl;
 							if(center.at(m) > 0){
-								if(reverse_center == true){//Is the case only for short centers, because only the positive is considered even if the negative happened.
-									assert(center.size() == 1);
+								if(reverse_center == true & center.size()>1){//Is the case only for short centers, because only the positive is considered even if the negative happened.
+								/*	assert(center.size() == 1);
 									for(size_t j =0; j <decoded_long_center_in_partition.size() ;j++){
-										std::map<int, std::string>::iterator seq = decoded_long_center_in_partition.at(j).find(center.at(center.size()-1-m));
+										std::map<int, std::string>::iterator seq = decoded_long_center_in_partition.at(j).find(center.at(m));
 										if(seq != decoded_long_center_in_partition.at(j).end()){
 											std::cout << "decoded center size here is " << seq->second.size() << std::endl;
 											decodedCenter += seq->second;											
 											std::cout<< decodedCenter.size() << std::endl;
 											break;
 										}
-									}
+									}*/
 
+									for(size_t j =0; j <decoded_long_center_in_partition.size() ;j++){
+										std::map<int, std::string>::iterator seq = decoded_long_center_in_partition.at(j).find(center.at(m));
+										if(seq != decoded_long_center_in_partition.at(j).end()){
+											std::cout << "decoded center size here is " << seq->second.size() << std::endl;
+											for(size_t n = seq->second.size() ; n > 0 ; n--){
+												std::cout << seq->second.at(n-1) << " " << dnastring::complement(seq->second.at(n-1)) <<std::endl;
+												decodedCenter += dnastring::complement(seq->second.at(n-1));
+											}
+											std::cout<< decodedCenter.size() << std::endl;
+											break;
+										}
+									}
 
 								}else{
 									for(size_t j =0; j <decoded_long_center_in_partition.size() ;j++){
@@ -1505,7 +1517,7 @@
 									if(seq != decoded_long_center_in_partition.at(j).end()){
 										std::cout << "decoded center size " << seq->second.size() << std::endl;
 										for(size_t n = seq->second.size() ; n > 0 ; n--){
-											std::cout << seq->second.at(n-1) << " " << dnastring::complement(seq->second.at(n-1)) <<std::endl;
+										//	std::cout << seq->second.at(n-1) << " " << dnastring::complement(seq->second.at(n-1)) <<std::endl;
 											decodedCenter += dnastring::complement(seq->second.at(n-1));
 										}
 										break;
