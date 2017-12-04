@@ -33,7 +33,7 @@ public:
 	void test_all() const;
 	void test_all_part()const;// Change it later to check all those pieces with gap in one sample. Put them all in a std::set and check if the only missed parts of coverage are those parts.
 	void test_overlap()const;
-	void test_no_overlap_between_ccs(const alignment_type &, std::set<const alignment_type*, compare_pointer_alignment<alignment_type>> &)const;
+	void test_no_overlap_between_ccs(const alignment_type &, std::set<const pw_alignment*, compare_pointer_pw_alignment> &)const;
 	void print_all_alignment() const;
 	const alignment_type * get_al_at_left_end(size_t ref1, size_t ref2, size_t left1, size_t left2) const;
 //	std::multimap<size_t, const alignment_type &>& get_als_on_reference(size_t sequence) ;

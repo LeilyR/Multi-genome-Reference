@@ -44,6 +44,10 @@
 			std::map<std::vector<int>, int>::iterator it1 = gains.find(seriesOfCenters);
 			std::map<std::vector<int>, int>::iterator rev_it1 = gains.find(reverse_centers);
 			if(it1 != gains.end()){//It is kept as it is
+				if(rev_it1 == gains.end()){
+					std::cout << "rev: "<< reverse_centers << std::endl;
+					std::cout << "cent: " << seriesOfCenters << std::endl;
+				}
 				assert(rev_it1 == gains.end());
 				intermediate.insert(make_pair(it1->first,it1->second));
 			}else if(rev_it1 != gains.end()){

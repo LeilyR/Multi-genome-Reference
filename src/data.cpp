@@ -651,6 +651,7 @@ void all_data::read_accknown_fasta_sam(std::string fasta_all_sequences, std::str
 }
 void all_data::read_fasta_maf(std::string fasta_all_sequences, std::string maf_all_alignments) {
 	std::ifstream fastain(fasta_all_sequences.c_str());
+	std::set<size_t> LENGTH;
 	if(fastain) {
 		std::string str;
 		std::stringstream curseq;
@@ -665,6 +666,7 @@ void all_data::read_fasta_maf(std::string fasta_all_sequences, std::string maf_a
 					//		std::cout << curseq.str().at(2416) << curseq.str().at(2417)<<std::endl;
 					//	}
 						insert_sequence(curacc, curname, curseq.str());
+						LENGTH.insert(curseq.str().length());
 					}else{
 						std::cerr << "Warning: A sequence of length zero is skipped " <<std::endl;
 					}
@@ -683,6 +685,7 @@ void all_data::read_fasta_maf(std::string fasta_all_sequences, std::string maf_a
 		// store last sequence
 		if(curseq.str().size()!=0){
 			insert_sequence(curacc, curname, curseq.str());
+			LENGTH.insert(curseq.str().length());
 		}else{
 			std::cerr << "Warning: A sequence of length zero is skipped " <<std::endl;
 		}
@@ -697,7 +700,9 @@ void all_data::read_fasta_maf(std::string fasta_all_sequences, std::string maf_a
 	}
 
 	std::cout << "loaded " << sequences.size() << " sequences" << std::endl;
-	
+	for(std::set<size_t>::iterator lenit = LENGTH.begin(); lenit != LENGTH.end() ; lenit++){
+		std::cout << "l " << *lenit << std::endl;
+	}
 //	std::vector< std::multimap< size_t, size_t> > als_on_reference; // sequence index -> begin pos on that sequence -> alignment index
 	// a new multimap for each ref sequence
 //	als_on_reference.resize(sequences.size());

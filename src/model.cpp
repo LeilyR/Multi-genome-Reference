@@ -2256,15 +2256,38 @@ void compute_cc_avl<overlap_type>::cc_step(size_t current , size_t left, size_t 
 //	std::cout<< "ref " << current << " l " << left << " r "<< right<<std::endl;
 	vector<const pw_alignment *> seen1;
 	std::multimap<size_t, std::pair<size_t, size_t> > touched_intervals;
+	std::vector<const pw_alignment* > seen2;
 #pragma omp critical(seen)
 {
-	alind->super_search_overlap_and_remove(current, left, right, seen1, touched_intervals);
+//	alind->super_search_overlap_and_remove(current, left, right, seen1, touched_intervals);
+	alind->search_overlap(current, left, right, seen1);
 //	std::cout << "seen1 "<<seen1.size() << " " << touched_intervals.size()<<std::endl;
 	for(size_t i=0; i<seen1.size(); ++i) {
-		seen.insert(seen1.at(i)); // TODO for now we keep seen, but it should not be necessary as all alignments are deleted from the index
-		cc.insert(seen1.at(i));
+		const pw_alignment * seen_p = seen1.at(i);
+		std::set <const pw_alignment* , compare_pointer_pw_alignment>::iterator find_seen = seen.find(seen_p);
+		if(find_seen == seen.end()){ 
+		//	seen.insert(seen1.at(i)); // TODO for now we keep seen, but it should not be necessary as all alignments are deleted from the index
+			cc.insert(seen1.at(i));
+			seen2.push_back(seen1.at(i));
+	                //size_t l1, r1, l2, r2;
+                	//seen_p->get_lr2(l2, r2);
+                	//cc_step(seen_p->getreference2(), l2, r2, cc, seen);
+                	//seen_p->get_lr1(l1, r1);
+                	//cc_step(seen_p->getreference1(), l1, r1, cc, seen);
+			seen.insert(seen1.at(i)); // TODO for now we keep seen, but it should not be necessary as all alignments are deleted from the index
+		}
 	}
 }
+       // std::cout << "seen2 size "<< seen2.size()<<std::endl;
+        for(size_t i =0; i< seen2.size(); i++){
+                const pw_alignment * al;
+                al = seen2.at(i);
+                size_t aleft, aright;
+                al->get_lr2(aleft, aright);
+                cc_step(al->getreference2(), aleft, aright, cc, seen);
+                al->get_lr1(aleft, aright);
+                cc_step(al->getreference1(), aleft, aright, cc, seen);
+        }
 //	for(std::multimap<size_t, std::pair<size_t, size_t> >::iterator it= touched_intervals.begin(); it!=touched_intervals.end(); ++it) {
 //		size_t ref = it->first;
 //		size_t l = it->second.first;
@@ -2272,14 +2295,14 @@ void compute_cc_avl<overlap_type>::cc_step(size_t current , size_t left, size_t 
 //		std::cout<< "ref " << ref << " l " << l << " r "<< r <<std::endl;
 //	}
 
-	for(std::multimap<size_t, std::pair<size_t, size_t> >::iterator it= touched_intervals.begin(); it!=touched_intervals.end(); ++it) {
+	/*for(std::multimap<size_t, std::pair<size_t, size_t> >::iterator it= touched_intervals.begin(); it!=touched_intervals.end(); ++it) {
 		size_t ref = it->first;
 		size_t l = it->second.first;
 		size_t r = it->second.second;
 	//	std::cout<< " touched ref " << ref << " l " << l << " r "<< r <<std::endl;
 
 		cc_step(ref, l, r, cc, seen);
-	}
+	}*/
 }
 template<typename overlap_type>
 void compute_cc_with_icl<overlap_type>::add_on_intmap(const pw_alignment * al){

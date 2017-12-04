@@ -240,8 +240,8 @@ void overlap_interval_tree<alignment>::test_overlap()const{
 }
 
 template<typename alignment>
-void overlap_interval_tree<alignment>::test_no_overlap_between_ccs(const alignment_type & p, std::set<const alignment_type*, compare_pointer_alignment<alignment_type> > & ccs)const{
-	for(typename std::set< const alignment_type* , compare_pointer_alignment<alignment_type> >::iterator it = ccs.begin();it != ccs.end();it++){
+void overlap_interval_tree<alignment>::test_no_overlap_between_ccs(const alignment_type & p, std::set<const pw_alignment*, compare_pointer_pw_alignment > & ccs)const{
+	for(typename std::set< const pw_alignment* , compare_pointer_pw_alignment >::iterator it = ccs.begin();it != ccs.end();it++){
 		const alignment_type * al = *it;
 		size_t l1,r1,l2,r2,pl1,pr1,pl2,pr2;
 		al->get_lr1(l1,r1);

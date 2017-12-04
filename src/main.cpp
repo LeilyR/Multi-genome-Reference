@@ -3134,7 +3134,18 @@ int do_dynamic_mc_model_with_two_edge(int argc, char * argv[]) {
 	typedef compute_cc_avl<overlap_type> ccc_type;
 	ccc_type no_fraction_cccs(mixed_als, data.numSequences(), num_threads);
 	std::vector<std::set<const pw_alignment* , compare_pointer_pw_alignment> > no_fraction_ccs;
-	no_fraction_cccs.compute(no_fraction_ccs); //TODO check that there is no overlap between the components
+	no_fraction_cccs.compute(no_fraction_ccs); //Check that there is no overlap between the components:
+	/*for(size_t i=0; i<no_fraction_ccs.size()-1; ++i) {
+		std::set< const pw_alignment*, compare_pointer_pw_alignment> cci = no_fraction_ccs.at(i);
+		for(std::set<const pw_alignment*,compare_pointer_pw_alignment>::iterator test = cci.begin() ; test != cci.end() ; test++){
+			const pw_alignment* p = *test;
+			for(size_t j=i+1; j<no_fraction_ccs.size(); ++j) {
+				std::set< const pw_alignment*, compare_pointer_pw_alignment> ccj = no_fraction_ccs.at(j);
+				 ol.test_no_overlap_between_ccs(*p, ccj);//XXX this is just a test function, comment it the first run!
+	                 }
+
+		}
+	}*/
 	std::cout << "number of components is " << no_fraction_ccs.size() <<std::endl;
 	size_t NUM = 0;
 	for(size_t i=0; i<no_fraction_ccs.size(); ++i){
@@ -3279,8 +3290,8 @@ int do_dynamic_mc_model_with_two_edge(int argc, char * argv[]) {
 		std::vector< std::set<const pw_alignment* , compare_pointer_pw_alignment> > cc_cluster_in; //have shorter length than original alignemnts
 		std::cout<< "using the cc again!"<<std::endl;//Just to partition them
 		ccc_type occ(ccc_overlap.at(i), num_seq ,1);
-		occ.compute(cc_cluster_in);
-	/*	for(size_t i=0; i<cc_cluster_in.size()-1; i++) {//A test function that chckes overlap between components. There shouldn't be any overlap between them.
+			occ.compute(cc_cluster_in);
+		/*for(size_t i=0; i<cc_cluster_in.size()-1; i++) {//A test function that chckes overlap between components. There shouldn't be any overlap between them.
 			std::cout << "cc cluster in  "<< i << " contains " << cc_cluster_in.at(i).size() << " alignments" << std::endl;
 				for(std::set< const pw_alignment* , compare_pointer_pw_alignment>::iterator it = cc_cluster_in.at(i).begin();it != cc_cluster_in.at(i).end();it++){
 				const pw_alignment * p = *it;
@@ -3324,7 +3335,7 @@ int do_dynamic_mc_model_with_two_edge(int argc, char * argv[]) {
 				}
 			}
 		}*/
-
+	//	std::cout << "no overlap was found!" <<std::endl;
 		vector<vector<std::string> > local_long_centers;
 
 
@@ -3594,10 +3605,10 @@ int do_dynamic_decoding(int argc, char * argv[]){
 	dlib::entropy_decoder_kernel_1  decode;
 //	dec.set_flag_from_stream(in);
 //	dec.arithmetic_decoding_centers(in,decode);
-//	dec.al_decode_with_long_center(in,decode,out);
+	dec.al_decode_with_long_center(in,decode,out);
 //	dec.al_decode_long_center_optimized_flag(in,decode,out);
 //	dec.al_decoding(in,decode,out); //XXX this is the correct one for short centers
-	dec.al_decode_with_long_center(in,decode,out); //This is the correct one for long centers
+//	dec.al_decode_with_long_center(in,decode,out); //This is the correct one for long centers
 	cout<< "decoding is done!"<<endl;
 	out.close();
 

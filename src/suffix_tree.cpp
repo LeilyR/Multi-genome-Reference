@@ -212,15 +212,15 @@
 		for(size_t n= 0; n < sequence.length(); n++){
 			std::map<size_t, pw_alignment>::iterator it=AlignmentsFromClustering.at(seq_id).find(n);
 			if(it != AlignmentsFromClustering.at(seq_id).end()){
-			//	std::cout << "at "<< n;
+				std::cout << "at "<< n;
 				pw_alignment p = it->second;
-			//	p.print();
+				p.print();
 				size_t l1,r1,l2,r2;
 				p.get_lr1(l1,r1);
 				p.get_lr2(l2,r2);
 				std::stringstream member;
 				member<< seq_id << ":" << n;
-			//	std::cout << "mem" << member.str() <<std::endl;
+				std::cout << "mem" << member.str() <<std::endl;
 				std::map<std::string,std::string>::iterator it1 = memberOfCluster.find(member.str());
 				assert(it1 != memberOfCluster.end());
 				std::string center = it1->second;				
@@ -257,7 +257,7 @@
 						dir = true;	
 					}
 				}
-			//	std::cout<< "center: "<< center << std::endl;//Direction was added to center
+				std::cout<< "center: "<< center << std::endl;//Direction was added to center
 			//	centersOnSequence.at(seq_id).insert(std::make_pair(n,center));
 			//	std::cout << " is " << center <<std::endl;
 				centerOnseq.at(seq_id).insert(std::make_pair(n,center));//This is the global one. It is initialized in main function
@@ -492,12 +492,12 @@ void finding_centers::add_nonaligned_regions(std::vector<std::map<size_t, std::s
 		std::set<std::string> erased;
 		assert(center_index.size()==center_id.size());
 		for(size_t i =0; i < data.numSequences(); i++){
-		//	std::cout << "centers on sequence " << i << " are :"<<std::endl;
+				std::cout << "centers on sequence " << i << " are :"<<std::endl;
 			size_t pre_pos = 0;//later on will be updated to right+1
 			for(std::multimap<size_t, std::string >::iterator it = centerOnSequence.at(i).begin(); it != centerOnSequence.at(i).end();it++){
-			//	std::cout<< it->second << " ";
+				std::cout<< it->second << " ";
 				size_t pos = it->first;
-			//	std::cout<< "prepos "<< pre_pos << " pos "<<pos <<std::endl;
+				std::cout<< "prepos "<< pre_pos << " pos "<<pos <<std::endl;
 				assert(pre_pos <=pos);
 				if(pre_pos != pos){//There is a non aligned region in between
  					std::stringstream str;
@@ -510,7 +510,7 @@ void finding_centers::add_nonaligned_regions(std::vector<std::map<size_t, std::s
 					std::map<std::string, std::string>::iterator context=non_aligned_context.find(this_part);//the reverse complement can also be checked.
 					std::map<std::string, std::string>::iterator rev_context=non_aligned_context.find(reverse_comp_this_string);
 					if(context==non_aligned_context.end()&& rev_context==non_aligned_context.end()){ //If no other non aligned region has this context or its reverse.
-				//		std::cout<<"if context doesn't exist"<< str.str()<<std::endl;
+						std::cout<<"if context doesn't exist"<< str.str()<<std::endl;
 						non_aligned_context.insert(std::make_pair(this_part, str.str()));
 						all_pieces.at(i).insert(std::make_pair(pre_pos,str.str()));
 						non_aligned_right.insert(std::make_pair(str.str(),pos-1));
@@ -523,7 +523,7 @@ void finding_centers::add_nonaligned_regions(std::vector<std::map<size_t, std::s
 							assert(rev_context==non_aligned_context.end());
 						}
 						assert(rev_context == non_aligned_context.end() || this_part == reverse_comp_this_string);
-				//		std::cout<< "if context exists "<< context->second<< std::endl;
+						std::cout<< "if context exists "<< context->second<< std::endl;
 						std::vector<std::string> center_parts;
 						strsep(context->second, ":" , center_parts);
 						unsigned int center_dir = atoi(center_parts.at(0).c_str());
@@ -565,7 +565,7 @@ void finding_centers::add_nonaligned_regions(std::vector<std::map<size_t, std::s
 							assert(id != center_id.end());
 							assert(id->second > 0);
 						}
-					//	std::cout << "when true " << context->second <<std::endl;
+						std::cout << "when true " << context->second <<std::endl;
 						add_to_alignments(centerOnSequence, alignments_in_a_cluster, i, pre_pos, this_part, context->second,true); //this_part --> sequence content of both member and so called center , context->second --> center name
 					}else{//If its context doesn't exist itself but its reverse context does exist.
 						assert(context==non_aligned_context.end() && rev_context!=non_aligned_context.end());
@@ -642,7 +642,7 @@ void finding_centers::add_nonaligned_regions(std::vector<std::map<size_t, std::s
 				all_pieces.at(i).insert(std::make_pair(pre_pos,str.str()));
 				non_aligned_right.insert(std::make_pair(str.str(),data.get_seq_size(i)-1));
 			}
-			std::cout << std::endl;
+		//	std::cout << std::endl;
 		}
 		std::cout<<"center index size after adding non aligned regions "<< center_index.size()<<std::endl;
 		//Making potential long centers:
@@ -678,7 +678,7 @@ void finding_centers::add_nonaligned_regions(std::vector<std::map<size_t, std::s
 		std::stringstream str;
 		str<<center_ref<<":"<<center_left;	
 		std::map<std::string, std::vector<pw_alignment> >::iterator it = alignments_in_a_cluster.find(str.str());
-		std::cout << str.str()<<std::endl;
+	//	std::cout << str.str()<<std::endl;
 		if(it == alignments_in_a_cluster.end()){
 			alignments_in_a_cluster.insert(std::make_pair(str.str(), std::vector<pw_alignment>()));
 			it = alignments_in_a_cluster.find(str.str());
@@ -687,7 +687,7 @@ void finding_centers::add_nonaligned_regions(std::vector<std::map<size_t, std::s
 			AlignmentsFromClustering.at(center_ref).insert(std::make_pair(center_left, p));
 			std::stringstream str1;
 			str1<<0<<":"<<center_ref<<":"<<center_left;
-			std::cout << "center left in add al "<< center_left << " ref " << center_ref << std::endl;
+		//	std::cout << "center left in add al "<< center_left << " ref " << center_ref << std::endl;
 			centerOnSequence.at(center_ref).insert(std::make_pair(center_left, str1.str()));
 		}
 		it->second.push_back(p);
@@ -771,7 +771,7 @@ void finding_centers::add_nonaligned_regions(std::vector<std::map<size_t, std::s
 	void suffixTree::add_internal_node(size_t & parent_index , std::vector<int> & new_suffix){//equal range for parent
 		std::multimap<size_t,size_t>::iterator it2 = edges_relations.find(parent_index);
 		assert(it2 != edges_relations.end());
-		std::cout << last_node_index << " " << parent_index <<std::endl;
+	//	std::cout << last_node_index << " " << parent_index <<std::endl;
 		std::vector<size_t> intermediate;
 		std::pair<std::multimap<size_t, size_t>::iterator, std::multimap<size_t, size_t>::iterator> it = edges_relations.equal_range(parent_index);
 		for(std::multimap<size_t,size_t>::iterator it1 = it.first ; it1 != it.second; it1++){
@@ -872,7 +872,7 @@ void finding_centers::add_nonaligned_regions(std::vector<std::map<size_t, std::s
 	void suffixTree::make_suffix(std::vector<int> & word){
 		suffixes.clear();
 		for(size_t i =0; i < word.size();i++){
-			std::cout << word.at(i) << " ";
+		//	std::cout << word.at(i) << " ";
 			std::vector<int> suffix;
 			for(size_t k =i; k < word.size();k++){
 				suffix.push_back(word.at(k));
@@ -1058,7 +1058,7 @@ void finding_centers::add_nonaligned_regions(std::vector<std::map<size_t, std::s
 						//	std::cout << current.at(k)<< " ";
 							updated_current.push_back(current.at(k));
 						}
-						std::cout << " "<<std::endl;
+					//	std::cout << " "<<std::endl;
 						size_t parent_index = deepest_parent;
 						branch.push_back(parent_index);
 						current = updated_current;
