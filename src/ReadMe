@@ -16,4 +16,9 @@ This program generates a genome graph
 	1: generate graphs with shorter nodes
 	noencode: if don't need the arithmetically encoded output file
 	nogfa: if dont' need the gfa output file
+
+
+6. To decode the output_encode 
+	../src/graph dy_decoding output_encode 0(1) output_decode
 	
+	0 or 1 determine the center type which was used in buildign the graph.	

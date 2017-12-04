@@ -2858,7 +2858,7 @@ int do_dynamic_mc_model_with_two_edge(int argc, char * argv[]) {
 	typedef initial_alignment_set<use_model,overlap_type> use_ias;
 	if(argc < 11) {
 		usage();
-		cerr << "Program: new_dy_model" << std::endl;
+		cerr << "Program: build_graph" << std::endl;
 		cerr << "Parameters:" << std::endl;
 		cerr << "* fasta file from fasta_prepare" << std::endl;
 		cerr << "* maf file containing alignments of sequences contained in the fasta file" << std::endl;
@@ -3579,15 +3579,18 @@ int do_decoding(int argc, char * argv[]){
 int do_dynamic_decoding(int argc, char * argv[]){
 	typedef dynamic_mc_model use_model;
 	typedef dynamic_decoder<use_model> use_decode;
-	if(argc < 4){
+	if(argc < 5){
 		usage();
 		cerr << "Program: dy_decoding" << std::endl;
 		cerr << "Parameters:" << std::endl;
 		cerr << "* input binary compressed file from model" << std::endl;
-		cerr << " * output file for saving retrievd sequences" << std::endl;		
+		cerr << "* type of centers, 0 if long centers, 1 if short centers" << std::endl;
+		cerr << " * output file for saving retrievd sequences" << std::endl;	
+		return 1;	
 	}
 	std::string encoding_out(argv[2]);
-	std::string decoding_out(argv[3]);
+	int center_type = atoi(argv[3]);
+	std::string decoding_out(argv[4]);
 	std::ifstream in(encoding_out.c_str(),std::ifstream::binary);
 	std::ofstream out(decoding_out.c_str());
 	all_data data;
@@ -3605,10 +3608,15 @@ int do_dynamic_decoding(int argc, char * argv[]){
 	dlib::entropy_decoder_kernel_1  decode;
 //	dec.set_flag_from_stream(in);
 //	dec.arithmetic_decoding_centers(in,decode);
-	dec.al_decode_with_long_center(in,decode,out);
-//	dec.al_decode_long_center_optimized_flag(in,decode,out);
-//	dec.al_decoding(in,decode,out); //XXX this is the correct one for short centers
-//	dec.al_decode_with_long_center(in,decode,out); //This is the correct one for long centers
+	if(center_type == 0){
+		std::cout << "here!" <<std::endl;
+		dec.al_decode_with_long_center(in,decode,out);
+	}else{
+		assert(center_type == 1);
+	//	dec.al_decode_long_center_optimized_flag(in,decode,out);
+		dec.al_decoding(in,decode,out); //XXX this is the correct one for short centers
+	//	dec.al_decode_with_long_center(in,decode,out); //This is the correct one for long centers
+	}
 	cout<< "decoding is done!"<<endl;
 	out.close();
 
@@ -4848,7 +4856,7 @@ int main(int argc, char * argv[]) {
 	else if(0==program.compare("dy_model")){
 		return do_dynamic_mc_model(argc,argv);
 	}
-	else if(0==program.compare("new_dy_model")){
+	else if(0==program.compare("build_graph")){
 		return do_dynamic_mc_model_with_two_edge(argc,argv);
 	}
 	else if(0 ==program.compare("compare")){
