@@ -1189,7 +1189,7 @@ void divide_and_conquer_al_problem::run_cc(size_t thread) {
 	
 #pragma omp critical(scheduling)
 {
-	stringstream str;
+	std::stringstream str;
 	str << " run_cc on l " << separation_level << " with " << alvec.size() << " alignments ";
 	parent.thread_info.at(thread) = str.str(); 
 }
@@ -1291,7 +1291,7 @@ void divide_and_conquer_al_problem::run_overlap(size_t cl_al_idx, size_t thread)
 
 	if(cl_al_idx < clustered_al_status.size()) {
 	if(cl_al_idx == clustered_al_status.size() - 1) {
-stringstream str;
+std::stringstream str;
 #pragma omp critical(scheduling)
 {
 	str << separation_level << " run_overlap on group " << cl_al_idx << " on  " << leftover_alignments.size() << " leftover alignments " ;
@@ -1317,7 +1317,7 @@ stringstream str;
 
 	} else {
 
-	stringstream str;
+	std::stringstream str;
 #pragma omp critical(scheduling)
 {
 	str << separation_level << " run_overlap on group " << cl_al_idx << " with " << clustered_alignments.at(cl_al_idx).size() << " alignments ";
@@ -1692,7 +1692,7 @@ void divide_and_conquer_al_problem::run_combine(size_t thread) {
 	size_t in_r_init = results.get_all().size();
 #pragma omp critical(scheduling)
 {
-	stringstream str;
+	std::stringstream str;
 	str <<"l "<< separation_level<< " run_combine on " << clustered_al_results.size() << " alignment groups and " << in_r_init << " leftover alignments ";
 	parent.thread_info.at(thread) = str.str(); 
 }
@@ -1714,7 +1714,7 @@ void divide_and_conquer_al_problem::run_combine(size_t thread) {
 //	}
 
 
-stringstream str1;
+std::stringstream str1;
 #pragma omp critical(scheduling)
 {
 	str1 << "l "<< separation_level<< " run_combine on " << clustered_al_results.size() << " alignment groups and " << in_r_init << " leftover alignments, total  "<< sum + in_r_init;
@@ -1727,7 +1727,7 @@ stringstream str1;
 	ias.compute(results, str1.str(), parent.thread_info.at(thread));
 #pragma omp critical(scheduling)
 {
-	stringstream str2;
+	std::stringstream str2;
 	str2 << "l "<< separation_level<<  " run_combine on " << clustered_al_results.size() << " alignment groups and " << leftover_alignments.size() << " leftover alignments, total  "<< sum + in_r_init + " ias done";
 	parent.thread_info.at(thread) = str2.str(); 
 }

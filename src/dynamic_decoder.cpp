@@ -1473,8 +1473,8 @@
 						for(size_t m =0; m < center.size();m++){
 							std::cout << "on center " << m <<std::endl;
 							if(center.at(m) > 0){
-								if(reverse_center == true & center.size()>1){//Is the case only for short centers, because only the positive is considered even if the negative happened.
-								/*	assert(center.size() == 1);
+						/*		if(reverse_center == true & center.size()>1){//Is the case only for short centers, because only the positive is considered even if the negative happened.
+									assert(center.size() == 1);
 									for(size_t j =0; j <decoded_long_center_in_partition.size() ;j++){
 										std::map<int, std::string>::iterator seq = decoded_long_center_in_partition.at(j).find(center.at(m));
 										if(seq != decoded_long_center_in_partition.at(j).end()){
@@ -1483,7 +1483,7 @@
 											std::cout<< decodedCenter.size() << std::endl;
 											break;
 										}
-									}*/
+									}
 
 									for(size_t j =0; j <decoded_long_center_in_partition.size() ;j++){
 										std::map<int, std::string>::iterator seq = decoded_long_center_in_partition.at(j).find(center.at(m));
@@ -1498,7 +1498,7 @@
 										}
 									}
 
-								}else{
+								}else{*/
 									for(size_t j =0; j <decoded_long_center_in_partition.size() ;j++){
 										std::map<int, std::string>::iterator seq = decoded_long_center_in_partition.at(j).find(center.at(m));
 										if(seq != decoded_long_center_in_partition.at(j).end()){
@@ -1508,7 +1508,7 @@
 											break;
 										}
 									}
-								}
+								//}
 							}else{//add reverse complement, Only in long centers!
 								std::cout << "rev_comp is added !" <<std::endl;
 								assert(center.size() > 1);
@@ -1628,6 +1628,7 @@
 //
 //							}
 							if(reverse_both ==true || (reverse_center == true && center.size() ==1)){
+							//if(reverse_both ==true || (reverse_center == true)){
 								std::string rev_decodedCenter;
 								for(size_t rev = 0; rev< decodedCenter.size(); rev++){
 									char chr= dnastring::complement(decodedCenter.at(decodedCenter.size()-1-rev));	
