@@ -1,1 +1,0 @@
-../bam/BamIndex.h

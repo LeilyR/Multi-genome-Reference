@@ -21,9 +21,9 @@ endif
 CXXFLAGS += -Wlong-long
 
 
-STATGEN_INC = libStatGen-1.0.13/include
-INCLUDEARGS = -I$(STATGEN_INC)
-LIBARGS =   apclusterunix64.so -L../dlib_build -ldlib  libStatGen-1.0.13/libStatGen.a -lz
+#STATGEN_INC = libStatGen-1.0.13/include
+#INCLUDEARGS = -I$(STATGEN_INC)
+LIBARGS =   apclusterunix64.so -L../dlib_build -ldlib -lz
 
 
 # include libStatGen-1.0.13/Makefiles/Makefile.include

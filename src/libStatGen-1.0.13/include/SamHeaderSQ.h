@@ -1,1 +1,0 @@
-../bam/SamHeaderSQ.h

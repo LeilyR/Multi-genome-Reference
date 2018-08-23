@@ -9,24 +9,25 @@
 #include <cassert>
 #include <set>
 #include <map>
-#include <math.h> 
+#include <math.h>
 #include <algorithm>
 
 #include "pw_alignment.hpp"
 #include "dlib/entropy_encoder/entropy_encoder_kernel_1.h"
 #include "dlib/entropy_decoder/entropy_decoder_kernel_1.h"
 
-//ICL library header files: 
-#include <boost/icl/discrete_interval.hpp>
-#include <boost/icl/interval_map.hpp>
-#include <boost/icl/interval_set.hpp>
+////ICL library header files:
+//#include <boost/icl/discrete_interval.hpp>
+//#include <boost/icl/interval_map.hpp>
+//#include <boost/icl/interval_set.hpp>
 
+//We never used  samfile, it can be deleted
 // Library to read Sam File
-#include "SamFile.h"
-#include "SamValidation.h"
-#include "Cigar.h"
-#include "GenomeSequence.h"
-#include <SamFlag.h>
+//#include "SamFile.h"
+//#include "SamValidation.h"
+//#include "Cigar.h"
+//#include "GenomeSequence.h"
+//#include <SamFlag.h>
 
 #include <boost/iostreams/stream.hpp>
 #include <boost/tokenizer.hpp>
@@ -107,7 +108,7 @@ class all_data {
 		std::string get_read(unsigned int read_id)const{
                         return reads.at(read_id);
                 }
-		bool alignmentAlreadyExist(const pw_alignment &a)const; //XXX Added by Marion. 
+		bool alignmentAlreadyExist(const pw_alignment &a)const; //XXX Added by Marion.
 		int findIdAlignment(std::string name,int startOnRead, int endOnRead,int startOnNode,int endOnNode);//XXX Added by Marion
 		int findIdAlignment(std::string name,unsigned int start, unsigned int end);//XXX Added by Marion
 
@@ -116,7 +117,7 @@ class all_data {
 		std::vector<dnastring> sequences;
 		std::vector<std::string> sequence_names;
 		std::vector<pw_alignment> alignments; // TODO  remove this (slower, more memory and duplicate with l_alignments)
-		std::vector<located_alignment> l_alignments; 
+		std::vector<located_alignment> l_alignments;
 		std::vector<std::string> reads;
 		// fast access indices
 		std::map< std::string, std::vector< size_t> > acc_sequences; // acc name -> sequences of that acc
@@ -124,7 +125,7 @@ class all_data {
 		std::map<std::string, size_t> accession_name; // accession name -> accession id
 		std::map< std::string, size_t> longname2seqidx; // long sequence name ("Accession:sequence name") -> sequence index
 
-		
+
 
 		void insert_sequence(const std::string & acc, const std::string & seq_name, const std::string & dna);
 		void insert_read(const std::string & read);
@@ -153,7 +154,7 @@ public:
 	const pw_alignment * get_al_at_left_end(size_t ref1, size_t ref2, size_t left1, size_t left2) const;
 	std::multimap<size_t, const pw_alignment &>& get_als_on_reference(size_t sequence) ;
 	const std::multimap<size_t, const pw_alignment & >& get_als_on_reference_const(size_t sequence) const ;
-	const boost::icl::interval_map<size_t, std::set<const pw_alignment*> > & get_alignments_interval(size_t sequence)const;
+	//const boost::icl::interval_map<size_t, std::set<const pw_alignment*> > & get_alignments_interval(size_t sequence)const;
 	void test_multimaps()  ;
 	bool checkAlignments(const pw_alignment & p)const;
 
@@ -172,8 +173,8 @@ private:
 	std::set<pw_alignment, compare_pw_alignment> alignments;
 	std::vector< std::multimap< size_t, const pw_alignment &> > als_on_reference; // sequence index -> pos on that sequence -> alignment reference
 //	std::vector< boost::icl::interval_map<size_t , std::set<const pw_alignment*> > > alignments_intervals;
-	
-	
+
+
 };
 
 
@@ -185,7 +186,7 @@ class splitpoints {
 	void find_initial_split_points(size_t sequence, size_t left, size_t right);
 	void find_initial_split_points_nonrecursive(size_t sequence, size_t left, size_t right);
 	void recursive_splits();//initial split points + all induced split points everywhere
-	void nonrecursive_splits(); // initial split points only 
+	void nonrecursive_splits(); // initial split points only
 	void insert_split_point(size_t sequence, size_t position);//recursively find the other split points
 	void insert_split_point_nonrecursive(size_t sequence, size_t position);//insert without recursion
 	void split_all(std::set<pw_alignment, compare_pw_alignment> & remove_alignments, std::vector<pw_alignment> & insert_alignments);
@@ -199,7 +200,7 @@ class splitpoints {
 	const pw_alignment & newal;
 	const all_data & data;
 	std::vector<std::set<size_t> > split_points;
-	std::vector<pw_alignment> insert_alignments;	
+	std::vector<pw_alignment> insert_alignments;
 /*
 	initial points in std::sets (method with and without sets)
 	compute remove and insert alignments
@@ -208,7 +209,7 @@ class splitpoints {
 
 
 */
-	
+
 };
 
 class model{
@@ -255,7 +256,7 @@ class counting_functor : public abstract_context_functor {
 	private:
 	all_data & data;
 	std::vector<std::vector<std::map<std::string, std::vector<size_t> > > >successive_modification;
-	std::vector<std::vector<std::map <std::string, double > > > total;	
+	std::vector<std::vector<std::map <std::string, double > > > total;
 
 
 
@@ -266,14 +267,14 @@ class mc_model;
 
 class cost_functor : public abstract_context_functor {
 	public:
-	cost_functor(all_data &, const std::vector<vector<std::map<std::string, vector<double> > > >&);
+	cost_functor(all_data &, const std::vector<std::vector<std::map<std::string, std::vector<double> > > >&);
 	virtual void see_context(size_t acc1, size_t acc2, const pw_alignment & p, size_t pos, std::string context, char last_char);
 	double get_modify(const pw_alignment & p, size_t acc1, size_t acc2)const;
 	private:
-	std::vector<vector< std::map<std::string, vector<double> > > >  modification; 
+	std::vector<std::vector< std::map<std::string, std::vector<double> > > >  modification;
 	all_data & data;
 	double modify1;
-	double modify2;	
+	double modify2;
 
 };
 
@@ -285,7 +286,7 @@ class adding_functor : public abstract_context_functor {
 class encoding_functor : public abstract_context_functor {
 	public:
 	encoding_functor(all_data& , mc_model* , wrapper &, dlib::entropy_encoder_kernel_1 &);
-	virtual void see_context(size_t acc1, size_t acc2,const pw_alignment& p, size_t pos, std::string context, char last_char);	
+	virtual void see_context(size_t acc1, size_t acc2,const pw_alignment& p, size_t pos, std::string context, char last_char);
 	virtual void see_entire_context(size_t acc1, size_t acc2, std::string entireContext);
 	const std::map<std::string, std::vector<double> > & get_alignment_context()const;
 //	std::vector<std::string> & get_alignment_context(pw_alignment& p)const;
@@ -319,7 +320,7 @@ class mc_model{
 		~mc_model();
 		void markov_chain();
 		void markov_chain_alignment();
-		const std::vector<std::vector<std::map <std::string, vector<double> > > >& get_mod_cost()const;
+		const std::vector<std::vector<std::map <std::string, std::vector<double> > > >& get_mod_cost()const;
 		void cost_function(const pw_alignment& p, double & c1, double & c2, double & m1, double & m2)const ;
 		void gain_function(const pw_alignment& p, double & g1, double & g2)const ;
 		double get_the_gain(const pw_alignment &, std::string & )const;
@@ -332,7 +333,7 @@ class mc_model{
 		std::string print_modification_character(char enc)const;
 		const std::map<std::string, std::vector<double> > & getPattern(size_t acc)const;
 		const std::vector<double> & get_create_cost(size_t acc) const;
-		const std::vector<std::map<std::string, vector<double> > > & model_parameters()const;
+		const std::vector<std::map<std::string, std::vector<double> > > & model_parameters()const;
 		void write_parameters(std::ofstream &);
 		void write_alignments_pattern(std::ofstream&);
 		std::vector<unsigned int> get_high_at_position(size_t seq_index, size_t position) const;
@@ -366,7 +367,7 @@ class mc_model{
 	std::vector<std::vector<std::map<std::string , std::vector<unsigned int> > > >highValue;//alignments patterns
 	mutable std::string last_context; //last context of an alignment. it is used for arith encoding of long centers
 
-		
+
 
 };
 

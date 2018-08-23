@@ -1,1 +1,0 @@
-../general/PedigreeAlleleFreq.h
